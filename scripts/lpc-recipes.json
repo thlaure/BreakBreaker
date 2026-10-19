@@ -1,0 +1,567 @@
+{
+ "paul": {
+  "layers": [
+   {
+    "path": "body/bodies/male",
+    "z": 10,
+    "material": "skin",
+    "palette": "light"
+   },
+   {
+    "path": "head/heads/human/male",
+    "z": 100,
+    "material": "skin",
+    "palette": "light"
+   },
+   {
+    "path": "feet/shoes/basic/male",
+    "z": 15,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "legs/pants/male",
+    "z": 20,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "torso/clothes/longsleeve/longsleeve2/male",
+    "z": 34,
+    "material": "cloth",
+    "palette": "white"
+   },
+   {
+    "path": "torso/clothes/shortsleeve/tshirt/male",
+    "z": 36,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "hair/long/adult",
+    "z": 120,
+    "material": "hair",
+    "palette": "black"
+   }
+  ]
+ },
+ "rioter_classic_a": {
+  "layers": [
+   {
+    "path": "body/bodies/male",
+    "z": 10,
+    "material": "skin",
+    "palette": "light"
+   },
+   {
+    "path": "head/heads/human/male",
+    "z": 100,
+    "material": "skin",
+    "palette": "light"
+   },
+   {
+    "path": "feet/shoes/basic/male",
+    "z": 15,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "legs/pants/male",
+    "z": 20,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "torso/clothes/shortsleeve/tshirt/male",
+    "z": 35,
+    "material": "cloth",
+    "palette": "charcoal"
+   },
+   {
+    "path": "hair/messy1/adult",
+    "z": 120,
+    "material": "hair",
+    "palette": "dark_brown"
+   }
+  ]
+ },
+ "rioter_classic_b": {
+  "layers": [
+   {
+    "path": "body/bodies/male",
+    "z": 10,
+    "material": "skin",
+    "palette": "bronze"
+   },
+   {
+    "path": "head/heads/human/male",
+    "z": 100,
+    "material": "skin",
+    "palette": "bronze"
+   },
+   {
+    "path": "feet/shoes/basic/male",
+    "z": 15,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "legs/pants/male",
+    "z": 20,
+    "material": "cloth",
+    "palette": "charcoal"
+   },
+   {
+    "path": "torso/clothes/longsleeve/longsleeve2/male",
+    "z": 35,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "hair/buzzcut/adult",
+    "z": 120,
+    "material": "hair",
+    "palette": "black"
+   }
+  ]
+ },
+ "rioter_palestinian_a": {
+  "layers": [
+   {
+    "path": "body/bodies/male",
+    "z": 10,
+    "material": "skin",
+    "palette": "olive"
+   },
+   {
+    "path": "head/heads/human/male",
+    "z": 100,
+    "material": "skin",
+    "palette": "olive"
+   },
+   {
+    "path": "feet/shoes/basic/male",
+    "z": 15,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "legs/pants/male",
+    "z": 20,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "torso/clothes/longsleeve/longsleeve2/male",
+    "z": 35,
+    "material": "cloth",
+    "palette": "charcoal"
+   },
+   {
+    "path": "hair/plain/adult",
+    "z": 120,
+    "material": "hair",
+    "palette": "black"
+   },
+   {
+    "path": "facial/masks/plain/adult",
+    "z": 114,
+    "material": "custom",
+    "palette": "dark-grey",
+    "map": {
+     "#ffffff": "#4a5057",
+     "#e3e3e3": "#2a3034",
+     "#d0d0d0": "#22282a",
+     "#b5b5b5": "#1c2222",
+     "#949494": "#101414"
+    }
+   }
+  ]
+ },
+ "rioter_palestinian_b": {
+  "layers": [
+   {
+    "path": "body/bodies/male",
+    "z": 10,
+    "material": "skin",
+    "palette": "taupe"
+   },
+   {
+    "path": "head/heads/human/male",
+    "z": 100,
+    "material": "skin",
+    "palette": "taupe"
+   },
+   {
+    "path": "feet/shoes/basic/male",
+    "z": 15,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "legs/pants/male",
+    "z": 20,
+    "material": "cloth",
+    "palette": "charcoal"
+   },
+   {
+    "path": "torso/clothes/shortsleeve/tshirt/male",
+    "z": 35,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "hair/curly_short/adult",
+    "z": 120,
+    "material": "hair",
+    "palette": "black"
+   },
+   {
+    "path": "facial/masks/plain/adult",
+    "z": 114,
+    "material": "custom",
+    "palette": "dark-grey",
+    "map": {
+     "#ffffff": "#4a5057",
+     "#e3e3e3": "#2a3034",
+     "#d0d0d0": "#22282a",
+     "#b5b5b5": "#1c2222",
+     "#949494": "#101414"
+    }
+   }
+  ]
+ },
+ "rioter_antifa_a": {
+  "layers": [
+   {
+    "path": "body/bodies/male",
+    "z": 10,
+    "material": "skin",
+    "palette": "light"
+   },
+   {
+    "path": "head/heads/human/male",
+    "z": 100,
+    "material": "skin",
+    "palette": "light"
+   },
+   {
+    "path": "feet/shoes/basic/male",
+    "z": 15,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "legs/pants/male",
+    "z": 20,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "torso/clothes/longsleeve/longsleeve2/male",
+    "z": 35,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "hat/cloth/hood/adult",
+    "z": 125,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "facial/masks/plain/adult",
+    "z": 114,
+    "material": "custom",
+    "palette": "dark-grey",
+    "map": {
+     "#ffffff": "#4a5057",
+     "#e3e3e3": "#2a3034",
+     "#d0d0d0": "#22282a",
+     "#b5b5b5": "#1c2222",
+     "#949494": "#101414"
+    }
+   }
+  ]
+ },
+ "rioter_antifa_b": {
+  "layers": [
+   {
+    "path": "body/bodies/male",
+    "z": 10,
+    "material": "skin",
+    "palette": "amber"
+   },
+   {
+    "path": "head/heads/human/male",
+    "z": 100,
+    "material": "skin",
+    "palette": "amber"
+   },
+   {
+    "path": "feet/shoes/basic/male",
+    "z": 15,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "legs/pants/male",
+    "z": 20,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "torso/clothes/longsleeve/longsleeve2/male",
+    "z": 35,
+    "material": "cloth",
+    "palette": "charcoal"
+   },
+   {
+    "path": "hat/cloth/hood/adult",
+    "z": 125,
+    "material": "cloth",
+    "palette": "charcoal"
+   }
+  ]
+ },
+ "protester_1": {
+  "layers": [
+   {
+    "path": "body/bodies/male",
+    "z": 10,
+    "material": "skin",
+    "palette": "taupe"
+   },
+   {
+    "path": "head/heads/human/male",
+    "z": 100,
+    "material": "skin",
+    "palette": "taupe"
+   },
+   {
+    "path": "feet/shoes/basic/male",
+    "z": 15,
+    "material": "cloth",
+    "palette": "brown"
+   },
+   {
+    "path": "legs/pants/male",
+    "z": 20,
+    "material": "cloth",
+    "palette": "navy"
+   },
+   {
+    "path": "torso/clothes/shortsleeve/tshirt/male",
+    "z": 35,
+    "material": "cloth",
+    "palette": "orange"
+   },
+   {
+    "path": "hair/plain/adult",
+    "z": 120,
+    "material": "hair",
+    "palette": "dark_brown"
+   }
+  ]
+ },
+ "protester_2": {
+  "layers": [
+   {
+    "path": "body/bodies/female",
+    "z": 10,
+    "material": "skin",
+    "palette": "light"
+   },
+   {
+    "path": "head/heads/human/female",
+    "z": 100,
+    "material": "skin",
+    "palette": "light"
+   },
+   {
+    "path": "feet/shoes/basic/thin",
+    "z": 15,
+    "material": "cloth",
+    "palette": "white"
+   },
+   {
+    "path": "legs/pants/thin",
+    "z": 20,
+    "material": "cloth",
+    "palette": "blue"
+   },
+   {
+    "path": "torso/clothes/shortsleeve/tshirt/female",
+    "z": 35,
+    "material": "cloth",
+    "palette": "red"
+   },
+   {
+    "path": "hair/long/adult",
+    "z": 120,
+    "material": "hair",
+    "palette": "blonde"
+   }
+  ]
+ },
+ "protester_3": {
+  "layers": [
+   {
+    "path": "body/bodies/male",
+    "z": 10,
+    "material": "skin",
+    "palette": "brown"
+   },
+   {
+    "path": "head/heads/human/male",
+    "z": 100,
+    "material": "skin",
+    "palette": "brown"
+   },
+   {
+    "path": "feet/shoes/basic/male",
+    "z": 15,
+    "material": "cloth",
+    "palette": "gray"
+   },
+   {
+    "path": "legs/pants/male",
+    "z": 20,
+    "material": "cloth",
+    "palette": "tan"
+   },
+   {
+    "path": "torso/clothes/shortsleeve/tshirt/male",
+    "z": 35,
+    "material": "cloth",
+    "palette": "sky"
+   },
+   {
+    "path": "hair/buzzcut/adult",
+    "z": 120,
+    "material": "hair",
+    "palette": "black"
+   }
+  ]
+ },
+ "protester_4": {
+  "layers": [
+   {
+    "path": "body/bodies/female",
+    "z": 10,
+    "material": "skin",
+    "palette": "bronze"
+   },
+   {
+    "path": "head/heads/human/female",
+    "z": 100,
+    "material": "skin",
+    "palette": "bronze"
+   },
+   {
+    "path": "feet/shoes/basic/thin",
+    "z": 15,
+    "material": "cloth",
+    "palette": "black"
+   },
+   {
+    "path": "legs/pants/thin",
+    "z": 20,
+    "material": "cloth",
+    "palette": "forest"
+   },
+   {
+    "path": "torso/clothes/shortsleeve/tshirt/female",
+    "z": 35,
+    "material": "cloth",
+    "palette": "yellow"
+   },
+   {
+    "path": "hair/bob/adult",
+    "z": 120,
+    "material": "hair",
+    "palette": "raven"
+   }
+  ]
+ },
+ "elder_1": {
+  "layers": [
+   {
+    "path": "body/bodies/male",
+    "z": 10,
+    "material": "skin",
+    "palette": "light"
+   },
+   {
+    "path": "head/heads/human/male_elderly",
+    "z": 100,
+    "material": "skin",
+    "palette": "light"
+   },
+   {
+    "path": "feet/shoes/basic/male",
+    "z": 15,
+    "material": "cloth",
+    "palette": "brown"
+   },
+   {
+    "path": "legs/pants/male",
+    "z": 20,
+    "material": "cloth",
+    "palette": "brown"
+   },
+   {
+    "path": "torso/clothes/longsleeve/longsleeve2_cardigan/male",
+    "z": 35,
+    "material": "cloth",
+    "palette": "tan"
+   },
+   {
+    "path": "hair/balding/adult",
+    "z": 120,
+    "material": "hair",
+    "palette": "gray"
+   }
+  ]
+ },
+ "elder_2": {
+  "layers": [
+   {
+    "path": "body/bodies/female",
+    "z": 10,
+    "material": "skin",
+    "palette": "amber"
+   },
+   {
+    "path": "head/heads/human/female_elderly",
+    "z": 100,
+    "material": "skin",
+    "palette": "amber"
+   },
+   {
+    "path": "feet/shoes/basic/thin",
+    "z": 15,
+    "material": "cloth",
+    "palette": "brown"
+   },
+   {
+    "path": "legs/pants/thin",
+    "z": 20,
+    "material": "cloth",
+    "palette": "slate"
+   },
+   {
+    "path": "torso/clothes/longsleeve/longsleeve2_cardigan/female",
+    "z": 35,
+    "material": "cloth",
+    "palette": "maroon"
+   },
+   {
+    "path": "hair/bob/adult",
+    "z": 120,
+    "material": "hair",
+    "palette": "white"
+   }
+  ]
+ }
+}

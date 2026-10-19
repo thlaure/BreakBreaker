@@ -1,0 +1,27 @@
+{
+  "frame": 64,
+  "anims": {
+    "walk": {
+      "rows": {
+        "n": 0,
+        "w": 1,
+        "s": 2,
+        "e": 3
+      },
+      "frames": 9
+    },
+    "slash": {
+      "rows": {
+        "n": 4,
+        "w": 5,
+        "s": 6,
+        "e": 7
+      },
+      "frames": 6
+    },
+    "hurt": {
+      "row": 8,
+      "frames": 6
+    }
+  }
+}

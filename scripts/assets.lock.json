@@ -1,0 +1,39 @@
+{
+  "lpc": {
+    "repo": "https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator",
+    "commit": "9bf06be193b053db256b2536824af426de046aa2",
+    "license": "Per-layer: CC-BY-SA 3.0 / CC-BY 3.0 / OGA-BY 3.0 / GPL 3.0 / CC0 (see CREDITS.csv in the repo)"
+  },
+  "archives": {
+    "kenney-rpg-urban": {
+      "url": "https://kenney.nl/media/pages/assets/rpg-urban-pack/0a097d1dc7-1677578575/kenney_rpg-urban-pack.zip",
+      "page": "https://kenney.nl/assets/rpg-urban-pack",
+      "sha256": "4541d89d639fc7d1e905dd925e55b1c4977a41d983516228db1d57173bb9afaf",
+      "license": "CC0"
+    },
+    "kenney-roguelike-city": {
+      "url": "https://kenney.nl/media/pages/assets/roguelike-modern-city/0ff3dfff2b-1677694743/kenney_roguelike-modern-city.zip",
+      "page": "https://kenney.nl/assets/roguelike-modern-city",
+      "sha256": "2a3f36b1bc3a3d1cb4b9da051c493d163c493fe54adc66e78e76b3fb4abcfc56",
+      "license": "CC0"
+    },
+    "kenney-impact-sounds": {
+      "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip",
+      "page": "https://kenney.nl/assets/impact-sounds",
+      "sha256": "029d734af1582474edf3a694d1b0cebc97c1c152f2f39fa34d4c2bafc5de77f8",
+      "license": "CC0"
+    },
+    "kenney-rpg-audio": {
+      "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip",
+      "page": "https://kenney.nl/assets/rpg-audio",
+      "sha256": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b",
+      "license": "CC0"
+    },
+    "lpc-modern-streets": {
+      "url": "https://opengameart.org/sites/default/files/lpc_modern_streets.zip",
+      "page": "https://opengameart.org/content/lpc-modern-streets",
+      "sha256": "d3107d2ef9370626459a303ffe409a933b85333f214ceab335458d51174cb901",
+      "license": "CC0"
+    }
+  }
+}
