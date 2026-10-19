@@ -57,10 +57,51 @@ test('onKnockout increments score and kos together', () => {
   expect(r.kos).toBe(1);
 });
 
-test('end is idempotent with respect to ended flag and reports ko or quit', () => {
+test('endCause starts null and the first end() wins', () => {
   const r = new Rules();
+  expect(r.endCause).toBeNull();
   r.end('quit');
   expect(r.ended).toBe(true);
+  expect(r.endCause).toBe('quit');
   r.end('ko');
   expect(r.ended).toBe(true);
+  expect(r.endCause).toBe('quit');
+});
+
+test('endCause records ko when the first end is a KO', () => {
+  const r = new Rules();
+  r.end('ko');
+  r.end('quit');
+  expect(r.endCause).toBe('ko');
+});
+
+test('non-finite award points are ignored and do not consume the key', () => {
+  const r = new Rules();
+  expect(r.award('nan', Number.NaN)).toBe(false);
+  expect(r.award('inf', Number.POSITIVE_INFINITY)).toBe(false);
+  expect(r.award('inf', Number.NEGATIVE_INFINITY)).toBe(false);
+  expect(r.score).toBe(0);
+  expect(r.award('nan', 4)).toBe(true);
+  expect(r.score).toBe(4);
+});
+
+test('dedup memory stays bounded to 256 entries over 1000 distinct KOs', () => {
+  const r = new Rules();
+  for (let i = 0; i < 1000; i++) expect(r.onKnockout(i)).toBe(true);
+  expect(r.score).toBe(1000);
+  expect(r.kos).toBe(1000);
+  const sizes = r.dedupSize();
+  expect(sizes.kos).toBeLessThanOrEqual(256);
+  expect(sizes.awards).toBeLessThanOrEqual(256);
+  expect(r.onKnockout(999)).toBe(false);
+  expect(r.score).toBe(1000);
+});
+
+test('award dedup memory stays bounded to 256 entries over 1000 distinct keys', () => {
+  const r = new Rules();
+  for (let i = 0; i < 1000; i++) expect(r.award(`k${i}`, 1)).toBe(true);
+  expect(r.score).toBe(1000);
+  expect(r.dedupSize().awards).toBeLessThanOrEqual(256);
+  expect(r.award('k999', 1)).toBe(false);
+  expect(r.score).toBe(1000);
 });
