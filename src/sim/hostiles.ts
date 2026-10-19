@@ -57,6 +57,8 @@ const NEAR_GOAL = 24;
 const FIELD_REBUILD_SEC = 0.25;
 const STUCK_PX = 8;
 const STUCK_SEC = 2;
+/** Blocked by neighbours this close to the goal means queuing, not stuck. */
+const QUEUE_DIST = 64;
 const MAX_KO_BODIES = 16;
 const THROW_POSTPONE = 0.25;
 const EPS = 1e-9;
@@ -171,7 +173,7 @@ export class Horde {
         delta.y += want.y * CONFIG.hostile.speed * dt;
       }
       if (!isZero(delta)) h.pos = moveCircle(ctx.grid, h.pos, delta, R);
-      this.trackProgress(h, a, !isZero(want), now, ctx);
+      this.trackProgress(h, a, !isZero(want), this.crowded(h), now, ctx);
     }
     return events;
   }
@@ -313,17 +315,32 @@ export class Horde {
     return out;
   }
 
-  /** No progress > 8 px in 2 s while trying to move -> force field steering, rebuild, next facade point. */
-  private trackProgress(h: Hostile, a: Aux, moving: boolean, now: number, ctx: HordeCtx): void {
-    if (!moving || dist(h.pos, a.progressPos) > STUCK_PX) {
+  private crowded(h: Hostile): boolean {
+    return this.hash.query(h.pos, 2 * R + 1).some((n) => n.id !== h.lifeId);
+  }
+
+  private goalOf(h: Hostile, a: Aux, ctx: HordeCtx): Vec | null {
+    if (h.target === 'player') return ctx.player.pos;
+    if (h.target === 'victim') return ctx.victimPos;
+    const pts = ctx.facadePoints;
+    return a.facadeIdx === null || pts.length === 0 ? null : pts[a.facadeIdx % pts.length]!;
+  }
+
+  /**
+   * No progress > 8 px in 2 s while trying to move -> steer by flow field for 2 s and, for a degrader, try the
+   * next facade point. A hostile held back by neighbours near its goal is queuing and is not treated as stuck.
+   * The field rebuild throttle is never bypassed: the field is rebuilt on its normal 0.25 s cadence anyway.
+   */
+  private trackProgress(h: Hostile, a: Aux, moving: boolean, crowded: boolean, now: number, ctx: HordeCtx): void {
+    const goal = this.goalOf(h, a, ctx);
+    const queuing = crowded && goal !== null && dist(h.pos, goal) <= QUEUE_DIST;
+    if (!moving || queuing || a.progressAt === -Infinity || dist(h.pos, a.progressPos) > STUCK_PX) {
       a.progressPos = { ...h.pos };
       a.progressAt = now;
       return;
     }
     if (now - a.progressAt <= STUCK_SEC) return;
     a.fieldUntil = now + STUCK_SEC;
-    const key: FieldKey = h.target === 'facade' ? 'school' : h.target;
-    this.lastRebuild[key] = -Infinity;
     if (h.target === 'facade' && a.facadeIdx !== null && ctx.facadePoints.length > 0)
       a.facadeIdx = (a.facadeIdx + 1) % ctx.facadePoints.length;
     a.progressPos = { ...h.pos };

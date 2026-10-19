@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { CONFIG } from '../../src/sim/config';
 import { Horde, type HordeCtx } from '../../src/sim/hostiles';
 import { DISTRICT } from '../../src/sim/map/district';
@@ -177,4 +177,39 @@ test('stuck hostile still reaches Paul around the group within 20 s', () => {
     if (d(h.pos, player.pos) <= 24) reached = true;
   }
   expect(reached).toBe(true);
+});
+
+test('crowd around Paul never rebuilds the player field more than once per 0.25 s', () => {
+  const player = createPlayer({ x: 656, y: 720 });
+  const ctx = mkCtx(player);
+  const spy = vi.spyOn(ctx.fields.player, 'rebuild');
+  const horde = new Horde();
+  for (let k = 0; k < 30; k++) {
+    const ring = 20 + 14 * Math.floor(k / 8);
+    const a = (k / 8) * Math.PI * 2 + Math.floor(k / 8) * 0.3;
+    horde.spawn({ variant: 'classic', role: 'contact', pos: { x: 656 + Math.cos(a) * ring, y: 720 + Math.sin(a) * ring } });
+  }
+  for (let i = 0; i < 600; i++) horde.step(DT, i * DT, ctx);
+  expect(horde.active()).toHaveLength(30);
+  expect(spy.mock.calls.length).toBeLessThanOrEqual(10 / 0.25 + 1);
+});
+
+test('degrader genuinely stuck on a trunk advances to the next facade point', () => {
+  // trunk at (336,368) r6: the straight line x=328 clears it by 8 px (point-clear) but a r7 body snags on it
+  const player = createPlayer({ x: 656, y: 720 });
+  const A = { x: 328, y: 300 };
+  const B = { x: 200, y: 320 };
+  const ctx = mkCtx(player, { facadePoints: [A, B] });
+  const horde = new Horde();
+  const h = horde.spawn({ variant: 'classic', role: 'degrader', pos: { x: 328, y: 420 } })!;
+  let i = 0;
+  let stuckSeen = false;
+  for (; i < 900 && h.state !== 'degrade'; i++) {
+    horde.step(DT, i * DT, ctx);
+    if (i === 120) stuckSeen = h.pos.y > 370; // held below the trunk for 2 s (no progress)
+  }
+  expect(stuckSeen).toBe(true);
+  expect(h.state).toBe('degrade');
+  expect(d(h.pos, B)).toBeLessThanOrEqual(24); // stuck branch moved its goal from A to B
+  expect(d(h.pos, A)).toBeGreaterThan(24);
 });
