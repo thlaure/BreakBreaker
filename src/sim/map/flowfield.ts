@@ -50,6 +50,13 @@ export class FlowField {
     }
   }
 
+  /** BFS step count from p's tile to the target tile (8-neighbour, each step counts 1); -1 if unreachable. */
+  stepsAt(p: Vec): number {
+    const [tx, ty] = this.tileOf(p);
+    if (tx < 0 || ty < 0 || tx >= this.n || ty >= this.n) return -1;
+    return this.dist[ty * this.n + tx] ?? -1;
+  }
+
   /** Unit direction of travel toward the target; zero if unreachable or already at the target tile. */
   dirAt(p: Vec): Vec {
     const [tx, ty] = this.tileOf(p);
