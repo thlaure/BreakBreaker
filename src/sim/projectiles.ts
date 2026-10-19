@@ -164,7 +164,10 @@ export class Rocks {
       return;
     }
     if (obstacle !== Infinity) {
-      rock.state = 'Removed';
+      // stop and drop just before the obstacle; land() removes it if no free space
+      const segLen = Math.hypot(b.x - a.x, b.y - a.y);
+      const u = segLen === 0 ? 0 : Math.max(0, obstacle - (SAMPLE_PX + 1) / segLen);
+      this.land(rock, lerp(a, b, u), now, ctx, events);
       return;
     }
     rock.pos = b;

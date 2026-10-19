@@ -167,7 +167,7 @@ describe('projectiles', () => {
     expect(rocks.ground().length).toBe(0);
   });
 
-  test('enemy rock never damages hostiles and group blocks it before Paul behind', () => {
+  test('enemy rock blocked by group drops recoverable on the free side, no damage', () => {
     const rocks = new Rocks(grid);
     const y = g.y + g.h / 2;
     const from = { x: g.x - 100, y };
@@ -177,7 +177,41 @@ describe('projectiles', () => {
     const ev = run(rocks, 2, mkCtx(behind, { hostiles: [{ lifeId: 1, pos: { x: g.x - 50, y }, r: 7, active: true }] }));
     expect(of(ev, 'PlayerDamaged').length).toBe(0);
     expect(of(ev, 'HitConfirmed').length).toBe(0);
-    expect(rocks.flying().length + rocks.ground().length).toBe(0);
+    const ground = rocks.ground();
+    expect(ground.length).toBe(1);
+    expect(ground[0]!.pos.x).toBeLessThan(g.x);
+    expect(grid.isGroup(ground[0]!.pos)).toBe(false);
+  });
+
+  test('rock thrown at a wall lands recoverable in front of it', () => {
+    const rocks = new Rocks(grid);
+    const from = { x: b0.x + b0.w / 2, y: b0.y + b0.h + 150 };
+    const to = { x: from.x, y: b0.y + b0.h / 2 };
+    rocks.spawnEnemy(from, to, 0);
+    run(rocks, 3, mkCtx(far));
+    const ground = rocks.ground();
+    expect(ground.length).toBe(1);
+    expect(ground[0]!.pos.y).toBeGreaterThanOrEqual(b0.y + b0.h);
+    expect(grid.isSolidPx(ground[0]!.pos)).toBe(false);
+  });
+
+  test('rock crossing a wall at 12 fps still stops at the wall', () => {
+    const rocks = new Rocks(grid);
+    const y = b0.y + b0.h / 2;
+    rocks.spawnEnemy({ x: b0.x - 100, y }, { x: b0.x + b0.w + 100, y }, 0);
+    run(rocks, 3, mkCtx(far), 1 / 12);
+    const ground = rocks.ground();
+    expect(ground.length).toBe(1);
+    expect(ground[0]!.pos.x).toBeLessThan(b0.x);
+  });
+
+  test('solid between thrower and Paul blocks the rock before Paul', () => {
+    const rocks = new Rocks(grid);
+    const y = b0.y + b0.h / 2;
+    const paul = { x: b0.x + b0.w + 20, y };
+    rocks.spawnEnemy({ x: b0.x - 100, y }, paul, 0);
+    const ev = run(rocks, 3, mkCtx(paul));
+    expect(of(ev, 'PlayerDamaged').length).toBe(0);
   });
 
   test('fast rock at 12 fps does not tunnel through Paul', () => {
@@ -187,20 +221,14 @@ describe('projectiles', () => {
     expect(of(ev, 'PlayerDamaged').length).toBe(1);
   });
 
-  test('rock landing on building/group/off-map is removed', () => {
-    for (const to of [
-      { x: b0.x + b0.w / 2, y: b0.y + b0.h / 2 },
-      { x: g.x + g.w / 2, y: g.y + g.h / 2 },
-      { x: -50, y: 100 },
-    ]) {
-      const rocks = new Rocks(grid);
-      const from = { x: to.x < 0 ? 20 : to.x, y: to.x < 0 ? 100 : to.y + 200 };
-      const r = rocks.spawnEnemy(from, to, 0)!;
-      run(rocks, 3, mkCtx(far));
-      expect(r.state).toBe('Removed');
-      expect(rocks.ground().length).toBe(0);
-      expect(rocks.flying().length).toBe(0);
-    }
+  test('rock with no free drop point is removed', () => {
+    const inside = { x: b0.x + b0.w / 2, y: b0.y + b0.h / 2 };
+    const rocks = new Rocks(grid);
+    const r = rocks.spawnEnemy(inside, { x: inside.x + 50, y: inside.y }, 0)!;
+    run(rocks, 3, mkCtx(far));
+    expect(r.state).toBe('Removed');
+    expect(rocks.ground().length).toBe(0);
+    expect(rocks.flying().length).toBe(0);
   });
 
   test('flying cap 24 and ground cap 16 recycle oldest away from Paul (RC-46)', () => {
@@ -227,11 +255,7 @@ describe('projectiles', () => {
     expect(ids).not.toContain(1); // oldest recycled
     expect(ids).toContain(17);
 
-    // everything within 64px of Paul: new rock is dropped instead
-    const r3 = new Rocks(grid);
-    for (let i = 0; i < 16; i++) r3.spawnEnemy(open, { x: 800, y: 1100 }, 0);
-    run(r3, 2, mkCtx({ x: 800, y: 1100 }, { player: { pos: { x: 800, y: 1100 }, r: R, invulnerable: true } }));
-    // pickup would collect them; use a far Paul placed < 64 px but > pickup radius
+    // everything within 64px of Paul (outside pickup radius): new rock is dropped instead
     const r4 = new Rocks(grid);
     r4.carried = 3;
     for (let i = 0; i < 16; i++) r4.spawnEnemy(open, { x: 800, y: 1100 }, 0);
