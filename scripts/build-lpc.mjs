@@ -135,7 +135,9 @@ for (const [name, recipe] of Object.entries(recipes)) {
       // recolor into a copy
       const rc = new PNG({ width: src.width, height: src.height });
       for (let i = 0; i < src.data.length; i += 4) {
-        const a = src.data[i + 3];
+        // optional clipY: drop pixels at/below this row of each 64-px frame (e.g. torso-only part of overalls)
+        const fy = Math.floor(i / 4 / src.width) % FRAME;
+        const a = layer.clipY !== undefined && fy >= layer.clipY ? 0 : src.data[i + 3];
         let r = src.data[i], g = src.data[i + 1], b = src.data[i + 2];
         const t = map.get(key(r, g, b));
         if (t) [r, g, b] = t;

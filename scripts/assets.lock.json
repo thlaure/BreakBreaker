@@ -33,7 +33,9 @@
       "url": "https://opengameart.org/sites/default/files/lpc_modern_streets.zip",
       "page": "https://opengameart.org/content/lpc-modern-streets",
       "sha256": "d3107d2ef9370626459a303ffe409a933b85333f214ceab335458d51174cb901",
-      "license": "CC0"
+      "license": "CC0",
+      "author": "Faufilage",
+      "licenseSource": "OpenGameArt page https://opengameart.org/content/lpc-modern-streets, fetched 2026-10-19: \"Author: Faufilage\", \"License(s): CC0\" (shows the cc0.png license badge); posted 2026-01-02; the zip bundles no license file"
     }
   }
 }

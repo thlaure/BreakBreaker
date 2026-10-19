@@ -42,6 +42,19 @@
     "z": 120,
     "material": "hair",
     "palette": "black"
+   },
+   {
+    "path": "neck/scarf",
+    "z": 90,
+    "material": "cloth",
+    "palette": "white"
+   },
+   {
+    "path": "torso/aprons/overalls/male",
+    "z": 37,
+    "material": "cloth",
+    "palette": "white",
+    "clipY": 43
    }
   ]
  },
