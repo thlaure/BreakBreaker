@@ -183,8 +183,7 @@ describe('rounds in the sim', () => {
     });
     // every KO +1 (flow-keeper patrols included), school saved, rescue, round bonus
     expect(sim.rules.score - before).toBe(sim.rules.kos - kos0 + 8 + CONFIG.rescue.bonus + CONFIG.round.bonus);
-    // nobody of the round is still standing (a flow-keeper patrol may be: it is outside the roster)
-    expect(sim.horde.active().filter((h) => h.round !== null)).toHaveLength(0);
+    expect(sim.horde.active()).toHaveLength(0);
     const lastId = Math.max(0, ...sim.horde.list.map((h) => h.lifeId));
     const breather = Math.round(CONFIG.round.breatherSec / CONFIG.step);
     for (let i = 0; i < breather - 1; i++) {
@@ -195,6 +194,49 @@ describe('rounds in the sim', () => {
     expect(of(sim.step(IDLE), 'RoundStarted')).toHaveLength(1);
     expect(sim.snapshot()).toMatchObject({ round: 2, roundPhase: 'play', roundKos: 0 });
     expect(sim.rules.stats).toMatchObject({ roundsCompleted: 1, roundsPerfect: 1, targetsSaved: 1, schoolsSaved: 1 });
+  });
+
+  test('the breather is a real rest: nobody on the map from the round end to the next round (seeds 1-6, KO after 0/2/6 s)', () => {
+    for (let seed = 1; seed <= 6; seed++)
+      for (const koAfterSec of [0, 2, 6]) {
+        const sim = new Sim(seed, { invulnerable: true });
+        drive(sim, roundCompleted(1), { koAfterSec });
+        expect(sim.horde.active(), `seed ${seed} ko ${koAfterSec}`).toHaveLength(0);
+        while (sim.director.phase === 'breather') {
+          sim.step(IDLE);
+          if (sim.director.phase === 'breather') expect(sim.horde.active(), `seed ${seed} ko ${koAfterSec}`).toHaveLength(0);
+        }
+        expect(sim.director.round).toBe(2);
+      }
+  });
+
+  test('a patrol standing at the round end leaves the map', () => {
+    const sim = new Sim(2, { invulnerable: true });
+    drive(sim, () => sim.rescue?.stage === 'secured');
+    const patrol = sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { ...DISTRICT.hostileSpawns[0]! } })!;
+    const kos = sim.rules.kos;
+    for (let i = 0; i < 60 * 5 && sim.director.phase === 'play'; i++) sim.step(IDLE);
+    expect(sim.director.phase).toBe('breather');
+    expect(sim.horde.list.some((h) => h.lifeId === patrol.lifeId)).toBe(false);
+    expect(sim.rules.kos).toBe(kos); // leaving is not a KO
+  });
+
+  test('round KOs do not depend on how often the snapshot is read; an all-KO round ends at K = T', () => {
+    const run = (snap: boolean) => {
+      const sim = new Sim(21, { invulnerable: true });
+      const out: { index: number; kos: number; total: number }[] = [];
+      for (let i = 0; i < 60 * 1200 && out.length < 8; i++) {
+        const ev = sim.step(autopilot(sim));
+        if (snap) sim.snapshot();
+        if (ev.some((e) => e.type === 'RoundCompleted'))
+          out.push({ index: sim.director.lastSummary!.index, kos: sim.director.lastSummary!.kos, total: sim.director.total });
+      }
+      return out;
+    };
+    const headless = run(false);
+    expect(headless.map((r) => r.index)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(run(true)).toEqual(headless);
+    for (const r of headless) expect(r.kos).toBe(r.total);
   });
 
   test('a lost school: RoundCompleted without bonus, objective « perdu », session goes on', () => {

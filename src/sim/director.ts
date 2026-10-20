@@ -195,16 +195,20 @@ export class Director {
     return pressure(this.round, kos);
   }
 
-  /** KOs of hostiles tagged with the current round, clamped to [0, total]; patrols never count. */
+  /**
+   * KOs of hostiles tagged with the current round, clamped to [0, total]; patrols never count. A pure read: the roster
+   * is fed every director step, so the result never depends on how often it is called.
+   */
   roundKos(host: Pick<DirectorHost, 'horde'>): number {
     if (this.phase === 'intro') return 0;
     let alive = 0;
-    for (const h of host.horde.list) {
-      if (h.round !== this.round) continue;
-      this.roster.add(h.lifeId);
-      if (h.state !== 'ko') alive++;
-    }
+    for (const h of host.horde.list) if (h.round === this.round && h.state !== 'ko' && this.roster.has(h.lifeId)) alive++;
     return Math.min(this.total, Math.max(0, this.roster.size - alive));
+  }
+
+  /** Records every round-tagged hostile on the map (called each step, after this step's spawns). */
+  private track(host: DirectorHost): void {
+    for (const h of host.horde.list) if (h.round === this.round) this.roster.add(h.lifeId);
   }
 
   step(dt: number, host: DirectorHost): SimEvent[] {
@@ -253,10 +257,12 @@ export class Director {
     ev.push({ type: 'RoundStarted', index: this.round, total: this.total, headline: plan.headline });
     if (this.fill.length > 0) this.queueFill(host, false);
     this.launchBeats(host, ev);
+    this.track(host);
   }
 
   private play(dt: number, host: DirectorHost, ev: SimEvent[]): void {
     this.launchBeats(host, ev);
+    this.track(host);
     this.advanceFill(host);
     if (!this.twistDone && this.plan?.twist && this.roundKos(host) >= Math.ceil(CONFIG.round.twistAt * this.total))
       this.twist(this.plan.twist, host, ev);
@@ -264,8 +270,9 @@ export class Director {
       this.finish(host, ev);
       return;
     }
-    // flow keeper (RC-94): nobody on the map and nobody waiting → someone enters at once
-    if (host.horde.active().length > 0 || host.queue.length > 0) {
+    // flow keeper (RC-94): nobody on the map and nobody waiting → someone enters at once. Not while every open
+    // objective is only winding down (fire dying out, victim thanking Paul): the next beat or the breather is seconds away.
+    if (host.horde.active().length > 0 || host.queue.length > 0 || this.windingDown()) {
       this.idle = 0;
       return;
     }
@@ -328,6 +335,7 @@ export class Director {
       const site = chooseRescueSite(host.grid, host.player.pos, host.rand);
       r.start(host.horde, site, host.rand, host.player.pos, host.grid, { count: o.count, round: this.round });
       r.wave = this.round;
+      // the round total when the rescue starts (a later second urgency does not update its announcement)
       r.shownTotal = this.total;
       host.rescue = r;
       this.objectives.push(o);
@@ -348,6 +356,17 @@ export class Director {
       ev.push({ type: 'SchoolStarted', incidentId: a.id, pos: door, wave: this.round, total: this.total });
     } else
       ev.push({ type: 'CasseStarted', incidentId: a.id, kind: a.kind, target: a.target, pos: door, round: this.round, total: this.total });
+  }
+
+  /** Every launched, unresolved objective is in its timed wind-down with no rioter left (and there is one). */
+  private windingDown(): boolean {
+    let open = 0;
+    for (const o of this.objectives) {
+      if (this.resolved(o)) continue;
+      open++;
+      if (o.attack ? o.attack.stage !== 'fireOut' : o.rescue!.stage !== 'secured') return false;
+    }
+    return open > 0;
   }
 
   private resolved(o: Objective): boolean {
@@ -466,8 +485,9 @@ export class Director {
       points: host.rules.score - this.scoreAtStart,
       bonus,
     };
-    // patrols still waiting never enter during the breather
+    // the breather is a real rest: patrols still waiting never enter, those on the map leave
     host.queue.clear();
+    host.horde.dismiss((h) => h.round === null);
     this.phase = 'breather';
     this.breatherLeft = CONFIG.round.breatherSec;
   }

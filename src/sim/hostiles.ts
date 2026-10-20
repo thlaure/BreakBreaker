@@ -149,7 +149,17 @@ export class Horde {
     return 'ko';
   }
 
-  active(): Hostile[] {
+  /** Removes the active hostiles matching `pred` from the map (they leave: no KO, no score); returns how many. */
+  dismiss(pred: (h: Hostile) => boolean): number {
+    const gone = this.list.filter((h) => h.state !== 'ko' && pred(h));
+    if (gone.length === 0) return 0;
+    const ids = new Set(gone.map((h) => h.lifeId));
+    this.list = this.list.filter((h) => !ids.has(h.lifeId));
+    for (const id of ids) this.aux.delete(id);
+    return gone.length;
+  }
+
+    active(): Hostile[] {
     return this.list.filter((h) => h.state !== 'ko');
   }
 
