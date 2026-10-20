@@ -135,7 +135,7 @@ describe('toolboxes', () => {
     const { kit, targets, player, rules, step, run } = setup('school');
     kit.carried = true;
     player.pos = { ...door('school') };
-    run(2 - 2 * DT);
+    run(2 - DT); // the next step would complete
     player.ko = true;
     expect(step().events).toEqual([]);
     expect(targets.get('school').state).toBe('ruined');
