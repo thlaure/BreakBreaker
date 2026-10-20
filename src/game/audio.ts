@@ -256,9 +256,9 @@ export class GameAudio {
         case 'PlayerDamaged':
           this.play('hurt');
           break;
-        // TargetIgnited needs no cue of its own: the fire loop follows burning targets (threatLevel, every frame)
-        case 'BuildingThreatStarted':
-        case 'CasseStarted':
+        // alarm = fire: it marks the bottle setting a target on fire (not the attack start nor the first hp lost, so
+        // it is not used up before the fire); the fire loop then follows burning targets (threatLevel, every frame)
+        case 'TargetIgnited':
         case 'RescueStarted':
           if (!this.alarmed.has(e.incidentId)) {
             this.alarmed.add(e.incidentId);

@@ -48,7 +48,11 @@ export type SimEvent =
   /** A non-school target comes under attack. */
   | { type: 'CasseStarted'; incidentId: string; kind: CasseKind; target: TargetId; pos: Vec; round: number; total: number }
   | { type: 'MolotovThrown'; from: Vec; to: Vec; target: TargetId }
-  | { type: 'TargetIgnited'; target: TargetId }
+  /**
+   * A Molotov set a target on fire: what the HUD announces (« ÉCOLE EN FEU ! »…) and the alarm cue. `pos` = the
+   * target's door, `round` = the attack's round, `total` = the round roster when known.
+   */
+  | { type: 'TargetIgnited'; target: TargetId; incidentId: string; kind: CasseKind; pos: Vec; round: number; total?: number }
   | { type: 'FireOut'; target: TargetId }
   | { type: 'TargetSaved'; incidentId: string; target: TargetId }
   | { type: 'TargetRepaired'; target: TargetId; incidentId: string }

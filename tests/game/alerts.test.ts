@@ -19,6 +19,16 @@ import type { SimEvent } from '../../src/sim/types';
 
 const DOOR = DISTRICT.school.door;
 const schoolEv: SimEvent = { type: 'SchoolStarted', incidentId: 'school#1', pos: { ...DOOR }, wave: 1, total: 11 };
+/** The fire is announced when the bottle is thrown (TargetIgnited), not when the attack starts. */
+const fireEv = (kind: 'school' | 'car' | 'busStop', target: 'school' | 'car1' | 'busStop', pos: { x: number; y: number }, round = 3): SimEvent => ({
+  type: 'TargetIgnited',
+  target,
+  incidentId: `${kind}#3`,
+  kind,
+  pos,
+  round,
+});
+const schoolFire = fireEv('school', 'school', { ...DOOR }, 1);
 const rescueEv = (kind: 'groupHarassed' | 'elderlyRobbed'): SimEvent => ({
   type: 'RescueStarted',
   incidentId: 'rescue#1',
@@ -54,27 +64,32 @@ describe('pure helpers', () => {
     expect(incidentAlert('weaponDrop')).toMatchObject({ title: 'ARME SPÉCIALE !', sub: 'Fonce la ramasser', positioned: true, meta: '' });
   });
 
-  test('alertFromEvent maps incident starts and round starts (a round has no position)', () => {
-    expect(alertFromEvent(schoolEv)).toEqual({ id: 'school#1', kind: 'school', pos: DOOR, wave: 1, total: 11, incident: 'school' });
+  test('alertFromEvent maps fires, rescue starts and round starts (a round has no position); an attack start is not announced', () => {
+    // no fire before a bottle was thrown: the attack starts are silent
+    expect(alertFromEvent(schoolEv)).toBeNull();
+    expect(alertFromEvent(casseEv('car', 'car1', { x: 50, y: 60 }))).toBeNull();
+    expect(alertFromEvent(schoolFire)).toEqual({ id: 'school#3', kind: 'school', pos: DOOR, wave: 1, total: 0, incident: 'school' });
     expect(alertFromEvent(rescueEv('elderlyRobbed'))).toEqual({ id: 'rescue#1', kind: 'elderlyRobbed', pos: { x: 900, y: 600 }, wave: 2, total: 3, incident: 'rescue' });
     expect(alertFromEvent(waveEv)).toEqual({ id: 'round#3', kind: 'round', pos: null, wave: 3, total: 9, headline: 'car' });
-    expect(alertFromEvent(casseEv('car', 'car1', { x: 50, y: 60 }))).toEqual({ id: 'car#3', kind: 'car', pos: { x: 50, y: 60 }, wave: 3, total: 18, incident: 'car1' });
+    expect(alertFromEvent(fireEv('car', 'car1', { x: 50, y: 60 }))).toEqual({ id: 'car#3', kind: 'car', pos: { x: 50, y: 60 }, wave: 3, total: 0, incident: 'car1' });
     // a drop is tied to its weapon on the ground (same id as its activeIncidents entry)
     expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 } })).toMatchObject({ kind: 'weaponDrop', pos: { x: 7, y: 8 }, incident: 'drop@7,8' });
-    // no banner for a drop that found no spot, nor for a second urgency (its own CasseStarted announces it)
+    // no banner for a drop that found no spot, nor for a second urgency (its own fire announces it)
     expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: null })).toBeNull();
     expect(alertFromEvent({ type: 'TwistStarted', kind: 'secondUrgency', pos: { x: 1, y: 1 } })).toBeNull();
     expect(alertFromEvent({ type: 'HealCompleted' })).toBeNull();
   });
 
-  test('incidentAlert: round banner title/headline sub; incidents get a « Manche N · T casseurs » line', () => {
-    expect(incidentAlert('round', 3, 9, 'car')).toMatchObject({ title: 'MANCHE 3 !', sub: 'Voiture en feu · 9 casseurs', label: 'MANCHE', meta: '', tone: 'round', icon: 'horde', positioned: false });
-    expect(incidentAlert('round', 1, 10, 'school').sub).toBe('École en feu · 10 casseurs');
-    expect(incidentAlert('round', 2, 14, 'busStop').sub).toBe('Abribus saccagé · 14 casseurs');
+  test('incidentAlert: round banner title/non-committal headline sub; incidents get a « Manche N[ · T casseurs] » line', () => {
+    expect(incidentAlert('round', 3, 9, 'car')).toMatchObject({ title: 'MANCHE 3 !', sub: 'Voiture menacée · 9 casseurs', label: 'MANCHE', meta: '', tone: 'round', icon: 'horde', positioned: false });
+    expect(incidentAlert('round', 1, 10, 'school').sub).toBe('École menacée · 10 casseurs');
+    expect(incidentAlert('round', 2, 14, 'busStop').sub).toBe('Abribus menacé · 14 casseurs');
     expect(incidentAlert('round', 4, 1, 'rescue').sub).toBe('Agression en cours · 1 casseur');
     expect(incidentAlert('school', 1, 11)).toMatchObject({ title: 'ÉCOLE EN FEU !', meta: 'Manche 1 · 11 casseurs', positioned: true });
     expect(incidentAlert('elderlyRobbed', 2, 3).meta).toBe('Manche 2 · 3 casseurs');
     expect(incidentAlert('school').meta).toBe('');
+    // a fire knows its round, not the round's roster
+    expect(incidentAlert('car', 4)).toMatchObject({ title: 'VOITURE EN FEU !', meta: 'Manche 4' });
   });
 
   test('distance in metres (32 px = 1 m) and bearing in degrees', () => {
@@ -108,7 +123,7 @@ describe('pure helpers', () => {
     car.state = 'attacked';
     s.rescue = { stage: 'threat', remaining: 9, victimPos: { x: 5, y: 6 }, kind: 'groupHarassed' };
     expect(activeIncidents(s).map((i) => i.kind)).toEqual(['school', 'car', 'groupHarassed']);
-    expect(activeIncidents(s).find((i) => i.kind === 'car')).toEqual({ id: car.id, kind: 'car', pos: car.door });
+    expect(activeIncidents(s).find((i) => i.kind === 'car')).toEqual({ id: car.id, kind: 'car', pos: car.door, burning: false });
     for (const t of s.targets) t.state = t.id === 'school' ? 'intact' : 'ruined';
     s.rescue.stage = 'secured';
     expect(activeIncidents(s)).toEqual([]);
@@ -148,13 +163,13 @@ describe('pure helpers', () => {
 describe('AlertBanner', () => {
   test('shows the right text and icon, live arrow and distance, then hides after ~6 s', () => {
     const b = new AlertBanner(document.body);
-    b.push(alertFromEvent(schoolEv)!);
+    b.push(alertFromEvent(schoolFire)!);
     expect(b.el.hidden).toBe(false);
     expect(b.el.getAttribute('role')).toBe('alert');
     expect(b.el.className).toContain('tone-fire');
     expect(b.el.querySelector('.title')!.textContent).toBe('ÉCOLE EN FEU !');
     expect(b.el.querySelector('.sub')!.textContent).toBe('Rejoins l’école');
-    expect(b.el.querySelector<HTMLElement>('.meta')!.textContent).toBe('Manche 1 · 11 casseurs');
+    expect(b.el.querySelector<HTMLElement>('.meta')!.textContent).toBe('Manche 1');
     expect(b.el.querySelector<HTMLElement>('.meta')!.hidden).toBe(false);
     expect(b.el.querySelector<HTMLElement>('.dir')!.hidden).toBe(false);
     expect(b.el.querySelector('.ico svg')).toBeTruthy();
@@ -176,7 +191,7 @@ describe('AlertBanner', () => {
 
   test('queues a second alert and shows it after the first', () => {
     const b = new AlertBanner(document.body);
-    b.push(alertFromEvent(schoolEv)!);
+    b.push(alertFromEvent(schoolFire)!);
     b.push(alertFromEvent(rescueEv('groupHarassed'))!);
     expect(b.el.querySelector('.title')!.textContent).toBe('ÉCOLE EN FEU !');
     vi.advanceTimersByTime(ALERT_MS);
@@ -197,7 +212,7 @@ describe('AlertBanner', () => {
     expect(b.el.getAttribute('role')).toBe('alert');
     expect(b.el.className).toContain('tone-round');
     expect(b.el.querySelector('.title')!.textContent).toBe('MANCHE 3 !');
-    expect(b.el.querySelector('.sub')!.textContent).toBe('Voiture en feu · 9 casseurs');
+    expect(b.el.querySelector('.sub')!.textContent).toBe('Voiture menacée · 9 casseurs');
     expect(b.el.querySelector<HTMLElement>('.meta')!.hidden).toBe(true);
     expect(b.el.querySelector<HTMLElement>('.dir')!.hidden).toBe(true);
     expect(b.el.querySelector('.ico svg')).toBeTruthy();
@@ -207,19 +222,19 @@ describe('AlertBanner', () => {
     expect(b.el.hidden).toBe(true);
   });
 
-  test('CasseStarted car → « VOITURE EN FEU ! » positioned at the car; busStop → « ABRIBUS SACCAGÉ ! »', () => {
+  test('TargetIgnited car → « VOITURE EN FEU ! » positioned at the car; busStop → « ABRIBUS SACCAGÉ ! »', () => {
     const b = new AlertBanner(document.body);
     const at = { x: 1000, y: 400 };
-    b.push(alertFromEvent(casseEv('car', 'car1', at))!);
+    b.push(alertFromEvent(fireEv('car', 'car1', at))!);
     expect(b.el.className).toContain('tone-fire');
     expect(b.el.querySelector('.title')!.textContent).toBe('VOITURE EN FEU !');
     expect(b.el.querySelector('.sub')!.textContent).toBe('Chasse les casseurs');
-    expect(b.el.querySelector('.meta')!.textContent).toBe('Manche 3 · 18 casseurs');
+    expect(b.el.querySelector('.meta')!.textContent).toBe('Manche 3');
     expect(b.el.querySelector<HTMLElement>('.dir')!.hidden).toBe(false);
     b.track({ x: at.x - 32 * 5, y: at.y });
     expect(b.el.querySelector('.dist')!.textContent).toBe('5 m');
     vi.advanceTimersByTime(ALERT_MS);
-    b.push(alertFromEvent(casseEv('busStop', 'busStop', at))!);
+    b.push(alertFromEvent(fireEv('busStop', 'busStop', at))!);
     expect(b.el.className).toContain('tone-warn');
     expect(b.el.querySelector('.title')!.textContent).toBe('ABRIBUS SACCAGÉ !');
     expect(b.el.querySelector('.sub')!.textContent).toBe('Arrête la casse');
@@ -251,13 +266,15 @@ describe('Hud alerts and edge indicators', () => {
     return s;
   };
 
-  test('onEvents pops the banner for SchoolStarted', () => {
+  test('onEvents: no banner when the school attack starts, « ÉCOLE EN FEU ! » once the bottle is thrown', () => {
     const hud = new Hud(document.body, null);
     hud.onEvents([schoolEv]);
     const a = hud.root.querySelector<HTMLElement>('.bb-alert')!;
+    expect(a.hidden).toBe(true);
+    hud.onEvents([schoolFire]);
     expect(a.hidden).toBe(false);
     expect(a.textContent).toContain('ÉCOLE EN FEU !');
-    expect(a.textContent).toContain('Manche 1 · 11 casseurs');
+    expect(a.textContent).toContain('Manche 1');
     hud.destroy();
     expect(vi.getTimerCount()).toBe(0);
   });
@@ -321,6 +338,27 @@ describe('Hud alerts and edge indicators', () => {
     expect(edges().map((e) => e.querySelector('.lbl')!.textContent)).toEqual(['ÉCOLE']);
   });
 
+  test('an attacked target’s indicator warns (alert icon) until it burns, then turns to fire (flame)', () => {
+    const hud = new Hud(document.body, null);
+    const off = { ...view, x: 5000, y: 5000 };
+    const edge = () => hud.root.querySelector<HTMLElement>('.bb-edge')!;
+    const html = (name: 'alert' | 'flame'): string => {
+      const d = document.createElement('span');
+      d.innerHTML = pixelSvg(name, 2);
+      return d.innerHTML;
+    };
+    hud.update(snap((x) => { calm(x); attack(x, 'school'); x.targets.find((t) => t.id === 'school')!.burning = false; }), off);
+    expect(edge().classList.contains('tone-warn')).toBe(true);
+    expect(edge().querySelector('.ico')!.innerHTML).toBe(html('alert'));
+    const card = () => hud.root.querySelector<HTMLElement>('.bb-card')!;
+    expect(card().querySelector('.status')!.textContent).toBe('attaquée');
+    hud.update(snap((x) => { calm(x); attack(x, 'school'); x.targets.find((t) => t.id === 'school')!.burning = true; }), off);
+    expect(edge().classList.contains('tone-fire')).toBe(true);
+    expect(edge().querySelector('.ico')!.innerHTML).toBe(html('flame'));
+    expect(card().querySelector('.status')!.textContent).toBe('en feu');
+    hud.destroy();
+  });
+
   test('two attacked targets: second banner waits, both edge indicators show', () => {
     const hud = new Hud(document.body, null);
     const s = snap((x) => {
@@ -330,7 +368,7 @@ describe('Hud alerts and edge indicators', () => {
     });
     const car = s.targets.find((t) => t.id === 'car1')!;
     const bus = s.targets.find((t) => t.id === 'busStop')!;
-    hud.onEvents([casseEv('car', 'car1', car.door), casseEv('busStop', 'busStop', bus.door)]);
+    hud.onEvents([fireEv('car', 'car1', car.door), fireEv('busStop', 'busStop', bus.door)]);
     const a = hud.root.querySelector<HTMLElement>('.bb-alert')!;
     expect(a.querySelector('.title')!.textContent).toBe('VOITURE EN FEU !');
     hud.update(s, { ...view, x: 9000, y: 9000 });
@@ -414,7 +452,7 @@ describe('Hud alerts and edge indicators', () => {
       x.rescue = { stage: 'threat', remaining: 20, victimPos: { x: 400, y: 300 }, kind: 'elderlyRobbed' };
     };
     // car + rescue start in the same frame: the rescue banner queues behind the car's
-    hud.onEvents([casseEv('car', 'car1', { x: 10, y: 10 }), rescueEv('elderlyRobbed')]);
+    hud.onEvents([fireEv('car', 'car1', { x: 10, y: 10 }), rescueEv('elderlyRobbed')]);
     hud.update(snap(threat), view);
     expect(title()).toBe('VOITURE EN FEU !');
     // fast KOs: the rescue resolves while still queued → never shown (no « VOL EN COURS ! » during the breather)
@@ -426,7 +464,7 @@ describe('Hud alerts and edge indicators', () => {
     vi.advanceTimersByTime(ALERT_MS * 2);
     expect(title()).toBeNull();
     // a banner whose start is not in the snapshot yet survives one update
-    hud.onEvents([casseEv('busStop', 'busStop', { x: 10, y: 10 })]);
+    hud.onEvents([fireEv('busStop', 'busStop', { x: 10, y: 10 })]);
     hud.update(snap(calm), view);
     expect(title()).toBe('ABRIBUS SACCAGÉ !');
     hud.update(snap(calm), view);

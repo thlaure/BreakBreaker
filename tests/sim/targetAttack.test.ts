@@ -123,7 +123,8 @@ test('burning school with 3 degraders loses (2 + 3 × 1.2) hp per second; a 5th 
   const w = world('school', only('degrader', 5));
   w.attack.start();
   expect(w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('school').door, target: 'school' })).toEqual([
-    { type: 'TargetIgnited', target: 'school' },
+    // the fire is what the HUD announces: the event carries the kind, the door and the round
+    { type: 'TargetIgnited', target: 'school', incidentId: 'school#1', kind: 'school', pos: def('school').door, round: 1 },
   ]);
   // a second bottle on a burning target ignites nothing
   expect(w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('school').door, target: 'school' })).toEqual([]);

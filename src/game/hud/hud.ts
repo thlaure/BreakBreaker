@@ -10,6 +10,7 @@ import {
   edgePosition,
   formatMeters,
   incidentAlert,
+  incidentLook,
   pixelSvg,
   setArrow,
   type AlertIcon,
@@ -359,7 +360,7 @@ export class Hud {
     const c = this.c;
     const slug = line.status.replace(/\s/g, '-');
     c.cls(card.root, `bb-card k-${line.kind} st-${slug}`);
-    const icon: AlertIcon = incidentAlert(line.kind).icon;
+    const icon: AlertIcon = incidentLook(line.kind, line.hp === null ? undefined : line.status === 'en feu').icon;
     if (card.ico.dataset.icon !== icon) {
       card.ico.dataset.icon = icon;
       card.ico.innerHTML = pixelSvg(icon, 1);
@@ -496,17 +497,19 @@ export class Hud {
   private edge(inc: Incident): Edge {
     const key = inc.id;
     const spec = incidentAlert(inc.kind);
+    const look = incidentLook(inc.kind, inc.burning);
     let e = this.edgeEls.get(key);
-    if (e && e.root.dataset.kind !== inc.kind) {
+    if (e && (e.root.dataset.kind !== inc.kind || e.root.dataset.tone !== look.tone)) {
       e.root.remove();
       e = undefined;
     }
     if (e) return e;
-    const root = el('div', `bb-edge tone-${spec.tone}`);
+    const root = el('div', `bb-edge tone-${look.tone}`);
     root.dataset.kind = inc.kind;
+    root.dataset.tone = look.tone;
     const arrow = el('span', 'arrow');
     const ico = el('span', 'ico');
-    ico.innerHTML = pixelSvg(spec.icon, 2);
+    ico.innerHTML = pixelSvg(look.icon, 2);
     const txt = el('span', 'txt');
     const dist = el('span', 'dist');
     txt.append(el('b', 'lbl', spec.label), dist);

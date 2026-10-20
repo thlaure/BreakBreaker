@@ -3,10 +3,11 @@ import type { Snapshot } from '../../sim/sim';
 import type { CasseKind, SimEvent, Vec } from '../../sim/types';
 
 /**
- * Incident alerts: a pixel banner when an incident, a round or a special weapon drop starts, and one edge indicator per
- * active incident (special drops included, while on the ground). Generic on purpose: a new kind of "casse" only needs an entry in INCIDENT_ALERTS (and a headline
- * line); `alertFromEvent` / `activeIncidents` read the generic CasseStarted event and `snapshot.targets`. A round start
- * has no position: its banner shows no arrow and no distance.
+ * Incident alerts: a pixel banner when a target is set on fire, a rescue, a round or a special weapon drop starts, and one
+ * edge indicator per active incident (special drops included, while on the ground). An attack start is not announced: the
+ * fire is, once the bottle is thrown (TargetIgnited). Generic on purpose: a new kind of "casse" only needs an entry in
+ * INCIDENT_ALERTS (and a headline line); `alertFromEvent` / `activeIncidents` read the generic TargetIgnited event and
+ * `snapshot.targets`. A round start has no position: its banner shows no arrow and no distance.
  */
 export type IncidentKind = CasseKind | 'groupHarassed' | 'elderlyRobbed';
 /** Everything the banner can announce: positioned incidents and drops, and position-less round starts. */
@@ -37,16 +38,20 @@ export const INCIDENT_ALERTS: Readonly<Record<IncidentKind, AlertSpec>> = {
 
 const WEAPON_DROP: AlertSpec = { title: 'ARME SPÉCIALE !', sub: 'Fonce la ramasser', label: 'ARME', tone: 'drop', icon: 'star' };
 
+/** Non-committal: the round start does not know whether the bottle will be thrown. */
 export const ROUND_HEADLINES: Readonly<Record<RoundHeadline, string>> = {
-  school: 'École en feu',
-  car: 'Voiture en feu',
-  busStop: 'Abribus saccagé',
+  school: 'École menacée',
+  car: 'Voiture menacée',
+  busStop: 'Abribus menacé',
   rescue: 'Agression en cours',
 };
 
 /** What the banner shows for an alert: the spec plus the round line and whether it points somewhere. */
 export interface ShownAlert extends AlertSpec {
-  /** Small « Manche N · T casseurs » line of an incident banner (empty when unknown, for a round start or a drop). */
+  /**
+   * Small « Manche N · T casseurs » line of an incident banner, « Manche N » when the roster is unknown (a fire), empty
+   * when the round is unknown, for a round start or a drop.
+   */
   meta: string;
   /** False for a round start: no arrow, no distance. */
   positioned: boolean;
@@ -73,7 +78,7 @@ export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: 
       positioned: false,
     };
   if (kind === 'weaponDrop') return { ...WEAPON_DROP, meta: '', positioned: true };
-  const meta = round > 0 && total > 0 ? `Manche ${round} · ${casseurs(total)}` : '';
+  const meta = round <= 0 ? '' : total > 0 ? `Manche ${round} · ${casseurs(total)}` : `Manche ${round}`;
   return { ...INCIDENT_ALERTS[kind], meta, positioned: true };
 }
 
@@ -82,6 +87,20 @@ export interface Incident {
   id: string;
   kind: IncidentKind | 'weaponDrop';
   pos: Vec;
+  /** Targets only: on fire (fire tone, flame) or not yet (warn tone, alert icon). */
+  burning?: boolean;
+}
+
+/**
+ * Tone and icon of an incident's edge indicator and card: a target warns until it burns, then shows the fire; a rescue
+ * or a drop keeps its own.
+ */
+export function incidentLook(kind: IncidentKind | 'weaponDrop', burning?: boolean): { tone: AlertTone; icon: AlertIcon } {
+  if (burning === undefined) {
+    const spec = kind === 'weaponDrop' ? WEAPON_DROP : INCIDENT_ALERTS[kind];
+    return { tone: spec.tone, icon: spec.icon };
+  }
+  return burning ? { tone: 'fire', icon: 'flame' } : { tone: 'warn', icon: 'alert' };
 }
 
 /** `activeIncidents` id of the special drop lying at `pos` (the drop banner knows only its position). */
@@ -105,12 +124,13 @@ export interface Alert {
   incident?: string;
 }
 
-/** The alert announced by a sim event (incident, round or special-drop start), or null. */
+/**
+ * The alert announced by a sim event (a target set on fire, a rescue, round or special-drop start), or null. An attack
+ * start (SchoolStarted / CasseStarted) announces nothing: no fire before a bottle was thrown.
+ */
 export function alertFromEvent(e: SimEvent): Alert | null {
-  if (e.type === 'SchoolStarted')
-    return { id: e.incidentId, kind: 'school', pos: { ...e.pos }, wave: e.wave, total: e.total, incident: 'school' };
-  if (e.type === 'CasseStarted')
-    return { id: e.incidentId, kind: e.kind, pos: { ...e.pos }, wave: e.round, total: e.total, incident: e.target };
+  if (e.type === 'TargetIgnited')
+    return { id: e.incidentId, kind: e.kind, pos: { ...e.pos }, wave: e.round, total: e.total ?? 0, incident: e.target };
   if (e.type === 'RescueStarted')
     return { id: e.incidentId, kind: e.kind, pos: { ...e.pos }, wave: e.wave, total: e.total, incident: 'rescue' };
   if (e.type === 'RoundStarted')
@@ -127,7 +147,8 @@ export function alertFromEvent(e: SimEvent): Alert | null {
  */
 export function activeIncidents(s: Snapshot): Incident[] {
   const out: Incident[] = [];
-  for (const t of s.targets) if (t.state === 'attacked') out.push({ id: t.id, kind: t.kind, pos: { ...t.door } });
+  for (const t of s.targets)
+    if (t.state === 'attacked') out.push({ id: t.id, kind: t.kind, pos: { ...t.door }, burning: t.burning });
   if (s.rescue?.stage === 'threat') out.push({ id: 'rescue', kind: s.rescue.kind, pos: { ...s.rescue.victimPos } });
   for (const w of s.weaponsOnGround) if (w.expiresAt !== null) out.push({ id: dropId(w.pos), kind: 'weaponDrop', pos: { ...w.pos } });
   return out;

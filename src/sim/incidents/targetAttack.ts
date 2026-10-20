@@ -99,7 +99,9 @@ export class TargetAttack {
   /** A bottle landed on a target: sets this attack's target on fire while it is being attacked. */
   onMolotov(e: Extract<SimEvent, { type: 'MolotovThrown' }>): SimEvent[] {
     if (e.target !== this.target || !this.urgent()) return [];
-    return this.targets.ignite(this.target) ? [{ type: 'TargetIgnited', target: this.target }] : [];
+    if (!this.targets.ignite(this.target)) return [];
+    const door = DISTRICT.targets.find((t) => t.id === this.target)!.door;
+    return [{ type: 'TargetIgnited', target: this.target, incidentId: this.id, kind: this.kind, pos: { ...door }, round: this.round }];
   }
 
   step(dt: number, ctx: AttackCtx): SimEvent[] {

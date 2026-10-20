@@ -247,7 +247,7 @@ describe('GameAudio.reset', () => {
     const { GameAudio } = await import('../../src/game/audio');
     const a = new GameAudio();
     const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
-    const ev = [{ type: 'BuildingThreatStarted', incidentId: 'school#1' }] as const;
+    const ev = [{ type: 'TargetIgnited', incidentId: 'school#1', kind: 'school', target: 'school', pos: { x: 0, y: 0 }, round: 1 }] as const;
     a.onEvents([...ev]);
     a.onEvents([...ev]);
     expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(1);
@@ -294,13 +294,16 @@ describe('GameAudio.onEvents', () => {
     expect(chime).toHaveBeenCalledTimes(4);
   });
 
-  test('casse alarm once per incident, whoosh on a Molotov, pickup sound on a toolbox', async () => {
+  test('fire alarm once per incident (on the fire, not the attack start), whoosh on a Molotov, pickup sound on a toolbox', async () => {
     const { GameAudio } = await import('../../src/game/audio');
     const a = new GameAudio();
     const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
     const whoosh = vi.spyOn(a, 'whoosh').mockImplementation(() => undefined);
     const casse = { type: 'CasseStarted', incidentId: 'car#2', kind: 'car', target: 'car1', pos: { x: 0, y: 0 }, round: 2, total: 14 } as const;
-    a.onEvents([casse, casse]);
+    a.onEvents([casse, { type: 'BuildingThreatStarted', incidentId: 'car#2' }]);
+    expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(0);
+    const fire = { type: 'TargetIgnited', incidentId: 'car#2', kind: 'car', target: 'car1', pos: { x: 0, y: 0 }, round: 2 } as const;
+    a.onEvents([fire, fire]);
     expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(1);
     a.onEvents([{ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: { x: 9, y: 9 }, target: 'car1' }]);
     expect(whoosh).toHaveBeenCalledTimes(1);
