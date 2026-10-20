@@ -97,7 +97,8 @@ export interface Snapshot {
   stationMessage: StationMessage;
   /** Weapon in Paul's hands (null = bare hands) and strikes left. */
   weapon: { kind: WeaponKind; uses: number } | null;
-  weaponsOnGround: { id: number; kind: WeaponKind; pos: Vec }[];
+  /** `expiresAt` = sim time a special drop vanishes (null = never). */
+  weaponsOnGround: { id: number; kind: WeaponKind; pos: Vec; expiresAt: number | null }[];
   stats: SessionStats;
 }
 
@@ -366,7 +367,7 @@ export class Sim {
       stations: this.stations.list.map((s) => ({ id: s.id, pos: v(s.pos), charged: s.charged })),
       stationMessage: this.stationMessage,
       weapon: this.weapons.held ? { ...this.weapons.held } : null,
-      weaponsOnGround: this.weapons.ground.map((w) => ({ id: w.id, kind: w.kind, pos: v(w.pos) })),
+      weaponsOnGround: this.weapons.ground.map((w) => ({ id: w.id, kind: w.kind, pos: v(w.pos), expiresAt: w.expiresAt })),
       stats: { ...this.rules.stats },
     };
   }

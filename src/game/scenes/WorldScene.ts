@@ -59,10 +59,6 @@ export class WorldScene extends Phaser.Scene {
   private heldWeapon!: HeldWeaponView;
   private telegraphs!: TelegraphLayer;
 
-  /** Expiry of a weapon on the ground (special drops), read from the sim like the rocks' flight progress. */
-  private readonly weaponExpiry = (id: number): number | null =>
-    this.sim.weapons.ground.find((w) => w.id === id)?.expiresAt ?? null;
-
   private hitStopUntil = 0;
   private struck = false;
   private lastVisual = 0;
@@ -268,7 +264,7 @@ export class WorldScene extends Phaser.Scene {
     this.paul.update(snap.player, this.struck, time, dtMs);
     this.heldWeapon.update(snap.weapon, snap.player, this.struck, time);
     this.struck = false;
-    this.weaponsOnGround.update(snap.weaponsOnGround, time, snap.now, this.weaponExpiry);
+    this.weaponsOnGround.update(snap.weaponsOnGround, time, snap.now);
     this.hostiles.update(snap.hostiles, time);
     this.rocks.update(snap.rocks, (id) => flying.get(id) ?? 0, time);
     this.telegraphs.update(snap, this.cameras.main.worldView, time);

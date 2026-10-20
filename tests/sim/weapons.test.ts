@@ -92,10 +92,14 @@ describe('weapons in the Sim', () => {
     expect(sim.snapshot().weapon).toEqual({ kind: 'panneau', uses: 4 });
   });
 
-  test('snapshot lists weapons on the ground', () => {
+  test('snapshot lists weapons on the ground with their expiry (render reads it from there)', () => {
     const sim = new Sim(5);
     sim.weapons.ground.push({ id: 9, kind: 'marteau', pos: { x: 100, y: 100 }, expiresAt: null });
-    expect(sim.snapshot().weaponsOnGround).toEqual([{ id: 9, kind: 'marteau', pos: { x: 100, y: 100 } }]);
+    sim.weapons.ground.push({ id: 10, kind: 'baton', pos: { x: 200, y: 100 }, expiresAt: 42 });
+    expect(sim.snapshot().weaponsOnGround).toEqual([
+      { id: 9, kind: 'marteau', pos: { x: 100, y: 100 }, expiresAt: null },
+      { id: 10, kind: 'baton', pos: { x: 200, y: 100 }, expiresAt: 42 },
+    ]);
   });
 });
 
