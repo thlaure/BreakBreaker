@@ -7,6 +7,7 @@ import { SchoolIncident } from './incidents/school';
 import { TargetAttack, lineup } from './incidents/targetAttack';
 import { DISTRICT } from './map/district';
 import { FlowField } from './map/flowfield';
+import { MonumentIncident, occupierCount, type Monument } from './monument';
 import type { Grid } from './map/grid';
 import { dist } from './math';
 import type { Player } from './player';
@@ -17,7 +18,7 @@ import type { CasseKind, Role, SimEvent, TargetId, Variant, Vec } from './types'
 import type { Weapons } from './weapons';
 
 export type RoundPhase = 'intro' | 'play' | 'breather';
-export type BeatKind = CasseKind | 'rescue';
+export type BeatKind = CasseKind | 'rescue' | 'monument';
 export type Twist = 'weaponDrop' | 'secondUrgency';
 
 /** What a round brings: its headline, its beats (each beat = incidents started together) and its twist. */
@@ -54,6 +55,10 @@ export interface DirectorHost {
   readonly attacks: TargetAttack[];
   school: SchoolIncident;
   rescue: RescueIncident | null;
+  /** The equestrian monument's flag and capture (lasting state). */
+  readonly monument: Monument;
+  /** Monument occupations of the session still worth stepping (the director prunes finished ones at round start). */
+  readonly occupations: MonumentIncident[];
 }
 
 export const SPAWN_MIN_DIST = 320;
@@ -73,12 +78,6 @@ const TARGETS_OF: Readonly<Record<CasseKind, TargetId[]>> = {
   busStop: ['busStop'],
   shop: ['shop'],
 };
-/** Kinds a round may open with: round 2 the shop, round 3 a car or the bus stop, then any kind. */
-function headlineKinds(round: number): CasseKind[] {
-  if (round === 2) return ['shop'];
-  if (round === 3) return ['car', 'busStop'];
-  return CASSE_KINDS;
-}
 const EPS = 1e-9;
 
 /** Rises one step every 2 rounds and every 30 session KOs, capped. */
@@ -97,20 +96,35 @@ export function urgentCap(round: number): number {
   return round < 3 ? 1 : 2;
 }
 
+/** What the monument allows when a round is planned: its flag, and whether last round's second beat was the monument. */
+export interface MonumentPlan {
+  french: boolean;
+  lastWasMonument: boolean;
+}
+
 /**
- * The round catalogue. r1: school then rescue. r2: the retro video-game shop then rescue, weapon-drop twist. r3: car or
- * bus stop; r4+: any kind (school, car, bus stop, shop). From r3 one intact kind (weight 2, or 1 if it was `last`
- * round's headline) then rescue; twist secondUrgency on odd
- * rounds, weaponDrop on even ones (a mode furie pickup from round CONFIG.furie.dropFromRound). A casse beat with no intact target is dropped (its rioters go to the fill).
+ * The round catalogue. r1: the school (tutorial: first Molotov, cinematic, reinforcements) then rescue. From r2 the
+ * headline casse is a seeded random draw among every kind with a free target (standing, not burning): school, shop,
+ * car, bus stop, weight 2, or 1 if it was `last` round's headline (it may repeat, rarely; nothing is forced). Second
+ * beat: the rescue; from round CONFIG.monument.fromRound the monument occupation instead when the flag is French and
+ * last round's second beat was not the monument (they alternate; never while the flag is Palestinian). Twist
+ * secondUrgency on odd rounds from r3, weaponDrop on the others (a mode furie pickup from round
+ * CONFIG.furie.dropFromRound). No free target → the second beat alone (its kind is the headline).
  */
-export function roundPlan(round: number, rand: () => number, targets: Targets, last: CasseKind | null = null): RoundPlan {
+export function roundPlan(
+  round: number,
+  rand: () => number,
+  targets: Targets,
+  last: CasseKind | null = null,
+  monument: MonumentPlan | null = null,
+): RoundPlan {
   // a burning target (fire not put out yet) is not attacked again
   const intact = (k: CasseKind): boolean => TARGETS_OF[k].some((id) => targets.standing(id) && !targets.get(id).burning);
   let first: CasseKind | null = null;
   if (round === 1) first = intact('school') ? 'school' : null;
   else {
-    const kinds = headlineKinds(round).filter(intact);
-    const weights = kinds.map((k) => (round >= 3 && k === last ? 1 : 2));
+    const kinds = CASSE_KINDS.filter(intact);
+    const weights = kinds.map((k) => (k === last ? 1 : 2));
     let r = rand() * weights.reduce((a, b) => a + b, 0);
     for (let i = 0; i < kinds.length && first === null; i++) {
       r -= weights[i]!;
@@ -118,7 +132,9 @@ export function roundPlan(round: number, rand: () => number, targets: Targets, l
     }
   }
   const twist: Twist | null = round === 1 ? null : round >= 3 && round % 2 === 1 ? 'secondUrgency' : 'weaponDrop';
-  return { headline: first ?? 'rescue', beats: first ? [[first], ['rescue']] : [['rescue']], twist };
+  const second: BeatKind =
+    monument && round >= CONFIG.monument.fromRound && monument.french && !monument.lastWasMonument ? 'monument' : 'rescue';
+  return { headline: first ?? second, beats: first ? [[first], [second]] : [[second]], twist };
 }
 
 /** Newcomers enter by the nearest this many eligible edge points (so they arrive closer to Paul). */
@@ -166,6 +182,7 @@ interface Objective {
   kind: BeatKind;
   attack: TargetAttack | null;
   rescue: RescueIncident | null;
+  occupation?: MonumentIncident | null;
   /** Rioters it brings. */
   count: number;
   launched: boolean;
@@ -211,7 +228,9 @@ export class Director {
   private readonly roster = new Set<number>();
   private scoreAtStart = 0;
   private lastHeadline: CasseKind | null = null;
-  private readonly counters: Record<BeatKind, number> = { school: 0, car: 0, busStop: 0, shop: 0, rescue: 0 };
+  /** Last round's plan had the monument occupation (the monument and the rescue alternate). */
+  private lastMonument = false;
+  private readonly counters: Record<BeatKind, number> = { school: 0, car: 0, busStop: 0, shop: 0, rescue: 0, monument: 0 };
   private variantCursor = 0;
   /** Fill firebombers handed out this round (CONFIG.firebomber.maxPerRound at most). */
   private firebombers = 0;
@@ -264,12 +283,18 @@ export class Director {
     this.scoreAtStart = host.rules.score;
     const keep = host.attacks.filter((a) => !a.resolved());
     host.attacks.splice(0, host.attacks.length, ...keep);
+    const occ = host.occupations.filter((o) => o.live(host.horde));
+    host.occupations.splice(0, host.occupations.length, ...occ);
     // toolboxes at round start as well as at round end (round 1 has some too)
     ev.push(...host.toolboxes.place(DISTRICT.kitSites, host.player.pos));
 
-    const plan = roundPlan(this.round, host.rand, host.targets, this.lastHeadline);
+    const plan = roundPlan(this.round, host.rand, host.targets, this.lastHeadline, {
+      french: host.monument.flag === 'french',
+      lastWasMonument: this.lastMonument,
+    });
     this.plan = plan;
-    this.lastHeadline = plan.headline === 'rescue' ? null : plan.headline;
+    this.lastHeadline = plan.headline === 'rescue' || plan.headline === 'monument' ? null : plan.headline;
+    this.lastMonument = plan.beats.some((b) => b.includes('monument'));
     const p = this.pressure(host.rules.kos);
     const reserved = new Set<TargetId>();
     this.beats = plan.beats.map((kinds) =>
@@ -321,6 +346,11 @@ export class Director {
       const rescue = new RescueIncident(`rescue#${++this.counters.rescue}`);
       return { kind, attack: null, rescue, count, launched: false, dropped: false };
     }
+    if (kind === 'monument') {
+      const n = ++this.counters.monument;
+      const occupation = new MonumentIncident(`monument#${n}`, this.round, occupierCount(n, this.round), host.objectiveSpawner);
+      return { kind, attack: null, rescue: null, occupation, count: occupation.total(), launched: false, dropped: false };
+    }
     const target = TARGETS_OF[kind].find((id) => this.free(id, host) && !reserved.has(id));
     if (!target) return null;
     reserved.add(target);
@@ -363,6 +393,20 @@ export class Director {
 
   private launch(o: Objective, host: DirectorHost, ev: SimEvent[]): void {
     o.launched = true;
+    if (o.occupation) {
+      const m = o.occupation;
+      if (!m.start(host.monument)) {
+        // the flag was swapped meanwhile: the planned occupiers come as fill instead
+        o.dropped = true;
+        this.fill.push(...this.fillGroups(o.count, `round#${this.round}:${m.id}`));
+        return;
+      }
+      host.occupations.push(m);
+      this.objectives.push(o);
+      const pos = { ...DISTRICT.monument.mast };
+      ev.push({ type: 'MonumentAttacked', incidentId: m.id, pos, round: this.round, total: this.total });
+      return;
+    }
     if (o.rescue) {
       const r = o.rescue;
       const site = chooseRescueSite(host.grid, host.player.pos, host.rand);
@@ -397,7 +441,7 @@ export class Director {
     for (const o of this.objectives) {
       if (this.settled(o)) continue;
       open++;
-      if (o.attack || o.rescue!.stage !== 'secured') return false;
+      if (o.attack || o.occupation || o.rescue!.stage !== 'secured') return false;
     }
     return open > 0;
   }
@@ -406,18 +450,21 @@ export class Director {
   private settled(o: Objective): boolean {
     if (o.dropped) return true;
     if (o.attack) return o.attack.settled();
+    if (o.occupation) return o.occupation.settled();
     const st = o.rescue!.stage;
     return st === 'completed' || st === 'failed';
   }
 
   /** A smouldering target still stands: réussi (until it burns down). */
   private succeeded(o: Objective): boolean {
+    if (o.occupation) return o.occupation.stage === 'defended';
     return o.attack ? o.attack.stage === 'saved' || o.attack.stage === 'smoulder' : o.rescue!.stage === 'completed';
   }
 
   private urgent(host: DirectorHost): number {
     let n = host.rescue?.stage === 'threat' ? 1 : 0;
     for (const a of host.attacks) if (a.urgent()) n++;
+    for (const m of host.occupations) if (m.urgent()) n++;
     return n;
   }
 

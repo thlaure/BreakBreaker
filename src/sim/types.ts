@@ -25,6 +25,13 @@ export type Role = 'contact' | 'thrower' | 'degrader' | 'aggressor' | 'molotov' 
 export type TargetId = 'school' | 'car1' | 'car2' | 'busStop' | 'shop';
 /** What kind of attack a round's "casse" is (Phase C extends both unions). */
 export type CasseKind = 'school' | 'car' | 'busStop' | 'shop';
+/**
+ * Where a site-bound rioter (degrader) goes: a target, or the equestrian monument's plinth. The monument has no hp and
+ * is not a target: it only shares the horde's site mechanism (attack points, flow field).
+ */
+export type SiteId = TargetId | 'monument';
+/** The flag the rider of the equestrian monument holds. */
+export type MonumentFlag = 'french' | 'palestinian';
 
 export type SimEvent =
   | { type: 'HitConfirmed'; targetLifeId: number; damage: number; source: 'melee' | 'rock' }
@@ -78,7 +85,15 @@ export type SimEvent =
   | { type: 'TargetRepaired'; target: TargetId; incidentId: string }
   | { type: 'ToolboxSpawned'; id: number; pos: Vec }
   | { type: 'ToolboxPickedUp'; id: number }
-  | { type: 'RoundStarted'; index: number; total: number; headline: CasseKind | 'rescue' }
+  | { type: 'RoundStarted'; index: number; total: number; headline: CasseKind | 'rescue' | 'monument' }
+  /** Occupiers head for the monument's plinth (round `round`, roster `total`); `pos` = the flag mast. */
+  | { type: 'MonumentAttacked'; incidentId: string; pos: Vec; round: number; total: number }
+  /** Every occupier KO'd before the swap: the French flag stays. */
+  | { type: 'MonumentDefended'; incidentId: string }
+  /** The occupiers replaced the French flag with a Palestinian one (capture the flag opens). */
+  | { type: 'FlagSwapped'; incidentId: string; pos: Vec }
+  /** Paul held the zone for CONFIG.monument.captureSec: the French flag is back; `swap` = the swap it answers (1-based). */
+  | { type: 'FlagCaptured'; swap: number; pos: Vec }
   | { type: 'RoundCompleted'; index: number; bonus: boolean }
   | { type: 'RoundTotalChanged'; index: number; total: number }
   /** `furie: true` when the weapon drop is a mode furie pickup (from round CONFIG.furie.dropFromRound). */

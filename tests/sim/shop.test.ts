@@ -129,15 +129,10 @@ describe('the retro video-game shop (target « shop »)', () => {
 });
 
 describe('the shop in the round plan', () => {
-  test('round 2 headline is the shop; round 3 is a car or the bus stop; from round 4 the shop is among the drawn kinds', () => {
+  test('from round 2 the shop is one of the randomly drawn headlines (never forced)', () => {
     const t = new Targets();
-    for (let s = 1; s <= 30; s++) {
-      const p = roundPlan(2, rng(s), t);
-      expect(p).toEqual({ headline: 'shop', beats: [['shop'], ['rescue']], twist: 'weaponDrop' });
-      expect(['car', 'busStop']).toContain(roundPlan(3, rng(s), t, 'shop').headline);
-    }
-    const seen = new Set<CasseKind | 'rescue'>();
-    for (let s = 1; s <= 200; s++) seen.add(roundPlan(4 + (s % 6), rng(s), t, 'car').headline);
+    const seen = new Set<string>();
+    for (let s = 1; s <= 200; s++) seen.add(roundPlan(2 + (s % 6), rng(s), t, 'car').headline);
     expect([...seen].sort()).toEqual(['busStop', 'car', 'school', 'shop']);
   });
 
@@ -154,13 +149,12 @@ describe('the shop in the round plan', () => {
     for (const k of ['school', 'car', 'busStop']) expect(n[k]! / 1400).toBeGreaterThan(0.22);
   });
 
-  test('a ruined or burning shop is never drawn: round 2 falls back to the rescue, later rounds to the other kinds', () => {
+  test('a ruined or burning shop is never drawn', () => {
     const t = new Targets();
     t.ruin('shop', 'shop#x');
-    expect(roundPlan(2, rng(1), t)).toEqual({ headline: 'rescue', beats: [['rescue']], twist: 'weaponDrop' });
-    for (let s = 1; s <= 60; s++) expect(roundPlan(4 + (s % 5), rng(s), t).headline).not.toBe('shop');
+    for (let s = 1; s <= 60; s++) expect(roundPlan(2 + (s % 5), rng(s), t).headline).not.toBe('shop');
     t.repair('shop');
     t.ignite('shop', 'shop#y');
-    expect(roundPlan(2, rng(1), t).headline).toBe('rescue');
+    for (let s = 1; s <= 60; s++) expect(roundPlan(2 + (s % 5), rng(s), t).headline).not.toBe('shop');
   });
 });

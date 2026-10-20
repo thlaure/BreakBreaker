@@ -20,7 +20,7 @@ export type AlertKind = IncidentKind | 'round' | DropKind | 'furie';
 export type AlertTone = 'fire' | 'warn' | 'round' | 'drop' | 'furie';
 export type AlertIcon = 'flame' | 'alert' | 'horde' | 'glass' | 'star' | 'bolt';
 /** What a round is about (its first beat), shown under « MANCHE N ! ». */
-export type RoundHeadline = CasseKind | 'rescue';
+export type RoundHeadline = CasseKind | 'rescue' | 'monument';
 
 export interface AlertSpec {
   /** Banner title. */
@@ -55,6 +55,7 @@ export const ROUND_HEADLINES: Readonly<Record<RoundHeadline, string>> = {
   busStop: 'Abribus menacé',
   shop: 'Boutique menacée',
   rescue: 'Agression en cours',
+  monument: 'Monument menacé',
 };
 
 /** What the banner shows for an alert: the spec plus the round line and whether it points somewhere. */

@@ -94,6 +94,20 @@ export const CONFIG = {
    * mode furie apply). Rioters are not hurt; a patch never ignites a target.
    */
   firePatch: { radius: 30, lifeSec: 3.5, maxAlive: 6, damage: 4, tickSec: 0.5 },
+  /**
+   * Equestrian monument (§11). Occupation: `firstOccupiers` the first time, then min(`maxOccupiers`, 5 + floor(round /
+   * 3)); the swap timer runs 1 s/s per occupier at the plinth (at most `swapCounted`) up to `swapSec`. Capture the flag:
+   * Paul in the zone with no active hostile inside for `captureSec`. Scores [defended, swapped, captured].
+   */
+  monument: {
+    fromRound: 4,
+    firstOccupiers: 6,
+    maxOccupiers: 8,
+    swapSec: 4,
+    swapCounted: 3,
+    captureSec: 8,
+    scores: { defended: 4, lost: -3, captured: 10 },
+  },
   kit: { maxGround: 2, pickupRadius: 20, repairSec: 2, applyRange: 48, safetyRadius: 64, minPlaceFromPlayer: 64 },
   round: {
     totals: [10, 14, 18, 22],

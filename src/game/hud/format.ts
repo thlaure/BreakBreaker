@@ -94,7 +94,7 @@ export const TARGET_NAMES: Readonly<Record<CasseKind, string>> = {
   busStop: 'Abribus',
   shop: 'Boutique',
 };
-const OBJECTIVE_NAMES: Readonly<Record<RoundHeadline, string>> = { ...TARGET_NAMES, rescue: 'Secours' };
+const OBJECTIVE_NAMES: Readonly<Record<RoundHeadline, string>> = { ...TARGET_NAMES, rescue: 'Secours', monument: 'Monument' };
 
 export interface IncidentLine {
   /** Target id, or 'rescue'. */

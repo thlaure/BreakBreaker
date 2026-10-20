@@ -1,12 +1,12 @@
 import { CONFIG } from './config';
 import type { Horde, Hostile } from './hostiles';
-import type { Role, TargetId, Variant, Vec } from './types';
+import type { Role, SiteId, Variant, Vec } from './types';
 
 export interface SpawnRequest {
   variant: Variant;
   role: Role;
   incidentId?: string;
-  site?: TargetId;
+  site?: SiteId;
   round?: number;
   /** A Molotov turning into this role after its throw at its site (the attack's last one, from round 3). */
   afterThrow?: 'firebomber';

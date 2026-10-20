@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { CONFIG } from '../../src/sim/config';
 import { RESCUE_COUNT, THROWER_SHARE, pressure, tableTotal } from '../../src/sim/director';
+import { occupierCount } from '../../src/sim/monument';
 import { Sim } from '../../src/sim/sim';
 import type { Role } from '../../src/sim/types';
 import { IDLE, autopilot } from './autopilot';
@@ -55,7 +56,9 @@ describe('round balancing', () => {
     // round 4: its fill (roster − attack − rescue) makes at least two groups of about groupSize, bigger ones last
     const R = 4;
     const sim = toRound(R);
-    const objective = sim.attacks.filter((a) => a.round === R).reduce((n, a) => n + a.total(), 0) + RESCUE_COUNT;
+    // the second beat is the monument occupation (first one: 6 occupiers) or the rescue
+    const second = sim.director.plan!.beats.flat().includes('monument') ? occupierCount(1, R) : RESCUE_COUNT;
+    const objective = sim.attacks.filter((a) => a.round === R).reduce((n, a) => n + a.total(), 0) + second;
     const fill = sim.director.total - objective;
     const groups = Math.ceil(fill / CONFIG.round.groupSize);
     expect(groups).toBeGreaterThanOrEqual(2);

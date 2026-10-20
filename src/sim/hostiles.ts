@@ -6,7 +6,7 @@ import { dist, norm, sub } from './math';
 import type { HostileView, Player } from './player';
 import type { Rocks } from './projectiles';
 import { SpatialHash } from './spatial';
-import type { Role, SimEvent, TargetId, Variant, Vec } from './types';
+import type { Role, SimEvent, SiteId, TargetId, Variant, Vec } from './types';
 
 export interface Hostile {
   lifeId: number;
@@ -22,7 +22,7 @@ export interface Hostile {
   /** 'facade' = its site (degraders hit it, Molotovs throw at it). */
   target: 'player' | 'facade' | 'victim';
   /** Target a degrader or Molotov goes for (kept after it turns on Paul). */
-  site: TargetId | null;
+  site: SiteId | null;
   /** Round this rioter belongs to (null = outside any round's roster). */
   round: number | null;
 }
@@ -40,7 +40,7 @@ export interface HordeCtx {
   grid: Grid;
   fields: { player: FlowField; victim: FlowField | null };
   rocks: Rocks;
-  sites: Partial<Record<TargetId, HordeSite>>;
+  sites: Partial<Record<SiteId, HordeSite>>;
   victimPos: Vec | null;
   pressure: number;
 }
@@ -109,7 +109,7 @@ export class Horde {
     maxHp?: number;
     incidentId?: string;
     target?: Hostile['target'];
-    site?: TargetId;
+    site?: SiteId;
     round?: number;
     afterThrow?: 'firebomber';
   }): Hostile | null {
@@ -436,7 +436,7 @@ export class Horde {
       h.target = 'player';
       // the attack's last Molotov (from CONFIG.firebomber.fromRound) keeps throwing, at Paul now
       if (a.afterThrow) h.role = a.afterThrow;
-      ev.push({ type: 'MolotovThrown', from: { ...h.pos }, to: { ...site.door }, target: h.site! });
+      ev.push({ type: 'MolotovThrown', from: { ...h.pos }, to: { ...site.door }, target: h.site as TargetId });
       return ZERO;
     }
     const goal = this.sitePoint(h, a, site.points);

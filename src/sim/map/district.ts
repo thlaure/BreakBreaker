@@ -35,6 +35,11 @@ export interface District {
   rescueSites: Vec[];
   targets: TargetDef[];
   kitSites: Vec[];
+  /**
+   * Equestrian monument (§11): a solid stone `plinth` (like a prop), the capture `zone`, the flag `mast` (top of the
+   * plinth, where the rider's flag flies) and the free tiles around the plinth where occupiers stand (`attackPoints`).
+   */
+  monument: { plinth: Rect; zone: Circle; mast: Vec; attackPoints: Vec[] };
 }
 
 const T = 32;
@@ -132,4 +137,10 @@ export const DISTRICT: District = {
     },
   ],
   kitSites: [C(18, 12), C(28, 25), C(8, 26), C(36, 44)],
+  monument: {
+    plinth: R(33, 21, 2, 2),
+    zone: { x: 1088, y: 704, r: 112 },
+    mast: { x: 1088, y: 672 },
+    attackPoints: [C(32, 21), C(32, 22), C(35, 21), C(35, 22), C(33, 23), C(34, 23), C(33, 20), C(34, 20)],
+  },
 };

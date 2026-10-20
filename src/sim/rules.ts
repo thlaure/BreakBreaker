@@ -7,6 +7,10 @@ export interface SessionStats {
   targetsSaved: number;
   targetsLost: number;
   repairs: number;
+  /** Monument: occupations defended, French flags lost to a swap, flags captured back. */
+  monumentsDefended: number;
+  flagsLost: number;
+  flagsCaptured: number;
   roundsCompleted: number;
   /** Rounds completed with every objective succeeded (bonus). */
   roundsPerfect: number;
@@ -26,6 +30,9 @@ function emptyStats(): SessionStats {
     targetsSaved: 0,
     targetsLost: 0,
     repairs: 0,
+    monumentsDefended: 0,
+    flagsLost: 0,
+    flagsCaptured: 0,
     roundsCompleted: 0,
     roundsPerfect: 0,
     healsUsed: 0,

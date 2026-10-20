@@ -11,13 +11,14 @@ import { DISTRICT, type Rect } from './map/district';
 import { FlowField } from './map/flowfield';
 import { Grid } from './map/grid';
 import { len, norm, sub } from './math';
+import { Monument, MonumentIncident, type MonumentStage } from './monument';
 import { createPlayer, damagePlayer, stepPlayer, sweep, type Player } from './player';
 import { Rocks, type RockCtx, type RockState } from './projectiles';
 import { rng } from './rng';
 import { Toolboxes, type ToolboxMessage } from './repair';
 import { Rules, type SessionStats } from './rules';
 import { Targets } from './targets';
-import type { CasseKind, InputFrame, Launch, Role, SimEvent, TargetId, Variant, Vec } from './types';
+import type { CasseKind, InputFrame, Launch, MonumentFlag, Role, SimEvent, TargetId, Variant, Vec } from './types';
 import { Weapons, type PickupKind, type WeaponKind } from './weapons';
 
 /** Damage of a weapon strike: enough to KO any rioter (spec: weapons are one-hit KO). */
@@ -114,6 +115,21 @@ export interface Snapshot {
   weaponsOnGround: { id: number; kind: PickupKind; pos: Vec; expiresAt: number | null }[];
   /** Mode furie on (seconds left), or null. */
   furie: { secondsLeft: number } | null;
+  /**
+   * The equestrian monument: its flag; `occupation` = the latest occupation's stage and swap timer (null before the
+   * first); capture the flag (`capture` seconds of `captureSec`, Paul `inZone`, `contested` by a hostile inside).
+   */
+  monument: {
+    flag: MonumentFlag;
+    capture: number;
+    captureSec: number;
+    inZone: boolean;
+    contested: boolean;
+    swaps: number;
+    occupation: { id: string; stage: MonumentStage; swap: number; swapSec: number } | null;
+    mast: Vec;
+    zone: { x: number; y: number; r: number };
+  };
   stats: SessionStats;
 }
 
@@ -170,6 +186,12 @@ export class Sim {
   readonly stations = new Stations(DISTRICT.stations);
   readonly toolboxes = new Toolboxes();
   readonly firePatches = new FirePatches();
+  /** The equestrian monument's flag and capture the flag (persists across rounds). */
+  readonly monument = new Monument();
+  /** Monument occupations still holding the plinth (pruned by the director at round start). */
+  readonly occupations: MonumentIncident[] = [];
+  /** The latest occupation (HUD), kept after it ends. */
+  private lastOccupation: MonumentIncident | null = null;
   readonly director = new Director();
   readonly weapons: Weapons;
   readonly rand: () => number;
@@ -183,6 +205,7 @@ export class Sim {
   private readonly fields: { player: FlowField; victim: FlowField };
   /** One flow field per target, used while an attack on it is live. */
   private readonly siteFields = new Map<TargetId, FlowField>();
+  private readonly monumentField: FlowField;
   private telegraphs: Telegraph[] = [];
   private molotovs: Telegraph[] = [];
   private facings = new Map<number, Vec>();
@@ -198,6 +221,7 @@ export class Sim {
     this.invulnerable = opts.invulnerable ?? false;
     this.fields = { player: new FlowField(this.grid), victim: new FlowField(this.grid) };
     for (const t of DISTRICT.targets) this.siteFields.set(t.id, new FlowField(this.grid));
+    this.monumentField = new FlowField(this.grid);
   }
 
   pause(): void {
@@ -314,6 +338,12 @@ export class Sim {
       if (owner) ev.push(...owner.onMolotov(e, this.attackCtx()));
     }
     for (const a of this.attacks) ev.push(...a.step(dt, this.attackCtx()));
+    for (const m of this.occupations) {
+      ev.push(...m.step(dt, { horde: this.horde, rules: this.rules, monument: this.monument }));
+      this.lastOccupation = m;
+    }
+    // capture the flag: any time the flag is Palestinian, breather included
+    ev.push(...this.monument.step(dt, { player: p, horde: this.horde, rules: this.rules }));
     if (this.rescue) ev.push(...this.rescue.step(dt, { horde: this.horde, rules: this.rules, player: p, spawner: this.objectiveSpawner }));
 
     const kit = this.toolboxes.step(dt, { player: p, horde: this.horde, targets: this.targets, rules: this.rules, act: input.act });
@@ -410,7 +440,25 @@ export class Sim {
       weapon: this.weapons.held ? { ...this.weapons.held } : null,
       weaponsOnGround: this.weapons.ground.map((w) => ({ id: w.id, kind: w.kind, pos: v(w.pos), expiresAt: w.expiresAt })),
       furie: this.weapons.furie() ? { secondsLeft: this.weapons.furieLeft } : null,
+      monument: this.monumentView(),
       stats: { ...this.rules.stats },
+    };
+  }
+
+  private monumentView(): Snapshot['monument'] {
+    const m = this.monument;
+    const o = this.lastOccupation;
+    const z = DISTRICT.monument.zone;
+    return {
+      flag: m.flag,
+      capture: m.progress,
+      captureSec: CONFIG.monument.captureSec,
+      inZone: m.paulInZone,
+      contested: m.contested,
+      swaps: m.swaps,
+      occupation: o ? { id: o.id, stage: o.stage, swap: o.swapTimer, swapSec: CONFIG.monument.swapSec } : null,
+      mast: v(DISTRICT.monument.mast),
+      zone: { x: z.x, y: z.y, r: z.r },
     };
   }
 
@@ -435,6 +483,14 @@ export class Sim {
         field: this.siteFields.get(a.target)!,
       };
     }
+    // the plinth, while an occupation's rioters hold it (after a swap too, until they are all KO'd)
+    if (this.occupations.some((m) => m.live(this.horde)))
+      out.monument = {
+        points: DISTRICT.monument.attackPoints,
+        door: DISTRICT.monument.mast,
+        standing: true,
+        field: this.monumentField,
+      };
     return out;
   }
 
@@ -510,6 +566,9 @@ export class Sim {
         if (e.bonus) s.roundsPerfect += 1;
       } else if (e.type === 'RescueCompleted') s.rescuesOk += 1;
       else if (e.type === 'RescueFailed') s.rescuesFailed += 1;
+      else if (e.type === 'FlagCaptured') s.flagsCaptured += 1;
+      else if (e.type === 'FlagSwapped') s.flagsLost += 1;
+      else if (e.type === 'MonumentDefended') s.monumentsDefended += 1;
     }
   }
 }
