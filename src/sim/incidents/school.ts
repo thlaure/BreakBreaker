@@ -99,7 +99,7 @@ export class SchoolIncident {
       this.wasDecreasing = false;
       this.pending = [];
       ctx.rules.award(`${this.id}:lost`, CONFIG.school.lossPenalty);
-      events.push({ type: 'BuildingDestroyed', incidentId: this.id });
+      events.push({ type: 'BuildingDestroyed', incidentId: this.id, target: 'school' });
       return events;
     }
 

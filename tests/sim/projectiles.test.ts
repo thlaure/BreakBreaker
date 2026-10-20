@@ -37,9 +37,9 @@ const run = (rocks: Rocks, secs: number, ctx: RockCtx, dt = DT, t0 = 0): SimEven
 };
 const of = (ev: SimEvent[], type: SimEvent['type']) => ev.filter((e) => e.type === type);
 
-const open = { x: 700, y: 1100 };
+const open = { x: 700, y: 1160 };
 const far = { x: 1300, y: 1300 };
-const landTarget = { x: 900, y: 1100 };
+const landTarget = { x: 900, y: 1160 };
 
 describe('projectiles', () => {
   test('dodged rock lands recoverable (RC-11)', () => {
@@ -54,7 +54,7 @@ describe('projectiles', () => {
   test('rock hitting Paul damages once then lands (RC-12)', () => {
     const rocks = new Rocks(grid);
     rocks.spawnEnemy(open, landTarget, 0);
-    const ev = run(rocks, 2, mkCtx({ x: 800, y: 1100 }));
+    const ev = run(rocks, 2, mkCtx({ x: 800, y: 1160 }));
     const dmg = of(ev, 'PlayerDamaged');
     expect(dmg.length).toBe(1);
     expect(dmg[0]).toEqual({ type: 'PlayerDamaged', amount: 5 });
@@ -66,7 +66,7 @@ describe('projectiles', () => {
   test('flying rock is never picked up (RC-13)', () => {
     const rocks = new Rocks(grid);
     rocks.spawnEnemy(open, landTarget, 0);
-    const ctx = mkCtx({ x: 800, y: 1100 }, { player: { pos: { x: 800, y: 1100 }, r: R, invulnerable: true } });
+    const ctx = mkCtx({ x: 800, y: 1160 }, { player: { pos: { x: 800, y: 1160 }, r: R, invulnerable: true } });
     let now = 0;
     while (rocks.flying().length > 0) {
       now += DT;
@@ -130,8 +130,8 @@ describe('projectiles', () => {
     rocks.carried = 1;
     rocks.returnRock(open, { x: 1, y: 0 }, 0);
     const hostiles = [
-      { lifeId: 11, pos: { x: 780, y: 1100 }, r: 7, active: true },
-      { lifeId: 12, pos: { x: 840, y: 1100 }, r: 7, active: true },
+      { lifeId: 11, pos: { x: 780, y: 1160 }, r: 7, active: true },
+      { lifeId: 12, pos: { x: 840, y: 1160 }, r: 7, active: true },
     ];
     const ev = run(rocks, 1, mkCtx(open, { hostiles }));
     const hits = of(ev, 'HitConfirmed');
@@ -145,8 +145,8 @@ describe('projectiles', () => {
     rocks.carried = 1;
     rocks.returnRock(open, { x: 1, y: 0 }, 0);
     const hostiles = [
-      { lifeId: 11, pos: { x: 780, y: 1100 }, r: 7, active: false },
-      { lifeId: 12, pos: { x: 840, y: 1100 }, r: 7, active: true },
+      { lifeId: 11, pos: { x: 780, y: 1160 }, r: 7, active: false },
+      { lifeId: 12, pos: { x: 840, y: 1160 }, r: 7, active: true },
     ];
     const hits = of(run(rocks, 1, mkCtx(open, { hostiles })), 'HitConfirmed');
     expect(hits.length).toBe(1);
@@ -216,8 +216,8 @@ describe('projectiles', () => {
 
   test('fast rock at 12 fps does not tunnel through Paul', () => {
     const rocks = new Rocks(grid);
-    rocks.spawnEnemy({ x: 600, y: 1100 }, { x: 1000, y: 1100 }, 0);
-    const ev = run(rocks, 3, mkCtx({ x: 800, y: 1100 }), 1 / 12);
+    rocks.spawnEnemy({ x: 600, y: 1160 }, { x: 1000, y: 1160 }, 0);
+    const ev = run(rocks, 3, mkCtx({ x: 800, y: 1160 }), 1 / 12);
     expect(of(ev, 'PlayerDamaged').length).toBe(1);
   });
 
@@ -243,7 +243,7 @@ describe('projectiles', () => {
     const r2 = new Rocks(grid);
     let now = 0;
     for (let i = 0; i < 17; i++) {
-      r2.spawnEnemy({ x: 700, y: 1100 }, { x: 700 + 100 + i * 10, y: 1100 }, now);
+      r2.spawnEnemy({ x: 700, y: 1160 }, { x: 700 + 100 + i * 10, y: 1160 }, now);
       for (let k = 0; k < 90; k++) {
         now += DT;
         r2.step(DT, now, mkCtx(far));
@@ -258,11 +258,11 @@ describe('projectiles', () => {
     // everything within 64px of Paul (outside pickup radius): new rock is dropped instead
     const r4 = new Rocks(grid);
     r4.carried = 3;
-    for (let i = 0; i < 16; i++) r4.spawnEnemy(open, { x: 800, y: 1100 }, 0);
-    const near = mkCtx({ x: 840, y: 1100 });
+    for (let i = 0; i < 16; i++) r4.spawnEnemy(open, { x: 800, y: 1160 }, 0);
+    const near = mkCtx({ x: 840, y: 1160 });
     run(r4, 2, near);
     expect(r4.ground().length).toBe(16);
-    r4.spawnEnemy(open, { x: 800, y: 1100 }, 3);
+    r4.spawnEnemy(open, { x: 800, y: 1160 }, 3);
     run(r4, 2, near, DT, 3);
     expect(r4.ground().length).toBe(16);
     expect(r4.ground().every((r) => r.id <= 16)).toBe(true);
