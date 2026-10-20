@@ -447,7 +447,7 @@ export class Sim {
 
   private monumentView(): Snapshot['monument'] {
     const m = this.monument;
-    const o = this.lastOccupation;
+    const o = this.occupations[this.occupations.length - 1] ?? this.lastOccupation;
     const z = DISTRICT.monument.zone;
     return {
       flag: m.flag,
