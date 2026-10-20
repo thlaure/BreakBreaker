@@ -38,7 +38,24 @@ export const CONFIG = {
     throwInterval: 3.0,
   },
   school: { cinematicSec: 3 },
-  rescue: { threatSeconds: 25, aggressors: [2, 4], thanksSec: 1.5, bonus: 6 },
+  /**
+   * Rescue (§12.10–12.12). The victim carries `itemCount` belongings: at each `theftAt` share of the reserve left, the
+   * nearest active aggressor steals one. A thief KO drops it; Paul picks it up within `pickupRadius` px (carries up to
+   * `itemCount`) and hands every carried item back within `returnRadius` px of the victim (+`itemBonus` each). Secured
+   * with items still out: the victim waits up to `returnSec` s for them, then the `thanksSec` beat and `bonus`.
+   */
+  rescue: {
+    threatSeconds: 25,
+    aggressors: [2, 4],
+    thanksSec: 1.5,
+    bonus: 6,
+    itemCount: 3,
+    theftAt: [0.75, 0.5, 0.25],
+    itemBonus: 2,
+    pickupRadius: 20,
+    returnRadius: 48,
+    returnSec: 12,
+  },
   heal: { amount: 25 },
   weapons: { firstSpawn: 10, spawnEvery: [15, 25] as const, maxGround: 2, pickupRadius: 20, minDist: 160, maxDist: 480, dropLifetime: 15 },
   /**

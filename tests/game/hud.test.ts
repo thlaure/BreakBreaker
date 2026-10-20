@@ -114,7 +114,7 @@ describe('contextPrompt', () => {
 
   test('no "Aider" prompt next to a secured victim: the rescue completes by itself', () => {
     const s = snap((x) => {
-      x.rescue = { id: 'rescue#1', stage: 'secured', remaining: 10, victimPos: { x: 100, y: 100 }, kind: 'groupHarassed' };
+      x.rescue = { id: 'rescue#1', stage: 'secured', remaining: 10, victimPos: { x: 100, y: 100 }, kind: 'groupHarassed', items: [], returnLeft: null };
       x.player.pos = { x: 110, y: 100 };
     });
     expect(contextPrompt(s)).toBeNull();
@@ -236,16 +236,16 @@ describe('incidentLines', () => {
     const s = snap((x) => {
       calm(x);
       x.school.stage = 'saved';
-      x.rescue = { id: 'rescue#1', stage: 'threat', remaining: 12.1, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+      x.rescue = { id: 'rescue#1', stage: 'threat', remaining: 12.1, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed', items: [], returnLeft: null };
     });
     const [rescue, none] = incidentLines(s, 'en cours');
     expect(none).toBeUndefined();
     expect(rescue).toMatchObject({ name: 'Secours', time: '13 s', status: 'en cours' });
-    s.rescue = { id: 'rescue#1', stage: 'secured', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+    s.rescue = { id: 'rescue#1', stage: 'secured', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed', items: [], returnLeft: null };
     expect(incidentLines(s, 'en cours')[0]).toMatchObject({ status: 'sécurisé' });
-    s.rescue = { id: 'rescue#1', stage: 'failed', remaining: 0, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+    s.rescue = { id: 'rescue#1', stage: 'failed', remaining: 0, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed', items: [], returnLeft: null };
     expect(incidentLines(s, 'en cours')).toEqual([]);
-    s.rescue = { id: 'rescue#1', stage: 'completed', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+    s.rescue = { id: 'rescue#1', stage: 'completed', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed', items: [], returnLeft: null };
     expect(incidentLines(s, 'en cours')).toEqual([]);
   });
 });

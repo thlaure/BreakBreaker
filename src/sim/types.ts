@@ -59,6 +59,13 @@ export type SimEvent =
   | { type: 'RescueSecured'; incidentId: string }
   | { type: 'RescueCompleted'; incidentId: string }
   | { type: 'RescueFailed'; incidentId: string }
+  /** A rescue aggressor (`thiefLifeId`) took one of the victim's belongings (`item` = its id, see RESCUE_ITEMS). */
+  | { type: 'ItemStolen'; rescueId: string; item: string; thiefLifeId: number }
+  /** The thief was knocked out: the belonging lies at `pos` and can be picked up. */
+  | { type: 'ItemDropped'; rescueId: string; item: string; pos: Vec }
+  | { type: 'ItemPickedUp'; rescueId: string; item: string }
+  /** Paul handed the belonging back to the victim (+CONFIG.rescue.itemBonus). */
+  | { type: 'ItemReturned'; rescueId: string; item: string }
   | { type: 'HealCompleted' }
   /** A pickup appears: a weapon, or the mode furie (`kind: 'furie'`). */
   | { type: 'WeaponSpawned'; kind: 'baton' | 'marteau' | 'panneau' | 'furie'; pos: Vec }

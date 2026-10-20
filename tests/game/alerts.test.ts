@@ -139,7 +139,7 @@ describe('pure helpers', () => {
     const car = s.targets.find((t) => t.kind === 'car')!;
     s.targets.find((t) => t.id === 'school')!.state = 'attacked';
     car.state = 'attacked';
-    s.rescue = { id: 'rescue#1', stage: 'threat', remaining: 9, victimPos: { x: 5, y: 6 }, kind: 'groupHarassed' };
+    s.rescue = { id: 'rescue#1', stage: 'threat', remaining: 9, victimPos: { x: 5, y: 6 }, kind: 'groupHarassed', items: [], returnLeft: null };
     expect(activeIncidents(s).map((i) => i.kind)).toEqual(['school', 'car', 'groupHarassed']);
     expect(activeIncidents(s).find((i) => i.kind === 'car')).toEqual({ id: car.id, kind: 'car', pos: car.door, burning: false });
     for (const t of s.targets) t.state = t.id === 'school' ? 'intact' : 'ruined';
@@ -339,7 +339,7 @@ describe('Hud alerts and edge indicators', () => {
     const s = snap((x) => {
       calm(x);
       attack(x, 'school');
-      x.rescue = { id: 'rescue#1', stage: 'threat', remaining: 20, victimPos: { x: 400, y: 300 }, kind: 'elderlyRobbed' };
+      x.rescue = { id: 'rescue#1', stage: 'threat', remaining: 20, victimPos: { x: 400, y: 300 }, kind: 'elderlyRobbed', items: [], returnLeft: null };
       x.player.pos = { x: 400, y: 300 };
     });
     const edges = () => [...hud.root.querySelectorAll<HTMLElement>('.bb-edge')];
@@ -487,7 +487,7 @@ describe('Hud alerts and edge indicators', () => {
     const threat = (x: Snapshot): void => {
       calm(x);
       attack(x, 'car1');
-      x.rescue = { id: 'rescue#1', stage: 'threat', remaining: 20, victimPos: { x: 400, y: 300 }, kind: 'elderlyRobbed' };
+      x.rescue = { id: 'rescue#1', stage: 'threat', remaining: 20, victimPos: { x: 400, y: 300 }, kind: 'elderlyRobbed', items: [], returnLeft: null };
     };
     // car + rescue start in the same frame: the rescue banner queues behind the car's
     hud.onEvents([fireEv('car', 'car1', { x: 10, y: 10 }), rescueEv('elderlyRobbed')]);
@@ -541,7 +541,7 @@ describe('Hud alerts and edge indicators', () => {
 
   test('the rescue card has no health bar', () => {
     const hud = new Hud(document.body, null);
-    hud.update(snap((x) => { calm(x); x.rescue = { id: 'rescue#1', stage: 'threat', remaining: 20, victimPos: { x: 1, y: 1 }, kind: 'groupHarassed' }; }), view);
+    hud.update(snap((x) => { calm(x); x.rescue = { id: 'rescue#1', stage: 'threat', remaining: 20, victimPos: { x: 1, y: 1 }, kind: 'groupHarassed', items: [], returnLeft: null }; }), view);
     const card = [...hud.root.querySelectorAll<HTMLElement>('.bb-card')].find((c) => !c.hidden)!;
     expect(card.querySelector<HTMLElement>('.hpbar')!.hidden).toBe(true);
     hud.destroy();
@@ -582,7 +582,7 @@ describe('Hud alerts and edge indicators', () => {
     expect(btn.style.display).toBe('none');
     hud.update(
       snap((x) => {
-        x.rescue = { id: 'rescue#1', stage: 'secured', remaining: 10, victimPos: { ...x.player.pos }, kind: 'groupHarassed' };
+        x.rescue = { id: 'rescue#1', stage: 'secured', remaining: 10, victimPos: { ...x.player.pos }, kind: 'groupHarassed', items: [], returnLeft: null };
       }),
       view,
     );

@@ -4,7 +4,7 @@ import { EntryQueue, type Spawner } from './entry';
 import { FirePatches } from './firepatch';
 import { Stations, type StationMessage } from './healing';
 import { Horde, type Hostile, type HordeCtx } from './hostiles';
-import type { RescueIncident, RescueKind, RescueStage } from './incidents/rescue';
+import type { ItemState, RescueIncident, RescueKind, RescueStage } from './incidents/rescue';
 import { SchoolIncident, type SchoolStage } from './incidents/school';
 import type { TargetAttack } from './incidents/targetAttack';
 import { DISTRICT, type Rect } from './map/district';
@@ -106,7 +106,21 @@ export interface Snapshot {
   firePatches: { id: number; pos: Vec; r: number; secondsLeft: number }[];
   /** The latest school attack; `integrity` = school hp in percent. */
   school: { stage: SchoolStage; integrity: number; status: ReturnType<SchoolIncident['status']> };
-  rescue: { id: string; stage: RescueStage; remaining: number; victimPos: Vec; kind: RescueKind } | null;
+  /**
+   * The latest rescue. `items`: the victim's belongings (`pos` = the victim, its thief, the ground or Paul);
+   * `returnLeft`: seconds left of the wait for them while secured (null when not waiting).
+   */
+  rescue: {
+    id: string;
+    stage: RescueStage;
+    remaining: number;
+    victimPos: Vec;
+    kind: RescueKind;
+    items: { id: string; name: string; state: ItemState; pos: Vec }[];
+    returnLeft: number | null;
+  } | null;
+  /** Belongings of the rescue victim Paul carries. */
+  carriedItems: number;
   stations: { id: string; pos: Vec; charged: boolean }[];
   stationMessage: StationMessage;
   /** Weapon in Paul's hands (null = bare hands) and strikes left. */
@@ -434,7 +448,18 @@ export class Sim {
         integrity: this.school.integrity(),
         status: this.school.status(),
       },
-      rescue: r ? { id: r.id, stage: r.stage, remaining: r.remaining, victimPos: v(r.victimPos), kind: r.kind } : null,
+      rescue: r
+        ? {
+            id: r.id,
+            stage: r.stage,
+            remaining: r.remaining,
+            victimPos: v(r.victimPos),
+            kind: r.kind,
+            items: r.items.map((it) => ({ id: it.id, name: it.name, state: it.state, pos: v(it.pos) })),
+            returnLeft: r.returnLeft,
+          }
+        : null,
+      carriedItems: r ? r.carried : 0,
       stations: this.stations.list.map((s) => ({ id: s.id, pos: v(s.pos), charged: s.charged })),
       stationMessage: this.stationMessage,
       weapon: this.weapons.held ? { ...this.weapons.held } : null,
