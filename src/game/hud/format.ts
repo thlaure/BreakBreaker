@@ -72,14 +72,18 @@ export interface Prompt {
 export const DEFAULT_ACT_LABEL = 'Agir';
 
 /**
- * Contextual prompt under Paul. Every prompt of this slice is informational (no key, no touch Agir button): heal
- * stations, the toolbox messages near a ruin and the repair in progress all complete by themselves. `touch` is kept for
- * a future actionable prompt that will drop the keyboard hint on touch screens.
+ * Contextual prompt under Paul. With a toolbox next to a ruin or a burning target and no hostile close, an actionable
+ * prompt: « F — Réparer » / « F — Éteindre le feu » (touch: no key, the Agir button takes the label). Informational
+ * ones (no button): the repair in progress, the toolbox messages, the heal stations.
  */
-export function contextPrompt(s: Snapshot, _touch = false): Prompt | null {
+export function contextPrompt(s: Snapshot, touch = false): Prompt | null {
   const kit = s.toolboxes;
-  if (kit.repairTarget && kit.progress > 0) return { text: 'Réparation…', label: null };
+  if (kit.repairTarget && kit.started) return { text: 'Réparation…', label: null };
   if (kit.message) return { text: kit.message, label: null };
+  if (kit.repairTarget && kit.canRepair) {
+    const [text, label] = kit.repairKind === 'fire' ? ['Éteindre le feu', 'Éteindre'] : ['Réparer', 'Réparer'];
+    return { text: touch ? text : `F — ${text}`, label };
+  }
   if (s.stationMessage) return { text: s.stationMessage, label: null };
   return null;
 }

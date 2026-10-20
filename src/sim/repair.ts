@@ -14,14 +14,17 @@ export interface ToolboxCtx {
   horde: Horde;
   targets: Targets;
   rules: Rules;
+  /** The Agir key (F / touch Agir) is down this step. */
+  act: boolean;
 }
 
 const EPS = 1e-9;
 
 /**
  * Toolboxes: up to CONFIG.kit.maxGround lie on the ground, Paul carries at most one (walk over it to take it).
- * Standing next to a ruin with a toolbox and no hostile close repairs it by itself after CONFIG.kit.repairSec;
- * moving away from the door or a hostile coming close resets the progress. No key is involved.
+ * Next to a ruin with a toolbox and no hostile close, pressing Agir (F / touch Agir) starts the repair; it then
+ * completes after CONFIG.kit.repairSec without holding the key. Moving away from the door, a hostile coming close or a
+ * KO resets the progress and the start (a new press is needed).
  */
 export class Toolboxes {
   ground: { id: number; pos: Vec }[] = [];
@@ -29,6 +32,10 @@ export class Toolboxes {
   /** Seconds of repair done so far (0..repairSec). */
   progress = 0;
   repairing: TargetId | null = null;
+  /** Agir was pressed while the repair could start: it now progresses on its own. */
+  started = false;
+  /** Last step: a toolbox carried, a target to repair in range, no hostile close (Agir would start the repair). */
+  ready = false;
   private nextId = 1;
   private readonly repairCount = new Map<TargetId, number>();
 
@@ -64,6 +71,7 @@ export class Toolboxes {
   step(dt: number, ctx: ToolboxCtx): { events: SimEvent[]; message: ToolboxMessage } {
     const events: SimEvent[] = [];
     const { player, horde, targets, rules } = ctx;
+    this.ready = false;
     if (player.ko || rules.ended) {
       this.reset();
       return { events, message: null };
@@ -93,8 +101,11 @@ export class Toolboxes {
       return { events, message: 'Abords non sécurisés' };
     }
 
-    if (this.repairing !== target) this.progress = 0;
+    if (this.repairing !== target) this.reset();
     this.repairing = target;
+    this.ready = true;
+    if (!this.started && !ctx.act) return { events, message: null };
+    this.started = true;
     this.progress += dt;
     if (this.progress + EPS >= CONFIG.kit.repairSec) {
       const lost = targets.repair(target);
@@ -113,5 +124,6 @@ export class Toolboxes {
   private reset(): void {
     this.progress = 0;
     this.repairing = null;
+    this.started = false;
   }
 }

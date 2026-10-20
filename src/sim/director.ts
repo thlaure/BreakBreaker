@@ -248,6 +248,8 @@ export class Director {
     this.scoreAtStart = host.rules.score;
     const keep = host.attacks.filter((a) => !a.resolved());
     host.attacks.splice(0, host.attacks.length, ...keep);
+    // toolboxes at round start as well as at round end (round 1 has some too)
+    ev.push(...host.toolboxes.place(DISTRICT.kitSites, host.player.pos));
 
     const plan = roundPlan(this.round, host.rand, host.targets, this.lastHeadline);
     this.plan = plan;

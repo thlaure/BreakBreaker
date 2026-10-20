@@ -19,13 +19,17 @@ function setup(ruin: TargetId | null = 'school') {
   const player = createPlayer(FAR);
   const rules = new Rules();
   const horde = new Horde();
-  const step = () => kit.step(DT, { player, horde, targets, rules });
+  /** One step; `act` = the Agir key (F / touch Agir) pressed on it. */
+  const step = (act = false) => kit.step(DT, { player, horde, targets, rules, act });
+  /** Steps for `sec` without touching the key. */
   const run = (sec: number) => {
     const events = [];
     for (let i = 0; i < Math.round(sec / DT); i++) events.push(...step().events);
     return events;
   };
-  return { kit, targets, player, rules, horde, step, run };
+  /** Presses Agir once (one step), then lets go for the rest of `sec`. */
+  const press = (sec = DT) => [...step(true).events, ...run(sec - DT)];
+  return { kit, targets, player, rules, horde, step, run, press };
 }
 
 describe('toolboxes', () => {
@@ -56,45 +60,60 @@ describe('toolboxes', () => {
     expect(kit.ground).toHaveLength(1);
   });
 
-  test('2 s next to the ruined school with no rioter near: repaired to 60 hp, toolbox used, +5, the -3 stays', () => {
-    const { kit, targets, player, rules, run } = setup('school');
+  test('one press of Agir next to the ruined school, no rioter near: 2 s later (key released) repaired to 60 hp, toolbox used, +5, the -3 stays', () => {
+    const { kit, targets, player, rules, press } = setup('school');
     rules.award('school-i1:lost', -3);
     kit.carried = true;
     player.pos = { x: door('school').x + 30, y: door('school').y };
-    const ev = run(2);
+    const ev = press(2);
     expect(ev).toEqual([{ type: 'TargetRepaired', target: 'school', incidentId: 'school-i1' }]);
     expect(targets.get('school').hp).toBe(60);
     expect(targets.standing('school')).toBe(true);
     expect(kit.carried).toBe(false);
     expect(rules.score).toBe(2);
     expect(kit.repairing).toBeNull();
+    expect(kit.started).toBe(false);
+  });
+
+  test('without pressing Agir nothing happens: progress stays 0, ready to start', () => {
+    const { kit, targets, player, step, run } = setup('school');
+    kit.carried = true;
+    player.pos = { ...door('school') };
+    expect(step()).toEqual({ events: [], message: null });
+    expect(run(5)).toEqual([]);
+    expect(kit.progress).toBe(0);
+    expect(kit.started).toBe(false);
+    expect(kit.ready).toBe(true);
+    expect(targets.get('school').state).toBe('ruined');
+    expect(kit.carried).toBe(true);
   });
 
   test('a burnt car repairs for +3', () => {
-    const { kit, player, rules, run } = setup('car1');
+    const { kit, player, rules, press } = setup('car1');
     kit.carried = true;
     player.pos = { ...door('car1') };
-    run(2);
+    press(2);
     expect(rules.score).toBe(3);
   });
 
   test('a ruin never lost through an incident still awards uniquely per repair', () => {
-    const { kit, targets, player, rules, run } = setup('car1');
+    const { kit, targets, player, rules, press } = setup('car1');
     kit.carried = true;
     player.pos = { ...door('car1') };
-    run(2);
+    press(2);
     targets.ruin('car1', 'i2');
     targets.get('car1').lostIncidentId = null;
     kit.carried = true;
-    run(2);
+    press(2);
     expect(rules.score).toBe(6);
   });
 
   test('progress is exposed while repairing, and shuffling inside the range keeps it', () => {
-    const { kit, player, step } = setup('school');
+    const { kit, player, step, press } = setup('school');
     kit.carried = true;
     player.pos = { x: door('school').x + 10, y: door('school').y };
-    for (let i = 0; i < 30; i++) step();
+    press(30 * DT);
+    expect(kit.started).toBe(true);
     expect(kit.repairing).toBe('school');
     expect(kit.progress).toBeCloseTo(0.5, 5);
     player.pos = { x: door('school').x - 40, y: door('school').y };
@@ -102,25 +121,48 @@ describe('toolboxes', () => {
     expect(kit.progress).toBeCloseTo(0.5 + DT, 5);
   });
 
-  test('a hostile within 64 px or leaving range resets progress and consumes nothing', () => {
-    const { kit, targets, player, horde, step, run } = setup('school');
+  test('a hostile within 64 px or leaving range resets progress and the start (a new press is needed), consumes nothing', () => {
+    const { kit, targets, player, horde, step, run, press } = setup('school');
     kit.carried = true;
     player.pos = { x: door('school').x + 30, y: door('school').y };
-    run(1);
+    press(1);
     expect(kit.progress).toBeGreaterThan(0.9);
     horde.spawn({ variant: 'classic', role: 'contact', pos: { x: player.pos.x + 50, y: player.pos.y } });
     const r = step();
     expect(r.message).toBe('Abords non sécurisés');
     expect(kit.progress).toBe(0);
+    expect(kit.started).toBe(false);
+    expect(kit.ready).toBe(false);
     expect(kit.carried).toBe(true);
     expect(targets.get('school').state).toBe('ruined');
     horde.list.length = 0;
+    // pressing while a hostile is close started nothing: once clear, it waits for a new press
     run(1);
+    expect(kit.progress).toBe(0);
+    press(1);
     expect(kit.progress).toBeGreaterThan(0.9);
     player.pos = { x: door('school').x + CONFIG.kit.applyRange + 5, y: door('school').y };
     expect(step().message).toBeNull();
     expect(kit.progress).toBe(0);
+    expect(kit.started).toBe(false);
     expect(kit.carried).toBe(true);
+    player.pos = { x: door('school').x + 30, y: door('school').y };
+    run(3);
+    expect(kit.progress).toBe(0);
+    expect(targets.get('school').state).toBe('ruined');
+  });
+
+  test('pressing Agir with a hostile close or without a toolbox starts nothing', () => {
+    const { kit, player, horde, step, run } = setup('school');
+    player.pos = { ...door('school') };
+    expect(step(true).message).toBe('Caisse à outils requise');
+    kit.carried = true;
+    const h = horde.spawn({ variant: 'classic', role: 'contact', pos: { x: player.pos.x + 30, y: player.pos.y } })!;
+    expect(step(true).message).toBe('Abords non sécurisés');
+    horde.applyHit(h.lifeId, 99);
+    run(1);
+    expect(kit.started).toBe(false);
+    expect(kit.progress).toBe(0);
   });
 
   test('without a toolbox near a ruin: Caisse à outils requise, nothing repaired', () => {
@@ -132,22 +174,24 @@ describe('toolboxes', () => {
   });
 
   test('Paul KO on the completing step: no repair', () => {
-    const { kit, targets, player, rules, step, run } = setup('school');
+    const { kit, targets, player, rules, step, press } = setup('school');
     kit.carried = true;
     player.pos = { ...door('school') };
-    run(2 - DT); // the next step would complete
+    press(2 - DT); // the next step would complete
     player.ko = true;
     expect(step().events).toEqual([]);
     expect(targets.get('school').state).toBe('ruined');
     expect(kit.carried).toBe(true);
     expect(rules.score).toBe(0);
+    expect(kit.started).toBe(false);
   });
 
-  test('next to an intact target nothing happens', () => {
+  test('next to an intact target nothing happens, even pressing Agir', () => {
     const { kit, player, step, run } = setup(null);
     kit.carried = true;
     player.pos = { ...door('school') };
-    expect(step()).toEqual({ events: [], message: null });
+    expect(step(true)).toEqual({ events: [], message: null });
+    expect(kit.ready).toBe(false);
     expect(run(3)).toEqual([]);
     expect(kit.carried).toBe(true);
   });

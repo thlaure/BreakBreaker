@@ -295,7 +295,7 @@ export class Hud {
     this.prompt.hidden = !p;
     c.text(this.prompt, p?.text ?? '');
     if (this.actBtn) {
-      // Only an actionable prompt shows the touch Agir button (none in this slice: repairs are automatic).
+      // Only an actionable prompt (repair / put out a fire) shows the touch Agir button, labelled with the action.
       c.style(this.actBtn, p?.label ? '' : 'display:none');
       c.text(this.actBtn, p?.label ?? DEFAULT_ACT_LABEL);
     }

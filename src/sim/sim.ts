@@ -87,6 +87,12 @@ export interface Snapshot {
     message: ToolboxMessage;
     /** The ruin within reach of Paul, if any. */
     repairTarget: TargetId | null;
+    /** A toolbox carried, a target to repair in reach, no hostile close: Agir (F) would start the repair. */
+    canRepair: boolean;
+    /** What the repair in reach would do: rebuild a ruin, or put out a fire; null with nothing in reach. */
+    repairKind: 'ruin' | 'fire' | null;
+    /** Agir was pressed: the repair progresses on its own. */
+    started: boolean;
   };
   /** Bottles in flight (render only). */
   molotovs: Telegraph[];
@@ -278,7 +284,7 @@ export class Sim {
     for (const a of this.attacks) ev.push(...a.step(dt, this.attackCtx()));
     if (this.rescue) ev.push(...this.rescue.step(dt, { horde: this.horde, rules: this.rules, player: p, spawner: this.objectiveSpawner }));
 
-    const kit = this.toolboxes.step(dt, { player: p, horde: this.horde, targets: this.targets, rules: this.rules });
+    const kit = this.toolboxes.step(dt, { player: p, horde: this.horde, targets: this.targets, rules: this.rules, act: input.act });
     ev.push(...kit.events);
     this.toolboxMessage = kit.message;
     const heal = this.stations.step({ player: p, rules: this.rules });
@@ -355,7 +361,7 @@ export class Sim {
         carried: this.toolboxes.carried,
         progress: this.toolboxes.progress,
         message: this.toolboxMessage,
-        repairTarget: this.toolboxes.repairTarget(p.pos, this.targets),
+        ...this.repairView(),
       },
       molotovs: this.molotovs.map((t) => ({ from: v(t.from), to: v(t.to), until: t.until })),
       school: {
@@ -370,6 +376,14 @@ export class Sim {
       weaponsOnGround: this.weapons.ground.map((w) => ({ id: w.id, kind: w.kind, pos: v(w.pos), expiresAt: w.expiresAt })),
       stats: { ...this.rules.stats },
     };
+  }
+
+  /** The toolbox repair in reach of Paul, as the HUD shows it. */
+  private repairView(): Pick<Snapshot['toolboxes'], 'repairTarget' | 'canRepair' | 'repairKind' | 'started'> {
+    const kit = this.toolboxes;
+    const target = kit.repairTarget(this.player.pos, this.targets);
+    const repairKind = target === null ? null : this.targets.get(target).state === 'ruined' ? 'ruin' : 'fire';
+    return { repairTarget: target, canRepair: target !== null && kit.ready, repairKind, started: kit.started };
   }
 
   /** Horde sites: every target under a live (started, unresolved) attack; other targets cost no flow field. */

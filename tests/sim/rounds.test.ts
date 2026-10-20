@@ -178,6 +178,16 @@ describe('rounds in the sim', () => {
     expect(peak).toBeGreaterThanOrEqual(1);
   });
 
+  test('toolboxes are placed at round start as well (round 1 has two on the ground, none within 64 px of Paul)', () => {
+    const sim = new Sim(3, { invulnerable: true });
+    expect(sim.toolboxes.ground).toHaveLength(0);
+    const ev = drive(sim, roundStarted(1));
+    expect(of(ev, 'ToolboxSpawned')).toHaveLength(CONFIG.kit.maxGround);
+    expect(sim.toolboxes.ground).toHaveLength(CONFIG.kit.maxGround);
+    for (const g of sim.toolboxes.ground)
+      expect(Math.hypot(g.pos.x - sim.player.pos.x, g.pos.y - sim.player.pos.y)).toBeGreaterThanOrEqual(CONFIG.kit.minPlaceFromPlayer);
+  });
+
   test('breather: 6 s with no entry after the whole roster is KO; stations recharged; toolboxes refilled to 2; RoundCompleted bonus only if all objectives succeeded', () => {
     const sim = new Sim(3, { invulnerable: true });
     sim.stations.list[0]!.charged = false;
@@ -438,7 +448,9 @@ describe('snapshot', () => {
     expect(s.targets.map((t) => t.id)).toEqual(DISTRICT.targets.map((t) => t.id));
     expect(s.targets.find((t) => t.id === 'school')).toMatchObject({ kind: 'school', state: 'attacked', hp: 100, maxHp: 100, prop: false, burning: false });
     expect(s.targets.find((t) => t.id === 'busStop')).toMatchObject({ state: 'intact', maxHp: 60, prop: true });
-    expect(s.toolboxes).toEqual({ ground: [], carried: false, progress: 0, message: null, repairTarget: null });
+    // toolboxes are placed at round start too (round 1 has some)
+    expect(s.toolboxes).toMatchObject({ carried: false, progress: 0, message: null, repairTarget: null, canRepair: false, repairKind: null, started: false });
+    expect(s.toolboxes.ground).toHaveLength(CONFIG.kit.maxGround);
     expect(s.molotovs).toEqual([]);
     let thrown: Ev<'MolotovThrown'> | null = null;
     for (let i = 0; i < 60 * 40 && !thrown; i++) {
@@ -454,14 +466,17 @@ describe('snapshot', () => {
   });
 });
 
-test('a toolbox repair in the sim: snapshot progress, TargetRepaired, stats.repairs', () => {
+test('a toolbox repair in the sim: ready until Agir is pressed, then snapshot progress, TargetRepaired, stats.repairs', () => {
   const sim = new Sim(12, { invulnerable: true });
   const door = DISTRICT.targets.find((t) => t.id === 'busStop')!.door;
   sim.targets.ruin('busStop', 'busStop#x');
   sim.toolboxes.carried = true;
   sim.player.pos = { ...door };
-  sim.step(IDLE);
-  expect(sim.snapshot().toolboxes).toMatchObject({ carried: true, repairTarget: 'busStop', message: null });
+  for (let i = 0; i < 30; i++) sim.step(IDLE);
+  expect(sim.snapshot().toolboxes).toMatchObject({ carried: true, repairTarget: 'busStop', message: null, canRepair: true, repairKind: 'ruin', started: false, progress: 0 });
+  // one press (F / touch Agir), then the key is released
+  sim.step({ ...IDLE, act: true });
+  expect(sim.snapshot().toolboxes).toMatchObject({ started: true, repairKind: 'ruin' });
   expect(sim.snapshot().toolboxes.progress).toBeGreaterThan(0);
   const ev: SimEvent[] = [];
   for (let i = 0; i < 60 * CONFIG.kit.repairSec; i++) ev.push(...sim.step(IDLE));

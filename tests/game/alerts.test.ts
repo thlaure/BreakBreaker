@@ -509,7 +509,7 @@ describe('Hud alerts and edge indicators', () => {
     hud.destroy();
   });
 
-  test('toolbox prompts are informational (no Agir button); the toolbox slot reads Caisse 0/1 or 1/1', () => {
+  test('toolbox prompts: messages are informational, « Réparer » shows the touch Agir button; the toolbox slot reads Caisse 0/1 or 1/1', () => {
     document.body.innerHTML = '<div id="touch-ui" class="visible"><button data-action="act">Agir</button></div>';
     const touch = document.getElementById('touch-ui')!;
     const btn = touch.querySelector<HTMLElement>('[data-action=act]')!;
@@ -523,7 +523,12 @@ describe('Hud alerts and edge indicators', () => {
     hud.update(snap((x) => { x.toolboxes.carried = true; x.toolboxes.message = 'Abords non sécurisés'; }), view);
     expect(prompt().textContent).toBe('Abords non sécurisés');
     expect(hud.root.textContent).toContain('Caisse 1/1');
-    hud.update(snap((x) => { x.toolboxes.carried = true; x.toolboxes.progress = 0.5; x.toolboxes.repairTarget = 'car1'; }), view);
+    hud.update(snap((x) => { x.toolboxes.carried = true; x.toolboxes.repairTarget = 'car1'; x.toolboxes.canRepair = true; x.toolboxes.repairKind = 'ruin'; }), view);
+    // touch: no key in the text, the Agir button shows with the action's label
+    expect(prompt().textContent).toBe('Réparer');
+    expect(btn.style.display).toBe('');
+    expect(btn.textContent).toBe('Réparer');
+    hud.update(snap((x) => { x.toolboxes.carried = true; x.toolboxes.progress = 0.5; x.toolboxes.started = true; x.toolboxes.repairTarget = 'car1'; x.toolboxes.canRepair = true; x.toolboxes.repairKind = 'ruin'; }), view);
     expect(prompt().textContent).toBe('Réparation…');
     expect(btn.style.display).toBe('none');
     hud.destroy();

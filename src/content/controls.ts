@@ -2,7 +2,7 @@
 
 export const RULES: readonly string[] = [
   'Pas de limite de temps : la partie se termine quand Paul est mis KO ou quand tu l’arrêtes volontairement.',
-  'La partie avance par manches, avec 6 s de répit entre deux. Un lieu attaqué perd de la santé (feu, casse) : neutralise ses casseurs pour le sauver. Un lieu détruit n’arrête pas la partie ; passe sur une caisse à outils puis reste à côté de la ruine pour le réparer.',
+  'La partie avance par manches, avec 6 s de répit entre deux. Un lieu attaqué perd de la santé (feu, casse) : neutralise ses casseurs pour le sauver. Un lieu détruit n’arrête pas la partie : pour le réparer, passe sur une caisse à outils, va près du lieu en ruine ou en feu et appuie sur F.',
   'Les groupes pacifiques et les victimes sont à protéger et à contourner : Paul ne peut pas les frapper.',
   'Des armes apparaissent au hasard dans les rues (bâton, marteau, panneau) : passe dessus pour les prendre. Elles mettent KO d’un coup, frappent plus loin et s’usent après quelques coups.',
   'Les pierres lancées par les casseurs tombent au sol : ramasse-les puis renvoie-les. Passe sur une station « Soins » pour récupérer de la santé (une fois par station).',
@@ -22,6 +22,7 @@ export const CONTROLS: readonly ControlRow[] = [
   { action: 'Frapper', keyboard: 'Espace ou clic gauche', touch: 'Bouton Frapper' },
   { action: 'Renvoyer une pierre', keyboard: 'E ou clic droit', touch: 'Bouton Renvoyer : toucher = dernière visée, glisser = viser' },
   { action: 'Courir', keyboard: 'Maj', touch: 'Pousser le joystick à fond' },
+  { action: 'Réparer / éteindre (caisse à outils)', keyboard: 'F', touch: 'Bouton Agir (près d’un lieu à réparer)' },
   { action: 'Pause', keyboard: 'Échap', touch: 'Bouton Pause' },
 ];
 

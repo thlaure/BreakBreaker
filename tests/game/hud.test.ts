@@ -123,12 +123,29 @@ describe('contextPrompt', () => {
 });
 
 describe('contextPrompt: toolboxes', () => {
+  const ready = (kind: 'ruin' | 'fire') => (x: Snapshot): void => {
+    x.toolboxes.carried = true;
+    x.toolboxes.repairTarget = 'busStop';
+    x.toolboxes.canRepair = true;
+    x.toolboxes.repairKind = kind;
+  };
+
+  test('with a toolbox next to a ruin or a fire, safe: an actionable F prompt (touch: no key, Agir labelled)', () => {
+    expect(contextPrompt(snap(ready('ruin')))).toEqual({ text: 'F — Réparer', label: 'Réparer' });
+    expect(contextPrompt(snap(ready('ruin')), true)).toEqual({ text: 'Réparer', label: 'Réparer' });
+    expect(contextPrompt(snap(ready('fire')))).toEqual({ text: 'F — Éteindre le feu', label: 'Éteindre' });
+    expect(contextPrompt(snap(ready('fire')), true)).toEqual({ text: 'Éteindre le feu', label: 'Éteindre' });
+    // started: progress shown, no button
+    expect(contextPrompt(snap((x) => { ready('ruin')(x); x.toolboxes.started = true; x.toolboxes.progress = 0.3; }))).toEqual({ text: 'Réparation…', label: null });
+  });
+
   test('toolbox messages and the repair in progress are informational (no Agir label)', () => {
     expect(contextPrompt(snap((x) => { x.toolboxes.message = 'Caisse à outils requise'; }))).toEqual({ text: 'Caisse à outils requise', label: null });
     expect(contextPrompt(snap((x) => { x.toolboxes.message = 'Abords non sécurisés'; }), true)).toEqual({ text: 'Abords non sécurisés', label: null });
     const repairing = snap((x) => {
       x.toolboxes.carried = true;
       x.toolboxes.progress = 1.2;
+      x.toolboxes.started = true;
       x.toolboxes.repairTarget = 'busStop';
       x.stationMessage = 'Santé au maximum';
     });
@@ -236,9 +253,11 @@ describe('content', () => {
     expect(CONTROLS.some((c) => c.action === 'Pause' && c.keyboard === 'Échap')).toBe(true);
   });
 
-  test('no Agir row: rescuing needs no key, F only skips the school sequence in this slice', () => {
-    expect(CONTROLS.some((c) => /Agir|aider/i.test(c.action) || /maintenir/.test(c.keyboard))).toBe(false);
-    for (const r of RULES) expect(r).not.toMatch(/maintenir|\bF\b/);
+  test('F / Agir repairs or puts out a fire with a toolbox (a press, never held); rescuing needs no key', () => {
+    expect(CONTROLS).toContainEqual({ action: 'Réparer / éteindre (caisse à outils)', keyboard: 'F', touch: 'Bouton Agir (près d’un lieu à réparer)' });
+    expect(CONTROLS.some((c) => /aider/i.test(c.action) || /maintenir/.test(c.keyboard))).toBe(false);
+    for (const r of RULES) expect(r).not.toMatch(/maintenir|reste à côté/);
+    expect(RULES.some((r) => r.includes('passe sur une caisse à outils, va près du lieu en ruine ou en feu et appuie sur F'))).toBe(true);
   });
 });
 
