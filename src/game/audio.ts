@@ -336,6 +336,7 @@ export class GameAudio {
           break;
         case 'ProjectileLanded':
         case 'WeaponBroken':
+        case 'FlagSwapped':
           this.play('land');
           break;
         case 'ProjectilePickedUp':
@@ -359,6 +360,8 @@ export class GameAudio {
         case 'TargetSaved':
         case 'TargetRepaired':
         case 'RoundCompleted':
+        case 'MonumentDefended':
+        case 'FlagCaptured':
           // one chime per batch: a target saved by the round's last KO lands with RoundCompleted
           if (!chimed) this.chime();
           chimed = true;
@@ -370,6 +373,7 @@ export class GameAudio {
         // it is not used up before the fire); the fire loop then follows burning targets (threatLevel, every frame)
         case 'TargetIgnited':
         case 'RescueStarted':
+        case 'MonumentAttacked':
           if (!this.alarmed.has(e.incidentId)) {
             this.alarmed.add(e.incidentId);
             this.play('alarm');

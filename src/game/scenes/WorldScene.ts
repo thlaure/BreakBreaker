@@ -15,6 +15,7 @@ import { HostileLayer, PaulView } from '../render/actors';
 import { FurieAura, PowBubbles, makeFurieTextures } from '../render/furie';
 import { GroupView, VictimView } from '../render/crowd';
 import { FirePatchLayer, MolotovFx, RockLayer, TelegraphLayer } from '../render/fx';
+import { MonumentView, makeMonumentTextures } from '../render/monument';
 import { TargetsLayer, makeTargetTextures } from '../render/targets';
 import { StationsView, ToolboxView, WorldView, makeRockTextures, makeTextures } from '../render/world';
 import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapons';
@@ -52,6 +53,7 @@ export class WorldScene extends Phaser.Scene {
 
   private world!: WorldView;
   private targetViews!: TargetsLayer;
+  private monument!: MonumentView;
   private toolboxes!: ToolboxView;
   private molotovFx!: MolotovFx;
   /** Firebombers' bottles flying at where Paul stood, and the fire they leave. */
@@ -162,9 +164,11 @@ export class WorldScene extends Phaser.Scene {
     makeWeaponTextures(this);
     makeTargetTextures(this);
     makeFurieTextures(this);
+    makeMonumentTextures(this);
     this.reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.world = new WorldView(this);
     this.targetViews = new TargetsLayer(this, this.world.buildingParts);
+    this.monument = new MonumentView(this);
     this.stations = new StationsView(this);
     this.group = new GroupView(this);
     this.victim = new VictimView(this);
@@ -284,6 +288,8 @@ export class WorldScene extends Phaser.Scene {
         cam.shake(SHAKE_MS, new Phaser.Math.Vector2(SHAKE_PX / cam.width, SHAKE_PX / cam.height), true);
       } else if (e.type === 'ToolboxPickedUp') {
         this.toolboxes.picked(time);
+      } else if (e.type === 'FlagCaptured') {
+        this.monument.onEvent(e);
       } else if (e.type === 'FireOut' || e.type === 'BuildingDestroyed' || e.type === 'TargetRepaired') {
         this.targetViews.onEvent(e, time);
       }
@@ -308,6 +314,7 @@ export class WorldScene extends Phaser.Scene {
     this.group.update(time);
     this.victim.update(snap.rescue, time);
     this.targetViews.update(snap, time, dtMs);
+    this.monument.update(snap.monument, time);
     this.molotovFx.update(snap.molotovs, snap.now, time);
     this.firePatches.update(snap.firePatches, time);
     this.firebombFx.update(snap.firebombs, snap.now, time);

@@ -38,6 +38,10 @@
 .bb-card .hpbar .fill.low { background: var(--bb-bad); }
 .bb-card.st-en-feu .hpbar .fill:not(.low) { background: var(--bb-fire); }
 .bb-card.st-en-feu { --bar: var(--bb-fire); }
+.bb-card .hpbar .fill.capture { background: #5a9cff; }
+.bb-card.st-zone-contestée { --bar: var(--bb-bad); }
+.bb-card.st-zone-contestée .status::before { content: '‖ '; }
+.bb-card.k-flag.st-en-cours { --bar: #5a9cff; }
 .bb-line .stat.kit.full { color: var(--bb-fire); }
 .bb-prompt { position: absolute; left: 50%; top: calc(50% + 44px); transform: translateX(-50%); padding: 4px 10px; background: var(--bb-panel); border: 1px solid var(--bb-accent); border-radius: 6px; font-weight: bold; white-space: nowrap; }
 
@@ -59,6 +63,7 @@
 .bb-alert.tone-round { --edge: #ff5a3c; --flash: #ffd166; --tint: #2c1012; }
 .bb-alert.tone-drop { --edge: #7be0ff; --flash: #ffd166; --tint: #0f2230; }
 .bb-alert.tone-furie { --edge: #ffe066; --flash: #fff7e0; --tint: #2e2608; }
+.bb-alert.tone-win { --edge: var(--bb-ok); --flash: #fff7e0; --tint: #0f2a18; }
 .bb-alert .ico { display: inline-flex; flex: none; }
 .bb-alert .txt { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .bb-alert .title { font-size: 16px; line-height: 1.25; font-weight: 400; color: var(--edge); text-shadow: 2px 2px 0 #000; }
@@ -94,6 +99,7 @@
 .bb-edge.tone-warn { --edge: var(--bb-accent); }
 .bb-edge.tone-drop { --edge: #7be0ff; }
 .bb-edge.tone-furie { --edge: #ffe066; }
+.bb-edge.tone-win { --edge: var(--bb-ok); }
 .bb-edge .arrow { display: inline-flex; width: 16px; height: 16px; align-items: center; justify-content: center; color: var(--edge); }
 .bb-edge .ico { display: inline-flex; }
 .bb-edge .txt { display: flex; flex-direction: column; }

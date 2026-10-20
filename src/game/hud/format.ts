@@ -16,7 +16,9 @@ export type IncidentStatus =
   | 'en feu'
   | 'attaquée'
   | 'perdue'
-  | 'sauvée';
+  | 'sauvée'
+  | 'zone contestée'
+  | 'à reprendre';
 
 export function formatDuration(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
@@ -101,9 +103,9 @@ export interface IncidentLine {
   key: string;
   kind: IncidentKind;
   name: string;
-  /** Rescue: whole seconds remaining, rounded up, e.g. "23 s"; target: health, e.g. "64 %". */
+  /** Rescue: whole seconds remaining, rounded up, e.g. "23 s"; target: health, e.g. "64 %"; flag: « capture 5/8 s ». */
   time: string;
-  /** Target health in percent (mini bar), null for the rescue. */
+  /** Target health (or the flag's capture) in percent (mini bar), null for the rescue. */
   hp: number | null;
   status: IncidentStatus;
   target: Vec;
@@ -127,6 +129,14 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
   if (r && (r.stage === 'threat' || r.stage === 'secured')) {
     const status: IncidentStatus = r.stage === 'secured' ? 'sécurisé' : rescueDrain;
     out.push({ key: 'rescue', kind: r.kind, name: 'Secours', time: secs(r.remaining), hp: null, status, target: r.victimPos });
+  }
+  const m = s.monument;
+  if (m.flag === 'palestinian') {
+    // capture the flag: whole seconds held, a mini bar, paused while a hostile is inside the zone
+    const status: IncidentStatus = m.contested ? 'zone contestée' : m.inZone ? 'en cours' : 'à reprendre';
+    const held = Math.min(m.captureSec, Math.floor(m.capture + 1e-9));
+    const hp = Math.max(0, Math.min(100, (100 * m.capture) / m.captureSec));
+    out.push({ key: 'monument', kind: 'flag', name: 'Drapeau', time: `capture ${held}/${m.captureSec} s`, hp, status, target: m.mast });
   }
   return out;
 }

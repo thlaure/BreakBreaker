@@ -379,7 +379,8 @@ export class Hud {
     const c = this.c;
     const slug = line.status.replace(/\s/g, '-');
     c.cls(card.root, `bb-card k-${line.kind} st-${slug}`);
-    const icon: AlertIcon = incidentLook(line.kind, line.hp === null ? undefined : line.status === 'en feu').icon;
+    const target = line.hp !== null && line.kind !== 'flag';
+    const icon: AlertIcon = incidentLook(line.kind, target ? line.status === 'en feu' : undefined).icon;
     if (card.ico.dataset.icon !== icon) {
       card.ico.dataset.icon = icon;
       card.ico.innerHTML = pixelSvg(icon, 1);
@@ -389,7 +390,8 @@ export class Hud {
     card.bar.hidden = line.hp === null;
     if (line.hp !== null) {
       c.style(card.fill, `width:${line.hp.toFixed(0)}%`);
-      c.cls(card.fill, line.hp <= 30 ? 'fill low' : 'fill');
+      // a target's health turns red when low; the flag's capture bar fills up (no alarm colour)
+      c.cls(card.fill, line.kind === 'flag' ? 'fill capture' : line.hp <= 30 ? 'fill low' : 'fill');
     }
     c.text(card.status, line.status);
     const tiles = Math.round(Math.hypot(line.target.x - s.player.pos.x, line.target.y - s.player.pos.y) / TILE);

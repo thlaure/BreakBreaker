@@ -9,16 +9,17 @@ import type { CasseKind, SimEvent, Vec } from '../../sim/types';
  * INCIDENT_ALERTS (and a headline line); `alertFromEvent` / `activeIncidents` read the generic TargetIgnited event and
  * `snapshot.targets`. A round start has no position: its banner shows no arrow and no distance.
  */
-export type IncidentKind = CasseKind | 'groupHarassed' | 'elderlyRobbed';
+/** `monument` = an occupation under way; `flag` = the flag replaced, to capture back. */
+export type IncidentKind = CasseKind | 'groupHarassed' | 'elderlyRobbed' | 'monument' | 'flag';
 /** A special drop waiting on the ground: a weapon, or the mode furie. */
 export type DropKind = 'weaponDrop' | 'furieDrop';
 /**
  * Everything the banner can announce: positioned incidents and drops, and position-less round starts and mode furie
  * starts (`furie`).
  */
-export type AlertKind = IncidentKind | 'round' | DropKind | 'furie';
-export type AlertTone = 'fire' | 'warn' | 'round' | 'drop' | 'furie';
-export type AlertIcon = 'flame' | 'alert' | 'horde' | 'glass' | 'star' | 'bolt';
+export type AlertKind = IncidentKind | 'round' | DropKind | 'furie' | 'flagCaptured';
+export type AlertTone = 'fire' | 'warn' | 'round' | 'drop' | 'furie' | 'win';
+export type AlertIcon = 'flame' | 'alert' | 'horde' | 'glass' | 'star' | 'bolt' | 'flag';
 /** What a round is about (its first beat), shown under « MANCHE N ! ». */
 export type RoundHeadline = CasseKind | 'rescue' | 'monument';
 
@@ -40,6 +41,8 @@ export const INCIDENT_ALERTS: Readonly<Record<IncidentKind, AlertSpec>> = {
   shop: { title: 'BOUTIQUE EN FEU !', sub: 'Défends la boutique', label: 'BOUTIQUE', tone: 'fire', icon: 'flame' },
   groupHarassed: { title: 'AGRESSION EN COURS !', sub: 'Une personne est menacée', label: 'AGRESSION', tone: 'warn', icon: 'alert' },
   elderlyRobbed: { title: 'VOL EN COURS !', sub: 'Une personne âgée est menacée', label: 'VOL', tone: 'warn', icon: 'alert' },
+  monument: { title: 'MONUMENT ATTAQUÉ !', sub: 'Défends le drapeau', label: 'MONUMENT', tone: 'warn', icon: 'flag' },
+  flag: { title: 'DRAPEAU REMPLACÉ !', sub: 'Reprends le monument', label: 'DRAPEAU', tone: 'warn', icon: 'flag' },
 };
 
 const WEAPON_DROP: AlertSpec = { title: 'ARME SPÉCIALE !', sub: 'Fonce la ramasser', label: 'ARME', tone: 'drop', icon: 'star' };
@@ -47,6 +50,8 @@ const FURIE_DROP: AlertSpec = { title: 'MODE FURIE DISPONIBLE !', sub: 'Fonce le
 const DROPS: Readonly<Record<DropKind, AlertSpec>> = { weaponDrop: WEAPON_DROP, furieDrop: FURIE_DROP };
 /** How long the position-less « MODE FURIE ! » banner stays (short: Paul is busy hitting). */
 export const FURIE_ALERT_MS = 2200;
+/** How long the short « DRAPEAU RÉCUPÉRÉ ! » banner stays. */
+export const FLAG_ALERT_MS = 2600;
 
 /** Non-committal: the round start does not know whether the bottle will be thrown. */
 export const ROUND_HEADLINES: Readonly<Record<RoundHeadline, string>> = {
@@ -102,6 +107,17 @@ export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: 
       meta: '',
       positioned: false,
       ms: FURIE_ALERT_MS,
+    };
+  if (kind === 'flagCaptured')
+    return {
+      title: 'DRAPEAU RÉCUPÉRÉ !',
+      sub: 'Le drapeau français flotte à nouveau',
+      label: 'DRAPEAU',
+      tone: 'win',
+      icon: 'flag',
+      meta: '',
+      positioned: false,
+      ms: FLAG_ALERT_MS,
     };
   const meta = round <= 0 ? '' : total > 0 ? `Manche ${round} · ${casseurs(total)}` : `Manche ${round}`;
   return { ...INCIDENT_ALERTS[kind], meta, positioned: true };
@@ -167,6 +183,12 @@ export function alertFromEvent(e: SimEvent): Alert | null {
   }
   // picked up: short position-less banner (a reset while on is announced again)
   if (e.type === 'FurieStarted') return { id: 'furie', kind: 'furie', pos: null, wave: 0, total: 0 };
+  // the monument: occupation start, flag replaced (both tied to the 'monument' incident), flag captured back (short)
+  if (e.type === 'MonumentAttacked')
+    return { id: e.incidentId, kind: 'monument', pos: { ...e.pos }, wave: e.round, total: e.total, incident: 'monument' };
+  if (e.type === 'FlagSwapped')
+    return { id: `${e.incidentId}:swap`, kind: 'flag', pos: { ...e.pos }, wave: 0, total: 0, incident: 'monument' };
+  if (e.type === 'FlagCaptured') return { id: `flag#${e.swap}`, kind: 'flagCaptured', pos: null, wave: 0, total: 0 };
   return null;
 }
 
@@ -180,6 +202,10 @@ export function activeIncidents(s: Snapshot): Incident[] {
   for (const t of s.targets)
     if (t.state === 'attacked' || t.state === 'burning') out.push({ id: t.id, kind: t.kind, pos: { ...t.door }, burning: t.burning });
   if (s.rescue?.stage === 'threat') out.push({ id: 'rescue', kind: s.rescue.kind, pos: { ...s.rescue.victimPos } });
+  // the monument: its flag to take back (any time, breather included), or an occupation under way
+  const m = s.monument;
+  if (m.flag === 'palestinian') out.push({ id: 'monument', kind: 'flag', pos: { ...m.mast } });
+  else if (m.occupation?.stage === 'occupy') out.push({ id: 'monument', kind: 'monument', pos: { ...m.mast } });
   for (const w of s.weaponsOnGround)
     if (w.expiresAt !== null) out.push({ id: dropId(w.pos), kind: w.kind === 'furie' ? 'furieDrop' : 'weaponDrop', pos: { ...w.pos } });
   return out;
@@ -327,6 +353,20 @@ const SPRITES: Record<Sprite, string[]> = {
     '..KYK....',
     '.KWK.....',
     '.KK......',
+  ],
+  // a neutral pennant on a pole (no national flag): the monument
+  flag: [
+    'KK........',
+    'KWKKK.....',
+    'KWKYYKK...',
+    'KWKYYYYKK.',
+    'KWKYYYYYYK',
+    'KWKYYYYKK.',
+    'KWKYYKK...',
+    'KWKKK.....',
+    'KWK.......',
+    'KWK.......',
+    'KKK.......',
   ],
   // a sparkle: the special weapon to grab
   star: [
