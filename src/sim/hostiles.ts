@@ -159,7 +159,7 @@ export class Horde {
     return gone.length;
   }
 
-    active(): Hostile[] {
+  active(): Hostile[] {
     return this.list.filter((h) => h.state !== 'ko');
   }
 
