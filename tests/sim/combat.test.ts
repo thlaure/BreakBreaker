@@ -20,7 +20,7 @@ test('sweep hits at most 3, each once per swing (RC-06)', () => {
     view(3, { x: 690, y: 730 }),
     view(4, { x: 680, y: 712 }),
     view(5, { x: 705, y: 715 }),
-    view(6, { x: 610, y: 720 }), // behind Paul: out of arc
+    view(6, { x: 610, y: 720 }), // behind Paul, but farther than the 3 nearest
   ];
   const r1 = sweep(p, 0, targets, grid);
   expect(r1.hits).toHaveLength(3);
@@ -101,4 +101,19 @@ test('invulnerability window 0.6 s blocks the second hit (RC-12)', () => {
   expect(damagePlayer(p, 200, 2)).toBe(true);
   expect(p.ko).toBe(true);
   expect(p.hp).toBe(0);
+});
+
+test('circular sweep: hits a rioter behind Paul and turns him to face it', () => {
+  const p = createPlayer({ x: 656, y: 720 });
+  p.facing = { x: 1, y: 0 };
+  const r = sweep(p, 0, [view(1, { x: 620, y: 720 })], grid);
+  expect(r.hits).toEqual([1]);
+  expect(p.facing.x).toBeCloseTo(-1);
+  expect(p.facing.y).toBeCloseTo(0);
+});
+
+test('circular sweep still respects range', () => {
+  const p = createPlayer({ x: 656, y: 720 });
+  const far = CONFIG.melee.range + CONFIG.hostile.radius + 1;
+  expect(sweep(p, 0, [view(1, { x: 656, y: 720 - far })], grid).hits).toEqual([]);
 });

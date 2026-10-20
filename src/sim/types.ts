@@ -36,6 +36,8 @@ export type SimEvent =
   | { type: 'RescueCompleted'; incidentId: string }
   | { type: 'RescueFailed'; incidentId: string }
   | { type: 'HealCompleted' }
-  | { type: 'HealInterrupted' }
+  | { type: 'WeaponSpawned'; kind: 'baton' | 'marteau' | 'panneau'; pos: Vec }
+  | { type: 'WeaponPickedUp'; kind: 'baton' | 'marteau' | 'panneau' }
+  | { type: 'WeaponBroken'; kind: 'baton' | 'marteau' | 'panneau' }
   | { type: 'WaveAnnounced'; index: number }
   | { type: 'PlayerKnockedOut' };

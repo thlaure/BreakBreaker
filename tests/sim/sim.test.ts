@@ -168,30 +168,27 @@ describe('Sim facade', () => {
     expect(sim.rules.endCause).toBe('ko');
   });
 
-  test('heal that would complete on the KO step does not revive Paul (RC-41)', () => {
+  test('station touched on the KO step does not revive Paul (RC-41)', () => {
     const run = (withAttacker: boolean) => {
       const sim = new Sim(9);
       const st = DISTRICT.stations[0]!;
       sim.player.pos = { ...st };
       sim.player.hp = 4;
-      const healSteps = Math.round(CONFIG.heal.interactSec / CONFIG.step);
       if (withAttacker) {
         const h = sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { x: st.x + 14, y: st.y } })!;
         h.state = 'windup';
-        h.stateUntil = healSteps * CONFIG.step;
+        h.stateUntil = 0; // the blow lands on the very first step
         h.nextAttackAt = 99;
       }
-      const events: SimEvent[][] = [];
-      for (let i = 0; i < healSteps; i++) events.push(sim.step(input({ act: true })));
+      const events: SimEvent[][] = [sim.step(input())];
       return { sim, events };
     };
     const ctrl = run(false);
-    expect(ctrl.events[ctrl.events.length - 1]).toContainEqual({ type: 'HealCompleted' });
+    expect(ctrl.events[0]).toContainEqual({ type: 'HealCompleted' });
     expect(ctrl.sim.player.hp).toBe(4 + CONFIG.heal.amount);
 
     const { sim, events } = run(true);
     const last = events[events.length - 1]!;
-    expect(events.slice(0, -1).flat().some((e) => e.type === 'PlayerDamaged')).toBe(false);
     expect(last).toContainEqual({ type: 'PlayerKnockedOut' });
     expect(last.some((e) => e.type === 'HealCompleted')).toBe(false);
     expect(sim.player.hp).toBe(0);

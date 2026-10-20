@@ -13,6 +13,10 @@ import { Rocks, type RockCtx, type RockState } from './projectiles';
 import { rng } from './rng';
 import { Rules, type SessionStats } from './rules';
 import type { InputFrame, Role, SimEvent, Variant, Vec } from './types';
+import { Weapons, type WeaponKind } from './weapons';
+
+/** Damage of a weapon strike: enough to KO any rioter (spec: weapons are one-hit KO). */
+const WEAPON_DAMAGE = 99;
 
 export interface Telegraph {
   from: Vec;
@@ -41,8 +45,11 @@ export interface Snapshot {
   victim: Vec | null;
   school: { stage: SchoolStage; integrity: number; remaining: number; status: ReturnType<SchoolIncident['status']> };
   rescue: { stage: RescueStage; remaining: number; victimPos: Vec; kind: RescueKind } | null;
-  stations: { id: string; pos: Vec; charged: boolean; progress: number }[];
+  stations: { id: string; pos: Vec; charged: boolean }[];
   stationMessage: StationMessage;
+  /** Weapon in Paul's hands (null = bare hands) and strikes left. */
+  weapon: { kind: WeaponKind; uses: number } | null;
+  weaponsOnGround: { id: number; kind: WeaponKind; pos: Vec }[];
   objective: Vec | null;
   stats: SessionStats;
 }
@@ -86,6 +93,7 @@ export class Sim {
   readonly school = new SchoolIncident();
   readonly stations = new Stations(DISTRICT.stations);
   readonly director = new Director();
+  readonly weapons: Weapons;
   readonly rand: () => number;
   rescue: RescueIncident | null = null;
   now = 0;
@@ -100,6 +108,8 @@ export class Sim {
 
   constructor(seed: number, opts: { invulnerable?: boolean } = {}) {
     this.rand = rng(seed);
+    // Separate stream so weapon spawns never shift the director's random sequence.
+    this.weapons = new Weapons(this.grid, rng((seed ^ 0x9e3779b9) >>> 0));
     this.invulnerable = opts.invulnerable ?? false;
     this.fields = { player: new FlowField(this.grid), school: new FlowField(this.grid), victim: new FlowField(this.grid) };
   }
@@ -138,10 +148,14 @@ export class Sim {
 
     stepPlayer(p, input, dt, now, this.grid);
     if (input.strike) {
-      for (const id of sweep(p, now, this.horde.views(), this.grid).hits) {
-        ev.push({ type: 'HitConfirmed', targetLifeId: id, damage: 1, source: 'melee' });
-        this.hit(id, 1, ev);
+      // Bare hands: 1 damage (2 hits to KO). Any weapon: KO in one hit.
+      const damage = this.weapons.held ? WEAPON_DAMAGE : 1;
+      const { hits } = sweep(p, now, this.horde.views(), this.grid, this.weapons.range());
+      for (const id of hits) {
+        ev.push({ type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee' });
+        this.hit(id, damage, ev);
       }
+      ev.push(...this.weapons.onSwing(hits.length));
     }
     if (input.throwRock) {
       const aim = input.aim && len(input.aim) > 0 ? input.aim : p.facing;
@@ -199,15 +213,10 @@ export class Sim {
         ...this.rescue.step(dt, { horde: this.horde, rules: this.rules, player: p, actHeld: input.act, playerDamaged: damaged }),
       );
 
-    const heal = this.stations.step(dt, {
-      player: p,
-      actHeld: input.act,
-      moved: len(input.move) > 0,
-      damagedThisStep: damaged,
-      rules: this.rules,
-    });
+    const heal = this.stations.step({ player: p, rules: this.rules });
     ev.push(...heal.events);
     this.stationMessage = heal.message;
+    ev.push(...this.weapons.step(dt, now, p));
 
     ev.push(...this.director.step(dt, this));
     this.tally(ev);
@@ -258,8 +267,10 @@ export class Sim {
         status: this.school.status(),
       },
       rescue: r ? { stage: r.stage, remaining: r.remaining, victimPos: v(r.victimPos), kind: r.kind } : null,
-      stations: this.stations.list.map((s) => ({ id: s.id, pos: v(s.pos), charged: s.charged, progress: s.progress })),
+      stations: this.stations.list.map((s) => ({ id: s.id, pos: v(s.pos), charged: s.charged })),
       stationMessage: this.stationMessage,
+      weapon: this.weapons.held ? { ...this.weapons.held } : null,
+      weaponsOnGround: this.weapons.ground.map((w) => ({ id: w.id, kind: w.kind, pos: v(w.pos) })),
       objective: schoolUrgent ? v(DISTRICT.school.door) : victim,
       stats: { ...this.rules.stats },
     };

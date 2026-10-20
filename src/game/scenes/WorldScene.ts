@@ -14,6 +14,7 @@ import { HostileLayer, PaulView } from '../render/actors';
 import { GroupView, VictimView } from '../render/crowd';
 import { RockLayer, TelegraphLayer } from '../render/fx';
 import { SchoolView, StationsView, WorldView, makeRockTextures, makeTextures } from '../render/world';
+import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapons';
 
 const HIT_STOP_MS = 60;
 const SHAKE_MS = 120;
@@ -51,6 +52,8 @@ export class WorldScene extends Phaser.Scene {
   private paul!: PaulView;
   private hostiles!: HostileLayer;
   private rocks!: RockLayer;
+  private weaponsOnGround!: WeaponLayer;
+  private heldWeapon!: HeldWeaponView;
   private telegraphs!: TelegraphLayer;
 
   private hitStopUntil = 0;
@@ -142,6 +145,7 @@ export class WorldScene extends Phaser.Scene {
 
     makeTextures(this);
     makeRockTextures(this);
+    makeWeaponTextures(this);
     this.world = new WorldView(this);
     this.school = new SchoolView(this, this.world.schoolParts);
     this.stations = new StationsView(this);
@@ -149,10 +153,12 @@ export class WorldScene extends Phaser.Scene {
     this.victim = new VictimView(this);
     this.hostiles = new HostileLayer(this);
     this.rocks = new RockLayer(this);
+    this.weaponsOnGround = new WeaponLayer(this);
     this.telegraphs = new TelegraphLayer(this);
     const snap = this.sim.snapshot();
     this.playerPos = { ...snap.player.pos };
     this.paul = new PaulView(this, snap.player.pos);
+    this.heldWeapon = new HeldWeaponView(this);
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.world.width, this.world.height);
@@ -244,14 +250,16 @@ export class WorldScene extends Phaser.Scene {
   private render(snap: Snapshot, time: number, dtMs: number): void {
     const flying = new Map(this.sim.rocks.flying().map((r) => [r.id, r.t]));
     this.paul.update(snap.player, this.struck, time, dtMs);
+    this.heldWeapon.update(snap.weapon, snap.player, this.struck, time);
     this.struck = false;
+    this.weaponsOnGround.update(snap.weaponsOnGround, time);
     this.hostiles.update(snap.hostiles, time);
     this.rocks.update(snap.rocks, (id) => flying.get(id) ?? 0, time);
     this.telegraphs.update(snap, this.cameras.main.worldView, time);
     this.group.update(time);
     this.victim.update(snap.rescue, time);
     this.school.update(snap.school.stage);
-    this.stations.update(snap.stations);
+    this.stations.update(snap.stations, time);
     this.world.update(snap.player.pos);
   }
 }

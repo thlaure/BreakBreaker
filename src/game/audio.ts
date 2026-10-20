@@ -161,9 +161,12 @@ export class GameAudio {
           this.play('throw');
           break;
         case 'ProjectileLanded':
+        case 'WeaponBroken':
           this.play('land');
           break;
         case 'ProjectilePickedUp':
+        case 'WeaponPickedUp':
+        case 'HealCompleted':
           this.play('pickup');
           break;
         case 'PlayerDamaged':

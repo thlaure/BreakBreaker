@@ -1,7 +1,7 @@
 import type { Snapshot } from '../../sim/sim';
 import type { Vec } from '../../sim/types';
+import { WEAPONS } from '../../sim/weapons';
 
-const STATION_RANGE = 28;
 const HELP_RANGE = 32;
 
 /** 'renforts': the school cinematic (reinforcements on their way) — the countdown is frozen, not interrupted. */
@@ -65,7 +65,6 @@ export function contextPrompt(s: Snapshot, touch = false): Prompt | null {
   const key = touch ? '' : 'F — ';
   if (s.rescue?.stage === 'secured' && d(p, s.rescue.victimPos) <= HELP_RANGE) return { text: `${key}Aider`, label: 'Aider' };
   if (s.stationMessage) return { text: s.stationMessage, label: DEFAULT_ACT_LABEL };
-  if (s.stations.some((st) => st.charged && d(p, st.pos) <= STATION_RANGE)) return { text: `${key}Se soigner`, label: 'Soigner' };
   return null;
 }
 
@@ -98,3 +97,9 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
   }
   return out;
 }
+
+/** HUD weapon line: weapon name and strikes left, or bare hands. */
+export function weaponLine(s: Snapshot): string {
+  return s.weapon ? `Arme : ${WEAPONS[s.weapon.kind].label} (${s.weapon.uses})` : 'Arme : mains nues';
+}
+

@@ -51,20 +51,32 @@ export function stepPlayer(p: Player, input: InputFrame, dt: number, now: number
 
 /**
  * Melee swing. Within the cooldown the current swing is reported again with no hits (no repeat hits per swing).
- * Hits active hostiles in the facing arc, nearest first, at most CONFIG.melee.maxTargets, with a clear line
+ * Hits active hostiles all around Paul (CONFIG.melee.arcDeg = 360), nearest first, at most CONFIG.melee.maxTargets, with a clear line
  * (grid.lineClear also treats the peaceful group as blocking).
  */
-export function sweep(p: Player, now: number, targets: HostileView[], grid: Grid): { swingId: number; hits: number[] } {
+export function sweep(
+  p: Player,
+  now: number,
+  targets: HostileView[],
+  grid: Grid,
+  range = CONFIG.melee.range,
+): { swingId: number; hits: number[] } {
   if (p.ko || now < p.strikeReadyAt) return { swingId: p.swingId, hits: [] };
   p.swingId += 1;
   p.strikeReadyAt = now + CONFIG.melee.cooldown;
-  const { range, arcDeg, maxTargets } = CONFIG.melee;
+  const { arcDeg, maxTargets } = CONFIG.melee;
   const hits = targets
     .filter((t) => t.active && inArc(p.pos, p.facing, t.pos, range + t.r, arcDeg) && grid.lineClear(p.pos, t.pos))
     .map((t) => ({ id: t.lifeId, d: dist(p.pos, t.pos) }))
     .sort((a, b) => a.d - b.d || a.id - b.id)
     .slice(0, maxTargets)
     .map((t) => t.id);
+  // Circular swing: Paul turns toward the nearest rioter hit so the slash animation reads right.
+  const nearest = hits.length > 0 ? targets.find((t) => t.lifeId === hits[0]) : undefined;
+  if (nearest) {
+    const d = norm({ x: nearest.pos.x - p.pos.x, y: nearest.pos.y - p.pos.y });
+    if (d.x !== 0 || d.y !== 0) p.facing = d;
+  }
   return { swingId: p.swingId, hits };
 }
 

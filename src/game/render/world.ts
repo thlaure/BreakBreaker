@@ -197,9 +197,9 @@ export class SchoolView {
   }
 }
 
-/** Heal stations: green cross + "Soins"; greyed once used; progress ring while healing. */
+/** Heal stations: green cross + "Soins"; greyed once used (walking onto a charged one heals). */
 export class StationsView {
-  private readonly items: { icon: Phaser.GameObjects.Image; label: Phaser.GameObjects.Text; ring: Phaser.GameObjects.Graphics }[] =
+  private readonly items: { icon: Phaser.GameObjects.Image; label: Phaser.GameObjects.Text; glow: Phaser.GameObjects.Ellipse }[] =
     [];
 
   constructor(scene: Phaser.Scene) {
@@ -209,24 +209,22 @@ export class StationsView {
         .text(pos.x, pos.y + 12, 'Soins', { fontFamily: 'monospace', fontSize: '9px', color: '#e8ffe8', stroke: '#14121c', strokeThickness: 2 })
         .setOrigin(0.5, 0)
         .setDepth(pos.y + 0.1);
-      const ring = scene.add.graphics().setDepth(DEPTH.overlay);
-      this.items.push({ icon, label, ring });
+      const glow = scene.add.ellipse(pos.x, pos.y + 8, 30, 12, 0x5ee07a, 0.3).setDepth(pos.y - 1);
+      this.items.push({ icon, label, glow });
     }
   }
 
-  update(list: Snapshot['stations']): void {
+  update(list: Snapshot['stations'], nowMs: number): void {
     list.forEach((st, i) => {
       const it = this.items[i];
       if (!it) return;
       it.icon.setTint(st.charged ? 0xffffff : 0x6a6a6a).setAlpha(st.charged ? 1 : 0.7);
+      // Charged kits float and pulse so they read as pickups; used ones sit still.
+      const phase = nowMs / 1000 + i;
+      const bob = st.charged ? Math.round(2 * Math.sin(phase * 3)) : 0;
+      it.icon.setY(st.pos.y - bob).setScale(st.charged ? 1 + 0.08 * (0.5 + 0.5 * Math.sin(phase * 4)) : 1);
+      it.glow.setVisible(st.charged).setAlpha(0.15 + 0.3 * (0.5 + 0.5 * Math.sin(phase * 4)));
       it.label.setAlpha(st.charged ? 1 : 0.5);
-      it.ring.clear();
-      if (st.progress > 0 && st.charged) {
-        it.ring.lineStyle(2, 0x5ee07a, 1);
-        it.ring.beginPath();
-        it.ring.arc(st.pos.x, st.pos.y, 15, -Math.PI / 2, -Math.PI / 2 + st.progress * Math.PI * 2);
-        it.ring.strokePath();
-      }
     });
   }
 }

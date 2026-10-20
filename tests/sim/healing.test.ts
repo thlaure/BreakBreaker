@@ -5,54 +5,40 @@ import { createPlayer, damagePlayer } from '../../src/sim/player';
 import { Rules } from '../../src/sim/rules';
 
 const POS = { x: 100, y: 100 };
-const DT = 0.1;
 
 function setup(hp = 50) {
   const stations = new Stations([POS, { x: 500, y: 500 }]);
   const player = createPlayer({ x: 110, y: 100 });
   player.hp = hp;
   const rules = new Rules();
-  const step = (o: Partial<{ actHeld: boolean; moved: boolean; damagedThisStep: boolean }> = {}, dt = DT) =>
-    stations.step(dt, { player, actHeld: true, moved: false, damagedThisStep: false, rules, ...o });
+  const step = () => stations.step({ player, rules });
   return { stations, player, rules, step };
 }
 
-describe('heal stations', () => {
-  test('charged station heals +25 capped at 100, once (RC-36)', () => {
+describe('heal stations (walk-over)', () => {
+  test('stepping onto a charged station heals +25 at once, capped at 100, once (RC-36)', () => {
     const { stations, player, rules, step } = setup(90);
-    let events: unknown[] = [];
-    for (let i = 0; i < 14; i++) expect(step().events).toEqual([]);
-    events = step().events;
-    expect(events).toEqual([{ type: 'HealCompleted' }]);
+    expect(step().events).toEqual([{ type: 'HealCompleted' }]);
     expect(player.hp).toBe(100);
     expect(stations.list[0]!.charged).toBe(false);
     expect(rules.stats.healsUsed).toBe(1);
     expect(rules.score).toBe(0);
-    // once only: hold again, nothing more, and message is Épuisé
+    // once only: staying on it does nothing more, and it reads Épuisé
     const r = step();
     expect(r.events).toEqual([]);
     expect(r.message).toBe('Épuisé');
     expect(rules.stats.healsUsed).toBe(1);
 
     const b = setup(40);
-    for (let i = 0; i < 15; i++) b.step();
+    b.step();
     expect(b.player.hp).toBe(40 + CONFIG.heal.amount);
   });
 
-  test('interrupted heal gives nothing and keeps charge (RC-37)', () => {
-    for (const interrupt of [{ moved: true }, { damagedThisStep: true }, { actHeld: false }]) {
-      const { stations, player, rules, step } = setup(50);
-      for (let i = 0; i < 10; i++) step();
-      expect(stations.list[0]!.progress).toBeGreaterThan(0);
-      const r = step(interrupt);
-      expect(r.events).toEqual([{ type: 'HealInterrupted' }]);
-      expect(stations.list[0]!.progress).toBe(0);
-      expect(stations.list[0]!.charged).toBe(true);
-      expect(player.hp).toBe(50);
-      expect(rules.stats.healsUsed).toBe(0);
-      // releasing again with no progress emits nothing
-      expect(step(interrupt).events).toEqual([]);
-    }
+  test('no key press needed: passing by within range is enough', () => {
+    const { player, step } = setup(50);
+    player.pos = { x: 100 + 27, y: 100 };
+    step();
+    expect(player.hp).toBe(75);
   });
 
   test('full health consumes nothing (RC-38)', () => {
@@ -63,19 +49,15 @@ describe('heal stations', () => {
       expect(r.message).toBe('Santé au maximum');
     }
     expect(stations.list[0]!.charged).toBe(true);
-    expect(stations.list[0]!.progress).toBe(0);
     expect(player.hp).toBe(100);
     expect(rules.stats.healsUsed).toBe(0);
   });
 
-  test('heal completing on the KO step does not revive (RC-41)', () => {
+  test('a KO Paul is not revived by a station (RC-41)', () => {
     const { stations, player, rules, step } = setup(3);
-    for (let i = 0; i < 14; i++) step();
-    expect(stations.list[0]!.progress).toBeCloseTo(1.4);
     expect(damagePlayer(player, 5, 10)).toBe(true);
     expect(player.ko).toBe(true);
-    const r = step({ damagedThisStep: true });
-    expect(r.events).toEqual([]);
+    expect(step().events).toEqual([]);
     expect(player.hp).toBe(0);
     expect(stations.list[0]!.charged).toBe(true);
     expect(rules.stats.healsUsed).toBe(0);
@@ -88,6 +70,6 @@ describe('heal stations', () => {
     player.pos = { x: 110, y: 100 };
     rules.end('quit');
     expect(step()).toEqual({ events: [], message: null });
-    expect(stations.list[0]!.progress).toBe(0);
+    expect(stations.list[0]!.charged).toBe(true);
   });
 });

@@ -4,7 +4,7 @@ export const CONFIG = {
   tile: 32,
   mapTiles: 48,
   player: { maxHp: 100, walk: 90 * 2, run: 125 * 2, radius: 7, invulnSec: 0.6 },
-  melee: { cooldown: 0.45, range: 28 * 2, arcDeg: 90, maxTargets: 3 },
+  melee: { cooldown: 0.45, range: 28 * 2, arcDeg: 360, maxTargets: 3 },
   hostile: { baseHp: 2, contactDamage: 5, attackInterval: 1.8, windup: 0.5, radius: 7, speed: 70 * 2 },
   rock: {
     windupMin: 0.6,
@@ -23,7 +23,8 @@ export const CONFIG = {
   },
   school: { threatSeconds: 30, firstLine: 3, reinforcements: 8, cinematicSec: 3, saveBonus: 8, lossPenalty: -3 },
   rescue: { threatSeconds: 25, aggressors: [2, 4], helpSec: 1, bonus: 6 },
-  heal: { amount: 25, interactSec: 1.5 },
+  heal: { amount: 25 },
+  weapons: { firstSpawn: 10, spawnEvery: [15, 25] as const, maxGround: 2, pickupRadius: 20, minDist: 160, maxDist: 480 },
   caps: { hostiles: 40, windupsContact: [2, 4], windupsThrow: [2, 4] },
   pressureMax: 12,
   idlePatrolSec: 25,

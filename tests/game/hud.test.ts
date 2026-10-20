@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import { CONTROLS, RULES } from '../../src/content/controls';
-import { contextPrompt, formatDuration, formatSummary, incidentLines } from '../../src/game/hud/format';
+import { contextPrompt, formatDuration, formatSummary, incidentLines, weaponLine } from '../../src/game/hud/format';
 import { renderMarkdown } from '../../src/game/hud/markdown';
 import { Sim, type Snapshot } from '../../src/sim/sim';
 
@@ -75,14 +75,13 @@ describe('formatSummary', () => {
 });
 
 describe('contextPrompt', () => {
-  test('heal prompt near a charged station when no message', () => {
+  test('no key prompt near a charged station: walking onto it heals', () => {
     const s = snap((x) => {
       const st = x.stations[0]!;
       x.player.pos = { x: st.pos.x + 10, y: st.pos.y };
       x.stationMessage = null;
     });
-    expect(contextPrompt(s)).toEqual({ text: 'F — Se soigner', label: 'Soigner' });
-    expect(contextPrompt(s, true)).toEqual({ text: 'Se soigner', label: 'Soigner' });
+    expect(contextPrompt(s)).toBeNull();
   });
 
   test('no prompt away from stations', () => {
@@ -190,5 +189,12 @@ describe('GameAudio.onEvents', () => {
     expect(play).not.toHaveBeenCalled();
     a.onEvents([{ type: 'EnemyRockThrown', rockId: 3 }]);
     expect(play).toHaveBeenCalledWith('throw');
+  });
+});
+
+describe('weaponLine', () => {
+  test('bare hands, then weapon name and strikes left', () => {
+    expect(weaponLine(snap())).toBe('Arme : mains nues');
+    expect(weaponLine(snap((x) => { x.weapon = { kind: 'panneau', uses: 3 }; }))).toBe('Arme : Panneau (3)');
   });
 });

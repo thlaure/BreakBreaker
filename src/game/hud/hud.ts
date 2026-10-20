@@ -2,7 +2,7 @@ import { CONFIG } from '../../sim/config';
 import { DISTRICT } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
 import type { Vec } from '../../sim/types';
-import { DEFAULT_ACT_LABEL, contextPrompt, incidentLines, type IncidentLine } from './format';
+import { DEFAULT_ACT_LABEL, contextPrompt, incidentLines, weaponLine, type IncidentLine } from './format';
 
 export interface CameraView {
   /** World coordinates of the top-left corner of the visible area. */
@@ -69,6 +69,7 @@ export class Hud {
   private readonly score = el('span', 'stat');
   private readonly kos = el('span', 'stat');
   private readonly wave = el('span', 'stat');
+  private readonly weapon = el('span', 'stat');
   private readonly slots: HTMLElement[] = [];
   private readonly top = el('div', 'bb-top');
   private readonly cards: Record<'school' | 'rescue', Card>;
@@ -108,7 +109,7 @@ export class Hud {
       this.slots.push(s);
       rocks.append(s);
     }
-    l2.append(this.wave, rocks);
+    l2.append(this.wave, rocks, this.weapon);
     const cards = el('div', 'bb-cards');
     const mk = (): Card => {
       const root = el('div', 'bb-card');
@@ -154,6 +155,7 @@ export class Hud {
     c.text(this.score, `Score : ${s.score}`);
     c.text(this.kos, `Casseurs neutralisés : ${s.kos}`);
     c.text(this.wave, `Vague ${s.wave}`);
+    c.text(this.weapon, weaponLine(s));
     this.slots.forEach((slot, i) => {
       const full = i < s.carried;
       c.text(slot, full ? '●' : '○');
