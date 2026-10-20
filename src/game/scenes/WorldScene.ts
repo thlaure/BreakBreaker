@@ -12,8 +12,9 @@ import { guardLifecycle, merge, type InputSource } from '../input/merge';
 import { createTouch } from '../input/touch';
 import { HostileLayer, PaulView } from '../render/actors';
 import { GroupView, VictimView } from '../render/crowd';
-import { RockLayer, TelegraphLayer } from '../render/fx';
-import { SchoolView, StationsView, WorldView, makeRockTextures, makeTextures } from '../render/world';
+import { MolotovFx, RockLayer, TelegraphLayer } from '../render/fx';
+import { TargetsLayer, makeTargetTextures } from '../render/targets';
+import { StationsView, ToolboxView, WorldView, makeRockTextures, makeTextures } from '../render/world';
 import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapons';
 
 const HIT_STOP_MS = 60;
@@ -45,7 +46,9 @@ export class WorldScene extends Phaser.Scene {
   private playerPos = { x: 0, y: 0 };
 
   private world!: WorldView;
-  private school!: SchoolView;
+  private targetViews!: TargetsLayer;
+  private toolboxes!: ToolboxView;
+  private molotovFx!: MolotovFx;
   private stations!: StationsView;
   private group!: GroupView;
   private victim!: VictimView;
@@ -55,6 +58,10 @@ export class WorldScene extends Phaser.Scene {
   private weaponsOnGround!: WeaponLayer;
   private heldWeapon!: HeldWeaponView;
   private telegraphs!: TelegraphLayer;
+
+  /** Expiry of a weapon on the ground (special drops), read from the sim like the rocks' flight progress. */
+  private readonly weaponExpiry = (id: number): number | null =>
+    this.sim.weapons.ground.find((w) => w.id === id)?.expiresAt ?? null;
 
   private hitStopUntil = 0;
   private struck = false;
@@ -146,8 +153,9 @@ export class WorldScene extends Phaser.Scene {
     makeTextures(this);
     makeRockTextures(this);
     makeWeaponTextures(this);
+    makeTargetTextures(this);
     this.world = new WorldView(this);
-    this.school = new SchoolView(this, this.world.schoolParts);
+    this.targetViews = new TargetsLayer(this, this.world.schoolParts);
     this.stations = new StationsView(this);
     this.group = new GroupView(this);
     this.victim = new VictimView(this);
@@ -155,10 +163,12 @@ export class WorldScene extends Phaser.Scene {
     this.rocks = new RockLayer(this);
     this.weaponsOnGround = new WeaponLayer(this);
     this.telegraphs = new TelegraphLayer(this);
+    this.molotovFx = new MolotovFx(this);
     const snap = this.sim.snapshot();
     this.playerPos = { ...snap.player.pos };
     this.paul = new PaulView(this, snap.player.pos);
     this.heldWeapon = new HeldWeaponView(this);
+    this.toolboxes = new ToolboxView(this);
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.world.width, this.world.height);
@@ -245,6 +255,10 @@ export class WorldScene extends Phaser.Scene {
       } else if (e.type === 'PlayerDamaged') {
         const cam = this.cameras.main;
         cam.shake(SHAKE_MS, new Phaser.Math.Vector2(SHAKE_PX / cam.width, SHAKE_PX / cam.height), true);
+      } else if (e.type === 'ToolboxPickedUp') {
+        this.toolboxes.picked(time);
+      } else if (e.type === 'FireOut' || e.type === 'BuildingDestroyed' || e.type === 'TargetRepaired') {
+        this.targetViews.onEvent(e, time);
       }
     }
   }
@@ -254,13 +268,15 @@ export class WorldScene extends Phaser.Scene {
     this.paul.update(snap.player, this.struck, time, dtMs);
     this.heldWeapon.update(snap.weapon, snap.player, this.struck, time);
     this.struck = false;
-    this.weaponsOnGround.update(snap.weaponsOnGround, time);
+    this.weaponsOnGround.update(snap.weaponsOnGround, time, snap.now, this.weaponExpiry);
     this.hostiles.update(snap.hostiles, time);
     this.rocks.update(snap.rocks, (id) => flying.get(id) ?? 0, time);
     this.telegraphs.update(snap, this.cameras.main.worldView, time);
     this.group.update(time);
     this.victim.update(snap.rescue, time);
-    this.school.update(snap.school.stage);
+    this.targetViews.update(snap, time, dtMs);
+    this.molotovFx.update(snap.molotovs, snap.now, time);
+    this.toolboxes.update(snap.toolboxes, snap.player, time);
     this.stations.update(snap.stations, time);
     this.world.update(snap.player.pos);
   }

@@ -22,7 +22,7 @@ import { Weapons, type WeaponKind } from './weapons';
 /** Damage of a weapon strike: enough to KO any rioter (spec: weapons are one-hit KO). */
 const WEAPON_DAMAGE = 99;
 /** How long a thrown bottle is drawn in flight (render only; the fire starts on the throw). */
-const MOLOTOV_FLIGHT_SEC = 0.6;
+export const MOLOTOV_FLIGHT_SEC = 0.6;
 
 export interface Telegraph {
   from: Vec;
