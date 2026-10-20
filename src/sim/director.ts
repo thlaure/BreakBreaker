@@ -108,10 +108,21 @@ export function roundPlan(round: number, rand: () => number, targets: Targets, l
   return { headline: first ?? 'rescue', beats: first ? [[first], ['rescue']] : [['rescue']], twist };
 }
 
-/** Edge spawn points >= 320 px from Paul; if none qualifies, the farthest one. */
+/** Newcomers enter by the nearest this many eligible edge points (so they arrive closer to Paul). */
+export const SPAWN_NEAREST = 3;
+
+/**
+ * Edge spawn points >= 320 px from Paul, nearest first, at most the 3 nearest (the entry line cycles over them);
+ * if none qualifies, the farthest one.
+ */
 export function spawnPoints(playerPos: Vec): Vec[] {
   const all = DISTRICT.hostileSpawns;
-  const far = all.filter((p) => dist(p, playerPos) >= SPAWN_MIN_DIST);
+  const far = all
+    .map((p) => ({ p, d: dist(p, playerPos) }))
+    .filter((x) => x.d >= SPAWN_MIN_DIST)
+    .sort((a, b) => a.d - b.d)
+    .slice(0, SPAWN_NEAREST)
+    .map((x) => x.p);
   if (far.length > 0) return far;
   let best = all[0]!;
   for (const p of all) if (dist(p, playerPos) > dist(best, playerPos)) best = p;

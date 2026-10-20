@@ -350,3 +350,16 @@ describe('Sim facade', () => {
     expect(events.filter((e) => e.type === 'RescueCompleted')).toHaveLength(1);
   });
 });
+
+test('spawn points: the 3 nearest edge points at least 320 px from Paul, nearest first', () => {
+  for (const pos of [DISTRICT.playerSpawn, { x: 100, y: 100 }, { x: 1400, y: 1400 }, { x: 760, y: 40 }]) {
+    const pts = spawnPoints(pos);
+    const far = DISTRICT.hostileSpawns.filter((p) => Math.hypot(p.x - pos.x, p.y - pos.y) >= 320);
+    expect(pts).toHaveLength(Math.min(3, far.length));
+    const ds = pts.map((p) => Math.hypot(p.x - pos.x, p.y - pos.y));
+    expect(ds.every((x) => x >= 320)).toBe(true);
+    expect([...ds].sort((a, b) => a - b)).toEqual(ds);
+    const rest = far.filter((p) => !pts.includes(p)).map((p) => Math.hypot(p.x - pos.x, p.y - pos.y));
+    for (const r of rest) expect(r).toBeGreaterThanOrEqual(ds[ds.length - 1]!);
+  }
+});

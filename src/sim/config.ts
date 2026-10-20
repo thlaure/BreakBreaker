@@ -5,7 +5,23 @@ export const CONFIG = {
   mapTiles: 48,
   player: { maxHp: 100, walk: 90 * 2, run: 125 * 2, radius: 7, invulnSec: 0.6 },
   melee: { cooldown: 0.45, range: 28 * 2, arcDeg: 360, maxTargets: 3 },
-  hostile: { baseHp: 2, contactDamage: 5, attackInterval: 1.8, windup: 0.5, radius: 7, speed: 70 * 2 },
+  /**
+   * Site-bound rioters (degraders, victim aggressors) are drawn to Paul: they engage him within `aggroRadius` px with a
+   * clear line and go back to their post beyond `aggroRelease` px; with at most `fewLeft` hostiles active, one at its
+   * post for more than `postSec` s leaves it for Paul for good. A Molotov is never diverted before its throw.
+   */
+  hostile: {
+    baseHp: 2,
+    contactDamage: 5,
+    attackInterval: 1.8,
+    windup: 0.5,
+    radius: 7,
+    speed: 70 * 2,
+    aggroRadius: 220,
+    aggroRelease: 320,
+    fewLeft: 3,
+    postSec: 6,
+  },
   rock: {
     windupMin: 0.6,
     rangeMin: 140 * 2,

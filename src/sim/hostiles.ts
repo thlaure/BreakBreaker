@@ -55,6 +55,10 @@ interface Aux {
   progressAt: number;
   /** Until this time, steer by flow field even when a straight line looks clear (set when stuck). */
   fieldUntil: number;
+  /** Post a site-bound rioter returns to after engaging Paul (null = none, or it left it for good). */
+  home: 'facade' | 'victim' | null;
+  /** Sim time it first reached its post (degrading its site / threatening its victim), null before. */
+  postAt: number | null;
 }
 
 const R = CONFIG.hostile.radius;
@@ -90,6 +94,8 @@ export class Horde {
   private wt = 0;
   private limit = 2;
   private damage: number = CONFIG.hostile.contactDamage;
+  /** At most CONFIG.hostile.fewLeft hostiles active this step: rioters long at their post go for Paul. */
+  private few = false;
 
   spawn(opts: {
     variant: Variant;
@@ -128,6 +134,8 @@ export class Horde {
       progressPos: { ...h.pos },
       progressAt: -Infinity,
       fieldUntil: -Infinity,
+      home: (opts.role === 'degrader' || opts.role === 'aggressor') && h.target !== 'player' ? h.target : null,
+      postAt: null,
     });
     return h;
   }
@@ -175,6 +183,7 @@ export class Horde {
     this.damage = Math.min(12, CONFIG.hostile.contactDamage + Math.floor(ctx.pressure / 2));
     this.wc = 0;
     this.wt = 0;
+    this.few = act.length <= CONFIG.hostile.fewLeft;
     for (const h of act) {
       if (h.state !== 'windup') continue;
       const k = this.auxOf(h).windKind;
@@ -196,6 +205,7 @@ export class Horde {
       const a = this.auxOf(h);
       if (h.state === 'recover' && now >= h.stateUntil) h.state = 'approach';
       const want = this.behave(h, a, now, ctx, events);
+      if (a.postAt === null && (h.state === 'degrade' || h.state === 'threaten')) a.postAt = now;
       const delta = this.separation(h, ctx.player.pos);
       if (!isZero(want)) {
         delta.x += want.x * CONFIG.hostile.speed * dt;
@@ -220,6 +230,7 @@ export class Horde {
 
   /** Returns the desired unit direction (or zero) and advances the hostile's state machine. */
   private behave(h: Hostile, a: Aux, now: number, ctx: HordeCtx, ev: SimEvent[]): Vec {
+    this.engage(h, a, now, ctx);
     if (h.target === 'facade' && !this.siteOf(h, ctx)) h.target = 'player';
     if (h.target === 'victim' && !ctx.victimPos) h.target = 'player';
     if (h.target === 'player' && (h.state === 'degrade' || h.state === 'threaten')) h.state = 'approach';
@@ -244,6 +255,36 @@ export class Horde {
     }
     if (h.role === 'thrower') return this.thrower(h, a, now, ctx, ev);
     return this.contact(h, a, now, ctx, ev);
+  }
+
+  /**
+   * Draws a site-bound rioter (degrader, victim aggressor) to Paul: it fights him (target 'player', as a contact) while
+   * he is within aggroRadius with a clear line, until he is beyond aggroRelease; then it goes back to its post. With
+   * few hostiles left, one at its post for more than postSec leaves it for good. A Molotov (or a rioter turned contact)
+   * is never concerned.
+   */
+  private engage(h: Hostile, a: Aux, now: number, ctx: HordeCtx): void {
+    if (a.home === null || (h.role !== 'degrader' && h.role !== 'aggressor')) return;
+    const lost = a.home === 'facade' ? !this.siteOf(h, ctx) : !ctx.victimPos;
+    const pulled = this.few && a.postAt !== null && now - a.postAt > CONFIG.hostile.postSec + EPS;
+    if (lost || pulled) {
+      a.home = null;
+      h.target = 'player';
+      return;
+    }
+    const p = ctx.player;
+    const d = dist(h.pos, p.pos);
+    if (h.target !== 'player') {
+      if (d <= CONFIG.hostile.aggroRadius && !p.ko && ctx.grid.lineClear(h.pos, p.pos)) h.target = 'player';
+    } else if (d > CONFIG.hostile.aggroRelease) {
+      h.target = a.home;
+      // a contact windup in progress is dropped: it goes back to its post
+      if (h.state === 'windup' && a.windKind === 'contact') {
+        a.windKind = null;
+        this.wc--;
+        h.state = 'approach';
+      }
+    }
   }
 
   private contact(h: Hostile, a: Aux, now: number, ctx: HordeCtx, ev: SimEvent[]): Vec {

@@ -248,3 +248,131 @@ test('no EnemyRockThrown when the flying cap cancels the throw', () => {
     }
   expect(started).toBeGreaterThan(0);
 });
+
+/* ---------- rioters drawn to Paul (aggro, pull when few remain) ---------- */
+
+const C = (x: number, y: number): Vec => ({ x: x * 32 + 16, y: y * 32 + 16 });
+const carSite = (): NonNullable<HordeCtx['sites']['car1']> => {
+  const t = DISTRICT.targets.find((x) => x.id === 'car1')!;
+  return { points: t.attackPoints, door: t.door, standing: true, field: new FlowField(grid) };
+};
+
+test('aggro: a degrader engages Paul within 220 px with a clear line and lets go only beyond 320 px (hysteresis)', () => {
+  expect(CONFIG.hostile.aggroRadius).toBe(220);
+  expect(CONFIG.hostile.aggroRelease).toBe(320);
+  const player = createPlayer({ x: 1200, y: 1300 });
+  const ctx = mkCtx(player);
+  const horde = new Horde();
+  const h = horde.spawn({ variant: 'classic', role: 'degrader', pos: { x: 856, y: 720 }, site: 'school' })!;
+  let now = 0;
+  const step = (): void => void horde.step(DT, (now += DT), ctx);
+  step();
+  expect(h.target).toBe('facade');
+  // Paul 200 px away, clear street: it turns on him
+  player.pos = { x: h.pos.x - 200, y: h.pos.y };
+  step();
+  expect(h.target).toBe('player');
+  // 280 px: inside the release radius, still on him
+  player.pos = { x: h.pos.x - 280, y: h.pos.y };
+  step();
+  expect(h.target).toBe('player');
+  // beyond 320 px: back to its site
+  player.pos = { x: h.pos.x - 330, y: h.pos.y };
+  step();
+  expect(h.target).toBe('facade');
+  // 280 px again: not re-engaged (only within 220)
+  player.pos = { x: h.pos.x - 280, y: h.pos.y };
+  step();
+  expect(h.target).toBe('facade');
+});
+
+test('aggro needs a clear line: a building between them keeps the degrader on its site', () => {
+  const player = createPlayer(C(7, 19));
+  const ctx = mkCtx(player);
+  const horde = new Horde();
+  const h = horde.spawn({ variant: 'classic', role: 'degrader', pos: C(7, 13), site: 'school' })!;
+  expect(d(h.pos, player.pos)).toBeLessThanOrEqual(CONFIG.hostile.aggroRadius);
+  expect(grid.lineClear(h.pos, player.pos)).toBe(false);
+  horde.step(DT, DT, ctx);
+  expect(h.target).toBe('facade');
+});
+
+test('aggro: a victim aggressor engages Paul close by, then goes back to the victim', () => {
+  const victimPos = DISTRICT.rescueSites[0]!;
+  const player = createPlayer({ x: 1200, y: 1300 });
+  const ctx = mkCtx(player, { victimPos, fields: { player: new FlowField(grid), victim: new FlowField(grid) } });
+  const horde = new Horde();
+  const h = horde.spawn({ variant: 'classic', role: 'aggressor', pos: { x: victimPos.x + 60, y: victimPos.y }, incidentId: 'r1' })!;
+  let now = 0;
+  for (let i = 0; i < 120; i++) horde.step(DT, (now += DT), ctx);
+  expect(h.state).toBe('threaten');
+  player.pos = { x: h.pos.x + 150, y: h.pos.y };
+  expect(grid.lineClear(h.pos, player.pos)).toBe(true);
+  horde.step(DT, (now += DT), ctx);
+  expect(h.target).toBe('player');
+  expect(h.state).not.toBe('threaten');
+  player.pos = { x: 1200, y: 1300 };
+  horde.step(DT, (now += DT), ctx);
+  expect(h.target).toBe('victim');
+});
+
+test('a Molotov before its throw is not diverted by Paul close by: it throws at its site', () => {
+  const player = createPlayer({ x: 600, y: 464 });
+  const ctx = mkCtx(player, { sites: { car1: carSite() } });
+  const horde = new Horde();
+  const h = horde.spawn({ variant: 'classic', role: 'molotov', pos: { x: 528, y: 464 }, site: 'car1' })!;
+  let thrown = false;
+  for (let i = 0; i < 600 && !thrown; i++) {
+    for (const e of horde.step(DT, i * DT, ctx)) if (e.type === 'MolotovThrown') thrown = true;
+    if (!thrown) expect(h.target).toBe('facade');
+    player.pos = { x: h.pos.x + 60, y: h.pos.y }; // Paul keeps close
+  }
+  expect(thrown).toBe(true);
+});
+
+/** `n` degraders, each spawned at its own school facade point (at its post at once); Paul far away. */
+function posted(n: number) {
+  const player = createPlayer({ x: 1200, y: 1300 });
+  const ctx = mkCtx(player);
+  const horde = new Horde();
+  const pts = DISTRICT.school.facadePoints;
+  const list = Array.from({ length: n }, (_, i) => horde.spawn({ variant: 'classic', role: 'degrader', pos: { ...pts[i % pts.length]! }, site: 'school' })!);
+  let now = 0;
+  const run = (sec: number): void => {
+    for (let i = 0; i < Math.round(sec / DT); i++) horde.step(DT, (now += DT), ctx);
+  };
+  return { player, ctx, horde, list, run };
+}
+
+test('pull: with at most 3 active, a degrader at its post for more than 6 s leaves it for Paul for good', () => {
+  expect(CONFIG.hostile.fewLeft).toBe(3);
+  expect(CONFIG.hostile.postSec).toBe(6);
+  const w = posted(3);
+  w.run(0.1);
+  expect(w.list.every((h) => h.state === 'degrade')).toBe(true);
+  w.run(5.5);
+  expect(w.list.every((h) => h.target === 'facade' && h.state === 'degrade')).toBe(true);
+  w.run(0.6);
+  expect(w.list.every((h) => h.target === 'player' && h.state !== 'degrade')).toBe(true);
+  // for good: far from Paul, it does not go back
+  w.run(2);
+  expect(w.list.every((h) => h.target === 'player')).toBe(true);
+});
+
+test('no pull with 4 active hostiles', () => {
+  const w = posted(4);
+  w.run(10);
+  expect(w.list.every((h) => h.target === 'facade' && h.state === 'degrade')).toBe(true);
+});
+
+test('pull: a victim aggressor leaves the victim too (the victim is then safe)', () => {
+  const victimPos = DISTRICT.rescueSites[0]!;
+  const player = createPlayer({ x: 1200, y: 1300 });
+  const ctx = mkCtx(player, { victimPos, fields: { player: new FlowField(grid), victim: new FlowField(grid) } });
+  const horde = new Horde();
+  const h = horde.spawn({ variant: 'classic', role: 'aggressor', pos: { x: victimPos.x + 30, y: victimPos.y }, incidentId: 'r1' })!;
+  let now = 0;
+  for (let i = 0; i < 60 * 7; i++) horde.step(DT, (now += DT), ctx);
+  expect(h.target).toBe('player');
+  expect(h.state).not.toBe('threaten');
+});
