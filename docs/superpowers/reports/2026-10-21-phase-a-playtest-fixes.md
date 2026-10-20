@@ -79,3 +79,24 @@ Final checks: `npx vitest run` 301/301 (278 before), `npm run typecheck` clean, 
 - "Ruins first if both near" has no geometric test: no two target doors are within 2 × 48 px on the current map.
 - A degrader engaged with Paul does not degrade, so aggro also slows damage to the place; balance tests stay green but this was not playtested.
 - Commit trailer uses `Claude Opus 5.5` (the model actually doing the work) instead of the brief's `Claude Sonnet 5.5`.
+
+## Follow-up: more Molotov throwers (product owner: « dès qu'on élimine le gars, on n'a plus de feu »)
+
+Commits on top of `7763f64` (repairs to 100 %, committed by the coordinator):
+
+| Commit | Change |
+| --- | --- |
+| `e9c273e` | A bottle on an already burning target deals `CONFIG.molotov.burstDamage` = 8 hp, emits no TargetIgnited (no banner / alarm); a burst to 0 goes through the shared `destroy()` helper (ruin, `:lost` once, BuildingDestroyed). `onMolotov(e, ctx)` now takes the attack ctx. Render: such a landing flares the running fire (extra flame particles + glow spike, 350 ms) without cutting it. |
+| `c10b8de` | `molotovCount(kind, round)` = min(4, 1 + floor(round / 2)), props capped at 2; extra rioters at the head of the first line; round-1 school: 1 in the first line, 1 with the reinforcements. Molotovs of one site winding up together are staggered (+0.25 s per one already in windup), so bottles never leave on the same step. Molotov windups are not counted in the contact/throw windup caps, so nothing blocks them. |
+| docs | CAHIER v1.9.1 (§10.2, RC-95, changelog) and README (also fixed a stale "the fire goes out by itself" line). |
+
+Tests: burst (8 hp, no ignition, ruin once / −3 once, no bottle after resolution); lineup counts per round and kind, extras not
+replacements, round-1 split; 3 Molotovs on one building: 3 bottles in 3 different steps, one ignition, hp ≤ 100 − 2 × 8;
+staggered windups ≥ 0.25 s apart (RED before the stagger: 0 s apart); several Molotovs not diverted by Paul close by.
+Totals in tests follow the compositions. The fill-group balance test moved from round 2 to round 4 (round 2's car now has 5
+rioters, leaving a single fill group of 6) and computes group sizes from the roster; the failed-rescue test accepts the school
+smouldering (the reinforcements' Molotov may throw). No re-tuning: steady-flow, K===T and balance tests green.
+Full suite 306/306, typecheck clean, build OK, bench mean ≈ 0.21 ms/step.
+
+Concerns: later windups of a site are longer than 1.5 s (stagger); round totals grow by the extra throwers (round 1 school: 11);
+the burst flare is not covered by automated tests (render).
