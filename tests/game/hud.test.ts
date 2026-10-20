@@ -114,7 +114,7 @@ describe('contextPrompt', () => {
 
   test('no "Aider" prompt next to a secured victim: the rescue completes by itself', () => {
     const s = snap((x) => {
-      x.rescue = { stage: 'secured', remaining: 10, victimPos: { x: 100, y: 100 }, kind: 'groupHarassed' };
+      x.rescue = { id: 'rescue#1', stage: 'secured', remaining: 10, victimPos: { x: 100, y: 100 }, kind: 'groupHarassed' };
       x.player.pos = { x: 110, y: 100 };
     });
     expect(contextPrompt(s)).toBeNull();
@@ -236,7 +236,7 @@ describe('incidentLines', () => {
     const s = snap((x) => {
       calm(x);
       x.school.stage = 'saved';
-      x.rescue = { stage: 'threat', remaining: 12.1, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+      x.rescue = { id: 'rescue#1', stage: 'threat', remaining: 12.1, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
     });
     const [rescue, none] = incidentLines(s, 'en cours');
     expect(none).toBeUndefined();
