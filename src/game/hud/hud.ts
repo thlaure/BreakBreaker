@@ -16,7 +16,7 @@ import {
   type Box,
   type Incident,
 } from './alerts';
-import { DEFAULT_ACT_LABEL, contextPrompt, incidentLines, weaponLine, type IncidentLine } from './format';
+import { DEFAULT_ACT_LABEL, contextPrompt, incidentLines, waveLine, weaponLine, type IncidentLine } from './format';
 
 /** How long the launch card stays on screen if the player does not close it. */
 const INTRO_MS = 25_000;
@@ -118,6 +118,8 @@ export class Hud {
     this.toolsBox = null;
   };
   private lastNow = -1;
+  /** Wave number last shown (the line pulses once when it changes). */
+  private lastWave = -1;
   private lastRescue = Number.POSITIVE_INFINITY;
   private rescueDrain: 'en cours' | 'interrompu' = 'en cours';
 
@@ -185,7 +187,7 @@ export class Hud {
     this.onResize();
   }
 
-  /** Sim events of the frame: a new incident pops the alert banner. */
+  /** Sim events of the frame: a new incident or fill wave pops the alert banner. */
   onEvents(events: SimEvent[]): void {
     for (const e of events) {
       const inc = alertFromEvent(e);
@@ -243,7 +245,16 @@ export class Hud {
     c.cls(this.hpFill, pct <= 30 ? 'fill low' : 'fill');
     c.text(this.score, `Score : ${s.score}`);
     c.text(this.kos, `Casseurs neutralisés : ${s.kos}`);
-    c.text(this.wave, `Vague ${s.wave}`);
+    c.text(this.wave, waveLine(s));
+    if (s.wave !== this.lastWave) {
+      if (this.lastWave >= 0) {
+        // restart the stepped pulse (CSS, off under prefers-reduced-motion)
+        this.wave.classList.remove('pulse');
+        void this.wave.offsetWidth;
+        this.wave.classList.add('pulse');
+      }
+      this.lastWave = s.wave;
+    }
     c.text(this.weapon, weaponLine(s));
     this.slots.forEach((slot, i) => {
       const full = i < s.carried;

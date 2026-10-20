@@ -34,6 +34,8 @@ export class RescueIncident {
   remaining: number = CONFIG.rescue.threatSeconds;
   /** Seconds since the victim was secured (the "MERCI !" beat before completion). */
   thanks = 0;
+  /** Wave number shown for this rescue (set by the director). */
+  wave = 0;
 
   private ids = new Set<number>();
   private pending = 0;
@@ -42,6 +44,11 @@ export class RescueIncident {
   private grid: Grid | null = null;
 
   constructor(readonly id: string) {}
+
+  /** Rioters to knock out in this rescue: aggressors already spawned plus those still waiting to spawn. */
+  get total(): number {
+    return this.ids.size + this.pending;
+  }
 
   start(horde: Horde, site: Vec, rand: () => number, playerPos: Vec, grid: Grid): void {
     this.rand = rand;
@@ -58,7 +65,14 @@ export class RescueIncident {
     if (this.stage === 'completed' || this.stage === 'failed') return events;
     if (!this.announced) {
       this.announced = true;
-      events.push({ type: 'RescueStarted', incidentId: this.id, pos: { ...this.victimPos }, kind: this.kind });
+      events.push({
+        type: 'RescueStarted',
+        incidentId: this.id,
+        pos: { ...this.victimPos },
+        kind: this.kind,
+        wave: this.wave,
+        total: this.total,
+      });
     }
 
     if (this.stage === 'threat') {

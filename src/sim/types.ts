@@ -31,8 +31,10 @@ export type SimEvent =
   | { type: 'BuildingThreatPaused'; incidentId: string }
   | { type: 'BuildingDestroyed'; incidentId: string }
   | { type: 'SchoolRestored'; incidentId: string }
-  | { type: 'SchoolStarted'; incidentId: string; pos: Vec }
-  | { type: 'RescueStarted'; incidentId: string; pos: Vec; kind: 'groupHarassed' | 'elderlyRobbed' }
+  /** The school assault is wave 1; `total` = rioters to knock out in it. */
+  | { type: 'SchoolStarted'; incidentId: string; pos: Vec; wave: number; total: number }
+  /** The rescue is wave 2; `total` = its aggressors. */
+  | { type: 'RescueStarted'; incidentId: string; pos: Vec; kind: 'groupHarassed' | 'elderlyRobbed'; wave: number; total: number }
   | { type: 'RescueSecured'; incidentId: string }
   | { type: 'RescueCompleted'; incidentId: string }
   | { type: 'RescueFailed'; incidentId: string }
@@ -40,5 +42,6 @@ export type SimEvent =
   | { type: 'WeaponSpawned'; kind: 'baton' | 'marteau' | 'panneau'; pos: Vec }
   | { type: 'WeaponPickedUp'; kind: 'baton' | 'marteau' | 'panneau' }
   | { type: 'WeaponBroken'; kind: 'baton' | 'marteau' | 'panneau' }
-  | { type: 'WaveAnnounced'; index: number }
+  /** A fill wave (3, 4, …) starts; `total` = rioters in it. */
+  | { type: 'WaveAnnounced'; index: number; total: number }
   | { type: 'PlayerKnockedOut' };

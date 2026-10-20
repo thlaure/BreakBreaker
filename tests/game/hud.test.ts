@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import { CONTROLS, RULES } from '../../src/content/controls';
-import { contextPrompt, formatDuration, formatSummary, incidentLines, weaponLine } from '../../src/game/hud/format';
+import { contextPrompt, formatDuration, formatSummary, incidentLines, waveLine, weaponLine } from '../../src/game/hud/format';
 import { renderMarkdown } from '../../src/game/hud/markdown';
 import { Sim, type Snapshot } from '../../src/sim/sim';
 
@@ -186,10 +186,20 @@ describe('GameAudio.reset', () => {
     const { GameAudio } = await import('../../src/game/audio');
     const a = new GameAudio();
     const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
-    const e = { type: 'RescueStarted', incidentId: 'rescue#1', pos: { x: 1, y: 2 }, kind: 'groupHarassed' } as const;
+    const e = { type: 'RescueStarted', incidentId: 'rescue#1', pos: { x: 1, y: 2 }, kind: 'groupHarassed', wave: 2, total: 3 } as const;
     a.onEvents([e]);
     a.onEvents([e]);
     expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(1);
+  });
+
+  test('a wave announcement does not sound the incident alarm (waves are frequent)', async () => {
+    const { GameAudio } = await import('../../src/game/audio');
+    const a = new GameAudio();
+    const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
+    a.onEvents([{ type: 'WaveAnnounced', index: 3, total: 5 }]);
+    a.onEvents([{ type: 'WaveAnnounced', index: 3, total: 5 }]);
+    a.onEvents([{ type: 'WaveAnnounced', index: 4, total: 7 }]);
+    expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(0);
   });
 });
 
@@ -202,6 +212,14 @@ describe('GameAudio.onEvents', () => {
     expect(play).not.toHaveBeenCalled();
     a.onEvents([{ type: 'EnemyRockThrown', rockId: 3 }]);
     expect(play).toHaveBeenCalledWith('throw');
+  });
+});
+
+describe('waveLine', () => {
+  test('wave number alone without an objective, else « Vague N : K/T casseurs »', () => {
+    expect(waveLine(snap())).toBe('Vague 1');
+    expect(waveLine(snap((x) => { x.wave = 3; x.waveTotal = 9; x.waveKos = 4; }))).toBe('Vague 3 : 4/9 casseurs');
+    expect(waveLine(snap((x) => { x.wave = 7; x.waveTotal = 1; x.waveKos = 0; }))).toBe('Vague 7 : 0/1 casseur');
   });
 });
 

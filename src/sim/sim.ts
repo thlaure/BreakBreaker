@@ -31,7 +31,12 @@ export interface Snapshot {
   ended: boolean;
   endCause: 'ko' | 'quit' | null;
   phase: DirectorPhase;
+  /** Current wave number (1 = school, 2 = rescue, 3+ = fill waves); never 0. */
   wave: number;
+  /** Rioters to knock out in the current wave (0 during the intro). */
+  waveTotal: number;
+  /** Rioters knocked out since the current wave started, clamped to [0, waveTotal]. */
+  waveKos: number;
   player: { pos: Vec; facing: Vec; ko: boolean; invulnerable: boolean };
   hp: number;
   hpMax: number;
@@ -226,6 +231,8 @@ export class Sim {
       endCause: this.rules.endCause,
       phase: this.director.phase,
       wave: this.director.wave,
+      waveTotal: this.director.waveTotal,
+      waveKos: this.director.waveKos(this.rules.kos),
       player: { pos: v(p.pos), facing: v(p.facing), ko: p.ko, invulnerable: this.now < p.invulnUntil },
       hp: p.hp,
       hpMax: CONFIG.player.maxHp,

@@ -15,7 +15,7 @@ A full session in a single district, playable with keyboard/mouse or touch:
 - **Circular strikes**: Paul's strike hits all around him (up to 3 rioters).
 - **Weapons**: a stick, a hammer or a road sign appears at random in the streets; walk over it to pick it up. Weapons knock a rioter out in one hit, reach further and wear out after a number of hits (15 / 8 / 10).
 - **Healing**: walk over a "Soins" kit to recover 25 HP (one charge per kit).
-- **Waves**: after the intro, the school and the rescue, waves follow until Paul is knocked out (or the player quits). Rioters enter one by one, with a rest between waves. No global timer.
+- **Waves**: numbered from 1 (the school assault is wave 1, the rescue wave 2, then fill waves 3, 4, …) until Paul is knocked out (or the player quits). Every wave is announced on screen (« VAGUE N ! » banner) and the HUD shows its objective (`Vague N : K/T casseurs`). Rioters enter one by one in a steady flow, with no rest between waves. No global timer.
 - End-of-session summary (score, local best, wave reached, stats) and Replay.
 
 The landing page (title, "Jouer", "Commandes" modal) has an original pixel-art hero: a top-down street scene (burning school, Paul, rioters, flying rocks, a heal kit, a peaceful group) composed from the game's own tiles and LPC sprites by `npm run hero`, shown full-bleed with `image-rendering: pixelated`, with the Press Start 2P pixel font (SIL OFL 1.1) for the title and buttons. Its "Jouer" link (`/jouer/?go`) starts the game right away, with a "Comment jouer" card over the running game; a "Commandes" button in the game opens the keys and rules. Opening `/jouer/` directly shows the rules screen first.

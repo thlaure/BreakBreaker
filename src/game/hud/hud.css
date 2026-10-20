@@ -48,10 +48,13 @@
 }
 .bb-alert.tone-fire { --edge: var(--bb-fire); --flash: #ffd166; --tint: #2c1410; }
 .bb-alert.tone-warn { --edge: var(--bb-accent); --flash: #fff7e0; --tint: #2a2210; }
+.bb-alert.tone-wave { --edge: #ff5a3c; --flash: #ffd166; --tint: #2c1012; }
 .bb-alert .ico { display: inline-flex; flex: none; }
 .bb-alert .txt { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .bb-alert .title { font-size: 16px; line-height: 1.25; font-weight: 400; color: var(--edge); text-shadow: 2px 2px 0 #000; }
 .bb-alert .sub { color: #fff; }
+.bb-alert .meta { color: var(--bb-accent); }
+.bb-alert .dir[hidden], .bb-alert .meta[hidden] { display: none; }
 .bb-alert .dir { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: none; color: var(--edge); padding-left: 10px; border-left: 2px solid #4a4360; }
 .bb-alert .arrow { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; }
 .bb-alert .dist { color: #fff; white-space: nowrap; }
@@ -65,6 +68,10 @@
   }
 }
 @media (max-width: 560px) { .bb-alert { gap: 8px; padding: 8px; } .bb-alert .title { font-size: 11px; } .bb-alert .sub { font-size: 8px; } }
+@media (max-width: 400px) { .bb-alert { gap: 6px; padding: 6px; } .bb-alert .txt { gap: 4px; } .bb-alert .title { font-size: 10px; } .bb-alert .sub, .bb-alert .meta { font-size: 7px; } .bb-alert .ico svg { width: 20px; height: auto; } .bb-alert .dir { padding-left: 6px; } }
+/* HUD wave line: one stepped pulse when the wave number changes */
+.bb-line .stat.pulse { animation: bb-wave-pulse 0.9s steps(1, end) 1; }
+@keyframes bb-wave-pulse { 0%, 66% { color: var(--bb-accent); } 33% { color: #fff; } }
 
 .bb-edge {
   position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 4px;
@@ -78,7 +85,7 @@
 .bb-edge .txt { display: flex; flex-direction: column; }
 .bb-edge .lbl { font-weight: 400; color: var(--edge); }
 @keyframes bb-edge-pulse { 50% { border-color: #fff; } }
-@media (prefers-reduced-motion: reduce) { .bb-alert, .bb-edge { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .bb-alert, .bb-edge, .bb-line .stat.pulse { animation: none; } }
 
 .bb-overlay { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-start; justify-content: center; overflow: auto; background: rgba(10, 8, 16, 0.88); color: var(--bb-fg); font: 16px/1.45 system-ui, sans-serif; -webkit-user-select: text; user-select: text; touch-action: pan-y; }
 .bb-overlay[data-panel='start'] { background: var(--bb-bg); }

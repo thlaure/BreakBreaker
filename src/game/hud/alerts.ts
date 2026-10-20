@@ -4,13 +4,15 @@ import type { Snapshot } from '../../sim/sim';
 import type { SimEvent, Vec } from '../../sim/types';
 
 /**
- * Incident alerts: a pixel banner when an incident starts and one edge indicator per active incident.
+ * Incident alerts: a pixel banner when an incident or a fill wave starts and one edge indicator per active incident.
  * Generic on purpose: a new kind of "casse" event only needs an entry in INCIDENT_ALERTS and a line in
- * `alertFromEvent` / `activeIncidents`.
+ * `alertFromEvent` / `activeIncidents`. A fill wave has no position: its banner shows no arrow and no distance.
  */
 export type IncidentKind = 'school' | 'groupHarassed' | 'elderlyRobbed';
-export type AlertTone = 'fire' | 'warn';
-export type AlertIcon = 'flame' | 'alert';
+/** Everything the banner can announce: positioned incidents and position-less fill waves. */
+export type AlertKind = IncidentKind | 'wave';
+export type AlertTone = 'fire' | 'warn' | 'wave';
+export type AlertIcon = 'flame' | 'alert' | 'horde';
 
 export interface AlertSpec {
   /** Banner title. */
@@ -29,8 +31,33 @@ export const INCIDENT_ALERTS: Readonly<Record<IncidentKind, AlertSpec>> = {
   elderlyRobbed: { title: 'VOL EN COURS !', sub: 'Une personne âgée est menacée', label: 'VOL', tone: 'warn', icon: 'alert' },
 };
 
-export function incidentAlert(kind: IncidentKind): AlertSpec {
-  return INCIDENT_ALERTS[kind];
+/** What the banner shows for an alert: the spec plus the wave line and whether it points somewhere. */
+export interface ShownAlert extends AlertSpec {
+  /** Small « Vague N · T casseurs » line of an incident banner (empty when unknown or for a fill wave). */
+  meta: string;
+  /** False for a fill wave: no arrow, no distance. */
+  positioned: boolean;
+}
+
+/** "1 casseur", "9 casseurs". */
+export function casseurs(n: number): string {
+  return `${n} ${n === 1 ? 'casseur' : 'casseurs'}`;
+}
+
+/** Banner content of an alert kind; `wave`/`total` give the wave number and the rioters to knock out (0 = unknown). */
+export function incidentAlert(kind: AlertKind, wave = 0, total = 0): ShownAlert {
+  if (kind === 'wave')
+    return {
+      title: `VAGUE ${wave} !`,
+      sub: `${casseurs(total)} à neutraliser`,
+      label: 'VAGUE',
+      tone: 'wave',
+      icon: 'horde',
+      meta: '',
+      positioned: false,
+    };
+  const meta = wave > 0 && total > 0 ? `Vague ${wave} · ${casseurs(total)}` : '';
+  return { ...INCIDENT_ALERTS[kind], meta, positioned: true };
 }
 
 /** An incident on the map: what it is and where. */
@@ -40,10 +67,20 @@ export interface Incident {
   pos: Vec;
 }
 
-/** The incident announced by a sim event, or null. */
-export function alertFromEvent(e: SimEvent): Incident | null {
-  if (e.type === 'SchoolStarted') return { id: e.incidentId, kind: 'school', pos: { ...e.pos } };
-  if (e.type === 'RescueStarted') return { id: e.incidentId, kind: e.kind, pos: { ...e.pos } };
+/** Something the banner announces: an incident (with a position) or a fill wave (pos null), with its wave/total. */
+export interface Alert {
+  id: string;
+  kind: AlertKind;
+  pos: Vec | null;
+  wave: number;
+  total: number;
+}
+
+/** The alert announced by a sim event (incident start or fill wave), or null. */
+export function alertFromEvent(e: SimEvent): Alert | null {
+  if (e.type === 'SchoolStarted') return { id: e.incidentId, kind: 'school', pos: { ...e.pos }, wave: e.wave, total: e.total };
+  if (e.type === 'RescueStarted') return { id: e.incidentId, kind: e.kind, pos: { ...e.pos }, wave: e.wave, total: e.total };
+  if (e.type === 'WaveAnnounced') return { id: `wave#${e.index}`, kind: 'wave', pos: null, wave: e.index, total: e.total };
   return null;
 }
 
@@ -161,6 +198,19 @@ const SPRITES: Record<Sprite, string[]> = {
     'KYYYKKYYYK',
     'KKKKKKKKKK',
   ],
+  // a small horde: three hooded silhouettes, red/orange
+  horde: [
+    '....KK....',
+    '...KRRK...',
+    '.KKKRRKKK.',
+    'KOOKRRKOOK',
+    'KOOKKKKOOK',
+    'KKKRRRRKKK',
+    'KOKRRRRKOK',
+    'KOKRRRRKOK',
+    'KKKRKKRKKK',
+    '..KK..KK..',
+  ],
   // points right (0°); rotated toward the target
   arrow: ['....C...', '....CC..', 'CCCCCCC.', 'CCCCCCCC', 'CCCCCCC.', '....CC..', '....C...'],
   // points down-right (45°)
@@ -209,18 +259,21 @@ export const ALERT_MS = 6000;
 const QUEUE_MAX = 3;
 
 /**
- * Top-centre pixel banner announcing a new incident (role="alert"). One at a time; later ones queue and show after.
- * The arrow and distance are refreshed by `track(playerPos)` while visible (aria-hidden: not re-announced).
+ * Top-centre pixel banner announcing a new incident or fill wave (role="alert"). One at a time; later ones queue and
+ * show after. For a positioned alert the arrow and distance are refreshed by `track(playerPos)` while visible
+ * (aria-hidden: not re-announced); a fill wave has neither.
  */
 export class AlertBanner {
   readonly el: HTMLElement;
   private readonly ico: HTMLElement;
   private readonly title: HTMLElement;
   private readonly sub: HTMLElement;
+  private readonly meta: HTMLElement;
+  private readonly dir: HTMLElement;
   private readonly arrow: HTMLElement;
   private readonly dist: HTMLElement;
-  private current: Incident | null = null;
-  private readonly queue: Incident[] = [];
+  private current: Alert | null = null;
+  private readonly queue: Alert[] = [];
   private timer: ReturnType<typeof setTimeout> | null = null;
   private lastDist = '';
 
@@ -237,9 +290,11 @@ export class AlertBanner {
     const txt = mk('div', 'txt');
     this.title = mk('b', 'title');
     this.sub = mk('span', 'sub');
-    txt.append(this.title, this.sub);
+    this.meta = mk('span', 'meta');
+    txt.append(this.title, this.sub, this.meta);
     const dir = mk('div', 'dir');
     dir.setAttribute('aria-hidden', 'true');
+    this.dir = dir;
     this.arrow = mk('span', 'arrow');
     this.dist = mk('span', 'dist');
     dir.append(this.arrow, this.dist);
@@ -247,11 +302,11 @@ export class AlertBanner {
     parent.append(this.el);
   }
 
-  get shown(): Incident | null {
+  get shown(): Alert | null {
     return this.current;
   }
 
-  push(incident: Incident): void {
+  push(incident: Alert): void {
     if (this.current) {
       this.queue.push(incident);
       if (this.queue.length > QUEUE_MAX) this.queue.shift();
@@ -263,7 +318,7 @@ export class AlertBanner {
   /** Live arrow (player → incident, 8 directions) and distance. */
   track(playerPos: Vec): void {
     const inc = this.current;
-    if (!inc) return;
+    if (!inc?.pos) return;
     setArrow(this.arrow, bearingDeg(playerPos, inc.pos), 3);
     const d = formatMeters(playerPos, inc.pos);
     if (d !== this.lastDist) {
@@ -285,13 +340,16 @@ export class AlertBanner {
     this.el.remove();
   }
 
-  private show(incident: Incident): void {
-    const spec = incidentAlert(incident.kind);
+  private show(incident: Alert): void {
+    const spec = incidentAlert(incident.kind, incident.wave, incident.total);
     this.current = incident;
     this.el.className = `bb-alert tone-${spec.tone}`;
     this.ico.innerHTML = pixelSvg(spec.icon, 3);
     this.title.textContent = spec.title;
     this.sub.textContent = spec.sub;
+    this.meta.textContent = spec.meta;
+    this.meta.hidden = !spec.meta;
+    this.dir.hidden = !spec.positioned;
     this.lastDist = '';
     this.dist.textContent = '';
     this.el.hidden = false;

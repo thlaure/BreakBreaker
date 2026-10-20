@@ -95,6 +95,12 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
   return out;
 }
 
+/** HUD wave line: « Vague 3 : 4/9 casseurs », or just « Vague 1 » while the wave has no objective yet (intro). */
+export function waveLine(s: Snapshot): string {
+  if (s.waveTotal <= 0) return `Vague ${s.wave}`;
+  return `Vague ${s.wave} : ${s.waveKos}/${s.waveTotal} ${s.waveTotal === 1 ? 'casseur' : 'casseurs'}`;
+}
+
 /** HUD weapon line: weapon name and strikes left, or bare hands. */
 export function weaponLine(s: Snapshot): string {
   return s.weapon ? `Arme : ${WEAPONS[s.weapon.kind].label} (${s.weapon.uses})` : 'Arme : mains nues';

@@ -61,10 +61,12 @@ test('distress only decreases while an aggressor threatens (RC-64)', () => {
   expect(inc.remaining).toBeCloseTo(23, 1);
 });
 
-test('RescueStarted is emitted once with the victim position and kind', () => {
-  const { inc, run } = setup();
+test('RescueStarted is emitted once with the victim position, kind, wave and total', () => {
+  const { inc, run, mine } = setup();
+  inc.wave = 2;
   const ev = run(3).filter((e) => e.type === 'RescueStarted');
-  expect(ev).toEqual([{ type: 'RescueStarted', incidentId: 'rescue#1', pos: site, kind: inc.kind }]);
+  expect(inc.total).toBe(mine().length);
+  expect(ev).toEqual([{ type: 'RescueStarted', incidentId: 'rescue#1', pos: site, kind: inc.kind, wave: 2, total: inc.total }]);
   expect(['groupHarassed', 'elderlyRobbed']).toContain(inc.kind);
 });
 

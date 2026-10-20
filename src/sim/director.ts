@@ -24,14 +24,13 @@ export interface DirectorHost {
 }
 
 export const INTRO_SEC = 4;
-export const BREATHER_SEC = 8;
+/** Short pause between the school assault and the rescue (keeps the flow steady). */
+export const BREATHER_SEC = 2;
 export const SPAWN_MIN_DIST = 320;
 export const RESCUE_PATH_MIN = 300;
 export const RESCUE_PATH_MAX = 900;
-/** Next wave is prepared once at most this many rioters are left and the wave queue is empty. */
-export const NEXT_WAVE_AT = 2;
-/** Rest (s) between a cleared wave and the next one. */
-export const WAVE_BREATHER_SEC = 6;
+/** The next wave starts (no rest) once the wave queue is empty and at most this many rioters are left. */
+export const NEXT_WAVE_AT = 3;
 /** Rioters of a wave enter one by one, this many seconds apart. */
 export const WAVE_SPAWN_INTERVAL = 1.5;
 /** Waves never put more than this many rioters on the map at once (the rest wait their turn). */
@@ -47,7 +46,7 @@ export function pressure(waveIndex: number, kos: number): number {
   return Math.min(CONFIG.pressureMax, 1 + Math.floor(waveIndex / 2) + Math.floor(kos / 30));
 }
 
-/** Rioters in wave n (1-based): 5, 7, 9 … capped. */
+/** Rioters in fill wave n (1-based): 5, 7, 9 … capped. */
 export function waveSize(wave: number): number {
   return Math.min(WAVE_MAX_SIZE, 3 + 2 * wave);
 }
@@ -81,14 +80,24 @@ export function chooseRescueSite(grid: Grid, playerPos: Vec, rand: () => number)
   return (reachable[0] ?? sites[0]!).p;
 }
 
+/** Wave numbers shown to the player: the school assault is wave 1, the rescue wave 2, fill waves follow. */
+export const SCHOOL_WAVE = 1;
+export const RESCUE_WAVE = 2;
+
 /**
- * Session sequencing: 4 s intro → school incident → 8 s breather → rescue → endless waves.
- * Never more than one urgent incident (school threat or rescue threat) at a time in this slice.
+ * Session sequencing: 4 s intro → school incident (wave 1) → 2 s breather → rescue (wave 2) → endless fill waves
+ * (3, 4, …) with no rest between them. Never more than one urgent incident at a time in this slice.
  */
 export class Director {
   phase: DirectorPhase = 'intro';
-  /** Waves announced so far; the current wave's 1-based index (0 before the first wave). */
-  wave = 0;
+  /** Current wave number shown to the player (1-based, never 0). */
+  wave = SCHOOL_WAVE;
+  /** Fill waves launched so far (drives wave sizes and pressure). */
+  fillWaves = 0;
+  /** Rioters to knock out in the current wave (0 during the intro). */
+  waveTotal = 0;
+  /** Session KOs when the current wave started. */
+  waveStartKos = 0;
   private timer = 0;
   private idle = 0;
   private variantCursor = 0;
@@ -96,11 +105,15 @@ export class Director {
   /** Rioters of the current wave still waiting to enter. */
   private queue: Role[] = [];
   private spawnTimer = 0;
-  private rest = 0;
 
-  /** Pressure for the current wave (0-based wave index) and session KOs. */
+  /** Pressure for the current fill wave (0-based fill-wave index) and session KOs. */
   pressure(kos: number): number {
-    return pressure(Math.max(0, this.wave - 1), kos);
+    return pressure(Math.max(0, this.fillWaves - 1), kos);
+  }
+
+  /** KOs made in the current wave, clamped to [0, waveTotal]. */
+  waveKos(kos: number): number {
+    return Math.min(this.waveTotal, Math.max(0, kos - this.waveStartKos));
   }
 
   step(dt: number, host: DirectorHost): SimEvent[] {
@@ -110,7 +123,15 @@ export class Director {
       case 'intro':
         if (this.timer >= INTRO_SEC - 1e-9) {
           host.school.start(host.horde, spawnPoints(host.player.pos));
-          events.push({ type: 'SchoolStarted', incidentId: host.school.id, pos: { ...DISTRICT.school.door } });
+          const total = CONFIG.school.firstLine + CONFIG.school.reinforcements;
+          this.beginWave(SCHOOL_WAVE, total, host);
+          events.push({
+            type: 'SchoolStarted',
+            incidentId: host.school.id,
+            pos: { ...DISTRICT.school.door },
+            wave: SCHOOL_WAVE,
+            total,
+          });
           this.enter('school');
         }
         break;
@@ -122,6 +143,8 @@ export class Director {
           const rescue = new RescueIncident('rescue#1');
           const site = chooseRescueSite(host.grid, host.player.pos, host.rand);
           rescue.start(host.horde, site, host.rand, host.player.pos, host.grid);
+          rescue.wave = RESCUE_WAVE;
+          this.beginWave(RESCUE_WAVE, rescue.total, host);
           host.rescue = rescue;
           this.enter('rescue');
         }
@@ -146,7 +169,13 @@ export class Director {
     this.timer = 0;
   }
 
-  /** Feeds the queued rioters one by one; once the wave is nearly cleared, rests, then launches the next. */
+  private beginWave(wave: number, total: number, host: DirectorHost): void {
+    this.wave = wave;
+    this.waveTotal = total;
+    this.waveStartKos = host.rules.kos;
+  }
+
+  /** Feeds the queued rioters one by one; once the wave is nearly cleared, launches the next one at once. */
   private stepWave(dt: number, host: DirectorHost, events: SimEvent[]): void {
     const active = host.horde.active().length;
     if (this.queue.length > 0) {
@@ -154,26 +183,21 @@ export class Director {
       if (this.spawnTimer >= WAVE_SPAWN_INTERVAL - 1e-9 && active < WAVE_ACTIVE_CAP) this.enterNext(host);
       return;
     }
-    if (active > NEXT_WAVE_AT) {
-      this.rest = 0;
-      return;
-    }
-    this.rest += dt;
-    if (this.rest >= WAVE_BREATHER_SEC - 1e-9) this.launchWave(host, events);
+    if (active <= NEXT_WAVE_AT) this.launchWave(host, events);
   }
 
   private launchWave(host: DirectorHost, events: SimEvent[]): void {
-    this.wave += 1;
-    this.rest = 0;
-    const size = waveSize(this.wave);
-    const share = this.wave === 1 ? 0 : THROWER_SHARE;
+    this.fillWaves += 1;
+    const size = waveSize(this.fillWaves);
+    this.beginWave(RESCUE_WAVE + this.fillWaves, size, host);
+    const share = this.fillWaves === 1 ? 0 : THROWER_SHARE;
     this.queue = [];
     for (let i = 0; i < size; i++) {
       // floor((i+1)·s) > floor(i·s) marks exactly floor(size·s) throwers, spread through the wave
       const thrower = Math.floor((i + 1) * share) > Math.floor(i * share);
       this.queue.push(thrower ? 'thrower' : 'contact');
     }
-    events.push({ type: 'WaveAnnounced', index: this.wave });
+    events.push({ type: 'WaveAnnounced', index: this.wave, total: size });
     this.enterNext(host);
   }
 

@@ -66,7 +66,7 @@ describe('Sim facade', () => {
     const events: SimEvent[] = [];
     const phases: string[] = [];
     let rescueDist = -1;
-    for (let i = 0; i < 60 * 60 && sim.director.wave < 3; i++) {
+    for (let i = 0; i < 60 * 60 && sim.director.wave < 5; i++) {
       for (const h of sim.horde.active()) {
         const r = sim.horde.applyHit(h.lifeId, 99);
         if (r === 'ko') sim.rules.onKnockout(h.lifeId);
@@ -79,8 +79,9 @@ describe('Sim facade', () => {
     expect(phases).toEqual(['intro', 'school', 'breather', 'rescue', 'waves']);
     expect(events.some((e) => e.type === 'SchoolRestored')).toBe(true);
     expect(events.some((e) => e.type === 'RescueStarted')).toBe(true);
+    // school = wave 1, rescue = wave 2: fill waves are announced from 3 on
     expect(events.filter((e) => e.type === 'WaveAnnounced').map((e) => (e as { index: number }).index)).toEqual([
-      1, 2, 3,
+      3, 4, 5,
     ]);
     expect(rescueDist).toBeGreaterThan(0);
     expect(sim.rules.stats.schoolsSaved).toBe(1);
@@ -95,7 +96,7 @@ describe('Sim facade', () => {
     const variants = new Set<string>();
     const roles = new Set<string>();
     let i = 0;
-    for (; i < 60 * 1500 && sim.director.wave < 30; i++) {
+    for (; i < 60 * 1500 && sim.director.fillWaves < 30; i++) {
       // auto-KO helper: every 0.5 s knock out every active hostile but the two newest
       if (i % 30 === 0) {
         const act = sim.horde.active();
@@ -113,7 +114,7 @@ describe('Sim facade', () => {
         roles.add(h.role);
       }
     }
-    expect(sim.director.wave).toBeGreaterThanOrEqual(30);
+    expect(sim.director.fillWaves).toBeGreaterThanOrEqual(30);
     expect(maxActive).toBeLessThanOrEqual(CONFIG.caps.hostiles);
     expect(maxActive).toBeGreaterThan(4);
     expect(maxList).toBeLessThanOrEqual(CONFIG.caps.hostiles + 16);
@@ -320,10 +321,25 @@ describe('Sim facade', () => {
       events.push(...sim.step(IDLE));
     }
     const school = events.filter((e) => e.type === 'SchoolStarted');
-    expect(school).toEqual([{ type: 'SchoolStarted', incidentId: sim.school.id, pos: DISTRICT.school.door }]);
+    expect(school).toEqual([
+      {
+        type: 'SchoolStarted',
+        incidentId: sim.school.id,
+        pos: DISTRICT.school.door,
+        wave: 1,
+        total: CONFIG.school.firstLine + CONFIG.school.reinforcements,
+      },
+    ]);
     const rescue = events.filter((e) => e.type === 'RescueStarted');
     expect(rescue).toHaveLength(1);
-    expect(rescue[0]).toEqual({ type: 'RescueStarted', incidentId: 'rescue#1', pos: sim.rescue!.victimPos, kind: sim.rescue!.kind });
+    expect(rescue[0]).toEqual({
+      type: 'RescueStarted',
+      incidentId: 'rescue#1',
+      pos: sim.rescue!.victimPos,
+      kind: sim.rescue!.kind,
+      wave: 2,
+      total: sim.rescue!.total,
+    });
     expect(pauseChecked).toBe(true);
     expect(sim.rescue!.stage).toBe('completed');
     expect(sim.rules.stats.rescuesOk).toBe(1);
