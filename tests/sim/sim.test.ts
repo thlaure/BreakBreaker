@@ -87,7 +87,7 @@ describe('Sim facade', () => {
     expect(sim.rules.stats.schoolsSaved).toBe(1);
   });
 
-  test('hostile count stays bounded over 30 waves, well past the size cap (RC-50)', () => {
+  test('hostile count stays bounded over 14 fill waves, well past the size cap (RC-50)', () => {
     const sim = new Sim(42, { invulnerable: true });
     let maxActive = 0;
     let maxList = 0;
@@ -96,12 +96,9 @@ describe('Sim facade', () => {
     const variants = new Set<string>();
     const roles = new Set<string>();
     let i = 0;
-    for (; i < 60 * 1500 && sim.director.fillWaves < 30; i++) {
-      // auto-KO helper: every 0.5 s knock out every active hostile but the two newest
-      if (i % 30 === 0) {
-        const act = sim.horde.active();
-        for (const h of act.slice(0, Math.max(0, act.length - 2))) sim.horde.applyHit(h.lifeId, 99);
-      }
+    for (; i < 60 * 1500 && sim.director.fillWaves < 14; i++) {
+      // auto-KO helper: every 6 s knock out every active hostile (waves are discrete: each must be cleared)
+      if (i % 360 === 0) for (const h of sim.horde.active()) sim.horde.applyHit(h.lifeId, 99);
       sim.step(scripted(i));
       const s = sim.snapshot();
       const active = s.hostiles.filter((h) => h.state !== 'ko').length;
@@ -114,9 +111,9 @@ describe('Sim facade', () => {
         roles.add(h.role);
       }
     }
-    expect(sim.director.fillWaves).toBeGreaterThanOrEqual(30);
+    expect(sim.director.fillWaves).toBeGreaterThanOrEqual(14);
     expect(maxActive).toBeLessThanOrEqual(CONFIG.caps.hostiles);
-    expect(maxActive).toBeGreaterThan(4);
+    expect(maxActive).toBeGreaterThan(2);
     expect(maxList).toBeLessThanOrEqual(CONFIG.caps.hostiles + 16);
     expect(maxFlying).toBeLessThanOrEqual(CONFIG.rock.maxFlying);
     expect(maxGround).toBeLessThanOrEqual(CONFIG.rock.maxGround);

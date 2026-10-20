@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { CONFIG } from '../../src/sim/config';
-import { NEXT_WAVE_AT, WAVE_SPAWN_INTERVAL, waveSize } from '../../src/sim/director';
+import { WAVE_FIRST_DELAY, waveSize } from '../../src/sim/director';
 import { Sim } from '../../src/sim/sim';
 import type { InputFrame, SimEvent, Vec } from '../../src/sim/types';
 
@@ -82,23 +82,26 @@ describe('wave numbering and objectives', () => {
 });
 
 describe('steady flow (no holes)', () => {
-  test('the next wave starts as soon as the queue is empty and <= NEXT_WAVE_AT rioters remain; first rioter enters at once', () => {
+  test('waves never overlap: every wave is announced on an empty map, and K/T only counts that wave', () => {
     const sim = new Sim(3, { invulnerable: true });
-    for (let i = 0; i < 60 * 240 && sim.director.phase !== 'waves'; i++) {
-      koAll(sim);
+    const activeAtAnnounce: number[] = [];
+    let prevWave = sim.director.wave;
+    for (let i = 0; i < 60 * 600 && sim.director.fillWaves < 4; i++) {
+      // a bot that clears the map every 10 s
+      if (i % 600 === 599) koAll(sim);
       if (sim.school.stage === 'cinematic') sim.skipCinematic();
-      sim.step(IDLE);
+      const ev = sim.step(IDLE);
+      if (ev.some((e) => e.type === 'WaveAnnounced')) activeAtAnnounce.push(sim.horde.active().length);
+      const s = sim.snapshot();
+      if (s.wave !== prevWave) {
+        prevWave = s.wave;
+        expect(s.waveKos).toBe(0);
+      }
+      expect(s.waveKos).toBeLessThanOrEqual(s.waveTotal);
     }
-    const first = sim.director.wave;
-    // let the whole wave enter (idle Paul), then clear it
-    for (let i = 0; i < 60 * 40 && sim.director.wave === first; i++) sim.step(IDLE);
-    expect(sim.director.wave).toBe(first); // > NEXT_WAVE_AT still active → no new wave yet
-    koAll(sim);
-    const cleared = sim.now;
-    while (sim.horde.active().length === 0 && sim.now < cleared + 10) sim.step(IDLE);
-    expect(sim.director.wave).toBe(first + 1);
-    expect(sim.now - cleared).toBeLessThanOrEqual(WAVE_SPAWN_INTERVAL + CONFIG.step + 1e-9);
-    expect(NEXT_WAVE_AT).toBe(3);
+    expect(activeAtAnnounce.length).toBeGreaterThanOrEqual(4);
+    expect(activeAtAnnounce.every((n) => n === 0)).toBe(true);
+    expect(WAVE_FIRST_DELAY).toBeLessThanOrEqual(3);
   });
 
   test('a 5-minute bot run never goes more than 3 s without an active rioter after the intro', () => {

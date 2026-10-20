@@ -29,8 +29,12 @@ export const BREATHER_SEC = 2;
 export const SPAWN_MIN_DIST = 320;
 export const RESCUE_PATH_MIN = 300;
 export const RESCUE_PATH_MAX = 900;
-/** The next wave starts (no rest) once the wave queue is empty and at most this many rioters are left. */
-export const NEXT_WAVE_AT = 3;
+/**
+ * Waves are discrete: a wave is a fixed group of rioters, and the next wave is announced only once every rioter of
+ * the current one (queued or on the map) is knocked out. Its first rioter enters this many seconds after the
+ * announcement, so the map is never empty for long (steady flow).
+ */
+export const WAVE_FIRST_DELAY = 2;
 /** Rioters of a wave enter one by one, this many seconds apart. */
 export const WAVE_SPAWN_INTERVAL = 1.5;
 /** Waves never put more than this many rioters on the map at once (the rest wait their turn). */
@@ -105,6 +109,8 @@ export class Director {
   /** Rioters of the current wave still waiting to enter. */
   private queue: Role[] = [];
   private spawnTimer = 0;
+  /** True from a wave's announcement until its first rioter has entered. */
+  private firstEntry = false;
 
   /** Pressure for the current fill wave (0-based fill-wave index) and session KOs. */
   pressure(kos: number): number {
@@ -136,7 +142,9 @@ export class Director {
         }
         break;
       case 'school':
-        if (host.school.stage === 'saved' || host.school.stage === 'destroyed') this.enter('breather');
+        // Wave 1 is over when the school is resolved AND its rioters are down (survivors of a lost school keep fighting).
+        if ((host.school.stage === 'saved' || host.school.stage === 'destroyed') && host.horde.active().length === 0)
+          this.enter('breather');
         break;
       case 'breather':
         if (this.timer >= BREATHER_SEC - 1e-9) {
@@ -150,8 +158,9 @@ export class Director {
         }
         break;
       case 'rescue':
-        // A secured victim is no longer urgent: waves may start while the victim thanks Paul.
-        if (!host.rescue || host.rescue.stage !== 'threat') {
+        // Wave 2 is over when the victim is no longer threatened AND the aggressors are down (after a failed rescue they
+        // turn on Paul). The victim may still be thanking Paul when the next wave is announced.
+        if ((!host.rescue || host.rescue.stage !== 'threat') && host.horde.active().length === 0) {
           this.enter('waves');
           this.launchWave(host, events);
         }
@@ -175,15 +184,16 @@ export class Director {
     this.waveStartKos = host.rules.kos;
   }
 
-  /** Feeds the queued rioters one by one; once the wave is nearly cleared, launches the next one at once. */
+  /** Feeds the queued rioters one by one; the next wave is announced only once this one is entirely cleared. */
   private stepWave(dt: number, host: DirectorHost, events: SimEvent[]): void {
     const active = host.horde.active().length;
     if (this.queue.length > 0) {
       this.spawnTimer += dt;
-      if (this.spawnTimer >= WAVE_SPAWN_INTERVAL - 1e-9 && active < WAVE_ACTIVE_CAP) this.enterNext(host);
+      const interval = this.firstEntry ? WAVE_FIRST_DELAY : WAVE_SPAWN_INTERVAL;
+      if (this.spawnTimer >= interval - 1e-9 && active < WAVE_ACTIVE_CAP) this.enterNext(host);
       return;
     }
-    if (active <= NEXT_WAVE_AT) this.launchWave(host, events);
+    if (active === 0) this.launchWave(host, events);
   }
 
   private launchWave(host: DirectorHost, events: SimEvent[]): void {
@@ -198,13 +208,18 @@ export class Director {
       this.queue.push(thrower ? 'thrower' : 'contact');
     }
     events.push({ type: 'WaveAnnounced', index: this.wave, total: size });
-    this.enterNext(host);
+    // announced now; the first rioter walks in WAVE_FIRST_DELAY seconds later
+    this.firstEntry = true;
+    this.spawnTimer = 0;
   }
 
   private enterNext(host: DirectorHost): void {
     const role = this.queue[0];
     if (!role) return;
-    if (this.spawn(host, role, spawnPoints(host.player.pos))) this.queue.shift();
+    if (this.spawn(host, role, spawnPoints(host.player.pos))) {
+      this.queue.shift();
+      this.firstEntry = false;
+    }
     this.spawnTimer = 0;
   }
 

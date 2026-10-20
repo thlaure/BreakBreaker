@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import { CONFIG } from '../../src/sim/config';
 import {
-  NEXT_WAVE_AT,
   WAVE_ACTIVE_CAP,
+  WAVE_FIRST_DELAY,
   WAVE_SPAWN_INTERVAL,
   pressure,
   waveSize,
@@ -68,17 +68,24 @@ describe('wave balancing', () => {
     for (let k = 1; k < times.length; k++) expect(times[k]! - times[k - 1]!).toBeGreaterThanOrEqual(WAVE_SPAWN_INTERVAL - 1e-6);
   });
 
-  test('no rest: the next wave follows a cleared wave and its first rioter enters at once', () => {
+  test('discrete waves: the next one is announced only once the whole wave is down; its first rioter walks in after WAVE_FIRST_DELAY', () => {
     const sim = toWaves();
     const first = sim.director.wave;
-    // let the whole wave enter, then clear it
+    // let the whole wave enter (idle Paul), then clear all but one rioter: no new wave yet
     for (let i = 0; i < 60 * 40; i++) sim.step(IDLE);
-    for (const h of sim.horde.active()) sim.horde.applyHit(h.lifeId, 99);
+    const all = sim.horde.active();
+    expect(all.length).toBeGreaterThan(1);
+    for (const h of all.slice(1)) sim.horde.applyHit(h.lifeId, 99);
+    for (let i = 0; i < 60 * 5; i++) sim.step(IDLE);
+    expect(sim.director.wave).toBe(first);
+    sim.horde.applyHit(all[0]!.lifeId, 99);
     const cleared = sim.now;
-    while (sim.horde.active().length === 0 && sim.now < cleared + 30) sim.step(IDLE);
+    while (sim.director.wave === first && sim.now < cleared + 5) sim.step(IDLE);
     expect(sim.director.wave).toBe(first + 1);
-    expect(sim.now - cleared).toBeLessThanOrEqual(WAVE_SPAWN_INTERVAL + CONFIG.step + 1e-9);
-    expect(NEXT_WAVE_AT).toBeLessThanOrEqual(3);
+    expect(sim.horde.active()).toHaveLength(0); // announced on an empty map: no overlap with the previous wave
+    while (sim.horde.active().length === 0 && sim.now < cleared + 10) sim.step(IDLE);
+    expect(sim.now - cleared).toBeGreaterThanOrEqual(WAVE_FIRST_DELAY - CONFIG.step - 1e-9);
+    expect(sim.now - cleared).toBeLessThanOrEqual(WAVE_FIRST_DELAY + 2 * CONFIG.step + 1e-9);
   });
 
   test('the first fill wave (wave 3) has no rock throwers', () => {
