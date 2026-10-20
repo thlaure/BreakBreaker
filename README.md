@@ -17,7 +17,7 @@ A full session in a single district, playable with keyboard/mouse or touch:
 - **Waves**: after the intro, the school and the rescue, waves follow until Paul is knocked out (or the player quits). Rioters enter one by one, with a rest between waves. No global timer.
 - End-of-session summary (score, local best, wave reached, stats) and Replay.
 
-The landing page's "Jouer" link (`/jouer/?go`) starts the game right away; opening `/jouer/` directly shows the rules screen first.
+The landing page (title, "Jouer", "Commandes" modal) has an original illustrated hero. Its "Jouer" link (`/jouer/?go`) starts the game right away, with a "Comment jouer" card over the running game; a "Commandes" button in the game opens the keys and rules. Opening `/jouer/` directly shows the rules screen first.
 
 Design choices:
 
@@ -43,7 +43,7 @@ Vite, TypeScript (strict), Phaser 4.2.1, Vitest. Deterministic fixed-step simula
 
 Two entry points:
 
-- `/`: static landing page (rules, controls, preview), no game code.
+- `/`: static landing page (title, play button, controls modal, credits), no game code, no JavaScript.
 - `/jouer/`: the Phaser game.
 
 ## Scripts

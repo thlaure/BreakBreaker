@@ -16,7 +16,7 @@ export interface MenuActions {
   click(): void;
 }
 
-type Panel = 'start' | 'pause' | 'help' | 'credits' | 'confirm' | 'summary';
+type Panel = 'start' | 'pause' | 'help' | 'credits' | 'confirm' | 'summary' | 'controls';
 
 function h<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text = ''): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -57,9 +57,9 @@ export class Menus {
     this.root.replaceChildren();
   }
 
-  /** Esc: dialogs go back to the pause menu, the pause menu resumes; start and summary ignore it. */
+  /** Esc: dialogs go back to the pause menu, the pause menu and the Commandes modal resume; start and summary ignore it. */
   escape(): void {
-    if (this.panel === 'pause') this.act.resume();
+    if (this.panel === 'pause' || this.panel === 'controls') this.act.resume();
     else if (this.panel === 'help' || this.panel === 'credits' || this.panel === 'confirm') this.showPause(this.panel);
   }
 
@@ -70,6 +70,20 @@ export class Menus {
     row.append(this.btn('Commencer', () => this.act.start(), 'primary'), this.sound(), this.btn('Retour au site', () => this.act.leave()));
     p.append(row, h('h2', '', 'Règles'), this.rules(), h('h2', '', 'Commandes'), this.controls());
     this.end('Commencer');
+  }
+
+  /** "Commandes" modal opened from the HUD button: keys and rules, closes straight back into the game. */
+  showControls(): void {
+    const p = this.begin('controls', 'Commandes');
+    // Fermer first: it takes the focus, so the modal opens at its top rather than scrolled to its end.
+    p.append(
+      this.btn('Fermer', () => this.act.resume(), 'primary'),
+      this.controls(),
+      h('h2', '', 'Règles'),
+      this.rules(),
+      this.btn('Fermer', () => this.act.resume()),
+    );
+    this.end('Fermer');
   }
 
   showPause(from?: Panel): void {

@@ -1,6 +1,6 @@
 # BreakBreaker — Cahier des charges fonctionnel et technique
 
-**Version :** 1.5 — 20 octobre 2026  
+**Version :** 1.6 — 20 octobre 2026  
 **Périmètre :** jeu web 2D en pixel art, vue du dessus non isométrique, mode arcade par manches sans limite de durée, Paris, Paul (commerçant fictif) comme héros unique, ordinateur et téléphone  
 **Statut :** spécification de référence ; les décisions confirmées par le porteur du projet et les recommandations de conception sont identifiées. Une première tranche jouable existe (section 24) ; ce document ne constitue pas une validation de production ni une attestation que toutes les exigences sont déjà implémentées.  
 **Langue de lancement :** français  
@@ -113,6 +113,7 @@ La révision 1.5 intègre des décisions **confirmées** : héros fictif Paul, b
 | EX-24 | Landing page publique simple donnant accès au jeu ; contenu et fonctionnement définis ici, direction visuelle traitée séparément avec Claude. |
 | EX-25 | Armes ramassables apparaissant aléatoirement dans les rues ; chacune met un casseur KO en un coup, avec portée et nombre de coups propres ; aucune arme à feu (section 8.7). |
 | EX-26 | Manches à effectif fixe : un nombre de casseurs à neutraliser et un à trois objectifs par manche, écran « Manche N terminée » et courte respiration entre deux manches (section 12.2). |
+| EX-27 | Landing sobre (titre, accroche, boutons Jouer et Commandes, pied de page) avec visuel original ; règles et instructions affichées au lancement du jeu ; bouton « Commandes » (modale) sur la landing et dans le jeu (section 26). |
 
 ### 2.3 Propositions de départ
 
@@ -155,7 +156,7 @@ Cible de variété : plusieurs situations différentes dans les dix premières m
 
 ### 4.1 Accueil
 
-Le site s’ouvre sur une landing page légère, distincte du jeu : présentation, aperçu, règles essentielles, commandes et lien « Jouer », qui lance directement la partie. Son contenu détaillé est défini en section 26. Aucun choix de sexe ou teint ; aucune limite globale de durée annoncée. Les délais locaux des objectifs sont expliqués.
+Le site s’ouvre sur une landing page légère, distincte du jeu, volontairement sobre : titre, accroche, bouton « Jouer » (qui lance directement la partie) et bouton « Commandes » (modale des touches). **Confirmé (1.6) :** les règles et instructions de jeu ne sont pas sur la landing ; elles s’affichent au lancement du jeu (§26.4). Son contenu détaillé est défini en section 26. Aucun choix de sexe ou teint ; aucune limite globale de durée annoncée.
 
 ### 4.2 Entrée
 
@@ -1121,16 +1122,20 @@ Tests de règles ; intégration avec horloge contrôlée ; navigateur avec rendu
 | RC-66 | Délai de secours épuisé | Secours manqué, repli/prise en charge, session continuée sans violence graphique. |
 | RC-67 | Pause pendant destruction, détresse ou pose de kit | Tous les délais et interactions suspendus sans consommation de ressource. |
 | RC-68 | Transition de manche avec incident ou ruine | Pas de disparition, guérison ou réparation gratuite ; état reporté ou résolu explicitement. |
-| RC-69 | Ouvrir la racine du site | Présentation, statut et lien Jouer visibles ; aucune session démarrée. |
-| RC-70 | Activer Jouer | Navigation dans le même onglet vers `/jouer/?go`, chargement lisible puis démarrage immédiat sans écran de départ ; audio déverrouillé à la première touche, au premier clic ou au premier toucher. |
+| RC-69 | Ouvrir la racine du site | Visuel, titre, boutons Jouer et Commandes visibles ; ni règles ni tableau des touches affichés d’emblée ; aucune session démarrée. |
+| RC-70 | Activer Jouer | Navigation dans le même onglet vers `/jouer/?go`, chargement lisible puis démarrage immédiat sans écran de départ bloquant, carte « Comment jouer » visible par-dessus la partie ; audio déverrouillé à la première touche, au premier clic ou au premier toucher. |
 | RC-71 | Ouvrir directement `/jouer/` | Jeu accessible sans passage préalable par la landing, y compris après rechargement ; écran des règles avec Commencer. |
 | RC-72 | Inspecter le réseau avant Jouer | Aucun moteur, atlas ou son du jeu téléchargé par la landing. |
 | RC-73 | Naviguer au clavier et sur téléphone | Liens utilisables, focus visible, texte lisible, aucun débordement horizontal. |
-| RC-74 | Consulter aperçu et règles | Aperçu fidèle à la version livrée ; absence de promesse 3D, de durée globale ou de fonctionnalité absente. |
+| RC-74 | Consulter le visuel et les textes | Visuel original sans photographie réelle ; absence de promesse 3D, de durée globale ou de fonctionnalité absente. |
 | RC-75 | Ouvrir le site puis le jeu avec son bloqué | Aucun son automatique ; activation par geste sur la page du jeu, mode muet toujours jouable. |
 | RC-76 | Revenir au site depuis Pause ou Bilan | Navigation fonctionnelle ; abandon d’une session active explicitement confirmé dans le jeu. |
 | RC-77 | Aperçu indisponible ou JavaScript désactivé sur la landing | Présentation et vrai lien vers le jeu restent accessibles ; aucun bloc vide bloquant. |
 | RC-78 | Charger landing et jeu sur hébergement statique | Deux routes servies correctement, ressources versionnées, budgets mesurés séparément. |
+| RC-86 | Landing : bouton Commandes | La modale s’ouvre sans JavaScript, liste toutes les commandes (clavier et tactile), se ferme par Fermer, Échap ou clic extérieur ; sans API popover, le tableau reste lisible sous le contenu. |
+| RC-87 | Lancer le jeu via Jouer | Carte « Comment jouer » (objectif, touches principales) visible par-dessus la partie en cours, fermable par « Compris », absente après ~25 s ; touches tactiles affichées sur téléphone. |
+| RC-88 | Bouton Commandes en jeu | Un clic met la partie en pause, ouvre la modale (touches et règles) avec le focus sur Fermer ; Fermer ou Échap reprend la partie sans perte d’état. |
+| RC-89 | Visuel de la landing | Illustration originale, aucune image téléchargée, aucune photographie réelle ; texte lisible (contraste ≥ 4,5:1) sur ordinateur et téléphone, sans débordement horizontal. |
 | RC-79 | Apparition d’armes | Emplacement libre praticable à 160–480 px de Paul, hors groupe pacifique ; première après environ 10 s, puis toutes les 15 à 25 s ; jamais plus de deux au sol. |
 | RC-80 | Ramasser une arme en tenant déjà une | Nouvelle arme tenue, ancienne remplacée ; HUD « Arme : <nom> (<coups>) ». |
 | RC-81 | Frapper avec une arme | KO en un coup à la portée de l’arme ; charge consommée seulement si au moins un casseur est touché. |
@@ -1280,14 +1285,15 @@ Une capture d’écran pixelisée, une conversion de perspective ou les anciens 
 - **1.3 — 19 octobre 2026 :** collisions bâtiments/arbres précisées, délais locaux de destruction, kits pour ruines persistantes, événements de secours et distinction entre protection contre le héros et détresse ennemie.
 - **1.4 — 19 octobre 2026 :** landing page, contenu de présentation, routes distinctes, chargement différé du jeu et recette du parcours site → jeu.
 - **1.5 — 20 octobre 2026 :** héros renommé Paul, commerçant fictif, sans référence à une personne réelle ; barème égal (+1 par KO, drapeaux cosmétiques) ; compteur neutre « Casseurs neutralisés » à la place de l’ancien compteur et suppression des lignes satiriques du bilan ; frappe circulaire à 360° (56 px, trois cibles) ; soins appliqués au contact ; armes ramassables (section 8.7, EX-25) et nouvelles armes proposées pour la tranche 2 ; manches à effectif fixe remplaçant les vagues sans fin (EX-26) et nouvelle formule de pression ; choix techniques effectifs (Phaser 4.2.1, Vite, TypeScript, Vitest, simulation pure, tuiles 32 px, LPC/Kenney) ; lancement direct par `/jouer/?go` ; section 24 décrivant la première tranche ; recette RC-79 à RC-85.
+- **1.6 — 20 octobre 2026 :** landing sobre avec visuel original (illustration dessinée pour le jeu ; pas de photographie d’événement réel) ; règles et instructions affichées au lancement du jeu (carte « Comment jouer » non bloquante avec `?go`, écran de départ pour l’accès direct) ; bouton « Commandes » (modale) sur la landing et dans le jeu ; EX-27 et RC-86 à RC-89.
 
 ## 26. Landing page et accès au jeu
 
 ### 26.1 Rôle et périmètre
 
-Une seule page publique présente le jeu et permet de le lancer rapidement. Elle doit faire comprendre le genre, les actions et les commandes avant le premier combat. Elle ne demande ni compte, ni inscription, ni téléchargement d’application.
+Une seule page publique présente le jeu et permet de le lancer rapidement. Elle fait comprendre le genre et donne accès aux commandes (modale) ; les règles sont expliquées dans le jeu, au lancement. Elle ne demande ni compte, ni inscription, ni téléchargement d’application.
 
-La structure fonctionnelle et les contenus sont définis ci-dessous. La direction visuelle sera travaillée séparément avec Claude : ce cahier n’impose ni palette, ni police, ni maquette graphique. Le nom définitif et les textes de promotion restent modifiables sans changer le parcours.
+La structure fonctionnelle et les contenus sont définis ci-dessous. **Confirmé (1.6) :** peu d’éléments, un visuel travaillé en plein écran. **Le visuel de la landing est original** (illustration dessinée pour le jeu, sans image à télécharger) : aucune photographie d’un événement réel, ni de personnes réelles, n’est utilisée sans droits ni consentement, et aucune image ne présente des manifestants ou des groupes réels comme des adversaires du jeu. Le nom définitif et les textes de promotion restent modifiables sans changer le parcours.
 
 Landing et navigation sont P0. L’habillage final et un aperçu représentatif sont P1, requis pour une diffusion publique de la version aboutie. Pas de boutique, newsletter, faux avis, compteur de joueurs inventé ou réseau social nécessaire à la première version.
 
@@ -1295,20 +1301,20 @@ Landing et navigation sont P0. L’habillage final et un aperçu représentatif 
 
 | Bloc | Contenu attendu | Action |
 | --- | --- | --- |
-| En-tête | Nom du jeu ; navigation minimale vers Présentation et Commandes | Lien Jouer |
-| Présentation principale | Une phrase de promesse, genre et contexte : arcade pixel art, vue du dessus, Paris, Paul | Bouton/lien principal « Jouer » ; lien secondaire « Comment jouer » |
-| Aperçu | Une capture réelle de gameplay 2D, éventuellement une courte vidéo à lancement volontaire | Comprendre immédiatement la perspective et la lisibilité du jeu |
-| Ce que l’on fait | Quatre idées courtes : combattre et renvoyer les projectiles ; défendre et réparer ; secourir ; survivre et se soigner | Aucun écran supplémentaire nécessaire |
-| Règles et commandes | Survie jusqu’au KO, urgences locales, groupes pacifiques non ciblables ; commandes ordinateur et téléphone | Ancre Commandes ; second lien Jouer en bas si la page est longue |
-| Pied de page | Version et statut prototype/version jouable, crédits, mention de fiction satirique, informations de contact et mentions nécessaires selon diffusion | Crédits et retour en haut si utile |
+| Visuel plein écran | Illustration originale du jeu (ciel, fumée, silhouette parisienne, étincelles), décorative, sans texte porteur d’information | Aucune |
+| Présentation | Nom du jeu, genre (arcade, pixel art, vue du dessus) et une phrase de promesse | Bouton principal « Jouer » ; bouton secondaire « Commandes » |
+| Commandes | Modale (sans JavaScript) avec le tableau des commandes ordinateur et téléphone, issu de la même source que le jeu | Ouverte par le bouton « Commandes », fermée par « Fermer », Échap ou clic extérieur |
+| Pied de page | Version et statut prototype/version jouable, crédits, lien vers le code source, mention de fiction satirique | Crédits, code source |
 
-Exemple de texte de présentation, proposé : **« Défends le quartier. Tiens aussi longtemps que possible. »** Puis : « Un jeu d’action arcade en pixel art, vu du dessus. Incarne Paul dans un quartier parisien, défends les bâtiments, aide les passants et retourne les projectiles contre les casseurs. »
+Texte de présentation retenu : **« Défends le quartier. Tiens aussi longtemps que possible. »**
 
 Sous le lien Jouer : **« Solo · Ordinateur et téléphone · Sans compte »**. Afficher seulement les compatibilités réellement vérifiées. La mention « gratuit » ne sera ajoutée que si ce modèle de diffusion est confirmé.
 
-Les quatre actions doivent rester des descriptions courtes, pas une reproduction du cahier des charges. Les chiffres d’équilibrage, l’architecture technique et la liste exhaustive des fonctionnalités n’ont pas leur place dans le parcours public.
+Les chiffres d’équilibrage, l’architecture technique, les règles détaillées et la liste des fonctionnalités n’ont pas leur place sur la landing.
 
-### 26.3 Règles à expliquer avant de jouer
+### 26.3 Règles à expliquer au lancement du jeu
+
+**Confirmé (1.6) :** ces règles sont affichées par le jeu, pas par la landing : sur la carte de lancement (§26.4) et dans la modale « Commandes » du jeu.
 
 - La session n’a pas de limite globale de temps : elle se termine au KO ou par arrêt volontaire.
 - Certains bâtiments et secours ont un délai local. Manquer une intervention n’arrête pas la partie ; des kits permettent de réparer les ruines.
@@ -1323,7 +1329,7 @@ Le statut satirique du jeu est indiqué en une phrase lisible. Le site ne prése
 
 Routes proposées : **`/` pour la landing**, **`/jouer/` pour le jeu**. Elles peuvent être servies comme deux entrées statiques dans le même dépôt, sans framework de site supplémentaire. Les deux routes et leurs ressources doivent fonctionner après navigation directe et rechargement sur l’hébergement retenu.
 
-**Confirmé :** « Jouer » est un vrai lien vers `/jouer/?go`, dans le même onglet. Le jeu ne commence pas à se charger au survol, au défilement ou à l’ouverture de la landing. Aucun préchargement automatique du moteur ou des atlas. La page de jeu affiche l’avancement, les erreurs et une action Réessayer en cas d’échec. Avec `?go`, la partie démarre dès que les ressources indispensables sont prêtes, sans écran de départ ; l’audio se déverrouille à la première touche, au premier clic ou au premier toucher.
+**Confirmé :** « Jouer » est un vrai lien vers `/jouer/?go`, dans le même onglet. Le jeu ne commence pas à se charger au survol, au défilement ou à l’ouverture de la landing. Aucun préchargement automatique du moteur ou des atlas. La page de jeu affiche l’avancement, les erreurs et une action Réessayer en cas d’échec. Avec `?go`, la partie démarre dès que les ressources indispensables sont prêtes, sans écran de départ bloquant ; **une carte « Comment jouer » non bloquante** (objectif, touches principales, bouton « Compris », disparition automatique après ~25 s) s’affiche par-dessus la partie ; un bouton **« Commandes »** reste dans l’interface et ouvre une modale (touches et règles) qui met la partie en pause jusqu’à sa fermeture. L’audio se déverrouille à la première touche, au premier clic ou au premier toucher.
 
 L’accès direct au jeu est autorisé : la landing n’est pas une étape obligatoire. Une visite directe sur `/jouer/` affiche l’écran des règles essentielles et des commandes avec l’action « Commencer ». L’activation audio se fait sur un geste dans la page du jeu ; le clic effectué sur une autre page ne doit pas être supposé suffisant.
 
@@ -1356,4 +1362,4 @@ Ces budgets sont des objectifs de projet à vérifier sur un profil de réseau e
 
 Livrer les textes, les deux points d’entrée, le lien vers le jeu, l’aperçu fidèle à la version, les commandes synchronisées avec le jeu et les crédits. Fournir les consignes de build et d’hébergement pour les deux routes. Le travail visuel de Claude devra respecter ces contrats de navigation, de chargement et d’accessibilité.
 
-La recette RC-69 à RC-78 complète la recette du jeu. Elle doit vérifier le trajet landing → jeu → bilan → landing, ainsi qu’une entrée directe sur le jeu. Le présent document décrit cette cible ; il ne constitue pas une preuve que la landing ou le nouveau jeu ont déjà été réalisés.
+La recette RC-69 à RC-78 et RC-86 à RC-89 complète la recette du jeu. Elle doit vérifier le trajet landing → jeu → bilan → landing, ainsi qu’une entrée directe sur le jeu. Le présent document décrit cette cible ; il ne constitue pas une preuve que la landing ou le nouveau jeu ont déjà été réalisés.

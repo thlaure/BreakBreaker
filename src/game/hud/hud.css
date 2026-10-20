@@ -59,3 +59,17 @@
 .bb-banner .hint { font-size: 12px; opacity: .8; }
 .bb-card.st-renforts { border-left-color: var(--bb-accent); }
 .bb-card.st-renforts .status::before { content: '» '; }
+
+.bb-tools { position: absolute; right: calc(8px + env(safe-area-inset-right)); top: calc(8px + env(safe-area-inset-top)); pointer-events: auto; }
+#touch-ui.visible ~ .bb-hud .bb-tools { right: calc(76px + env(safe-area-inset-right)); }
+.bb-controls-btn { font: inherit; font-weight: bold; min-height: 44px; padding: 0 14px; border-radius: 8px; border: 2px solid var(--bb-fg); background: var(--bb-panel); color: var(--bb-fg); cursor: pointer; }
+.bb-controls-btn:hover { filter: brightness(1.2); }
+.bb-controls-btn:focus-visible, .bb-intro .close:focus-visible { outline: 3px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 5px #000; }
+.bb-intro { position: absolute; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(460px, calc(100vw - 24px)); box-sizing: border-box; padding: 12px 14px; background: var(--bb-panel); border: 2px solid var(--bb-accent); border-radius: 10px; pointer-events: auto; }
+.bb-intro .title { display: block; color: var(--bb-accent); font-size: 17px; }
+.bb-intro .goal { margin: 4px 0 8px; }
+.bb-intro .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 0 0 10px; }
+.bb-intro .keys dt { font-weight: bold; }
+.bb-intro .keys dd { margin: 0; }
+.bb-intro .close { font: inherit; min-height: 44px; padding: 0 18px; border-radius: 8px; border: 2px solid var(--bb-accent); background: var(--bb-accent); color: #14121c; font-weight: bold; cursor: pointer; }
+@media (max-width: 520px) { .bb-intro { bottom: calc(150px + env(safe-area-inset-bottom)); } }

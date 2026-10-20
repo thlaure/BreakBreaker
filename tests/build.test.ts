@@ -68,25 +68,24 @@ test('landing own HTML + CSS <= 300 KB gzipped', () => {
   expect(gzipSync(html + css).length).toBeLessThanOrEqual(300 * 1024);
 });
 
-test('preview image has width, height and alt and is <= 250 KB', () => {
+test('landing is slim: one h1, one Jouer button, a Commandes button with its modal', () => {
   const html = readFileSync(out('index.html'), 'utf8');
-  const img = html.match(/<img[^>]*>/)?.[0] ?? '';
-  expect(img).toMatch(/width="\d+"/);
-  expect(img).toMatch(/height="\d+"/);
-  expect(img).toMatch(/alt="[^"]{10,}"/);
-  const src = img.match(/src="([^"]+)"/)?.[1] ?? '';
-  expect(statSync(out(src)).size).toBeLessThanOrEqual(250 * 1024);
+  expect(html).not.toMatch(/<img/); // the hero is drawn in CSS/SVG: no photograph, no image download
+  expect(html.match(/class="[^"]*btn-primary[^"]*"[^>]*href="jouer\/\?go"/g)?.length).toBe(1);
+  expect(html).toMatch(/<button[^>]*popovertarget="commandes"[^>]*>Commandes</);
+  expect(html).toMatch(/<div id="commandes" popover/);
+  expect(html).toMatch(/popovertargetaction="hide"/);
 });
 
-test('landing renders every rule and control from the shared content module', () => {
+test('landing shows the controls (modal) from the shared module but not the game rules', () => {
   const text = decode(readFileSync(out('index.html'), 'utf8'));
-  for (const r of RULES) expect(text).toContain(r);
   expect(text).toContain(SATIRE_NOTICE);
   for (const c of CONTROLS) {
     expect(text).toContain(c.action);
     expect(text).toContain(c.keyboard);
     expect(text).toContain(c.touch);
   }
+  for (const r of RULES) expect(text).not.toContain(r); // the instructions are shown in the game at launch
   expect(text).toContain('slice-0.1.0');
 });
 

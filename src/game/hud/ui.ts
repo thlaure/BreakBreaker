@@ -48,7 +48,7 @@ export class GameUi {
   };
 
   constructor(private readonly host: UiHost, autostart: boolean) {
-    this.hud = new Hud(document.body, document.getElementById('touch-ui'));
+    this.hud = new Hud(document.body, document.getElementById('touch-ui'), { onControls: () => this.openControls() });
     this.menus = new Menus(
       document.body,
       {
@@ -70,6 +70,8 @@ export class GameUi {
       this.phase = 'playing';
       this.hud.show(true);
       this.audio.resume();
+      // The game is already running (no start screen): show the instructions over it.
+      this.hud.showIntro(document.getElementById('touch-ui')?.classList.contains('visible') ?? false);
       // No Commencer click on this page: the first key, click or tap unlocks audio (browsers require a gesture here).
       if (!this.audio.unlocked) {
         const unlock = (): void => {
@@ -113,6 +115,17 @@ export class GameUi {
     this.host.releaseInputs();
     this.audio.suspend();
     this.menus.showPause();
+  }
+
+  /** HUD "Commandes" button: keys and rules in a modal; the game is paused until it is closed. */
+  openControls(): void {
+    if (this.phase !== 'playing') return;
+    this.phase = 'paused';
+    this.hud.hideIntro();
+    this.host.sim.pause();
+    this.host.releaseInputs();
+    this.audio.suspend();
+    this.menus.showControls();
   }
 
   private start(): void {

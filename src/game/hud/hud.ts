@@ -2,7 +2,11 @@ import { CONFIG } from '../../sim/config';
 import { DISTRICT } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
 import type { Vec } from '../../sim/types';
+import { CONTROLS, INTRO_ACTIONS, INTRO_GOAL } from '../../content/controls';
 import { DEFAULT_ACT_LABEL, contextPrompt, incidentLines, weaponLine, type IncidentLine } from './format';
+
+/** How long the launch card stays on screen if the player does not close it. */
+const INTRO_MS = 25_000;
 
 export interface CameraView {
   /** World coordinates of the top-left corner of the visible area. */
@@ -90,7 +94,15 @@ export class Hud {
   private lastRescue = Number.POSITIVE_INFINITY;
   private rescueDrain: 'en cours' | 'interrompu' = 'en cours';
 
-  constructor(parent: HTMLElement, touchRoot: HTMLElement | null) {
+  private readonly tools = el('div', 'bb-tools');
+  private intro: HTMLElement | null = null;
+  private introTimer: ReturnType<typeof setTimeout> | null = null;
+
+  constructor(
+    parent: HTMLElement,
+    touchRoot: HTMLElement | null,
+    private readonly opts: { onControls?: () => void } = {},
+  ) {
     this.root.id = 'hud';
     this.root.hidden = true;
     const top = this.top;
@@ -128,7 +140,12 @@ export class Hud {
     this.banner.append(el('b', 'title', 'Renforts en approche !'), this.bannerHint);
     this.banner.hidden = true;
     this.banner.setAttribute('role', 'status');
-    this.root.append(top, this.prompt, this.arrow, this.banner);
+    const cmd = el('button', 'bb-controls-btn', 'Commandes');
+    cmd.type = 'button';
+    cmd.setAttribute('aria-haspopup', 'dialog');
+    cmd.addEventListener('click', () => this.opts.onControls?.());
+    this.tools.append(cmd);
+    this.root.append(top, this.prompt, this.arrow, this.banner, this.tools);
     parent.append(this.root);
     this.touchRoot = touchRoot;
     this.actBtn = touchRoot?.querySelector<HTMLElement>('[data-action=act]') ?? null;
@@ -140,7 +157,39 @@ export class Hud {
     this.topBox = null;
   }
 
+  /**
+   * Non-blocking card shown when the game launches (the game is already running): goal + the main keys.
+   * Closes with its button, on its own after INTRO_MS, or when `hideIntro` is called.
+   */
+  showIntro(touch: boolean): void {
+    this.hideIntro();
+    const card = el('div', 'bb-intro');
+    card.setAttribute('role', 'status');
+    card.append(el('b', 'title', 'Comment jouer'), el('p', 'goal', INTRO_GOAL));
+    const list = el('dl', 'keys');
+    for (const name of INTRO_ACTIONS) {
+      const row = CONTROLS.find((c) => c.action === name);
+      if (!row) continue;
+      list.append(el('dt', '', name), el('dd', '', touch ? row.touch : row.keyboard));
+    }
+    const close = el('button', 'close', 'Compris');
+    close.type = 'button';
+    close.addEventListener('click', () => this.hideIntro());
+    card.append(list, close);
+    this.intro = card;
+    this.root.append(card);
+    this.introTimer = setTimeout(() => this.hideIntro(), INTRO_MS);
+  }
+
+  hideIntro(): void {
+    if (this.introTimer) clearTimeout(this.introTimer);
+    this.introTimer = null;
+    this.intro?.remove();
+    this.intro = null;
+  }
+
   destroy(): void {
+    this.hideIntro();
     window.removeEventListener('resize', this.onResize);
     this.root.remove();
     if (this.actBtn) this.actBtn.textContent = DEFAULT_ACT_LABEL;

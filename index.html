@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
     <title>BreakBreaker - Défends le quartier</title>
     <meta
       name="description"
@@ -11,74 +12,66 @@
     <link rel="stylesheet" href="/src/site/landing.css" />
   </head>
   <body>
-    <header class="site-header">
-      <a class="brand" href="./">BreakBreaker</a>
-      <nav aria-label="Navigation principale">
-        <a href="#presentation">Présentation</a>
-        <a href="#commandes">Commandes</a>
-        <a class="btn btn-primary" href="jouer/?go">Jouer</a>
-      </nav>
-    </header>
-
-    <main>
-      <section class="hero" id="presentation" aria-labelledby="titre">
-        <div class="hero-text">
-          <h1 id="titre">Défends le quartier. Tiens aussi longtemps que possible.</h1>
-          <p>
-            Un jeu d'action arcade en pixel art, vu du dessus. Incarne Paul dans un quartier
-            parisien, défends les bâtiments, aide les passants et retourne les projectiles contre
-            les casseurs.
-          </p>
-          <p class="cta">
-            <a class="btn btn-primary" href="jouer/?go">Jouer</a>
-            <a class="btn btn-secondary" href="#commandes">Comment jouer</a>
-          </p>
-          <p class="meta">Solo · Ordinateur et téléphone · Sans compte</p>
-        </div>
-        <img
-          class="preview"
-          src="/preview.webp"
-          width="1024"
-          height="576"
-          alt="Capture du jeu : Paul, en vue du dessus, devant l'école en flammes, face à des casseurs dans la rue"
-          loading="eager"
-          decoding="async"
+    <!-- Decorative hero, drawn for the game (no photograph): dusk sky, smoke, tower silhouette, flare sparks. -->
+    <div class="hero-art" aria-hidden="true">
+      <div class="smoke smoke-a"></div>
+      <div class="smoke smoke-b"></div>
+      <div class="smoke smoke-c"></div>
+      <svg class="tower" viewBox="0 0 200 400" preserveAspectRatio="xMidYMax meet" focusable="false">
+        <defs>
+          <mask id="arch">
+            <rect width="200" height="400" fill="#fff" />
+            <ellipse cx="100" cy="400" rx="56" ry="98" fill="#000" />
+            <rect x="80" y="262" width="40" height="5" fill="#000" />
+          </mask>
+        </defs>
+        <path
+          mask="url(#arch)"
+          d="M101 0 V34 L104 36 L106 90 L112 118 L118 120 V127 L112 128 L114 200 L130 258 L144 260 V270 L138 272 L152 330 L190 400 H10 L48 330 L62 272 L56 270 V260 L70 258 L86 200 L88 128 L82 127 V120 L88 118 L94 90 L96 36 L99 34 V0 Z"
         />
-      </section>
+      </svg>
+      <span class="spark s1"></span>
+      <span class="spark s2"></span>
+      <span class="spark s3"></span>
+      <span class="spark s4"></span>
+      <span class="spark s5"></span>
+      <div class="ground"></div>
+    </div>
 
-      <section aria-labelledby="actions">
-        <h2 id="actions">Ce que l'on fait</h2>
-        <ul class="actions">
-          <li><strong>Combattre</strong> et renvoyer les projectiles.</li>
-          <li><strong>Défendre</strong> l'école.</li>
-          <li><strong>Secourir</strong> les passants.</li>
-          <li><strong>Survivre</strong> et se soigner.</li>
-        </ul>
-      </section>
-
-      <section id="commandes" aria-labelledby="regles">
-        <h2 id="regles">Règles et commandes</h2>
-        <ul class="rules">
-          <!--rules-->
-        </ul>
-        <div class="table-wrap" tabindex="0" role="region" aria-label="Tableau des commandes">
-          <table>
-            <caption class="sr-only">Commandes au clavier et sur écran tactile</caption>
-            <thead>
-              <tr><th scope="col">Action</th><th scope="col">Clavier et souris</th><th scope="col">Tactile</th></tr>
-            </thead>
-            <tbody>
-            <!--controls-->
-            </tbody>
-          </table>
-        </div>
-        <p class="cta"><a class="btn btn-primary" href="jouer/?go">Jouer</a></p>
-      </section>
+    <main class="stage">
+      <p class="eyebrow">Arcade · pixel art · vue du dessus</p>
+      <h1 class="title">BreakBreaker</h1>
+      <p class="tagline">Défends le quartier. Tiens aussi longtemps que possible.</p>
+      <p class="cta">
+        <a class="btn btn-primary" href="jouer/?go">Jouer</a>
+        <button class="btn btn-secondary btn-commandes" type="button" popovertarget="commandes">Commandes</button>
+      </p>
+      <p class="meta">Solo · Ordinateur et téléphone · Sans compte</p>
     </main>
 
+    <div id="commandes" popover role="dialog" aria-labelledby="commandes-titre">
+      <h2 id="commandes-titre">Commandes</h2>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Tableau des commandes">
+        <table>
+          <caption class="sr-only">Commandes au clavier et sur écran tactile</caption>
+          <thead>
+            <tr><th scope="col">Action</th><th scope="col">Clavier et souris</th><th scope="col">Tactile</th></tr>
+          </thead>
+          <tbody>
+            <!--controls-->
+          </tbody>
+        </table>
+      </div>
+      <button class="btn btn-primary" type="button" popovertarget="commandes" popovertargetaction="hide">Fermer</button>
+    </div>
+
     <footer class="site-footer">
-      <p>Version <!--version--> · prototype jouable · <a href="CREDITS.md">Crédits</a></p>
-      <p><!--notice--></p>
+      <p>
+        <span>Version <!--version--></span>
+        <a href="CREDITS.md">Crédits</a>
+        <a href="https://github.com/thlaure/BreakBreaker">Code source</a>
+      </p>
+      <p class="notice"><!--notice--></p>
     </footer>
   </body>
 </html>

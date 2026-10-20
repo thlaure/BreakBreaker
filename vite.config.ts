@@ -1,14 +1,13 @@
 import { defineConfig, type Plugin } from 'vite';
-import { CONTROLS, RULES, SATIRE_NOTICE } from './src/content/controls';
+import { CONTROLS, SATIRE_NOTICE } from './src/content/controls';
 import { CONFIG } from './src/sim/config';
 
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-/** Inlines the shared rules/controls/notice/version into the landing page only (no client JS). */
+/** Inlines the shared controls/notice/version into the landing page only (no client JS). The rules live in the game. */
 function landingContent(): Plugin {
   const fills: Record<string, string> = {
-    '<!--rules-->': RULES.map((r) => `<li>${esc(r)}</li>`).join('\n          '),
     '<!--controls-->': CONTROLS.map(
       (c) =>
         `<tr><th scope="row">${esc(c.action)}</th><td>${esc(c.keyboard)}</td><td>${esc(c.touch)}</td></tr>`,

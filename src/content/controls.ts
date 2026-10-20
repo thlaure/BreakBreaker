@@ -25,3 +25,7 @@ export const CONTROLS: readonly ControlRow[] = [
   { action: 'Courir', keyboard: 'Maj', touch: 'Pousser le joystick à fond' },
   { action: 'Pause', keyboard: 'Échap', touch: 'Bouton Pause' },
 ];
+
+/** One-line goal and the actions listed on the card shown when the game launches. */
+export const INTRO_GOAL = 'Défends l’école, secours les victimes, tiens le plus longtemps possible.';
+export const INTRO_ACTIONS: readonly string[] = ['Se déplacer', 'Frapper', 'Renvoyer une pierre', 'Courir'];
