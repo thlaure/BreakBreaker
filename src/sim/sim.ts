@@ -1,22 +1,28 @@
 import { CONFIG } from './config';
-import { Director, spawnPoints, type DirectorPhase } from './director';
+import { Director, spawnPoints, type RoundPhase, type RoundSummary } from './director';
+import { EntryQueue, type Spawner } from './entry';
 import { Stations, type StationMessage } from './healing';
-import { Horde, type Hostile } from './hostiles';
+import { Horde, type Hostile, type HordeCtx } from './hostiles';
 import type { RescueIncident, RescueKind, RescueStage } from './incidents/rescue';
 import { SchoolIncident, type SchoolStage } from './incidents/school';
+import type { TargetAttack } from './incidents/targetAttack';
 import { DISTRICT, type Rect } from './map/district';
 import { FlowField } from './map/flowfield';
 import { Grid } from './map/grid';
-import { dist, len, norm, sub } from './math';
+import { len, norm, sub } from './math';
 import { createPlayer, damagePlayer, stepPlayer, sweep, type Player } from './player';
 import { Rocks, type RockCtx, type RockState } from './projectiles';
 import { rng } from './rng';
+import { Toolboxes, type ToolboxMessage } from './repair';
 import { Rules, type SessionStats } from './rules';
-import type { InputFrame, Role, SimEvent, Variant, Vec } from './types';
+import { Targets } from './targets';
+import type { CasseKind, InputFrame, Role, SimEvent, TargetId, Variant, Vec } from './types';
 import { Weapons, type WeaponKind } from './weapons';
 
 /** Damage of a weapon strike: enough to KO any rioter (spec: weapons are one-hit KO). */
 const WEAPON_DAMAGE = 99;
+/** How long a thrown bottle is drawn in flight (render only; the fire starts on the throw). */
+export const MOLOTOV_FLIGHT_SEC = 0.6;
 
 export interface Telegraph {
   from: Vec;
@@ -30,31 +36,69 @@ export interface Snapshot {
   paused: boolean;
   ended: boolean;
   endCause: 'ko' | 'quit' | null;
-  phase: DirectorPhase;
-  /** Current wave number (1 = school, 2 = rescue, 3+ = fill waves); never 0. */
-  wave: number;
-  /** Rioters to knock out in the current wave (0 during the intro). */
-  waveTotal: number;
-  /** Rioters knocked out since the current wave started, clamped to [0, waveTotal]. */
-  waveKos: number;
+  /** Current round (1-based, 1 from the start). */
+  round: number;
+  roundPhase: RoundPhase;
+  /** Rioters in the current round's roster (0 during the intro). */
+  roundTotal: number;
+  /** Round-tagged rioters knocked out this round, clamped to [0, roundTotal]. */
+  roundKos: number;
+  /** Seconds of breather left (0 outside the breather). */
+  breatherLeft: number;
+  lastSummary: RoundSummary | null;
   player: { pos: Vec; facing: Vec; ko: boolean; invulnerable: boolean };
   hp: number;
   hpMax: number;
   carried: number;
   score: number;
   kos: number;
-  hostiles: { lifeId: number; pos: Vec; facing: Vec; state: Hostile['state']; variant: Variant; role: Role; hp: number }[];
+  hostiles: {
+    lifeId: number;
+    pos: Vec;
+    facing: Vec;
+    state: Hostile['state'];
+    variant: Variant;
+    role: Role;
+    hp: number;
+    /** Winding up a blow, a throw or a Molotov. */
+    windup: boolean;
+  }[];
   rocks: { id: number; state: RockState; owner: 'enemy' | 'player'; kind: 'caillou' | 'pave' | 'brique'; pos: Vec }[];
   telegraphs: Telegraph[];
   group: { area: Rect; members: Vec[] };
   victim: Vec | null;
-  school: { stage: SchoolStage; integrity: number; remaining: number; status: ReturnType<SchoolIncident['status']> };
+  /** `attacked` = an urgent attack on it. */
+  targets: {
+    id: TargetId;
+    kind: CasseKind;
+    hp: number;
+    maxHp: number;
+    burning: boolean;
+    state: 'intact' | 'attacked' | 'ruined';
+    door: Vec;
+    footprint: Rect;
+    prop: boolean;
+  }[];
+  toolboxes: {
+    ground: { id: number; pos: Vec }[];
+    carried: boolean;
+    /** Seconds of repair done (0..CONFIG.kit.repairSec). */
+    progress: number;
+    message: ToolboxMessage;
+    /** The ruin within reach of Paul, if any. */
+    repairTarget: TargetId | null;
+  };
+  /** Bottles in flight (render only). */
+  molotovs: Telegraph[];
+  /** The latest school attack; `integrity` = school hp in percent. */
+  school: { stage: SchoolStage; integrity: number; status: ReturnType<SchoolIncident['status']> };
   rescue: { stage: RescueStage; remaining: number; victimPos: Vec; kind: RescueKind } | null;
   stations: { id: string; pos: Vec; charged: boolean }[];
   stationMessage: StationMessage;
   /** Weapon in Paul's hands (null = bare hands) and strikes left. */
   weapon: { kind: WeaponKind; uses: number } | null;
-  weaponsOnGround: { id: number; kind: WeaponKind; pos: Vec }[];
+  /** `expiresAt` = sim time a special drop vanishes (null = never). */
+  weaponsOnGround: { id: number; kind: WeaponKind; pos: Vec; expiresAt: number | null }[];
   stats: SessionStats;
 }
 
@@ -85,7 +129,8 @@ export function segmentRectEntry(a: Vec, b: Vec, r: Rect): number | null {
 
 /**
  * Deterministic session facade driven one fixed step at a time by the Phaser layer.
- * Step order: player move → sweep/return → hostiles → rocks → damage → KO check → incidents → heals → director.
+ * Step order: player move → sweep/return → hostiles → queue entries → rocks → damage → KO check → Molotovs routed to
+ * the attack on their target → attacks → rescue → toolboxes → heals → weapons → director.
  * While the school cinematic is running, only its timer advances.
  */
 export class Sim {
@@ -94,8 +139,17 @@ export class Sim {
   readonly player: Player = createPlayer(DISTRICT.playerSpawn);
   readonly horde = new Horde();
   readonly rocks = new Rocks(this.grid);
-  readonly school = new SchoolIncident();
+  readonly targets = new Targets();
+  /** Every rioter of a round walks in through this line, from the edge points away from Paul. */
+  readonly queue = new EntryQueue();
+  /** Objective rioters (target attacks) jump the line. */
+  readonly objectiveSpawner: Spawner = { request: (reqs, o) => this.queue.request(reqs, { ...o, front: true }) };
+  /** Target attacks of the session (school included); the director prunes resolved ones at each round start. */
+  readonly attacks: TargetAttack[] = [];
+  /** The latest school attack (round 1's from the start; later ones replace it). */
+  school: SchoolIncident = new SchoolIncident(this.targets, this.objectiveSpawner);
   readonly stations = new Stations(DISTRICT.stations);
+  readonly toolboxes = new Toolboxes();
   readonly director = new Director();
   readonly weapons: Weapons;
   readonly rand: () => number;
@@ -104,10 +158,14 @@ export class Sim {
   paused = false;
 
   private readonly invulnerable: boolean;
-  private readonly fields: { player: FlowField; school: FlowField; victim: FlowField };
+  private readonly fields: { player: FlowField; victim: FlowField };
+  /** One flow field per target, used while an attack on it is live. */
+  private readonly siteFields = new Map<TargetId, FlowField>();
   private telegraphs: Telegraph[] = [];
+  private molotovs: Telegraph[] = [];
   private facings = new Map<number, Vec>();
   private stationMessage: StationMessage = null;
+  private toolboxMessage: ToolboxMessage = null;
   private koReported = false;
 
   constructor(seed: number, opts: { invulnerable?: boolean } = {}) {
@@ -115,7 +173,8 @@ export class Sim {
     // Separate stream so weapon spawns never shift the director's random sequence.
     this.weapons = new Weapons(this.grid, rng((seed ^ 0x9e3779b9) >>> 0));
     this.invulnerable = opts.invulnerable ?? false;
-    this.fields = { player: new FlowField(this.grid), school: new FlowField(this.grid), victim: new FlowField(this.grid) };
+    this.fields = { player: new FlowField(this.grid), victim: new FlowField(this.grid) };
+    for (const t of DISTRICT.targets) this.siteFields.set(t.id, new FlowField(this.grid));
   }
 
   pause(): void {
@@ -142,7 +201,7 @@ export class Sim {
     const ev: SimEvent[] = [];
     this.rules.stats.activeSeconds += dt;
     if (this.school.suspended()) {
-      ev.push(...this.school.step(dt, this.schoolCtx()));
+      ev.push(...this.school.step(dt, this.attackCtx()));
       this.tally(ev);
       return ev;
     }
@@ -171,24 +230,26 @@ export class Sim {
     const hordeEv = this.horde.step(dt, now, {
       player: p,
       grid: this.grid,
-      fields: { player: this.fields.player, school: this.fields.school, victim: victimPos ? this.fields.victim : null },
+      fields: { player: this.fields.player, victim: victimPos ? this.fields.victim : null },
       rocks: this.rocks,
-      facadePoints: DISTRICT.school.facadePoints,
+      sites: this.sites(),
       victimPos,
-      schoolStanding: this.school.stage !== 'destroyed',
       pressure: this.director.pressure(this.rules.kos),
     });
     this.updateFacings(prev);
+    this.queue.step(dt, this.horde, spawnPoints(p.pos));
     const rockEv = this.rocks.step(dt, now, this.rockCtx(victimPos));
 
     // damage, hits and rock bookkeeping
+    const molotovs: Extract<SimEvent, { type: 'MolotovThrown' }>[] = [];
     for (const e of [...hordeEv, ...rockEv]) {
       if (e.type === 'PlayerDamaged') {
         if (!this.invulnerable && damagePlayer(p, e.amount, now)) ev.push(e);
         continue;
       }
       ev.push(e);
-      if (e.type === 'EnemyThrowStarted') this.telegraphs.push({ from: v(e.from), to: v(e.to), until: e.until });
+      if (e.type === 'MolotovThrown') molotovs.push(e);
+      else if (e.type === 'EnemyThrowStarted') this.telegraphs.push({ from: v(e.from), to: v(e.to), until: e.until });
       else if (e.type === 'ProjectilePickedUp') this.rules.stats.rocksPicked += 1;
       else if (e.type === 'ProjectileReturned') this.rules.stats.rocksReturned += 1;
       else if (e.type === 'HitConfirmed' && e.source === 'rock') {
@@ -197,6 +258,7 @@ export class Sim {
       }
     }
     this.telegraphs = this.telegraphs.filter((t) => t.until > now);
+    this.molotovs = this.molotovs.filter((t) => t.until > now);
 
     if (p.ko) {
       if (!this.koReported) {
@@ -207,9 +269,18 @@ export class Sim {
       return ev;
     }
 
-    ev.push(...this.school.step(dt, this.schoolCtx()));
-    if (this.rescue) ev.push(...this.rescue.step(dt, { horde: this.horde, rules: this.rules, player: p }));
+    for (const e of molotovs) {
+      this.molotovs.push({ from: v(e.from), to: v(e.to), until: now + MOLOTOV_FLIGHT_SEC });
+      // at most one live attack per target: the bottle belongs to it
+      const owner = this.attacks.find((a) => a.target === e.target && !a.resolved());
+      if (owner) ev.push(...owner.onMolotov(e));
+    }
+    for (const a of this.attacks) ev.push(...a.step(dt, this.attackCtx()));
+    if (this.rescue) ev.push(...this.rescue.step(dt, { horde: this.horde, rules: this.rules, player: p, spawner: this.objectiveSpawner }));
 
+    const kit = this.toolboxes.step(dt, { player: p, horde: this.horde, targets: this.targets, rules: this.rules });
+    ev.push(...kit.events);
+    this.toolboxMessage = kit.message;
     const heal = this.stations.step({ player: p, rules: this.rules });
     ev.push(...heal.events);
     this.stationMessage = heal.message;
@@ -223,16 +294,21 @@ export class Sim {
   snapshot(): Snapshot {
     const p = this.player;
     const r = this.rescue;
+    const d = this.director;
     const victim = r && (r.stage === 'threat' || r.stage === 'secured') ? v(r.victimPos) : null;
     return {
       now: this.now,
       paused: this.paused,
       ended: this.rules.ended,
       endCause: this.rules.endCause,
-      phase: this.director.phase,
-      wave: this.director.wave,
-      waveTotal: this.director.waveTotal,
-      waveKos: this.director.waveKos(this.rules.kos),
+      round: d.round,
+      roundPhase: d.phase,
+      roundTotal: d.total,
+      roundKos: d.roundKos(this),
+      breatherLeft: d.breatherLeft,
+      lastSummary: d.lastSummary
+        ? { ...d.lastSummary, objectives: d.lastSummary.objectives.map((o) => ({ ...o })) }
+        : null,
       player: { pos: v(p.pos), facing: v(p.facing), ko: p.ko, invulnerable: this.now < p.invulnUntil },
       hp: p.hp,
       hpMax: CONFIG.player.maxHp,
@@ -247,6 +323,7 @@ export class Sim {
         variant: h.variant,
         role: h.role,
         hp: h.hp,
+        windup: h.state === 'windup',
       })),
       rocks: [...this.rocks.flying(), ...this.rocks.ground()].map((k) => ({
         id: k.id,
@@ -258,29 +335,61 @@ export class Sim {
       telegraphs: this.telegraphs.map((t) => ({ from: v(t.from), to: v(t.to), until: t.until })),
       group: { area: { ...DISTRICT.peacefulGroup.area }, members: DISTRICT.peacefulGroup.members.map(v) },
       victim,
+      targets: DISTRICT.targets.map((def) => {
+        const t = this.targets.get(def.id);
+        const attacked = this.attacks.some((a) => a.target === def.id && a.urgent());
+        return {
+          id: def.id,
+          kind: def.kind,
+          hp: t.hp,
+          maxHp: t.maxHp,
+          burning: t.burning,
+          state: t.state === 'ruined' ? 'ruined' : attacked ? 'attacked' : 'intact',
+          door: v(def.door),
+          footprint: { ...def.footprint },
+          prop: def.prop,
+        };
+      }),
+      toolboxes: {
+        ground: this.toolboxes.ground.map((g) => ({ id: g.id, pos: v(g.pos) })),
+        carried: this.toolboxes.carried,
+        progress: this.toolboxes.progress,
+        message: this.toolboxMessage,
+        repairTarget: this.toolboxes.repairTarget(p.pos, this.targets),
+      },
+      molotovs: this.molotovs.map((t) => ({ from: v(t.from), to: v(t.to), until: t.until })),
       school: {
         stage: this.school.stage,
         integrity: this.school.integrity(),
-        remaining: this.school.remaining,
         status: this.school.status(),
       },
       rescue: r ? { stage: r.stage, remaining: r.remaining, victimPos: v(r.victimPos), kind: r.kind } : null,
       stations: this.stations.list.map((s) => ({ id: s.id, pos: v(s.pos), charged: s.charged })),
       stationMessage: this.stationMessage,
       weapon: this.weapons.held ? { ...this.weapons.held } : null,
-      weaponsOnGround: this.weapons.ground.map((w) => ({ id: w.id, kind: w.kind, pos: v(w.pos) })),
+      weaponsOnGround: this.weapons.ground.map((w) => ({ id: w.id, kind: w.kind, pos: v(w.pos), expiresAt: w.expiresAt })),
       stats: { ...this.rules.stats },
     };
   }
 
-  private schoolCtx() {
-    const z = DISTRICT.school.zone;
-    return {
-      horde: this.horde,
-      rules: this.rules,
-      playerInZone: dist(this.player.pos, z) <= z.r,
-      spawns: spawnPoints(this.player.pos),
-    };
+  /** Horde sites: every target under a live (started, unresolved) attack; other targets cost no flow field. */
+  private sites(): HordeCtx['sites'] {
+    const out: HordeCtx['sites'] = {};
+    for (const a of this.attacks) {
+      if (a.stage === 'idle' || a.resolved()) continue;
+      const def = DISTRICT.targets.find((t) => t.id === a.target)!;
+      out[a.target] = {
+        points: def.attackPoints,
+        door: def.door,
+        standing: this.targets.standing(a.target),
+        field: this.siteFields.get(a.target)!,
+      };
+    }
+    return out;
+  }
+
+  private attackCtx() {
+    return { horde: this.horde, rules: this.rules };
   }
 
   private rockCtx(victimPos: Vec | null): RockCtx {
@@ -320,8 +429,15 @@ export class Sim {
     const s = this.rules.stats;
     for (const e of ev) {
       if (e.type === 'SchoolRestored') s.schoolsSaved += 1;
-      else if (e.type === 'BuildingDestroyed') s.schoolsLost += 1;
-      else if (e.type === 'RescueCompleted') s.rescuesOk += 1;
+      else if (e.type === 'TargetSaved') s.targetsSaved += 1;
+      else if (e.type === 'BuildingDestroyed') {
+        s.targetsLost += 1;
+        if (e.target === 'school') s.schoolsLost += 1;
+      } else if (e.type === 'TargetRepaired') s.repairs += 1;
+      else if (e.type === 'RoundCompleted') {
+        s.roundsCompleted += 1;
+        if (e.bonus) s.roundsPerfect += 1;
+      } else if (e.type === 'RescueCompleted') s.rescuesOk += 1;
       else if (e.type === 'RescueFailed') s.rescuesFailed += 1;
     }
   }

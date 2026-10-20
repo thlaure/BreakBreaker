@@ -1,4 +1,4 @@
-import type { Vec } from '../types';
+import type { CasseKind, TargetId, Vec } from '../types';
 
 export interface Rect {
   x: number;
@@ -12,6 +12,17 @@ export interface Circle {
   r: number;
 }
 
+export interface TargetDef {
+  id: TargetId;
+  kind: CasseKind;
+  footprint: Rect;
+  attackPoints: Vec[];
+  door: Vec;
+  /** Props (cars, bus stop) are solid obstacles outside `buildings`. */
+  prop: boolean;
+  maxHp: number;
+}
+
 export interface District {
   tiles: 48;
   buildings: Rect[];
@@ -22,6 +33,8 @@ export interface District {
   playerSpawn: Vec;
   hostileSpawns: Vec[];
   rescueSites: Vec[];
+  targets: TargetDef[];
+  kitSites: Vec[];
 }
 
 const T = 32;
@@ -34,6 +47,18 @@ const R = (tx: number, ty: number, tw: number, th: number): Rect => ({
 });
 /** Centre of a tile in pixels. */
 const C = (tx: number, ty: number): Vec => ({ x: tx * T + T / 2, y: ty * T + T / 2 });
+
+function prop(id: TargetId, kind: CasseKind, footprint: Rect, attackPoints: Vec[]): TargetDef {
+  return {
+    id,
+    kind,
+    footprint,
+    attackPoints,
+    door: { x: footprint.x + footprint.w / 2, y: footprint.y + footprint.h / 2 },
+    prop: true,
+    maxHp: 60,
+  };
+}
 
 export const DISTRICT: District = {
   tiles: 48,
@@ -82,4 +107,19 @@ export const DISTRICT: District = {
   playerSpawn: C(20, 22),
   hostileSpawns: [C(24, 0), C(47, 12), C(47, 30), C(24, 47), C(0, 34), C(0, 16)],
   rescueSites: [C(10, 24), C(34, 35), C(44, 10)],
+  targets: [
+    {
+      id: 'school',
+      kind: 'school',
+      footprint: R(4, 4, 8, 5),
+      attackPoints: [C(5, 9), C(6, 9), C(8, 9), C(9, 9)],
+      door: C(7, 9),
+      prop: false,
+      maxHp: 100,
+    },
+    prop('car1', 'car', R(17, 10, 2, 1), [C(16, 10), C(19, 10), C(17, 11), C(18, 11)]),
+    prop('car2', 'car', R(26, 34, 2, 1), [C(25, 34), C(28, 34), C(26, 35), C(27, 35)]),
+    prop('busStop', 'busStop', R(28, 13, 2, 1), [C(27, 13), C(30, 13), C(28, 14), C(29, 14)]),
+  ],
+  kitSites: [C(18, 12), C(28, 25), C(8, 26), C(36, 44)],
 };

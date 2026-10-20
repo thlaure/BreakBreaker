@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import { CONTROLS, RULES } from '../../src/content/controls';
-import { contextPrompt, formatDuration, formatSummary, incidentLines, waveLine, weaponLine } from '../../src/game/hud/format';
+import { contextPrompt, formatDuration, formatSummary, incidentLines, roundPanel, waveLine, weaponLine } from '../../src/game/hud/format';
 import { renderMarkdown } from '../../src/game/hud/markdown';
 import { Sim, type Snapshot } from '../../src/sim/sim';
 
@@ -27,9 +27,12 @@ describe('formatSummary', () => {
       x.ended = true;
       x.endCause = 'ko';
       x.score = 12;
-      x.wave = 3;
+      x.round = 3;
       x.kos = 9;
-      x.stats = { schoolsSaved: 1, schoolsLost: 0, rescuesOk: 0, rescuesFailed: 1, healsUsed: 2, rocksPicked: 4, rocksReturned: 3, rocksHit: 2, activeSeconds: 125.4 };
+      x.stats = {
+        ...x.stats,
+        ...{ schoolsSaved: 1, schoolsLost: 0, rescuesOk: 0, rescuesFailed: 1, healsUsed: 2, rocksPicked: 4, rocksReturned: 3, rocksHit: 2, activeSeconds: 125.4 },
+      };
     });
     const f = formatSummary(s, 20);
     expect(f.title).toBe('KO');
@@ -37,7 +40,7 @@ describe('formatSummary', () => {
     const r = rows(s, 20);
     expect(r['Score']).toBe('12');
     expect(r['Record']).toBe('20');
-    expect(r['Vague atteinte']).toBe('3');
+    expect(r['Manche atteinte']).toBe('3');
     expect(r['Casseurs neutralisés']).toBe('9');
     expect(r['École']).toBe('sauvée');
     expect(r['Secours']).toBe('manqué');
@@ -71,6 +74,19 @@ describe('formatSummary', () => {
     const r = rows(s, 1);
     expect(r['École']).toBe('détruite');
     expect(r['Secours']).toBe('réussi');
+  });
+
+  test('summary shows Manche atteinte, Manches parfaites, Lieux sauvés / détruits, Réparations', () => {
+    const s = snap((x) => {
+      x.round = 4;
+      x.stats = { ...x.stats, targetsSaved: 3, targetsLost: 2, repairs: 1, roundsPerfect: 2 };
+    });
+    const r = rows(s, null);
+    expect(r['Manche atteinte']).toBe('4');
+    expect(r['Manches parfaites']).toBe('2');
+    expect(r['Lieux sauvés / détruits']).toBe('3 / 2');
+    expect(r['Réparations']).toBe('1');
+    expect(Object.keys(r)).not.toContain('Vague atteinte');
   });
 });
 
@@ -106,6 +122,52 @@ describe('contextPrompt', () => {
   });
 });
 
+describe('contextPrompt: toolboxes', () => {
+  test('toolbox messages and the repair in progress are informational (no Agir label)', () => {
+    expect(contextPrompt(snap((x) => { x.toolboxes.message = 'Caisse à outils requise'; }))).toEqual({ text: 'Caisse à outils requise', label: null });
+    expect(contextPrompt(snap((x) => { x.toolboxes.message = 'Abords non sécurisés'; }), true)).toEqual({ text: 'Abords non sécurisés', label: null });
+    const repairing = snap((x) => {
+      x.toolboxes.carried = true;
+      x.toolboxes.progress = 1.2;
+      x.toolboxes.repairTarget = 'busStop';
+      x.stationMessage = 'Santé au maximum';
+    });
+    expect(contextPrompt(repairing)).toEqual({ text: 'Réparation…', label: null });
+  });
+});
+
+describe('roundPanel', () => {
+  const breather = (patch: (s: Snapshot) => void = () => {}) =>
+    snap((x) => {
+      x.roundPhase = 'breather';
+      x.breatherLeft = 5.5;
+      x.lastSummary = { index: 1, kos: 10, objectives: [{ kind: 'school', result: 'réussi' }, { kind: 'rescue', result: 'perdu' }], points: -1, bonus: false };
+      patch(x);
+    });
+
+  test('null outside the breather or once the session ended', () => {
+    expect(roundPanel(snap())).toBeNull();
+    expect(roundPanel(breather((x) => { x.ended = true; }))).toBeNull();
+    expect(roundPanel(breather((x) => { x.lastSummary = null; }))).toBeNull();
+  });
+
+  test('title, KOs, objectives, signed points, bonus, heals and countdown', () => {
+    expect(roundPanel(breather())).toEqual({
+      title: 'Manche 1 terminée',
+      kos: 'Casseurs neutralisés : 10',
+      objectives: [{ name: 'École', result: 'réussi' }, { name: 'Secours', result: 'perdu' }],
+      points: '−1 point',
+      bonus: null,
+      heals: 'Soins rechargés',
+      countdown: 'Manche 2 dans 6…',
+    });
+    const won = roundPanel(breather((x) => { x.lastSummary = { ...x.lastSummary!, points: 21, bonus: true }; x.breatherLeft = 0.01; }))!;
+    expect(won.points).toBe('+21 points');
+    expect(won.bonus).toBe('Bonus +5');
+    expect(won.countdown).toBe('Manche 2 dans 1…');
+  });
+});
+
 describe('incidentLines', () => {
   test('school card reads "renforts" during the cinematic (not "interrompu")', () => {
     const s = new Sim(21, { invulnerable: true });
@@ -117,30 +179,42 @@ describe('incidentLines', () => {
     expect(school).toMatchObject({ key: 'school', status: 'renforts' });
   });
 
-  test('school countdown rounds up; rescue hidden when absent', () => {
+  const attacked = (x: Snapshot, id: string, hp: number, burning = false): void => {
+    const t = x.targets.find((t) => t.id === id)!;
+    Object.assign(t, { state: 'attacked', hp, burning });
+  };
+  const calm = (x: Snapshot): void => {
+    for (const t of x.targets) t.state = 'intact';
+    x.school.stage = 'attack';
+  };
+
+  test('one card per attacked target with its health rounded up; rescue hidden when absent', () => {
     const s = snap((x) => {
-      x.school.remaining = 22.2;
-      x.school.stage = 'firstLine';
-      x.school.status = 'en cours';
+      calm(x);
+      attacked(x, 'school', 63.2, true);
+      attacked(x, 'busStop', 15);
     });
     const lines = incidentLines(s, 'interrompu');
-    expect(lines).toHaveLength(1);
-    expect(lines[0]).toMatchObject({ name: 'École', time: '23 s', status: 'en cours' });
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toMatchObject({ key: 'school', kind: 'school', name: 'École', time: '64 %', hp: 63.2, status: 'en feu' });
+    expect(lines[1]).toMatchObject({ key: 'busStop', kind: 'busStop', name: 'Abribus', time: '25 %', hp: 25, status: 'attaquée' });
   });
 
-  test('finished incidents have no countdown; rescue status derives from stage and drain', () => {
+  test('resolved incidents have no card (rescue: once its thanks beat is over); rescue status derives from stage and drain', () => {
     const s = snap((x) => {
+      calm(x);
       x.school.stage = 'saved';
-      x.school.status = 'sauvé';
       x.rescue = { stage: 'threat', remaining: 12.1, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
     });
-    const [school, rescue] = incidentLines(s, 'en cours');
-    expect(school).toMatchObject({ time: '', status: 'sauvé' });
+    const [rescue, none] = incidentLines(s, 'en cours');
+    expect(none).toBeUndefined();
     expect(rescue).toMatchObject({ name: 'Secours', time: '13 s', status: 'en cours' });
     s.rescue = { stage: 'secured', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
-    expect(incidentLines(s, 'en cours')[1]).toMatchObject({ status: 'sécurisé' });
+    expect(incidentLines(s, 'en cours')[0]).toMatchObject({ status: 'sécurisé' });
     s.rescue = { stage: 'failed', remaining: 0, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
-    expect(incidentLines(s, 'en cours')[1]).toMatchObject({ status: 'perdu', time: '' });
+    expect(incidentLines(s, 'en cours')).toEqual([]);
+    s.rescue = { stage: 'completed', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+    expect(incidentLines(s, 'en cours')).toEqual([]);
   });
 });
 
@@ -192,18 +266,68 @@ describe('GameAudio.reset', () => {
     expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(1);
   });
 
-  test('a wave announcement does not sound the incident alarm (waves are frequent)', async () => {
+  test('a round announcement does not sound the incident alarm (rounds are frequent)', async () => {
     const { GameAudio } = await import('../../src/game/audio');
     const a = new GameAudio();
     const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
-    a.onEvents([{ type: 'WaveAnnounced', index: 3, total: 5 }]);
-    a.onEvents([{ type: 'WaveAnnounced', index: 3, total: 5 }]);
-    a.onEvents([{ type: 'WaveAnnounced', index: 4, total: 7 }]);
+    a.onEvents([{ type: 'RoundStarted', index: 3, total: 18, headline: 'car' }]);
+    a.onEvents([{ type: 'RoundStarted', index: 3, total: 18, headline: 'car' }]);
+    a.onEvents([{ type: 'RoundStarted', index: 4, total: 22, headline: 'school' }]);
     expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(0);
   });
 });
 
 describe('GameAudio.onEvents', () => {
+  test('chime plays once per TargetSaved / TargetRepaired / RoundCompleted, at most once per batch', async () => {
+    const { GameAudio } = await import('../../src/game/audio');
+    const a = new GameAudio();
+    const chime = vi.spyOn(a, 'chime').mockImplementation(() => undefined);
+    a.onEvents([{ type: 'TargetSaved', incidentId: 'car#2', target: 'car1' }]);
+    expect(chime).toHaveBeenCalledTimes(1);
+    a.onEvents([{ type: 'TargetRepaired', target: 'busStop', incidentId: 'busStop#3' }]);
+    a.onEvents([{ type: 'RoundCompleted', index: 3, bonus: true }]);
+    expect(chime).toHaveBeenCalledTimes(3);
+    // the round's last KO saves a target and completes the round in the same step: one chime
+    a.onEvents([{ type: 'TargetSaved', incidentId: 'school#4', target: 'school' }, { type: 'RoundCompleted', index: 4, bonus: true }]);
+    expect(chime).toHaveBeenCalledTimes(4);
+    a.onEvents([{ type: 'FireOut', target: 'car1' }, { type: 'StationsRecharged' }]);
+    expect(chime).toHaveBeenCalledTimes(4);
+  });
+
+  test('casse alarm once per incident, whoosh on a Molotov, pickup sound on a toolbox', async () => {
+    const { GameAudio } = await import('../../src/game/audio');
+    const a = new GameAudio();
+    const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
+    const whoosh = vi.spyOn(a, 'whoosh').mockImplementation(() => undefined);
+    const casse = { type: 'CasseStarted', incidentId: 'car#2', kind: 'car', target: 'car1', pos: { x: 0, y: 0 }, round: 2, total: 14 } as const;
+    a.onEvents([casse, casse]);
+    expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(1);
+    a.onEvents([{ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: { x: 9, y: 9 }, target: 'car1' }]);
+    expect(whoosh).toHaveBeenCalledTimes(1);
+    a.onEvents([{ type: 'ToolboxPickedUp', id: 1 }]);
+    expect(play).toHaveBeenLastCalledWith('pickup');
+  });
+
+  test('threat level follows the lowest attacked target and any burning one', async () => {
+    const { threatLevel } = await import('../../src/game/audio');
+    const s = snap((x) => {
+      for (const t of x.targets) Object.assign(t, { state: 'intact', burning: false, hp: t.maxHp });
+    });
+    expect(threatLevel(s)).toBe(0);
+    const car = s.targets.find((t) => t.id === 'car1')!;
+    Object.assign(car, { state: 'attacked', hp: car.maxHp / 2 });
+    expect(threatLevel(s)).toBeCloseTo(0.35 + 0.65 * 0.5);
+    const school = s.targets.find((t) => t.id === 'school')!;
+    Object.assign(school, { state: 'attacked', hp: 10 });
+    expect(threatLevel(s)).toBeCloseTo(0.35 + 0.65 * 0.9);
+    // fire still burning while it goes out (no longer attacked): the loop keeps going
+    for (const t of s.targets) Object.assign(t, { state: 'intact', hp: t.maxHp });
+    car.burning = true;
+    expect(threatLevel(s)).toBeCloseTo(0.35);
+    s.ended = true;
+    expect(threatLevel(s)).toBe(0);
+  });
+
   test('throw sound on EnemyRockThrown only, not at windup start', async () => {
     const { GameAudio } = await import('../../src/game/audio');
     const a = new GameAudio();
@@ -216,10 +340,10 @@ describe('GameAudio.onEvents', () => {
 });
 
 describe('waveLine', () => {
-  test('wave number alone without an objective, else « Vague N : K/T casseurs »', () => {
-    expect(waveLine(snap())).toBe('Vague 1');
-    expect(waveLine(snap((x) => { x.wave = 3; x.waveTotal = 9; x.waveKos = 4; }))).toBe('Vague 3 : 4/9 casseurs');
-    expect(waveLine(snap((x) => { x.wave = 7; x.waveTotal = 1; x.waveKos = 0; }))).toBe('Vague 7 : 0/1 casseur');
+  test('round number alone without a roster, else « Manche N : K/T casseurs »', () => {
+    expect(waveLine(snap())).toBe('Manche 1');
+    expect(waveLine(snap((x) => { x.round = 3; x.roundTotal = 9; x.roundKos = 4; }))).toBe('Manche 3 : 4/9 casseurs');
+    expect(waveLine(snap((x) => { x.round = 7; x.roundTotal = 1; x.roundKos = 0; }))).toBe('Manche 7 : 0/1 casseur');
   });
 });
 

@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import { FixedClock } from '../../src/sim/clock';
 import { CONFIG } from '../../src/sim/config';
-import { pressure } from '../../src/sim/director';
+import { pressure, spawnPoints } from '../../src/sim/director';
+import { lineup } from '../../src/sim/incidents/targetAttack';
 import { DISTRICT } from '../../src/sim/map/district';
 import { dist } from '../../src/sim/math';
 import { Sim } from '../../src/sim/sim';
@@ -10,6 +11,7 @@ import type { InputFrame, SimEvent } from '../../src/sim/types';
 const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false };
 const input = (o: Partial<InputFrame> = {}): InputFrame => ({ ...IDLE, ...o });
 const STRIKE_RANGE = CONFIG.melee.range + CONFIG.hostile.radius;
+const SCHOOL_R1 = lineup('school', 1, 0);
 
 /** Deterministic scripted input for frame i. */
 function scripted(i: number): InputFrame {
@@ -54,19 +56,20 @@ describe('Sim facade', () => {
       if (started < 0 && sim.snapshot().school.stage !== 'idle') started = i;
     }
     expect(started).toBeGreaterThan(0);
-    const s = sim.snapshot();
-    expect(s.hostiles.filter((h) => h.role === 'degrader')).toHaveLength(CONFIG.school.firstLine);
-    expect(sim.director.phase).toBe('school');
-    // spawned at edge points >= 320 px from Paul
-    expect(s.hp).toBe(CONFIG.player.maxHp);
+    expect(sim.director.phase).toBe('play');
+    expect(sim.snapshot().hp).toBe(CONFIG.player.maxHp);
+    // the first line walks in through the entry queue, 1.5 s apart, from edge points >= 320 px from Paul
+    for (let i = Math.round(6 / CONFIG.step); i < Math.round(9.5 / CONFIG.step); i++) sim.step(scripted(i));
+    const school = sim.horde.list.filter((h) => h.incidentId === sim.school.id);
+    expect(school.map((h) => h.role)).toEqual(SCHOOL_R1.firstLine.map((r) => r.role));
   });
 
-  test('director sequences school -> breather -> rescue -> waves with announcements', () => {
+  test('director sequences intro -> round 1 (school, then rescue) -> breather -> round 2 -> breather -> round 3', () => {
     const sim = new Sim(7, { invulnerable: true });
     const events: SimEvent[] = [];
     const phases: string[] = [];
     let rescueDist = -1;
-    for (let i = 0; i < 60 * 60 && sim.director.wave < 5; i++) {
+    for (let i = 0; i < 60 * 300 && sim.director.round < 3; i++) {
       for (const h of sim.horde.active()) {
         const r = sim.horde.applyHit(h.lifeId, 99);
         if (r === 'ko') sim.rules.onKnockout(h.lifeId);
@@ -74,20 +77,18 @@ describe('Sim facade', () => {
       events.push(...sim.step(IDLE));
       const p = sim.director.phase;
       if (phases[phases.length - 1] !== p) phases.push(p);
-      if (p === 'rescue' && rescueDist < 0) rescueDist = dist(sim.snapshot().rescue!.victimPos, sim.player.pos);
+      if (sim.rescue && rescueDist < 0) rescueDist = dist(sim.snapshot().rescue!.victimPos, sim.player.pos);
     }
-    expect(phases).toEqual(['intro', 'school', 'breather', 'rescue', 'waves']);
-    expect(events.some((e) => e.type === 'SchoolRestored')).toBe(true);
-    expect(events.some((e) => e.type === 'RescueStarted')).toBe(true);
-    // school = wave 1, rescue = wave 2: fill waves are announced from 3 on
-    expect(events.filter((e) => e.type === 'WaveAnnounced').map((e) => (e as { index: number }).index)).toEqual([
-      3, 4, 5,
-    ]);
+    expect(phases).toEqual(['intro', 'play', 'breather', 'play', 'breather', 'play']);
+    const types = events.map((e) => e.type);
+    expect(types.indexOf('SchoolRestored')).toBeLessThan(types.indexOf('RescueStarted'));
+    expect(events.filter((e) => e.type === 'RoundStarted').map((e) => (e as { index: number }).index)).toEqual([1, 2, 3]);
+    expect(events.filter((e) => e.type === 'RoundCompleted').map((e) => (e as { index: number }).index)).toEqual([1, 2]);
     expect(rescueDist).toBeGreaterThan(0);
     expect(sim.rules.stats.schoolsSaved).toBe(1);
   });
 
-  test('hostile count stays bounded over 14 fill waves, well past the size cap (RC-50)', () => {
+  test('hostile count stays bounded over 10 rounds, well past the roster growth (RC-50)', () => {
     const sim = new Sim(42, { invulnerable: true });
     let maxActive = 0;
     let maxList = 0;
@@ -96,8 +97,8 @@ describe('Sim facade', () => {
     const variants = new Set<string>();
     const roles = new Set<string>();
     let i = 0;
-    for (; i < 60 * 1500 && sim.director.fillWaves < 14; i++) {
-      // auto-KO helper: every 6 s knock out every active hostile (waves are discrete: each must be cleared)
+    for (; i < 60 * 1500 && sim.director.round <= 10; i++) {
+      // auto-KO helper: every 6 s knock out every active hostile (each round's roster must be cleared)
       if (i % 360 === 0) for (const h of sim.horde.active()) sim.horde.applyHit(h.lifeId, 99);
       sim.step(scripted(i));
       const s = sim.snapshot();
@@ -111,7 +112,7 @@ describe('Sim facade', () => {
         roles.add(h.role);
       }
     }
-    expect(sim.director.fillWaves).toBeGreaterThanOrEqual(14);
+    expect(sim.director.round).toBe(11);
     expect(maxActive).toBeLessThanOrEqual(CONFIG.caps.hostiles);
     expect(maxActive).toBeGreaterThan(2);
     expect(maxList).toBeLessThanOrEqual(CONFIG.caps.hostiles + 16);
@@ -260,7 +261,7 @@ describe('Sim facade', () => {
     expect(after.player.pos).toEqual(before.player.pos);
     expect(after.now).toBe(before.now);
   });
-  test('skipCinematic ends the cinematic: next step spawns 8 reinforcements once; no-op otherwise', () => {
+  test('skipCinematic ends the cinematic: next step spawns the reinforcements once; no-op otherwise', () => {
     const sim = new Sim(21, { invulnerable: true });
     sim.skipCinematic(); // intro: no-op
     expect(sim.school.stage).toBe('idle');
@@ -275,11 +276,13 @@ describe('Sim facade', () => {
     sim.skipCinematic();
     sim.step(IDLE);
     expect(sim.school.stage).toBe('reinforcements');
-    const count = () => sim.horde.active().filter((h) => h.incidentId === sim.school.id).length;
-    expect(count()).toBe(CONFIG.school.reinforcements);
+    // requested once, at the front of the entry queue: they walk in one by one
+    expect(sim.queue.pendingForRound(1)).toBe(SCHOOL_R1.reinforcements.length);
+    const count = () => sim.horde.list.filter((h) => h.incidentId === sim.school.id && h.state !== 'ko').length;
     sim.skipCinematic();
-    for (let k = 0; k < 30; k++) sim.step(IDLE);
-    expect(count()).toBe(CONFIG.school.reinforcements);
+    for (let k = 0; k < 60 * 15; k++) sim.step(IDLE);
+    expect(sim.queue.pendingForRound(1)).toBe(0);
+    expect(count()).toBe(SCHOOL_R1.reinforcements.length);
   });
 
   test('EnemyRockThrown is emitted once per enemy rock actually spawned, deterministically', () => {
@@ -290,7 +293,9 @@ describe('Sim facade', () => {
         for (const h of sim.horde.active()) sim.horde.applyHit(h.lifeId, 99);
         sim.step(IDLE);
       }
-      sim.skipCinematic(); // reinforcements include 2 throwers
+      sim.skipCinematic();
+      // the round-1 school brings no thrower: two join from the edge
+      for (const pos of spawnPoints(sim.player.pos).slice(0, 2)) sim.horde.spawn({ variant: 'antifa', role: 'thrower', pos });
       for (let i = 0; i < 60 * 30; i++)
         for (const e of sim.step(IDLE)) if (e.type === 'EnemyRockThrown') thrown.push(e.rockId);
       return thrown;
@@ -324,9 +329,11 @@ describe('Sim facade', () => {
         incidentId: sim.school.id,
         pos: DISTRICT.school.door,
         wave: 1,
-        total: CONFIG.school.firstLine + CONFIG.school.reinforcements,
+        total: expect.any(Number),
       },
     ]);
+    // round 1 roster = the school's rioters + the rescue's
+    expect(school[0]!.total).toBe(sim.school.total() + sim.rescue!.total);
     const rescue = events.filter((e) => e.type === 'RescueStarted');
     expect(rescue).toHaveLength(1);
     expect(rescue[0]).toEqual({
@@ -334,8 +341,8 @@ describe('Sim facade', () => {
       incidentId: 'rescue#1',
       pos: sim.rescue!.victimPos,
       kind: sim.rescue!.kind,
-      wave: 2,
-      total: sim.rescue!.total,
+      wave: 1,
+      total: school[0]!.total,
     });
     expect(pauseChecked).toBe(true);
     expect(sim.rescue!.stage).toBe('completed');

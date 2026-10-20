@@ -6,7 +6,7 @@ import { dist, norm, sub } from './math';
 import type { HostileView, Player } from './player';
 import type { Rocks } from './projectiles';
 import { SpatialHash } from './spatial';
-import type { Role, SimEvent, Variant, Vec } from './types';
+import type { Role, SimEvent, TargetId, Variant, Vec } from './types';
 
 export interface Hostile {
   lifeId: number;
@@ -19,27 +19,38 @@ export interface Hostile {
   stateUntil: number;
   nextAttackAt: number;
   incidentId: string | null;
+  /** 'facade' = its site (degraders hit it, Molotovs throw at it). */
   target: 'player' | 'facade' | 'victim';
+  /** Target a degrader or Molotov goes for (kept after it turns on Paul). */
+  site: TargetId | null;
+  /** Round this rioter belongs to (null = outside any round's roster). */
+  round: number | null;
+}
+
+/** A target site as the horde sees it: where to stand, where bottles land, whether it still stands. */
+export interface HordeSite {
+  points: Vec[];
+  door: Vec;
+  standing: boolean;
+  field: FlowField;
 }
 
 export interface HordeCtx {
   player: Player;
   grid: Grid;
-  fields: { player: FlowField; school: FlowField; victim: FlowField | null };
+  fields: { player: FlowField; victim: FlowField | null };
   rocks: Rocks;
-  facadePoints: Vec[];
+  sites: Partial<Record<TargetId, HordeSite>>;
   victimPos: Vec | null;
-  schoolStanding: boolean;
   pressure: number;
 }
 
-type FieldKey = 'player' | 'school' | 'victim';
-
 /** Per-hostile AI bookkeeping kept out of the public Hostile shape. */
 interface Aux {
-  windKind: 'contact' | 'throw' | null;
+  windKind: 'contact' | 'throw' | 'molotov' | null;
   throwTo: Vec | null;
-  facadeIdx: number | null;
+  /** Index of the site attack point this degrader / Molotov goes for. */
+  pointIdx: number | null;
   progressPos: Vec;
   progressAt: number;
   /** Until this time, steer by flow field even when a straight line looks clear (set when stuck). */
@@ -71,7 +82,8 @@ export class Horde {
   private aux = new Map<number, Aux>();
   private nextLifeId = 1;
   private koOrder: number[] = [];
-  private lastRebuild: Record<FieldKey, number> = { player: -Infinity, school: -Infinity, victim: -Infinity };
+  /** Last rebuild time per field: 'player', 'victim' and one key per site. */
+  private lastRebuild = new Map<string, number>();
   private hash = new SpatialHash<{ id: number; pos: Vec }>(32);
   // per-step scratch
   private wc = 0;
@@ -86,11 +98,13 @@ export class Horde {
     maxHp?: number;
     incidentId?: string;
     target?: Hostile['target'];
+    site?: TargetId;
+    round?: number;
   }): Hostile | null {
     if (this.active().length >= CONFIG.caps.hostiles) return null;
     const maxHp = opts.maxHp ?? CONFIG.hostile.baseHp;
     const defTarget: Hostile['target'] =
-      opts.role === 'degrader' ? 'facade' : opts.role === 'aggressor' ? 'victim' : 'player';
+      opts.role === 'degrader' || opts.role === 'molotov' ? 'facade' : opts.role === 'aggressor' ? 'victim' : 'player';
     const h: Hostile = {
       lifeId: this.nextLifeId++,
       variant: opts.variant,
@@ -103,12 +117,14 @@ export class Horde {
       nextAttackAt: 0,
       incidentId: opts.incidentId ?? null,
       target: opts.target ?? defTarget,
+      site: opts.site ?? null,
+      round: opts.round ?? null,
     };
     this.list.push(h);
     this.aux.set(h.lifeId, {
       windKind: null,
       throwTo: null,
-      facadeIdx: null,
+      pointIdx: null,
       progressPos: { ...h.pos },
       progressAt: -Infinity,
       fieldUntil: -Infinity,
@@ -133,6 +149,16 @@ export class Horde {
     return 'ko';
   }
 
+  /** Removes the active hostiles matching `pred` from the map (they leave: no KO, no score); returns how many. */
+  dismiss(pred: (h: Hostile) => boolean): number {
+    const gone = this.list.filter((h) => h.state !== 'ko' && pred(h));
+    if (gone.length === 0) return 0;
+    const ids = new Set(gone.map((h) => h.lifeId));
+    this.list = this.list.filter((h) => !ids.has(h.lifeId));
+    for (const id of ids) this.aux.delete(id);
+    return gone.length;
+  }
+
   active(): Hostile[] {
     return this.list.filter((h) => h.state !== 'ko');
   }
@@ -151,13 +177,16 @@ export class Horde {
     this.wt = 0;
     for (const h of act) {
       if (h.state !== 'windup') continue;
-      if (this.auxOf(h).windKind === 'throw') this.wt++;
-      else this.wc++;
+      const k = this.auxOf(h).windKind;
+      if (k === 'throw') this.wt++;
+      else if (k === 'contact') this.wc++;
     }
 
     this.rebuild('player', ctx.fields.player, ctx.player.pos, now);
-    const facade0 = ctx.facadePoints[0];
-    if (facade0 && ctx.schoolStanding) this.rebuild('school', ctx.fields.school, facade0, now);
+    for (const [id, s] of Object.entries(ctx.sites)) {
+      const p0 = s?.points[0];
+      if (s && p0 && s.standing) this.rebuild(`site:${id}`, s.field, p0, now);
+    }
     if (ctx.fields.victim && ctx.victimPos) this.rebuild('victim', ctx.fields.victim, ctx.victimPos, now);
 
     this.hash.clear();
@@ -183,19 +212,27 @@ export class Horde {
   }
 
   /** FlowField does not throttle itself: rebuild each field at most every 0.25 s of sim time. */
-  private rebuild(key: FieldKey, field: FlowField, target: Vec, now: number): void {
-    if (now - this.lastRebuild[key] < FIELD_REBUILD_SEC - EPS) return;
-    this.lastRebuild[key] = now;
+  private rebuild(key: string, field: FlowField, target: Vec, now: number): void {
+    if (now - (this.lastRebuild.get(key) ?? -Infinity) < FIELD_REBUILD_SEC - EPS) return;
+    this.lastRebuild.set(key, now);
     field.rebuild(target);
   }
 
   /** Returns the desired unit direction (or zero) and advances the hostile's state machine. */
   private behave(h: Hostile, a: Aux, now: number, ctx: HordeCtx, ev: SimEvent[]): Vec {
-    if (h.target === 'facade' && !ctx.schoolStanding) h.target = 'player';
+    if (h.target === 'facade' && !this.siteOf(h, ctx)) h.target = 'player';
     if (h.target === 'victim' && !ctx.victimPos) h.target = 'player';
     if (h.target === 'player' && (h.state === 'degrade' || h.state === 'threaten')) h.state = 'approach';
+    if (h.target === 'player' && a.windKind === 'molotov') {
+      // its site fell during the windup: the bottle is never thrown
+      a.windKind = null;
+      h.state = 'approach';
+    }
 
-    if (h.target === 'facade') return this.degrader(h, a, now, ctx);
+    if (h.target === 'facade') {
+      const site = this.siteOf(h, ctx)!;
+      return h.role === 'molotov' ? this.molotov(h, a, site, now, ctx, ev) : this.degrader(h, a, site, now, ctx);
+    }
     if (h.target === 'victim') {
       const goal = ctx.victimPos!;
       if (dist(h.pos, goal) <= NEAR_GOAL) {
@@ -270,21 +307,53 @@ export class Horde {
     return ZERO;
   }
 
-  private degrader(h: Hostile, a: Aux, now: number, ctx: HordeCtx): Vec {
-    const pts = ctx.facadePoints;
-    if (pts.length === 0) return ZERO;
-    if (a.facadeIdx === null) {
+  /** The standing site a degrader / Molotov goes for, or null (missing or ruined → it turns on Paul). */
+  private siteOf(h: Hostile, ctx: HordeCtx): HordeSite | null {
+    const s = h.site ? ctx.sites[h.site] : undefined;
+    return s && s.standing && s.points.length > 0 ? s : null;
+  }
+
+  /** The site attack point this hostile goes for: the nearest one at first, the next one when stuck. */
+  private sitePoint(h: Hostile, a: Aux, pts: Vec[]): Vec {
+    if (a.pointIdx === null) {
       let best = 0;
       for (let i = 1; i < pts.length; i++) if (dist(h.pos, pts[i]!) < dist(h.pos, pts[best]!)) best = i;
-      a.facadeIdx = best;
+      a.pointIdx = best;
     }
-    const goal = pts[a.facadeIdx % pts.length]!;
+    return pts[a.pointIdx % pts.length]!;
+  }
+
+  private degrader(h: Hostile, a: Aux, site: HordeSite, now: number, ctx: HordeCtx): Vec {
+    const goal = this.sitePoint(h, a, site.points);
     if (dist(h.pos, goal) <= NEAR_GOAL) {
       h.state = 'degrade';
       return ZERO;
     }
     if (h.state === 'degrade') h.state = 'approach';
-    return this.steer(h, a, goal, ctx.fields.school, now, ctx);
+    return this.steer(h, a, goal, site.field, now, ctx);
+  }
+
+  /**
+   * Walks to its site; within range of an attack point with a clear line, winds up (bottle raised), then throws at
+   * the door and turns on Paul as a contact. A KO during the windup throws nothing (KO hostiles are not stepped).
+   */
+  private molotov(h: Hostile, a: Aux, site: HordeSite, now: number, ctx: HordeCtx, ev: SimEvent[]): Vec {
+    if (h.state === 'windup' && a.windKind === 'molotov') {
+      if (now < h.stateUntil - EPS) return ZERO;
+      a.windKind = null;
+      h.state = 'approach';
+      h.target = 'player';
+      ev.push({ type: 'MolotovThrown', from: { ...h.pos }, to: { ...site.door }, target: h.site! });
+      return ZERO;
+    }
+    const goal = this.sitePoint(h, a, site.points);
+    if (dist(h.pos, goal) <= CONFIG.molotov.range && ctx.grid.lineClear(h.pos, goal)) {
+      h.state = 'windup';
+      h.stateUntil = now + CONFIG.molotov.windup;
+      a.windKind = 'molotov';
+      return ZERO;
+    }
+    return this.steer(h, a, goal, site.field, now, ctx);
   }
 
   /** Straight line when clear (and not recovering from being stuck), else follow the flow field. */
@@ -323,13 +392,13 @@ export class Horde {
   private goalOf(h: Hostile, a: Aux, ctx: HordeCtx): Vec | null {
     if (h.target === 'player') return ctx.player.pos;
     if (h.target === 'victim') return ctx.victimPos;
-    const pts = ctx.facadePoints;
-    return a.facadeIdx === null || pts.length === 0 ? null : pts[a.facadeIdx % pts.length]!;
+    const site = this.siteOf(h, ctx);
+    return a.pointIdx === null || !site ? null : site.points[a.pointIdx % site.points.length]!;
   }
 
   /**
-   * No progress > 8 px in 2 s while trying to move -> steer by flow field for 2 s and, for a degrader, try the
-   * next facade point. A hostile held back by neighbours near its goal is queuing and is not treated as stuck.
+   * No progress > 8 px in 2 s while trying to move -> steer by flow field for 2 s and, for a degrader or Molotov,
+   * try the next site attack point. A hostile held back by neighbours near its goal is queuing and is not treated as stuck.
    * The field rebuild throttle is never bypassed: the field is rebuilt on its normal 0.25 s cadence anyway.
    */
   private trackProgress(h: Hostile, a: Aux, moving: boolean, crowded: boolean, now: number, ctx: HordeCtx): void {
@@ -342,8 +411,8 @@ export class Horde {
     }
     if (now - a.progressAt <= STUCK_SEC) return;
     a.fieldUntil = now + STUCK_SEC;
-    if (h.target === 'facade' && a.facadeIdx !== null && ctx.facadePoints.length > 0)
-      a.facadeIdx = (a.facadeIdx + 1) % ctx.facadePoints.length;
+    const site = h.target === 'facade' ? this.siteOf(h, ctx) : null;
+    if (site && a.pointIdx !== null) a.pointIdx = (a.pointIdx + 1) % site.points.length;
     a.progressPos = { ...h.pos };
     a.progressAt = now;
   }

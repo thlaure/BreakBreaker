@@ -1,5 +1,6 @@
 import { CONFIG } from '../config';
 import type { Horde } from '../hostiles';
+import type { Spawner } from '../entry';
 import type { Grid } from '../map/grid';
 import { dist } from '../math';
 import type { Player } from '../player';
@@ -13,6 +14,8 @@ export interface RescueCtx {
   horde: Horde;
   rules: Rules;
   player: Player;
+  /** Where aggressors still waiting to spawn go when the rescue fails (they still count in the round). */
+  spawner?: Spawner;
 }
 
 const VARIANTS: Variant[] = ['classic', 'palestinian', 'antifa'];
@@ -34,8 +37,12 @@ export class RescueIncident {
   remaining: number = CONFIG.rescue.threatSeconds;
   /** Seconds since the victim was secured (the "MERCI !" beat before completion). */
   thanks = 0;
-  /** Wave number shown for this rescue (set by the director). */
+  /** Round number shown in RescueStarted (set by the director). */
   wave = 0;
+  /** Objective shown in RescueStarted (the director sets the round total); null = its own aggressors. */
+  shownTotal: number | null = null;
+  /** Round its aggressors belong to (null = outside any round's roster). */
+  round: number | null = null;
 
   private ids = new Set<number>();
   private pending = 0;
@@ -50,13 +57,22 @@ export class RescueIncident {
     return this.ids.size + this.pending;
   }
 
-  start(horde: Horde, site: Vec, rand: () => number, playerPos: Vec, grid: Grid): void {
+  /** `count` fixes the number of aggressors (default: random within CONFIG.rescue.aggressors); `round` tags them. */
+  start(
+    horde: Horde,
+    site: Vec,
+    rand: () => number,
+    playerPos: Vec,
+    grid: Grid,
+    opts: { count?: number; round?: number } = {},
+  ): void {
     this.rand = rand;
     this.grid = grid;
     this.victimPos = { ...site };
+    this.round = opts.round ?? null;
     this.kind = rand() < 0.5 ? 'groupHarassed' : 'elderlyRobbed';
     const [lo, hi] = CONFIG.rescue.aggressors;
-    this.pending = lo + Math.floor(rand() * (hi - lo + 1));
+    this.pending = opts.count ?? lo + Math.floor(rand() * (hi - lo + 1));
     this.trySpawn(horde, playerPos);
   }
 
@@ -71,7 +87,7 @@ export class RescueIncident {
         pos: { ...this.victimPos },
         kind: this.kind,
         wave: this.wave,
-        total: this.total,
+        total: this.shownTotal ?? this.total,
       });
     }
 
@@ -81,7 +97,14 @@ export class RescueIncident {
 
       if (this.remaining <= 0) {
         this.stage = 'failed';
+        // aggressors still to spawn are in the round total: they enter from the edges and go for Paul
+        const left = Array.from({ length: this.pending }, (_, i) => ({
+          variant: VARIANTS[(this.ids.size + i) % VARIANTS.length]!,
+          role: 'contact' as const,
+          round: this.round ?? undefined,
+        }));
         this.pending = 0;
+        ctx.spawner?.request(left);
         for (const h of ctx.horde.list) {
           if (!this.ids.has(h.lifeId) || h.state === 'ko') continue;
           h.role = 'contact';
@@ -132,6 +155,7 @@ export class RescueIncident {
         pos,
         incidentId: this.id,
         target: 'victim',
+        round: this.round ?? undefined,
       });
       if (!h) return;
       this.ids.add(h.lifeId);

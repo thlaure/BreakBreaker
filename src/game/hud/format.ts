@@ -1,9 +1,22 @@
+import { CONFIG } from '../../sim/config';
 import type { Snapshot } from '../../sim/sim';
-import type { Vec } from '../../sim/types';
+import type { CasseKind, Vec } from '../../sim/types';
 import { WEAPONS } from '../../sim/weapons';
+import { casseurs, type IncidentKind, type RoundHeadline } from './alerts';
 
-/** 'renforts': the school cinematic (reinforcements on their way) — the countdown is frozen, not interrupted. */
-export type IncidentStatus = 'en cours' | 'interrompu' | 'renforts' | 'sécurisé' | 'perdu' | 'sauvé';
+/**
+ * Rescue: 'en cours' | 'interrompu' | 'sécurisé'. Attacked target: 'en feu' | 'attaquée' |
+ * 'renforts' (the school cinematic: reinforcements on their way); 'perdue' | 'sauvée' are kept for the school.
+ */
+export type IncidentStatus =
+  | 'en cours'
+  | 'interrompu'
+  | 'renforts'
+  | 'sécurisé'
+  | 'en feu'
+  | 'attaquée'
+  | 'perdue'
+  | 'sauvée';
 
 export function formatDuration(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
@@ -34,8 +47,11 @@ export function formatSummary(s: Snapshot, record: number | null): SummaryData {
     rows: [
       { label: 'Score', value: String(s.score) },
       { label: 'Record', value: record === null ? '—' : String(record) },
-      { label: 'Vague atteinte', value: String(s.wave) },
+      { label: 'Manche atteinte', value: String(s.round) },
+      { label: 'Manches parfaites', value: String(st.roundsPerfect) },
       { label: 'Casseurs neutralisés', value: String(s.kos) },
+      { label: 'Lieux sauvés / détruits', value: `${st.targetsSaved} / ${st.targetsLost}` },
+      { label: 'Réparations', value: String(st.repairs) },
       { label: 'École', value: school },
       { label: 'Secours', value: rescue },
       { label: 'Soins utilisés', value: String(st.healsUsed) },
@@ -56,49 +72,93 @@ export interface Prompt {
 export const DEFAULT_ACT_LABEL = 'Agir';
 
 /**
- * Contextual prompt under Paul. In this slice only the heal stations produce one, and it is informational (no key):
- * a rescue completes by itself. `touch` is kept for actionable prompts (repairs, shop shutter) that will drop the
- * keyboard hint ("F — ") on touch screens.
+ * Contextual prompt under Paul. Every prompt of this slice is informational (no key, no touch Agir button): heal
+ * stations, the toolbox messages near a ruin and the repair in progress all complete by themselves. `touch` is kept for
+ * a future actionable prompt that will drop the keyboard hint on touch screens.
  */
 export function contextPrompt(s: Snapshot, _touch = false): Prompt | null {
+  const kit = s.toolboxes;
+  if (kit.repairTarget && kit.progress > 0) return { text: 'Réparation…', label: null };
+  if (kit.message) return { text: kit.message, label: null };
   if (s.stationMessage) return { text: s.stationMessage, label: null };
   return null;
 }
 
+export const TARGET_NAMES: Readonly<Record<CasseKind, string>> = { school: 'École', car: 'Voiture', busStop: 'Abribus' };
+const OBJECTIVE_NAMES: Readonly<Record<RoundHeadline, string>> = { ...TARGET_NAMES, rescue: 'Secours' };
+
 export interface IncidentLine {
-  key: 'school' | 'rescue';
+  /** Target id, or 'rescue'. */
+  key: string;
+  kind: IncidentKind;
   name: string;
-  /** Whole seconds remaining, rounded up, e.g. "23 s"; empty once the incident is over. */
+  /** Rescue: whole seconds remaining, rounded up, e.g. "23 s"; target: health, e.g. "64 %". */
   time: string;
+  /** Target health in percent (mini bar), null for the rescue. */
+  hp: number | null;
   status: IncidentStatus;
   target: Vec;
 }
 
 /**
- * `rescueDrain` says whether the rescue reserve went down since the previous frame (the snapshot has no status for it).
- * The school status comes from the snapshot; the card stays hidden until the school incident starts.
+ * One card per target under an urgent attack (health and fire), then the rescue until it is resolved (its card stays
+ * through the thanks beat, then goes like a target's). `rescueDrain` says whether the rescue reserve went down since
+ * the previous frame (the snapshot has no status for it).
  */
-export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu', schoolTarget: Vec = { x: 0, y: 0 }): IncidentLine[] {
+export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu'): IncidentLine[] {
   const out: IncidentLine[] = [];
   const secs = (n: number): string => `${Math.ceil(n - 1e-9)} s`;
-  if (s.school.stage !== 'idle') {
-    const over = s.school.stage === 'saved' || s.school.stage === 'destroyed';
-    out.push({ key: 'school', name: 'École', time: over ? '' : secs(s.school.remaining), status: s.school.status, target: schoolTarget });
+  for (const t of s.targets) {
+    if (t.state !== 'attacked') continue;
+    const hp = Math.max(0, Math.min(100, (100 * t.hp) / t.maxHp));
+    const status: IncidentStatus = t.id === 'school' && s.school.stage === 'cinematic' ? 'renforts' : t.burning ? 'en feu' : 'attaquée';
+    out.push({ key: t.id, kind: t.kind, name: TARGET_NAMES[t.kind], time: `${Math.ceil(hp - 1e-9)} %`, hp, status, target: t.door });
   }
   const r = s.rescue;
-  if (r) {
-    const status: IncidentStatus =
-      r.stage === 'completed' ? 'sauvé' : r.stage === 'failed' ? 'perdu' : r.stage === 'secured' ? 'sécurisé' : rescueDrain;
-    const over = r.stage === 'completed' || r.stage === 'failed';
-    out.push({ key: 'rescue', name: 'Secours', time: over ? '' : secs(r.remaining), status, target: r.victimPos });
+  if (r && (r.stage === 'threat' || r.stage === 'secured')) {
+    const status: IncidentStatus = r.stage === 'secured' ? 'sécurisé' : rescueDrain;
+    out.push({ key: 'rescue', kind: r.kind, name: 'Secours', time: secs(r.remaining), hp: null, status, target: r.victimPos });
   }
   return out;
 }
 
-/** HUD wave line: « Vague 3 : 4/9 casseurs », or just « Vague 1 » while the wave has no objective yet (intro). */
+/** Content of the non-modal round panel shown during the breather (null otherwise). */
+export interface RoundPanel {
+  title: string;
+  kos: string;
+  objectives: { name: string; result: 'réussi' | 'perdu' }[];
+  points: string;
+  /** « Bonus +5 », or null when not earned. */
+  bonus: string | null;
+  heals: string;
+  countdown: string;
+}
+
+export function roundPanel(s: Snapshot): RoundPanel | null {
+  const sum = s.lastSummary;
+  if (s.ended || s.roundPhase !== 'breather' || !sum) return null;
+  const p = sum.points;
+  const pts = `${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(p)} ${Math.abs(p) === 1 ? 'point' : 'points'}`;
+  return {
+    title: `Manche ${sum.index} terminée`,
+    kos: `Casseurs neutralisés : ${sum.kos}`,
+    objectives: sum.objectives.map((o) => ({ name: OBJECTIVE_NAMES[o.kind], result: o.result })),
+    points: pts,
+    bonus: sum.bonus ? `Bonus +${CONFIG.round.bonus}` : null,
+    heals: 'Soins rechargés',
+    countdown: `Manche ${sum.index + 1} dans ${Math.max(1, Math.ceil(s.breatherLeft - 1e-9))}…`,
+  };
+}
+
+/** HUD round line: « Manche 3 : 4/18 casseurs », or just « Manche 1 » while the round has no roster yet (intro). */
 export function waveLine(s: Snapshot): string {
-  if (s.waveTotal <= 0) return `Vague ${s.wave}`;
-  return `Vague ${s.wave} : ${s.waveKos}/${s.waveTotal} ${s.waveTotal === 1 ? 'casseur' : 'casseurs'}`;
+  if (s.roundTotal <= 0) return `Manche ${s.round}`;
+  return `Manche ${s.round} : ${Math.min(s.roundKos, s.roundTotal)}/${casseurs(s.roundTotal)}`;
+}
+
+/** HUD toolbox slot: « Caisse 0/1 » or « Caisse 1/1 ». */
+export function toolboxLine(s: Snapshot): string {
+  return `Caisse ${s.toolboxes.carried ? 1 : 0}/1`;
 }
 
 /** HUD weapon line: weapon name and strikes left, or bare hands. */

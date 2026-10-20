@@ -32,12 +32,12 @@ describe('weapon pickups', () => {
   test('walking over a weapon picks it up with its full number of strikes, replacing the current one', () => {
     const w = new Weapons(grid, rng(1));
     const paul = createPlayer({ x: 656, y: 720 });
-    w.ground.push({ id: 1, kind: 'baton', pos: { x: 666, y: 720 } });
+    w.ground.push({ id: 1, kind: 'baton', pos: { x: 666, y: 720 }, expiresAt: null });
     const ev = w.step(CONFIG.step, 0, paul);
     expect(ev).toContainEqual({ type: 'WeaponPickedUp', kind: 'baton' });
     expect(w.held).toEqual({ kind: 'baton', uses: WEAPONS.baton.uses });
     expect(w.ground).toHaveLength(0);
-    w.ground.push({ id: 2, kind: 'panneau', pos: { x: 660, y: 720 } });
+    w.ground.push({ id: 2, kind: 'panneau', pos: { x: 660, y: 720 }, expiresAt: null });
     w.step(CONFIG.step, 0, paul);
     expect(w.held).toEqual({ kind: 'panneau', uses: WEAPONS.panneau.uses });
   });
@@ -92,10 +92,14 @@ describe('weapons in the Sim', () => {
     expect(sim.snapshot().weapon).toEqual({ kind: 'panneau', uses: 4 });
   });
 
-  test('snapshot lists weapons on the ground', () => {
+  test('snapshot lists weapons on the ground with their expiry (render reads it from there)', () => {
     const sim = new Sim(5);
-    sim.weapons.ground.push({ id: 9, kind: 'marteau', pos: { x: 100, y: 100 } });
-    expect(sim.snapshot().weaponsOnGround).toEqual([{ id: 9, kind: 'marteau', pos: { x: 100, y: 100 } }]);
+    sim.weapons.ground.push({ id: 9, kind: 'marteau', pos: { x: 100, y: 100 }, expiresAt: null });
+    sim.weapons.ground.push({ id: 10, kind: 'baton', pos: { x: 200, y: 100 }, expiresAt: 42 });
+    expect(sim.snapshot().weaponsOnGround).toEqual([
+      { id: 9, kind: 'marteau', pos: { x: 100, y: 100 }, expiresAt: null },
+      { id: 10, kind: 'baton', pos: { x: 200, y: 100 }, expiresAt: 42 },
+    ]);
   });
 });
 
@@ -103,4 +107,37 @@ test('weapons last: stick 15, sign 10, hammer 8 strikes that hit', () => {
   expect(WEAPONS.baton.uses).toBe(15);
   expect(WEAPONS.panneau.uses).toBe(10);
   expect(WEAPONS.marteau.uses).toBe(8);
+});
+
+describe('special drops', () => {
+  test('dropSpecial places a weapon 160–480 px from Paul now, ignoring the timer; it vanishes after 15 s', () => {
+    for (let seed = 1; seed <= 10; seed++) {
+      const w = new Weapons(grid, rng(seed));
+      const paul = createPlayer({ ...DISTRICT.playerSpawn });
+      w.step(CONFIG.step, 1, paul); // before the first timed spawn
+      expect(w.ground).toHaveLength(0);
+      const g = w.dropSpecial(paul.pos)!;
+      expect(g).not.toBeNull();
+      expect(w.ground).toEqual([g]);
+      expect(g.expiresAt).toBeCloseTo(1 + CONFIG.weapons.dropLifetime, 6);
+      const d = Math.hypot(g.pos.x - paul.pos.x, g.pos.y - paul.pos.y);
+      expect(d).toBeGreaterThanOrEqual(CONFIG.weapons.minDist - 32);
+      expect(d).toBeLessThanOrEqual(CONFIG.weapons.maxDist + 32);
+      expect(grid.circleBlocked(g.pos, 8)).toBe(false);
+      w.step(CONFIG.step, 1 + CONFIG.weapons.dropLifetime - 0.1, paul);
+      expect(w.ground.some((x) => x.id === g.id)).toBe(true);
+      w.step(CONFIG.step, 1 + CONFIG.weapons.dropLifetime + 0.01, paul);
+      expect(w.ground.some((x) => x.id === g.id)).toBe(false);
+    }
+  });
+
+  test('timed spawns never expire', () => {
+    const w = new Weapons(grid, rng(3));
+    const paul = createPlayer({ ...DISTRICT.playerSpawn });
+    w.step(1, CONFIG.weapons.firstSpawn, paul);
+    expect(w.ground).toHaveLength(1);
+    expect(w.ground[0]!.expiresAt).toBeNull();
+    w.step(1, CONFIG.weapons.firstSpawn + 14, paul);
+    expect(w.ground.length).toBeGreaterThanOrEqual(1);
+  });
 });

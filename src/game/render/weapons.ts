@@ -4,6 +4,8 @@ import type { WeaponKind } from '../../sim/weapons';
 
 /** Strike spin duration (ms) of the weapon in Paul's hands — matches the circular strike. */
 const SPIN_MS = 220;
+/** A special drop blinks during its last seconds on the ground (faster in the very last one). */
+const BLINK_SEC = 3;
 
 /** `weapon_<kind>` textures drawn at runtime: stick, hammer, road sign (no image files needed). */
 export function makeWeaponTextures(scene: Phaser.Scene): void {
@@ -38,7 +40,8 @@ export class WeaponLayer {
 
   constructor(private readonly scene: Phaser.Scene) {}
 
-  update(list: Snapshot['weaponsOnGround'], nowMs: number): void {
+  /** A special drop (`expiresAt` set) blinks during its last BLINK_SEC. */
+  update(list: Snapshot['weaponsOnGround'], nowMs: number, simNow: number): void {
     const seen = new Set<number>();
     for (const w of list) {
       seen.add(w.id);
@@ -54,6 +57,10 @@ export class WeaponLayer {
       it.sprite.setAngle(Math.sin(phase * 2) * 12);
       const pulse = 0.5 + 0.5 * Math.sin(phase * 4);
       it.glow.setAlpha(0.2 + 0.35 * pulse).setScale(0.9 + 0.2 * pulse);
+      const left = w.expiresAt === null ? Infinity : w.expiresAt - simNow;
+      const off = left < BLINK_SEC && Math.floor(nowMs / (left < 1 ? 70 : 140)) % 2 === 0;
+      it.sprite.setAlpha(off ? 0.2 : 1);
+      if (off) it.glow.setAlpha(0.05);
     }
     for (const [id, it] of this.items) {
       if (seen.has(id)) continue;

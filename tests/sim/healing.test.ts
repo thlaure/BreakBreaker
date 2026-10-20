@@ -73,3 +73,13 @@ describe('heal stations (walk-over)', () => {
     expect(stations.list[0]!.charged).toBe(true);
   });
 });
+
+describe('station recharge', () => {
+  test('recharge restores used stations', () => {
+    const { stations, step } = setup(50);
+    step();
+    expect(stations.list[0]!.charged).toBe(false);
+    stations.recharge();
+    expect(stations.list.every((s) => s.charged)).toBe(true);
+  });
+});

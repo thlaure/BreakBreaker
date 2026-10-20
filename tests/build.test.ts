@@ -86,7 +86,7 @@ test('landing shows the controls (modal) from the shared module but not the game
     expect(text).toContain(c.touch);
   }
   for (const r of RULES) expect(text).not.toContain(r); // the instructions are shown in the game at launch
-  expect(text).toContain('slice-0.1.0');
+  expect(text).toContain('slice-0.2.0');
 });
 
 test('landing never says OQTF or gratuit', () => {

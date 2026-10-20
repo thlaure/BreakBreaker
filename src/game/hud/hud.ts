@@ -1,5 +1,4 @@
 import { CONFIG } from '../../sim/config';
-import { DISTRICT } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
 import type { SimEvent, Vec } from '../../sim/types';
 import { CONTROLS, INTRO_ACTIONS, INTRO_GOAL } from '../../content/controls';
@@ -13,10 +12,21 @@ import {
   incidentAlert,
   pixelSvg,
   setArrow,
+  type AlertIcon,
   type Box,
   type Incident,
 } from './alerts';
-import { DEFAULT_ACT_LABEL, contextPrompt, incidentLines, waveLine, weaponLine, type IncidentLine } from './format';
+import {
+  DEFAULT_ACT_LABEL,
+  contextPrompt,
+  incidentLines,
+  roundPanel,
+  toolboxLine,
+  waveLine,
+  weaponLine,
+  type IncidentLine,
+  type RoundPanel,
+} from './format';
 
 /** How long the launch card stays on screen if the player does not close it. */
 const INTRO_MS = 25_000;
@@ -38,9 +48,7 @@ const EDGE_PAD = 8;
 const TOUCH_PAD_W = 200;
 const TOUCH_PAD_H = 210;
 const SLOTS = CONFIG.rock.maxCarried;
-const ICONS = { school: pixelSvg('flame', 1), rescue: pixelSvg('alert', 1) } as const;
 const TILE = CONFIG.tile;
-const SCHOOL_DOOR = DISTRICT.school.door;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text = ''): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -82,13 +90,30 @@ interface Card {
   ico: HTMLElement;
   name: HTMLElement;
   time: HTMLElement;
+  /** Mini health bar of an attacked target (hidden for the rescue). */
+  bar: HTMLElement;
+  fill: HTMLElement;
   status: HTMLElement;
   dist: HTMLElement;
 }
 
+/** The round panel's nodes; `objKey` is the objectives list last written (rebuilt only when it changes). */
+interface RoundEls {
+  root: HTMLElement;
+  title: HTMLElement;
+  kos: HTMLElement;
+  obj: HTMLElement;
+  points: HTMLElement;
+  bonus: HTMLElement;
+  heals: HTMLElement;
+  count: HTMLElement;
+  objKey: string;
+}
+
 /**
  * HTML overlay `#hud`: stats and incident cards (top-left), contextual prompt under Paul, an alert banner when an
- * incident starts and one edge indicator per active incident whose target is off-screen.
+ * incident or round starts, one edge indicator per active incident whose target is off-screen, and the non-modal round
+ * panel (top centre, under the banner and clear of the stats panel) during the breather between rounds.
  */
 export class Hud {
   readonly root = el('div', 'bb-hud');
@@ -99,9 +124,12 @@ export class Hud {
   private readonly kos = el('span', 'stat');
   private readonly wave = el('span', 'stat');
   private readonly weapon = el('span', 'stat');
+  private readonly kit = el('span', 'stat');
   private readonly slots: HTMLElement[] = [];
   private readonly top = el('div', 'bb-top');
-  private readonly cards: Record<'school' | 'rescue', Card>;
+  private readonly cardsEl = el('div', 'bb-cards');
+  private readonly cards = new Map<string, Card>();
+  private readonly round: RoundEls;
   private readonly prompt = el('div', 'bb-prompt');
   private readonly edges = el('div', 'bb-edges');
   private readonly edgeEls = new Map<string, Edge>();
@@ -118,7 +146,7 @@ export class Hud {
     this.toolsBox = null;
   };
   private lastNow = -1;
-  /** Wave number last shown (the line pulses once when it changes). */
+  /** Round number last shown (the line pulses once when it changes). */
   private lastWave = -1;
   private lastRescue = Number.POSITIVE_INFINITY;
   private rescueDrain: 'en cours' | 'interrompu' = 'en cours';
@@ -150,18 +178,9 @@ export class Hud {
       this.slots.push(s);
       rocks.append(s);
     }
-    l2.append(this.wave, rocks, this.weapon);
-    const cards = el('div', 'bb-cards');
-    const mk = (): Card => {
-      const root = el('div', 'bb-card');
-      const c: Card = { root, ico: el('span', 'ico'), name: el('b', 'name'), time: el('span', 'time'), status: el('span', 'status'), dist: el('span', 'dist') };
-      root.hidden = true;
-      root.append(c.ico, c.name, c.time, c.status, c.dist);
-      cards.append(root);
-      return c;
-    };
-    this.cards = { school: mk(), rescue: mk() };
-    top.append(hp, l1, l2, cards);
+    l2.append(this.wave, rocks, this.kit, this.weapon);
+    top.append(hp, l1, l2, this.cardsEl);
+    this.round = this.makeRound();
     this.prompt.hidden = true;
     this.prompt.setAttribute('aria-live', 'polite');
     this.banner.append(el('b', 'title', 'Renforts en approche !'), this.bannerHint);
@@ -173,7 +192,7 @@ export class Hud {
     cmd.setAttribute('aria-label', 'Commandes'); // keeps its name when it shrinks to a "?" on touch
     cmd.addEventListener('click', () => this.opts.onControls?.());
     this.tools.append(cmd);
-    this.root.append(top, this.prompt, this.edges, this.banner, this.tools);
+    this.root.append(top, this.prompt, this.edges, this.banner, this.tools, this.round.root);
     this.alert = new AlertBanner(this.root);
     parent.append(this.root);
     this.touchRoot = touchRoot;
@@ -187,7 +206,7 @@ export class Hud {
     this.onResize();
   }
 
-  /** Sim events of the frame: a new incident or fill wave pops the alert banner. */
+  /** Sim events of the frame: a new incident or round pops the alert banner. */
   onEvents(events: SimEvent[]): void {
     for (const e of events) {
       const inc = alertFromEvent(e);
@@ -246,24 +265,25 @@ export class Hud {
     c.text(this.score, `Score : ${s.score}`);
     c.text(this.kos, `Casseurs neutralisés : ${s.kos}`);
     c.text(this.wave, waveLine(s));
-    if (s.wave !== this.lastWave) {
+    if (s.round !== this.lastWave) {
       if (this.lastWave >= 0) {
         // restart the stepped pulse (CSS, off under prefers-reduced-motion)
         this.wave.classList.remove('pulse');
         void this.wave.offsetWidth;
         this.wave.classList.add('pulse');
       }
-      this.lastWave = s.wave;
+      this.lastWave = s.round;
     }
     c.text(this.weapon, weaponLine(s));
+    c.text(this.kit, toolboxLine(s));
+    c.cls(this.kit, s.toolboxes.carried ? 'stat kit full' : 'stat kit');
     this.slots.forEach((slot, i) => {
       const full = i < s.carried;
       c.text(slot, full ? '●' : '○');
     });
 
     this.trackRescue(s);
-    const lines = incidentLines(s, this.rescueDrain);
-    for (const key of ['school', 'rescue'] as const) this.card(this.cards[key], lines.find((l) => l.key === key), s);
+    this.updateCards(incidentLines(s, this.rescueDrain), s);
 
     const touch = this.touchRoot?.classList.contains('visible') ?? false;
     const cinematic = s.school.stage === 'cinematic' && !s.ended;
@@ -274,15 +294,18 @@ export class Hud {
     this.prompt.hidden = !p;
     c.text(this.prompt, p?.text ?? '');
     if (this.actBtn) {
-      // Only an actionable prompt shows the touch Agir button (none in this slice; repairs will use it).
+      // Only an actionable prompt shows the touch Agir button (none in this slice: repairs are automatic).
       c.style(this.actBtn, p?.label ? '' : 'display:none');
       c.text(this.actBtn, p?.label ?? DEFAULT_ACT_LABEL);
     }
 
+    const active = s.ended ? [] : activeIncidents(s);
     if (s.ended) this.alert.clear();
+    else this.alert.prune(new Set(active.map((i) => i.id)));
     this.alert.track(s.player.pos);
     this.placeAlert();
-    this.updateEdges(s.ended ? [] : activeIncidents(s), s, view, touch);
+    this.updateRound(roundPanel(s));
+    this.updateEdges(active, s, view, touch);
   }
 
   /** The snapshot has no rescue status: infer drain from the reserve between sim steps (kept while paused). */
@@ -299,23 +322,115 @@ export class Hud {
     this.lastNow = s.now;
   }
 
-  private card(card: Card, line: IncidentLine | undefined, s: Snapshot): void {
-    const c = this.c;
-    if (card.root.hidden !== !line) {
-      card.root.hidden = !line;
+  /** One card per line, in order: created on first sight, removed once its incident is over. */
+  private updateCards(lines: IncidentLine[], s: Snapshot): void {
+    const keep = new Set<string>();
+    lines.forEach((line, i) => {
+      keep.add(line.key);
+      let card = this.cards.get(line.key);
+      if (!card) {
+        card = this.makeCard();
+        this.cards.set(line.key, card);
+        this.topBox = null;
+      }
+      if (this.cardsEl.children[i] !== card.root) this.cardsEl.insertBefore(card.root, this.cardsEl.children[i] ?? null);
+      this.card(card, line, s);
+    });
+    for (const [key, card] of this.cards) {
+      if (keep.has(key)) continue;
+      card.root.remove();
+      this.cards.delete(key);
       this.topBox = null;
     }
-    if (!line) return;
+  }
+
+  private makeCard(): Card {
+    const root = el('div', 'bb-card');
+    const bar = el('span', 'hpbar');
+    const fill = el('span', 'fill');
+    bar.append(fill);
+    bar.setAttribute('aria-hidden', 'true');
+    const c: Card = { root, ico: el('span', 'ico'), name: el('b', 'name'), time: el('span', 'time'), bar, fill, status: el('span', 'status'), dist: el('span', 'dist') };
+    root.append(c.ico, c.name, bar, c.time, c.status, c.dist);
+    return c;
+  }
+
+  private card(card: Card, line: IncidentLine, s: Snapshot): void {
+    const c = this.c;
     const slug = line.status.replace(/\s/g, '-');
-    c.cls(card.root, `bb-card k-${line.key} st-${slug}`);
-    if (!card.ico.firstChild) card.ico.innerHTML = ICONS[line.key];
+    c.cls(card.root, `bb-card k-${line.kind} st-${slug}`);
+    const icon: AlertIcon = incidentAlert(line.kind).icon;
+    if (card.ico.dataset.icon !== icon) {
+      card.ico.dataset.icon = icon;
+      card.ico.innerHTML = pixelSvg(icon, 1);
+    }
     c.text(card.name, line.name);
     c.text(card.time, line.time);
+    card.bar.hidden = line.hp === null;
+    if (line.hp !== null) {
+      c.style(card.fill, `width:${line.hp.toFixed(0)}%`);
+      c.cls(card.fill, line.hp <= 30 ? 'fill low' : 'fill');
+    }
     c.text(card.status, line.status);
-    const over = line.status === 'sauvé' || line.status === 'perdu';
-    const target = line.key === 'school' ? SCHOOL_DOOR : line.target;
-    const tiles = Math.round(Math.hypot(target.x - s.player.pos.x, target.y - s.player.pos.y) / TILE);
-    c.text(card.dist, over ? '' : `${tiles} m`);
+    const tiles = Math.round(Math.hypot(line.target.x - s.player.pos.x, line.target.y - s.player.pos.y) / TILE);
+    c.text(card.dist, `${tiles} m`);
+  }
+
+  private makeRound(): RoundEls {
+    const root = el('div', 'bb-round');
+    root.setAttribute('role', 'status');
+    root.hidden = true;
+    const r: RoundEls = {
+      root,
+      title: el('b', 'title'),
+      kos: el('span', 'kos'),
+      obj: el('ul', 'obj'),
+      points: el('span', 'points'),
+      bonus: el('span', 'bonus'),
+      heals: el('span', 'heals'),
+      count: el('span', 'count'),
+      objKey: '',
+    };
+    const score = el('div', 'score');
+    score.append(r.points, r.bonus);
+    root.append(r.title, r.kos, r.obj, score, r.heals, r.count);
+    return r;
+  }
+
+  /** The breather's round panel: shown while `p` is non-null, never interactive (pointer-events: none). */
+  private updateRound(p: RoundPanel | null): void {
+    const r = this.round;
+    const c = this.c;
+    if (!p) {
+      r.root.hidden = true;
+      return;
+    }
+    if (r.root.hidden) {
+      r.root.hidden = false;
+      // restart the stepped entry animation
+      r.root.classList.remove('in');
+      void r.root.offsetWidth;
+      r.root.classList.add('in');
+    }
+    c.text(r.title, p.title);
+    c.text(r.kos, p.kos);
+    const key = p.objectives.map((o) => `${o.name}:${o.result}`).join('|');
+    if (key !== r.objKey) {
+      r.objKey = key;
+      r.obj.replaceChildren(
+        ...p.objectives.map((o) => {
+          const li = el('li', o.result === 'réussi' ? 'ok' : 'bad');
+          li.append(`${o.name} : `, el('b', '', o.result));
+          return li;
+        }),
+      );
+    }
+    c.text(r.points, p.points);
+    r.bonus.hidden = !p.bonus;
+    c.text(r.bonus, p.bonus ?? '');
+    c.text(r.heals, p.heals);
+    c.text(r.count, p.countdown);
+    this.placeRound();
   }
 
   private boxes(): { top: Box; tools: Box } {
@@ -337,6 +452,22 @@ export class Hud {
     const left = (window.innerWidth - w) / 2;
     const clash = left < top.right + 8 || left + w > tools.left - 8;
     this.c.style(a, clash ? `top:${Math.round(Math.max(top.bottom, tools.bottom) + 8)}px` : '');
+  }
+
+  /**
+   * Round panel: top centre under the alert banner when one shows, or under the stats panel / Commandes button when the
+   * screen is too narrow to fit between them (phones). Paul stays at the screen centre, below it.
+   */
+  private placeRound(): void {
+    const p = this.round.root;
+    const { top, tools } = this.boxes();
+    const w = p.offsetWidth;
+    const left = (window.innerWidth - w) / 2;
+    const clash = left < top.right + 8 || left + w > tools.left - 8;
+    let y = clash ? Math.max(top.bottom, tools.bottom) + 8 : 0;
+    const a = this.alert.el;
+    if (!a.hidden) y = Math.max(y, a.getBoundingClientRect().bottom + 12);
+    this.c.style(p, y > 0 ? `top:${Math.round(y)}px` : '');
   }
 
   /** One pixel indicator per active incident, at the screen edge toward it, only while it is off-screen. */

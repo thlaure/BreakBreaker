@@ -186,3 +186,19 @@ test("Paul's sweep and rocks never touch the victim (RC-63)", () => {
   expect(ev.filter((e) => e.type === 'HitConfirmed')).toEqual([]);
   expect(rules.score).toBe(score);
 });
+
+test('start opts: a fixed aggressor count and a round tag on every aggressor', () => {
+  for (let seed = 1; seed <= 5; seed++) {
+    const horde = new Horde();
+    const inc = new RescueIncident('rescue#2');
+    inc.start(horde, site, rng(seed), paulAway, grid, { count: 3, round: 2 });
+    expect(inc.total).toBe(3);
+    const mine = horde.list.filter((h) => h.incidentId === inc.id);
+    expect(mine).toHaveLength(3);
+    for (const h of mine) expect(h.round).toBe(2);
+  }
+  const horde = new Horde();
+  const inc = new RescueIncident('rescue#1');
+  inc.start(horde, site, rng(1), paulAway, grid);
+  for (const h of horde.list) expect(h.round).toBeNull();
+});

@@ -48,6 +48,42 @@ describe('map', () => {
     for (const t of [...DISTRICT.stations, DISTRICT.school.door, ...DISTRICT.rescueSites, ...DISTRICT.hostileSpawns])
       expect(ff.dirAt(t)).not.toEqual({ x: 0, y: 0 });
   });
+  test('every target attack point and door, kit site, station, rescue site and hostile spawn is reachable from spawn', () => {
+    const ff = new FlowField(grid);
+    ff.rebuild(DISTRICT.playerSpawn);
+    const pts = [
+      ...DISTRICT.targets.flatMap((t) => [...t.attackPoints, ...(t.prop ? [] : [t.door])]),
+      ...DISTRICT.kitSites,
+      ...DISTRICT.stations,
+      ...DISTRICT.rescueSites,
+      ...DISTRICT.hostileSpawns,
+    ];
+    for (const p of pts) expect(ff.stepsAt(p)).toBeGreaterThanOrEqual(0);
+    // a prop door sits inside the solid footprint; its neighbours must still be reachable
+    for (const t of DISTRICT.targets.filter((x) => x.prop))
+      expect(t.attackPoints.every((p) => !grid.isSolidPx(p))).toBe(true);
+  });
+  test('props block movement and line of sight: walking into car1 from the left keeps x < 544', () => {
+    const car = DISTRICT.targets.find((t) => t.id === 'car1')!.footprint;
+    expect(car.x).toBe(544);
+    let p = { x: car.x - 40, y: car.y + car.h / 2 };
+    for (let i = 0; i < 100; i++) p = moveCircle(grid, p, { x: 3, y: 0 }, 7);
+    expect(p.x).toBeLessThan(544);
+    expect(grid.isSolidPx({ x: car.x + 4, y: car.y + 4 })).toBe(true);
+    expect(grid.lineClear({ x: car.x - 40, y: car.y + 16 }, { x: car.x + 80, y: car.y + 16 })).toBe(false);
+  });
+  test('kit sites are walkable and >= 48 px from every target footprint', () => {
+    for (const k of DISTRICT.kitSites) {
+      expect(grid.isSolidPx(k)).toBe(false);
+      expect(grid.circleBlocked(k, 7)).toBe(false);
+      for (const t of DISTRICT.targets) {
+        const f = t.footprint;
+        const dx = Math.max(f.x - k.x, 0, k.x - (f.x + f.w));
+        const dy = Math.max(f.y - k.y, 0, k.y - (f.y + f.h));
+        expect(Math.hypot(dx, dy)).toBeGreaterThanOrEqual(48);
+      }
+    }
+  });
   test('school door is within a 12 s walk of spawn', () => {
     const ff = new FlowField(grid);
     ff.rebuild(DISTRICT.school.door);

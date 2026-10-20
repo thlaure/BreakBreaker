@@ -3,13 +3,13 @@ import { CONFIG } from '../../sim/config';
 import { DISTRICT, type Rect } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
 import type { Vec } from '../../sim/types';
-import { FLAG, TILE } from '../assets';
+import { TILE } from '../assets';
 import { DEPTH, inRect } from './depth';
 
 const T = CONFIG.tile;
 const N = DISTRICT.tiles;
 /** Height of a building's front wall, drawn at the bottom of its footprint. */
-const FACADE_H = 32;
+export const FACADE_H = 32;
 /** Roofs overhang the street behind the building so actors there are hidden (and the roof fades). */
 const ROOF_OVERHANG = 24;
 const ROOF_FADED = 0.35;
@@ -123,80 +123,6 @@ export class WorldView {
   }
 }
 
-type SchoolStage = Snapshot['school']['stage'];
-
-/** School incident visuals: fire + smoke while threatened, ruin + debris when destroyed, French flag when saved. */
-export class SchoolView {
-  private readonly fire: Phaser.GameObjects.Particles.ParticleEmitter;
-  private readonly smoke: Phaser.GameObjects.Particles.ParticleEmitter;
-  private readonly debris: Phaser.GameObjects.Graphics;
-  private readonly mast: Phaser.GameObjects.Container;
-  private stage: SchoolStage | null = null;
-
-  constructor(scene: Phaser.Scene, private readonly parts: WorldView['schoolParts']) {
-    const f = DISTRICT.school.footprint;
-    const zone = new Phaser.Geom.Rectangle(f.x + 16, f.y + f.h - FACADE_H - 40, f.w - 32, 40);
-    this.fire = scene.add
-      .particles(0, 0, 'px', {
-        emitZone: { type: 'random', source: zone, quantity: 1 } as Phaser.Types.GameObjects.Particles.EmitZoneData,
-        lifespan: { min: 400, max: 800 },
-        speedY: { min: -80, max: -35 },
-        speedX: { min: -10, max: 10 },
-        scale: { start: 4, end: 0.5 },
-        quantity: 2,
-        tint: [0xffe066, 0xff9a2e, 0xff5a1f],
-        alpha: { start: 1, end: 0 },
-        blendMode: Phaser.BlendModes.ADD,
-        frequency: 20,
-        emitting: false,
-      })
-      .setDepth(DEPTH.roof + 2);
-    this.smoke = scene.add
-      .particles(0, 0, 'px', {
-        emitZone: { type: 'random', source: zone, quantity: 1 } as Phaser.Types.GameObjects.Particles.EmitZoneData,
-        lifespan: { min: 1400, max: 2400 },
-        speedY: { min: -40, max: -20 },
-        speedX: { min: -6, max: 14 },
-        scale: { start: 4, end: 11 },
-        tint: [0x2e2b33, 0x4a4650],
-        alpha: { start: 0.6, end: 0 },
-        frequency: 70,
-        emitting: false,
-      })
-      .setDepth(DEPTH.roof + 1);
-    this.debris = scene.add.graphics().setDepth(f.y + f.h + 0.5).setVisible(false);
-    let seed = 7;
-    const r = (): number => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-    for (let k = 0; k < 26; k++) {
-      this.debris.fillStyle(r() < 0.5 ? 0x5b4a3e : 0x6d6a72, 1);
-      this.debris.fillRect(f.x + r() * f.w, f.y + f.h + r() * 18 - 4, 3 + r() * 6, 2 + r() * 4);
-    }
-    // mast on the front edge of the roof, so it reads from the street in front of the school
-    const mx = f.x + f.w / 2 + 48;
-    const my = f.y + f.h - FACADE_H - 2;
-    const pole = scene.add.rectangle(0, 0, 2, 34, 0xd8d4cc).setOrigin(0.5, 1);
-    const flag = scene.add.image(1, -34, 'flags', FLAG.fr).setOrigin(0, 0).setScale(1.5);
-    this.mast = scene.add.container(mx, my, [pole, flag]).setDepth(DEPTH.roof + 3).setVisible(false);
-  }
-
-  update(stage: SchoolStage): void {
-    if (stage === this.stage) return;
-    this.stage = stage;
-    const burning = stage === 'firstLine' || stage === 'cinematic' || stage === 'reinforcements';
-    this.fire.emitting = burning;
-    this.smoke.emitting = burning || stage === 'destroyed';
-    if (stage === 'destroyed') {
-      this.smoke.frequency = 220;
-      for (const p of this.parts) {
-        if (p instanceof Phaser.GameObjects.TileSprite) p.setTint(0x3a3438);
-        else if (p instanceof Phaser.GameObjects.Text) p.setAlpha(0.45);
-      }
-      this.debris.setVisible(true);
-    }
-    this.mast.setVisible(stage === 'saved');
-  }
-}
-
 /** Heal stations: green cross + "Soins"; greyed once used (walking onto a charged one heals). */
 export class StationsView {
   private readonly items: { icon: Phaser.GameObjects.Image; label: Phaser.GameObjects.Text; glow: Phaser.GameObjects.Ellipse }[] =
@@ -226,6 +152,101 @@ export class StationsView {
       it.glow.setVisible(st.charged).setAlpha(0.15 + 0.3 * (0.5 + 0.5 * Math.sin(phase * 4)));
       it.label.setAlpha(st.charged ? 1 : 0.5);
     });
+  }
+}
+
+const TOOLBOX_POP_MS = 250;
+/** Repair ring around Paul's body (radius, centre height above his feet). */
+const RING_R = 20;
+const RING_LIFT = 22;
+
+/**
+ * Toolboxes: ground pickups that float and pulse like the heal kits, a toolbox icon over Paul while he carries one,
+ * and a ring around him that fills while he repairs a ruin (`progress / repairSec`).
+ */
+export class ToolboxView {
+  private readonly items = new Map<
+    number,
+    { icon: Phaser.GameObjects.Image; label: Phaser.GameObjects.Text; glow: Phaser.GameObjects.Ellipse }
+  >();
+  private readonly carried: Phaser.GameObjects.Image;
+  private readonly ring: Phaser.GameObjects.Graphics;
+  private ringDrawn = false;
+  private popUntil = 0;
+
+  constructor(private readonly scene: Phaser.Scene) {
+    this.carried = scene.add.image(0, 0, 'toolbox').setOrigin(0.5, 1).setScale(2).setDepth(DEPTH.overlay - 1).setVisible(false);
+    this.ring = scene.add.graphics().setDepth(DEPTH.overlay - 2);
+  }
+
+  /** Little scale pop of the carried icon on pickup. */
+  picked(nowMs: number): void {
+    this.popUntil = nowMs + TOOLBOX_POP_MS;
+  }
+
+  update(tb: Snapshot['toolboxes'], player: Snapshot['player'], nowMs: number): void {
+    const seen = new Set<number>();
+    for (const g of tb.ground) {
+      seen.add(g.id);
+      let it = this.items.get(g.id);
+      if (!it) {
+        const s = this.scene;
+        it = {
+          glow: s.add.ellipse(g.pos.x, g.pos.y + 9, 30, 12, 0xff8a3a, 0.3).setDepth(g.pos.y - 1),
+          icon: s.add.image(g.pos.x, g.pos.y, 'toolbox').setScale(2).setDepth(g.pos.y),
+          label: s.add
+            .text(g.pos.x, g.pos.y + 13, 'Outils', {
+              fontFamily: 'monospace',
+              fontSize: '9px',
+              color: '#ffe2c8',
+              stroke: '#14121c',
+              strokeThickness: 2,
+            })
+            .setOrigin(0.5, 0)
+            .setDepth(g.pos.y + 0.1),
+        };
+        this.items.set(g.id, it);
+      }
+      // same float / pulse as the heal kits
+      const phase = nowMs / 1000 + g.id;
+      const pulse = 0.5 + 0.5 * Math.sin(phase * 4);
+      it.icon.setY(g.pos.y - Math.round(2 * Math.sin(phase * 3))).setScale(2 * (1 + 0.08 * pulse));
+      it.glow.setAlpha(0.15 + 0.3 * pulse);
+    }
+    for (const [id, it] of this.items) {
+      if (seen.has(id)) continue;
+      it.icon.destroy();
+      it.label.destroy();
+      it.glow.destroy();
+      this.items.delete(id);
+    }
+
+    const show = tb.carried && !player.ko;
+    this.carried.setVisible(show);
+    if (show) {
+      const pop = nowMs < this.popUntil ? (this.popUntil - nowMs) / TOOLBOX_POP_MS : 0;
+      const bob = Math.round(1.5 * Math.sin(nowMs / 220));
+      this.carried.setPosition(Math.round(player.pos.x), Math.round(player.pos.y) - 56 - bob).setScale(2 + pop);
+    }
+
+    const frac = Math.min(1, tb.progress / CONFIG.kit.repairSec);
+    if (frac <= 0 || player.ko) {
+      if (this.ringDrawn) this.ring.clear();
+      this.ringDrawn = false;
+      return;
+    }
+    this.ringDrawn = true;
+    const x = Math.round(player.pos.x);
+    const y = Math.round(player.pos.y) - RING_LIFT;
+    const start = -Math.PI / 2;
+    this.ring
+      .clear()
+      .lineStyle(6, 0x14121c, 0.7)
+      .strokeCircle(x, y, RING_R)
+      .lineStyle(4, 0xffb03a, 1)
+      .beginPath()
+      .arc(x, y, RING_R, start, start + frac * Math.PI * 2)
+      .strokePath();
   }
 }
 

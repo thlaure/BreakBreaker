@@ -10,14 +10,16 @@ const circleHitsRect = (p: Vec, rad: number, r: Rect): boolean => {
 const circleHitsCircle = (p: Vec, rad: number, c: Circle): boolean =>
   (p.x - c.x) ** 2 + (p.y - c.y) ** 2 < (rad + c.r) ** 2;
 
-/** Tile grid over the district. Buildings, trunks and the peaceful group are solid. */
+/** Tile grid over the district. Buildings, props, trunks and the peaceful group are solid. */
 export class Grid {
   readonly tiles: number;
   readonly tile: number;
   readonly size: number;
   private readonly solid: Uint8Array;
+  private readonly props: Rect[];
 
   constructor(private readonly d: District, tile = 32) {
+    this.props = d.targets.filter((t) => t.prop).map((t) => t.footprint);
     this.tiles = d.tiles;
     this.tile = tile;
     this.size = d.tiles * tile;
@@ -29,6 +31,7 @@ export class Grid {
         const t: Rect = { x: x0, y: y0, w: tile, h: tile };
         let s = false;
         for (const b of d.buildings) if (overlap(t, b)) s = true;
+        for (const r of this.props) if (overlap(t, r)) s = true;
         if (overlap(t, d.peacefulGroup.area)) s = true;
         // trunks mark their tile solid at tile resolution (coarse, for navigation)
         for (const c of d.trunks) if (inRect({ x: c.x, y: c.y }, t)) s = true;
@@ -47,6 +50,7 @@ export class Grid {
   isSolidPx(p: Vec): boolean {
     if (p.x < 0 || p.y < 0 || p.x >= this.size || p.y >= this.size) return true;
     for (const b of this.d.buildings) if (inRect(p, b)) return true;
+    for (const r of this.props) if (inRect(p, r)) return true;
     if (inRect(p, this.d.peacefulGroup.area)) return true;
     for (const c of this.d.trunks) if ((p.x - c.x) ** 2 + (p.y - c.y) ** 2 < c.r * c.r) return true;
     return false;
@@ -60,6 +64,7 @@ export class Grid {
   circleBlocked(p: Vec, r: number): boolean {
     if (p.x - r < 0 || p.y - r < 0 || p.x + r > this.size || p.y + r > this.size) return true;
     for (const b of this.d.buildings) if (circleHitsRect(p, r, b)) return true;
+    for (const pr of this.props) if (circleHitsRect(p, r, pr)) return true;
     if (circleHitsRect(p, r, this.d.peacefulGroup.area)) return true;
     for (const c of this.d.trunks) if (circleHitsCircle(p, r, c)) return true;
     return false;

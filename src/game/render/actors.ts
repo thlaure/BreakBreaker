@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { CharLayout, CharSheet, Dir } from '../assets';
 import type { Snapshot } from '../../sim/sim';
 import type { Vec } from '../../sim/types';
+import { DEPTH } from './depth';
 
 type HostileSnap = Snapshot['hostiles'][number];
 
@@ -193,11 +194,68 @@ export class PaulView {
   }
 }
 
-/** Rioter: sheet by variant (_a/_b by lifeId parity), optional flag prop above the shoulder. */
+/**
+ * Molotov rioter's bottle: held at his side, raised and lit (flickering flame + "!" over his head) during the windup,
+ * gone once thrown (a windup that ends without a KO is the throw).
+ */
+class BottleProp {
+  private readonly bottle: Phaser.GameObjects.Image;
+  private readonly flame: Phaser.GameObjects.Image;
+  private readonly bang: Phaser.GameObjects.Image;
+  private held = true;
+  private wasWindup = false;
+
+  constructor(scene: Phaser.Scene) {
+    this.bottle = scene.add.image(0, 0, 'bottle').setOrigin(0.5, 1).setScale(2);
+    this.flame = scene.add.image(0, 0, 'flame').setOrigin(0.5, 1).setScale(2).setBlendMode(Phaser.BlendModes.ADD);
+    this.bang = scene.add.image(0, 0, 'bang').setOrigin(0.5, 1).setScale(2).setDepth(DEPTH.overlay);
+  }
+
+  update(h: HostileSnap, depth: number, nowMs: number): void {
+    const ko = h.state === 'ko';
+    if (this.wasWindup && !h.windup && !ko) this.held = false;
+    this.wasWindup = h.windup;
+    const held = this.held && !ko;
+    const lit = held && h.windup;
+    this.bottle.setVisible(held);
+    this.flame.setVisible(lit);
+    this.bang.setVisible(lit);
+    if (!held) return;
+    const side = h.facing.x < 0 ? -1 : 1;
+    const d = depth + (h.facing.y < 0 ? -0.04 : 0.04);
+    const x = Math.round(h.pos.x);
+    const y = Math.round(h.pos.y);
+    if (!lit) {
+      this.bottle.setPosition(x + side * 9, y - 14).setAngle(side * 15).setDepth(d);
+      return;
+    }
+    // raised beside the head, rag on fire
+    const bx = x + side * 12;
+    const by = y - 34;
+    this.bottle.setPosition(bx, by).setAngle(side * 20).setDepth(d);
+    const tick = Math.floor(nowMs / 70);
+    this.flame
+      .setPosition(bx + side * 7, by - 18)
+      .setScale(2, tick % 3 === 0 ? 2.5 : 2)
+      .setFlipX(tick % 2 === 0)
+      .setAlpha(0.85 + 0.15 * (tick % 2))
+      .setDepth(d + 0.01);
+    this.bang.setPosition(x, y - 66 - Math.round(2 * Math.abs(Math.sin(nowMs / 110))));
+  }
+
+  destroy(): void {
+    this.bottle.destroy();
+    this.flame.destroy();
+    this.bang.destroy();
+  }
+}
+
+/** Rioter: sheet by variant (_a/_b by lifeId parity), optional flag prop above the shoulder, Molotov bottle. */
 class HostileView {
   readonly view: CharView;
   private readonly flag: Phaser.GameObjects.Image | null;
   private readonly pole: Phaser.GameObjects.Rectangle | null;
+  private readonly bottle: BottleProp | null;
 
   constructor(scene: Phaser.Scene, h: HostileSnap) {
     const sheet = `rioter_${h.variant}_${h.lifeId % 2 === 0 ? 'a' : 'b'}`;
@@ -205,6 +263,7 @@ class HostileView {
     const flagFrame = h.variant === 'palestinian' ? 1 : h.variant === 'antifa' ? 2 : -1;
     this.flag = flagFrame >= 0 ? scene.add.image(0, 0, 'flags', flagFrame).setOrigin(0, 1) : null;
     this.pole = flagFrame >= 0 ? scene.add.rectangle(0, 0, 1, 22, 0x5a4632).setOrigin(0.5, 1) : null;
+    this.bottle = h.role === 'molotov' ? new BottleProp(scene) : null;
   }
 
   update(h: HostileSnap, nowMs: number): void {
@@ -234,12 +293,14 @@ class HostileView {
       this.pole.setPosition(px, py).setDepth(s.depth + 0.02);
       this.flag.setPosition(px, py - 10).setFlipX(dir === 'e').setOrigin(dir === 'e' ? 1 : 0, 1).setDepth(s.depth + 0.03);
     }
+    this.bottle?.update(h, s.depth, nowMs);
   }
 
   destroy(): void {
     this.view.destroy();
     this.flag?.destroy();
     this.pole?.destroy();
+    this.bottle?.destroy();
   }
 }
 

@@ -1,18 +1,20 @@
 import { CONFIG } from '../../sim/config';
-import { DISTRICT } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
-import type { SimEvent, Vec } from '../../sim/types';
+import type { CasseKind, SimEvent, Vec } from '../../sim/types';
 
 /**
- * Incident alerts: a pixel banner when an incident or a fill wave starts and one edge indicator per active incident.
- * Generic on purpose: a new kind of "casse" event only needs an entry in INCIDENT_ALERTS and a line in
- * `alertFromEvent` / `activeIncidents`. A fill wave has no position: its banner shows no arrow and no distance.
+ * Incident alerts: a pixel banner when an incident, a round or a special weapon drop starts, and one edge indicator per
+ * active incident (special drops included, while on the ground). Generic on purpose: a new kind of "casse" only needs an entry in INCIDENT_ALERTS (and a headline
+ * line); `alertFromEvent` / `activeIncidents` read the generic CasseStarted event and `snapshot.targets`. A round start
+ * has no position: its banner shows no arrow and no distance.
  */
-export type IncidentKind = 'school' | 'groupHarassed' | 'elderlyRobbed';
-/** Everything the banner can announce: positioned incidents and position-less fill waves. */
-export type AlertKind = IncidentKind | 'wave';
-export type AlertTone = 'fire' | 'warn' | 'wave';
-export type AlertIcon = 'flame' | 'alert' | 'horde';
+export type IncidentKind = CasseKind | 'groupHarassed' | 'elderlyRobbed';
+/** Everything the banner can announce: positioned incidents and drops, and position-less round starts. */
+export type AlertKind = IncidentKind | 'round' | 'weaponDrop';
+export type AlertTone = 'fire' | 'warn' | 'round' | 'drop';
+export type AlertIcon = 'flame' | 'alert' | 'horde' | 'glass' | 'star';
+/** What a round is about (its first beat), shown under « MANCHE N ! ». */
+export type RoundHeadline = CasseKind | 'rescue';
 
 export interface AlertSpec {
   /** Banner title. */
@@ -27,15 +29,26 @@ export interface AlertSpec {
 
 export const INCIDENT_ALERTS: Readonly<Record<IncidentKind, AlertSpec>> = {
   school: { title: 'ÉCOLE EN FEU !', sub: 'Rejoins l’école', label: 'ÉCOLE', tone: 'fire', icon: 'flame' },
+  car: { title: 'VOITURE EN FEU !', sub: 'Chasse les casseurs', label: 'VOITURE', tone: 'fire', icon: 'flame' },
+  busStop: { title: 'ABRIBUS SACCAGÉ !', sub: 'Arrête la casse', label: 'ABRIBUS', tone: 'warn', icon: 'glass' },
   groupHarassed: { title: 'AGRESSION EN COURS !', sub: 'Une personne est menacée', label: 'AGRESSION', tone: 'warn', icon: 'alert' },
   elderlyRobbed: { title: 'VOL EN COURS !', sub: 'Une personne âgée est menacée', label: 'VOL', tone: 'warn', icon: 'alert' },
 };
 
-/** What the banner shows for an alert: the spec plus the wave line and whether it points somewhere. */
+const WEAPON_DROP: AlertSpec = { title: 'ARME SPÉCIALE !', sub: 'Fonce la ramasser', label: 'ARME', tone: 'drop', icon: 'star' };
+
+export const ROUND_HEADLINES: Readonly<Record<RoundHeadline, string>> = {
+  school: 'École en feu',
+  car: 'Voiture en feu',
+  busStop: 'Abribus saccagé',
+  rescue: 'Agression en cours',
+};
+
+/** What the banner shows for an alert: the spec plus the round line and whether it points somewhere. */
 export interface ShownAlert extends AlertSpec {
-  /** Small « Vague N · T casseurs » line of an incident banner (empty when unknown or for a fill wave). */
+  /** Small « Manche N · T casseurs » line of an incident banner (empty when unknown, for a round start or a drop). */
   meta: string;
-  /** False for a fill wave: no arrow, no distance. */
+  /** False for a round start: no arrow, no distance. */
   positioned: boolean;
 }
 
@@ -44,53 +57,79 @@ export function casseurs(n: number): string {
   return `${n} ${n === 1 ? 'casseur' : 'casseurs'}`;
 }
 
-/** Banner content of an alert kind; `wave`/`total` give the wave number and the rioters to knock out (0 = unknown). */
-export function incidentAlert(kind: AlertKind, wave = 0, total = 0): ShownAlert {
-  if (kind === 'wave')
+/**
+ * Banner content of an alert kind; `round`/`total` give the round number and its roster (0 = unknown), `headline` what
+ * a round start is about.
+ */
+export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: RoundHeadline): ShownAlert {
+  if (kind === 'round')
     return {
-      title: `VAGUE ${wave} !`,
-      sub: `${casseurs(total)} à neutraliser`,
-      label: 'VAGUE',
-      tone: 'wave',
+      title: `MANCHE ${round} !`,
+      sub: headline ? `${ROUND_HEADLINES[headline]} · ${casseurs(total)}` : casseurs(total),
+      label: 'MANCHE',
+      tone: 'round',
       icon: 'horde',
       meta: '',
       positioned: false,
     };
-  const meta = wave > 0 && total > 0 ? `Vague ${wave} · ${casseurs(total)}` : '';
+  if (kind === 'weaponDrop') return { ...WEAPON_DROP, meta: '', positioned: true };
+  const meta = round > 0 && total > 0 ? `Manche ${round} · ${casseurs(total)}` : '';
   return { ...INCIDENT_ALERTS[kind], meta, positioned: true };
 }
 
-/** An incident on the map: what it is and where. */
+/** An incident on the map (or a special drop waiting to be picked up): what it is and where. */
 export interface Incident {
   id: string;
-  kind: IncidentKind;
+  kind: IncidentKind | 'weaponDrop';
   pos: Vec;
 }
 
-/** Something the banner announces: an incident (with a position) or a fill wave (pos null), with its wave/total. */
+/** `activeIncidents` id of the special drop lying at `pos` (the drop banner knows only its position). */
+function dropId(pos: Vec): string {
+  return `drop@${pos.x},${pos.y}`;
+}
+
+/** Something the banner announces: an incident or drop (with a position) or a round start (pos null). */
 export interface Alert {
   id: string;
   kind: AlertKind;
   pos: Vec | null;
   wave: number;
   total: number;
+  /** Round starts only. */
+  headline?: RoundHeadline;
+  /**
+   * Id of the incident in `activeIncidents` (target id, 'rescue' or the drop's id) for incident and drop alerts: the
+   * banner drops the alert once that incident is over or that weapon gone. Absent for round starts, which run their course.
+   */
+  incident?: string;
 }
 
-/** The alert announced by a sim event (incident start or fill wave), or null. */
+/** The alert announced by a sim event (incident, round or special-drop start), or null. */
 export function alertFromEvent(e: SimEvent): Alert | null {
-  if (e.type === 'SchoolStarted') return { id: e.incidentId, kind: 'school', pos: { ...e.pos }, wave: e.wave, total: e.total };
-  if (e.type === 'RescueStarted') return { id: e.incidentId, kind: e.kind, pos: { ...e.pos }, wave: e.wave, total: e.total };
-  if (e.type === 'WaveAnnounced') return { id: `wave#${e.index}`, kind: 'wave', pos: null, wave: e.index, total: e.total };
+  if (e.type === 'SchoolStarted')
+    return { id: e.incidentId, kind: 'school', pos: { ...e.pos }, wave: e.wave, total: e.total, incident: 'school' };
+  if (e.type === 'CasseStarted')
+    return { id: e.incidentId, kind: e.kind, pos: { ...e.pos }, wave: e.round, total: e.total, incident: e.target };
+  if (e.type === 'RescueStarted')
+    return { id: e.incidentId, kind: e.kind, pos: { ...e.pos }, wave: e.wave, total: e.total, incident: 'rescue' };
+  if (e.type === 'RoundStarted')
+    return { id: `round#${e.index}`, kind: 'round', pos: null, wave: e.index, total: e.total, headline: e.headline };
+  // a second urgency is announced by its own start event; a drop that found no spot has nothing to show
+  if (e.type === 'TwistStarted' && e.kind === 'weaponDrop' && e.pos)
+    return { id: dropId(e.pos), kind: 'weaponDrop', pos: { ...e.pos }, wave: 0, total: 0, incident: dropId(e.pos) };
   return null;
 }
 
-/** Incidents that still need Paul: the school while it is threatened, the rescue while the victim is threatened. */
+/**
+ * Incidents that still need Paul: every target under an urgent attack (at its door), the rescue while threatened, and
+ * every special drop (a weapon with an expiry) until it is picked up or vanishes.
+ */
 export function activeIncidents(s: Snapshot): Incident[] {
   const out: Incident[] = [];
-  const st = s.school.stage;
-  if ((st === 'firstLine' || st === 'cinematic' || st === 'reinforcements') && s.school.remaining > 0)
-    out.push({ id: 'school', kind: 'school', pos: { ...DISTRICT.school.door } });
+  for (const t of s.targets) if (t.state === 'attacked') out.push({ id: t.id, kind: t.kind, pos: { ...t.door } });
   if (s.rescue?.stage === 'threat') out.push({ id: 'rescue', kind: s.rescue.kind, pos: { ...s.rescue.victimPos } });
+  for (const w of s.weaponsOnGround) if (w.expiresAt !== null) out.push({ id: dropId(w.pos), kind: 'weaponDrop', pos: { ...w.pos } });
   return out;
 }
 
@@ -211,6 +250,31 @@ const SPRITES: Record<Sprite, string[]> = {
     'KKKRKKRKKK',
     '..KK..KK..',
   ],
+  // a cracked glass pane with shards falling off
+  glass: [
+    'KKKKKKKKKK',
+    'KWWYKWWWWK',
+    'KWWWKWWKWK',
+    'KWYWWKKWWK',
+    'KWWKKWKWYK',
+    'KWKWWWWKWK',
+    'KKKKKKKWKK',
+    '.....K..W.',
+    '..WK....K.',
+    '.......WK.',
+  ],
+  // a sparkle: the special weapon to grab
+  star: [
+    '....Y....',
+    '...KYK...',
+    '...YWY...',
+    'KYYYWYYYK',
+    '.KYWWWYK.',
+    '..KYWYK..',
+    '..YK.KY..',
+    '.YK...KY.',
+    '.K.....K.',
+  ],
   // points right (0°); rotated toward the target
   arrow: ['....C...', '....CC..', 'CCCCCCC.', 'CCCCCCCC', 'CCCCCCC.', '....CC..', '....C...'],
   // points down-right (45°)
@@ -259,9 +323,9 @@ export const ALERT_MS = 6000;
 const QUEUE_MAX = 3;
 
 /**
- * Top-centre pixel banner announcing a new incident or fill wave (role="alert"). One at a time; later ones queue and
+ * Top-centre pixel banner announcing a new incident, round or special drop (role="alert"). One at a time; later ones queue and
  * show after. For a positioned alert the arrow and distance are refreshed by `track(playerPos)` while visible
- * (aria-hidden: not re-announced); a fill wave has neither.
+ * (aria-hidden: not re-announced); a round start has neither.
  */
 export class AlertBanner {
   readonly el: HTMLElement;
@@ -274,6 +338,8 @@ export class AlertBanner {
   private readonly dist: HTMLElement;
   private current: Alert | null = null;
   private readonly queue: Alert[] = [];
+  /** Alerts pushed since the last `prune`: their incident may not show in the snapshot yet. */
+  private readonly fresh = new Set<Alert>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private lastDist = '';
 
@@ -307,6 +373,7 @@ export class AlertBanner {
   }
 
   push(incident: Alert): void {
+    this.fresh.add(incident);
     if (this.current) {
       this.queue.push(incident);
       if (this.queue.length > QUEUE_MAX) this.queue.shift();
@@ -327,7 +394,24 @@ export class AlertBanner {
     }
   }
 
+  /**
+   * Drops incident and drop alerts whose incident is no longer active (`active` = `activeIncidents` ids), queued or on
+   * screen, so a banner never announces an urgency that is already over (e.g. during the breather) nor a weapon already
+   * gone. Alerts pushed since the previous call are kept once (their start may not be in this snapshot yet); round
+   * starts are never dropped.
+   */
+  prune(active: ReadonlySet<string>): void {
+    const stale = (a: Alert): boolean => a.incident !== undefined && !active.has(a.incident) && !this.fresh.has(a);
+    for (let i = this.queue.length - 1; i >= 0; i--) if (stale(this.queue[i]!)) this.queue.splice(i, 1);
+    if (this.current && stale(this.current)) {
+      if (this.timer) clearTimeout(this.timer);
+      this.next();
+    }
+    this.fresh.clear();
+  }
+
   clear(): void {
+    this.fresh.clear();
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     this.queue.length = 0;
@@ -341,7 +425,7 @@ export class AlertBanner {
   }
 
   private show(incident: Alert): void {
-    const spec = incidentAlert(incident.kind, incident.wave, incident.total);
+    const spec = incidentAlert(incident.kind, incident.wave, incident.total, incident.headline);
     this.current = incident;
     this.el.className = `bb-alert tone-${spec.tone}`;
     this.ico.innerHTML = pixelSvg(spec.icon, 3);
