@@ -19,6 +19,8 @@ function start(): void {
       pixelArt: true,
       roundPixels: true,
       backgroundColor: '#14121c',
+      // Sound is raw WebAudio in GameAudio (one context, created on Commencer): no Phaser sound manager.
+      audio: { noAudio: true },
       // RESIZE: canvas = container size in CSS px (no CSS stretching, resolution 1); WorldScene zooms by integers.
       scale: {
         mode: Phaser.Scale.RESIZE,

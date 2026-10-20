@@ -82,6 +82,7 @@ describe('contextPrompt', () => {
       x.stationMessage = null;
     });
     expect(contextPrompt(s)).toEqual({ text: 'F — Se soigner', label: 'Soigner' });
+    expect(contextPrompt(s, true)).toEqual({ text: 'Se soigner', label: 'Soigner' });
   });
 
   test('no prompt away from stations', () => {
@@ -101,12 +102,24 @@ describe('contextPrompt', () => {
       x.player.pos = { x: 120, y: 100 };
     });
     expect(contextPrompt(s)).toEqual({ text: 'F — Aider', label: 'Aider' });
+    expect(contextPrompt(s, true)).toEqual({ text: 'Aider', label: 'Aider' });
+    expect(contextPrompt(s, false)).toEqual({ text: 'F — Aider', label: 'Aider' });
     s.player.pos = { x: 300, y: 100 };
     expect(contextPrompt(s)).toBeNull();
   });
 });
 
 describe('incidentLines', () => {
+  test('school card reads "renforts" during the cinematic (not "interrompu")', () => {
+    const s = new Sim(21, { invulnerable: true });
+    for (let i = 0; i < 60 * 30 && s.school.stage !== 'cinematic'; i++) {
+      for (const h of s.horde.active()) s.horde.applyHit(h.lifeId, 99);
+      s.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false });
+    }
+    const [school] = incidentLines(s.snapshot(), 'en cours');
+    expect(school).toMatchObject({ key: 'school', status: 'renforts' });
+  });
+
   test('school countdown rounds up; rescue hidden when absent', () => {
     const s = snap((x) => {
       x.school.remaining = 22.2;
@@ -159,11 +172,23 @@ describe('GameAudio.reset', () => {
     const a = new GameAudio();
     const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
     const ev = [{ type: 'BuildingThreatStarted', incidentId: 'school#1' }] as const;
-    a.onEvents([...ev], 0);
-    a.onEvents([...ev], 1);
+    a.onEvents([...ev]);
+    a.onEvents([...ev]);
     expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(1);
     a.reset();
-    a.onEvents([...ev], 0);
+    a.onEvents([...ev]);
     expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(2);
+  });
+});
+
+describe('GameAudio.onEvents', () => {
+  test('throw sound on EnemyRockThrown only, not at windup start', async () => {
+    const { GameAudio } = await import('../../src/game/audio');
+    const a = new GameAudio();
+    const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
+    a.onEvents([{ type: 'EnemyThrowStarted', from: { x: 0, y: 0 }, to: { x: 1, y: 1 }, until: 5 }]);
+    expect(play).not.toHaveBeenCalled();
+    a.onEvents([{ type: 'EnemyRockThrown', rockId: 3 }]);
+    expect(play).toHaveBeenCalledWith('throw');
   });
 });

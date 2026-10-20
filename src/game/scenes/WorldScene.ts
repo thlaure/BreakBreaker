@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { FixedClock } from '../../sim/clock';
 import { CONFIG } from '../../sim/config';
+import { DISTRICT } from '../../sim/map/district';
 import { Sim, type Snapshot } from '../../sim/sim';
 import { stressTarget, stressTick } from '../debug';
 import type { InputFrame, SimEvent } from '../../sim/types';
@@ -19,6 +20,8 @@ const SHAKE_MS = 120;
 const SHAKE_PX = 2;
 const BASE_W = 640;
 const BASE_H = 360;
+const PAN_IN_MS = 700;
+const PAN_OUT_MS = 500;
 
 export function integerZoom(width: number, height: number): number {
   const [bw, bh] = height > width ? [BASE_H, BASE_W] : [BASE_W, BASE_H];
@@ -53,6 +56,9 @@ export class WorldScene extends Phaser.Scene {
   private hitStopUntil = 0;
   private struck = false;
   private lastVisual = 0;
+  /** Camera is showing the school door for the cinematic (follow suspended). */
+  private cinematicCam = false;
+  private prevAct = false;
 
   constructor() {
     super('world');
@@ -97,9 +103,17 @@ export class WorldScene extends Phaser.Scene {
     const touchRoot = document.getElementById('touch-ui');
     if (touchRoot) sources.push(createTouch(touchRoot, { onPause: () => this.ui?.togglePause() }));
     const offGuard = guardLifecycle(window, sources, () => this.ui?.openPause());
+    // touch: a tap anywhere skips the school cinematic (keyboard/mouse go through the input frame)
+    const onTap = (e: PointerEvent): void => {
+      if (e.pointerType === 'mouse') return;
+      if (e.target instanceof Element && e.target.closest('[data-action=pause]')) return;
+      this.trySkipCinematic();
+    };
+    window.addEventListener('pointerdown', onTap, true);
     this.sources = sources;
     this.input$ = merge(...sources);
     this.disposeInput = () => {
+      window.removeEventListener('pointerdown', onTap, true);
       offGuard();
       for (const s of sources) {
         s.releaseAll();
@@ -115,6 +129,8 @@ export class WorldScene extends Phaser.Scene {
     this.hitStopUntil = 0;
     this.struck = false;
     this.lastVisual = 0;
+    this.cinematicCam = false;
+    this.prevAct = false;
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.ui?.destroy();
@@ -166,9 +182,14 @@ export class WorldScene extends Phaser.Scene {
     const events: SimEvent[] = [];
     for (let i = 0; i < steps; i++) {
       if (import.meta.env.DEV && this.stress > 0) stressTick(this.sim, this.stress, this.stressState);
-      events.push(...this.sim.step(this.readInput()));
+      const f = this.readInput();
+      // Agir (rising edge) or Espace / clic (strike) skips the school cinematic
+      if ((f.act && !this.prevAct) || f.strike) this.trySkipCinematic();
+      this.prevAct = f.act;
+      events.push(...this.sim.step(f));
     }
     const snap = this.sim.snapshot();
+    this.cinematicCamera(snap);
     this.playerPos = snap.player.pos;
     this.react(events, time);
     if (time >= this.hitStopUntil) {
@@ -177,6 +198,29 @@ export class WorldScene extends Phaser.Scene {
     }
     this.events.emit('hud', snap);
     this.events.emit('sim-events', events);
+  }
+
+  /** Only while the cinematic runs and no overlay pauses the sim. */
+  private trySkipCinematic(): void {
+    if (this.sim.paused || this.sim.school.stage !== 'cinematic') return;
+    this.sim.skipCinematic();
+  }
+
+  /** Cinematic: smooth pan to the school door; when it ends, pan back to Paul and follow him again. */
+  private cinematicCamera(snap: Snapshot): void {
+    const cam = this.cameras.main;
+    const on = snap.school.stage === 'cinematic' && !snap.ended;
+    if (on === this.cinematicCam) return;
+    this.cinematicCam = on;
+    if (on) {
+      cam.stopFollow();
+      cam.pan(DISTRICT.school.door.x, DISTRICT.school.door.y, PAN_IN_MS, 'Sine.easeInOut', true);
+      return;
+    }
+    const target = this.paul.sprite;
+    cam.pan(target.x, target.y, PAN_OUT_MS, 'Sine.easeInOut', true, (_c: Phaser.Cameras.Scene2D.Camera, progress: number) => {
+      if (progress >= 1 && !this.cinematicCam) cam.startFollow(this.paul.sprite, true);
+    });
   }
 
   private readInput(): InputFrame {

@@ -76,7 +76,15 @@ export class Hud {
   private readonly arrow = el('div', 'bb-arrow');
   private readonly arrowGlyph = el('span', 'glyph', '➤');
   private readonly arrowLabel = el('span', 'lbl');
+  private readonly banner = el('div', 'bb-banner');
+  private readonly bannerHint = el('span', 'hint');
   private readonly actBtn: HTMLElement | null;
+  private readonly touchRoot: HTMLElement | null;
+  /** Cached `.bb-top` box (the arrow keeps clear of it); refreshed on resize and when a card shows/hides. */
+  private topBox: { right: number; bottom: number } | null = null;
+  private readonly onResize = (): void => {
+    this.topBox = null;
+  };
   private lastNow = -1;
   private lastRescue = Number.POSITIVE_INFINITY;
   private rescueDrain: 'en cours' | 'interrompu' = 'en cours';
@@ -116,16 +124,23 @@ export class Hud {
     this.arrow.hidden = true;
     this.prompt.hidden = true;
     this.prompt.setAttribute('aria-live', 'polite');
-    this.root.append(top, this.prompt, this.arrow);
+    this.banner.append(el('b', 'title', 'Renforts en approche !'), this.bannerHint);
+    this.banner.hidden = true;
+    this.banner.setAttribute('role', 'status');
+    this.root.append(top, this.prompt, this.arrow, this.banner);
     parent.append(this.root);
+    this.touchRoot = touchRoot;
     this.actBtn = touchRoot?.querySelector<HTMLElement>('[data-action=act]') ?? null;
+    window.addEventListener('resize', this.onResize);
   }
 
   show(on: boolean): void {
     this.root.hidden = !on;
+    this.topBox = null;
   }
 
   destroy(): void {
+    window.removeEventListener('resize', this.onResize);
     this.root.remove();
     if (this.actBtn) this.actBtn.textContent = DEFAULT_ACT_LABEL;
   }
@@ -148,7 +163,12 @@ export class Hud {
     const lines = incidentLines(s, this.rescueDrain);
     for (const key of ['school', 'rescue'] as const) this.card(this.cards[key], lines.find((l) => l.key === key), s);
 
-    const p = contextPrompt(s);
+    const touch = this.touchRoot?.classList.contains('visible') ?? false;
+    const cinematic = s.school.stage === 'cinematic' && !s.ended;
+    this.banner.hidden = !cinematic;
+    if (cinematic) c.text(this.bannerHint, touch ? 'Touchez l’écran pour passer' : 'Agir / Espace pour passer');
+
+    const p = cinematic ? null : contextPrompt(s, touch);
     this.prompt.hidden = !p;
     c.text(this.prompt, p?.text ?? '');
     if (this.actBtn) c.text(this.actBtn, p?.label ?? DEFAULT_ACT_LABEL);
@@ -172,7 +192,10 @@ export class Hud {
 
   private card(card: Card, line: IncidentLine | undefined, s: Snapshot): void {
     const c = this.c;
-    card.root.hidden = !line;
+    if (card.root.hidden !== !line) {
+      card.root.hidden = !line;
+      this.topBox = null;
+    }
     if (!line) return;
     const slug = line.status.replace(/\s/g, '-');
     c.cls(card.root, `bb-card st-${slug}`);
@@ -207,7 +230,8 @@ export class Hud {
     const x = Math.round(cx + dx * k);
     let y = Math.round(cy + dy * k);
     // keep clear of the HUD card in the top-left corner
-    const box = this.top.getBoundingClientRect();
+    this.topBox ??= (({ right, bottom }) => ({ right, bottom }))(this.top.getBoundingClientRect());
+    const box = this.topBox;
     if (x < box.right + 30 && y < box.bottom + 24) y = Math.round(box.bottom + 24);
     const deg = Math.round((Math.atan2(dy, dx) * 180) / Math.PI);
     this.arrow.hidden = false;

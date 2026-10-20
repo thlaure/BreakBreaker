@@ -4,7 +4,8 @@ import type { Vec } from '../../sim/types';
 const STATION_RANGE = 28;
 const HELP_RANGE = 32;
 
-export type IncidentStatus = 'en cours' | 'interrompu' | 'sécurisé' | 'perdu' | 'sauvé';
+/** 'renforts': the school cinematic (reinforcements on their way) — the countdown is frozen, not interrupted. */
+export type IncidentStatus = 'en cours' | 'interrompu' | 'renforts' | 'sécurisé' | 'perdu' | 'sauvé';
 
 export function formatDuration(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
@@ -58,11 +59,13 @@ export interface Prompt {
 
 export const DEFAULT_ACT_LABEL = 'Agir';
 
-export function contextPrompt(s: Snapshot): Prompt | null {
+/** `touch`: the touch controls are visible, so the keyboard hint ("F — ") is dropped. */
+export function contextPrompt(s: Snapshot, touch = false): Prompt | null {
   const p = s.player.pos;
-  if (s.rescue?.stage === 'secured' && d(p, s.rescue.victimPos) <= HELP_RANGE) return { text: 'F — Aider', label: 'Aider' };
+  const key = touch ? '' : 'F — ';
+  if (s.rescue?.stage === 'secured' && d(p, s.rescue.victimPos) <= HELP_RANGE) return { text: `${key}Aider`, label: 'Aider' };
   if (s.stationMessage) return { text: s.stationMessage, label: DEFAULT_ACT_LABEL };
-  if (s.stations.some((st) => st.charged && d(p, st.pos) <= STATION_RANGE)) return { text: 'F — Se soigner', label: 'Soigner' };
+  if (s.stations.some((st) => st.charged && d(p, st.pos) <= STATION_RANGE)) return { text: `${key}Se soigner`, label: 'Soigner' };
   return null;
 }
 

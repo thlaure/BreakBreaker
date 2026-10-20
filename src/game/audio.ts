@@ -1,7 +1,15 @@
 import type { SimEvent } from '../sim/types';
-import { BASE, SFX } from './assets';
+import { SFX } from './assets';
 
-type Sfx = (typeof SFX)[number];
+export type Sfx = (typeof SFX)[number];
+
+/** Encoded sound files fetched once by BootScene (Phaser loader, binary); decoded by GameAudio at unlock. */
+const encoded = new Map<Sfx, ArrayBuffer>();
+
+/** Called by BootScene after loading: no network fetch happens in GameAudio. */
+export function provideSfx(data: Iterable<[Sfx, ArrayBuffer]>): void {
+  for (const [k, v] of data) encoded.set(k, v);
+}
 
 const MAX_VOICES = 8;
 const SFX_GAIN = 0.7;
@@ -22,7 +30,6 @@ export class GameAudio {
   private muted = false;
   private threat = 0;
   private alarmed = new Set<string>();
-  private nowSim = 0;
   private unlocking: Promise<void> | null = null;
 
   constructor(muted = false) {
@@ -33,7 +40,7 @@ export class GameAudio {
     return this.ctx !== null;
   }
 
-  /** Creates the context inside a user gesture, then loads the buffers. Never throws. */
+  /** Creates the context inside a user gesture, then decodes the preloaded buffers. Never throws. */
   unlock(): Promise<void> {
     if (this.unlocking) return this.unlocking;
     try {
@@ -68,10 +75,11 @@ export class GameAudio {
     if (!ctx) return;
     await Promise.all(
       SFX.map(async (key) => {
+        const data = encoded.get(key);
+        if (!data) return;
         try {
-          const res = await fetch(`${BASE}sfx/${key}.ogg`);
-          if (!res.ok) return;
-          this.buffers.set(key, await ctx.decodeAudioData(await res.arrayBuffer()));
+          // decodeAudioData detaches its input: decode a copy so the preloaded bytes stay usable.
+          this.buffers.set(key, await ctx.decodeAudioData(data.slice(0)));
         } catch {
           /* one missing sound is not fatal */
         }
@@ -111,11 +119,12 @@ export class GameAudio {
     if (this.fireGain && this.ctx) this.fireGain.gain.setTargetAtTime(this.threat * FIRE_MAX, this.ctx.currentTime, 0.15);
   }
 
-  /** Called on Reprendre only (never automatically on visibilitychange). */
+  /** Called on Commencer / Reprendre / Rejouer only (never automatically on visibilitychange). */
   resume(): void {
     void this.ctx?.resume().catch(() => undefined);
   }
 
+  /** Called whenever an overlay pauses the sim (pause menu, summary) and when the page is hidden. */
   suspend(): void {
     void this.ctx?.suspend().catch(() => undefined);
   }
@@ -140,17 +149,14 @@ export class GameAudio {
     }
   }
 
-  /** Maps sim events to sounds. `nowSim` is the sim clock at the end of the frame, for delayed sounds. */
-  onEvents(events: SimEvent[], nowSim: number): void {
-    this.nowSim = nowSim;
+  /** Maps sim events to sounds (a thrown enemy rock sounds when it actually spawns: EnemyRockThrown). */
+  onEvents(events: SimEvent[]): void {
     for (const e of events) {
       switch (e.type) {
         case 'HitConfirmed':
           this.play(`hit${1 + Math.floor(Math.random() * 3)}` as Sfx);
           break;
-        case 'EnemyThrowStarted':
-          this.play('throw', e.until - this.nowSim);
-          break;
+        case 'EnemyRockThrown':
         case 'ProjectileReturned':
           this.play('throw');
           break;

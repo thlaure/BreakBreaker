@@ -38,10 +38,9 @@ export class GameUi {
   private readonly hud: Hud;
   private readonly menus: Menus;
   private timer: ReturnType<typeof setTimeout> | null = null;
-  private lastNow = 0;
 
   private readonly onHud = (s: Snapshot): void => this.frame(s);
-  private readonly onEvents = (ev: SimEvent[]): void => this.audio.onEvents(ev, this.lastNow);
+  private readonly onEvents = (ev: SimEvent[]): void => this.audio.onEvents(ev);
   private readonly onVisibility = (): void => {
     if (document.visibilityState === 'hidden') this.audio.suspend();
   };
@@ -98,12 +97,14 @@ export class GameUi {
     this.phase = 'paused';
     this.host.sim.pause();
     this.host.releaseInputs();
+    this.audio.suspend();
     this.menus.showPause();
   }
 
   private start(): void {
     // Commencer is the user gesture that unlocks audio.
     void this.audio.unlock();
+    this.audio.resume();
     this.phase = 'playing';
     this.menus.close();
     this.hud.show(true);
@@ -131,7 +132,6 @@ export class GameUi {
   }
 
   private frame(s: Snapshot): void {
-    this.lastNow = s.now;
     this.hud.update(s, this.host.cameraView());
     const threatened = s.school.stage === 'firstLine' || s.school.stage === 'reinforcements' || s.school.stage === 'cinematic';
     this.audio.setThreat(threatened && !s.ended ? 0.35 + 0.65 * (1 - s.school.integrity / 100) : 0);
@@ -147,6 +147,7 @@ export class GameUi {
     this.phase = 'ended';
     this.host.sim.pause();
     this.host.releaseInputs();
+    this.audio.suspend();
     const s = this.host.sim.snapshot();
     const cause = s.endCause ?? 'quit';
     const record = loadRecord(cause);
