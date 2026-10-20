@@ -59,7 +59,8 @@ describe('pure helpers', () => {
     expect(alertFromEvent(rescueEv('elderlyRobbed'))).toEqual({ id: 'rescue#1', kind: 'elderlyRobbed', pos: { x: 900, y: 600 }, wave: 2, total: 3, incident: 'rescue' });
     expect(alertFromEvent(waveEv)).toEqual({ id: 'round#3', kind: 'round', pos: null, wave: 3, total: 9, headline: 'car' });
     expect(alertFromEvent(casseEv('car', 'car1', { x: 50, y: 60 }))).toEqual({ id: 'car#3', kind: 'car', pos: { x: 50, y: 60 }, wave: 3, total: 18, incident: 'car1' });
-    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 } })).toMatchObject({ kind: 'weaponDrop', pos: { x: 7, y: 8 } });
+    // a drop is tied to its weapon on the ground (same id as its activeIncidents entry)
+    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 } })).toMatchObject({ kind: 'weaponDrop', pos: { x: 7, y: 8 }, incident: 'drop@7,8' });
     // no banner for a drop that found no spot, nor for a second urgency (its own CasseStarted announces it)
     expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: null })).toBeNull();
     expect(alertFromEvent({ type: 'TwistStarted', kind: 'secondUrgency', pos: { x: 1, y: 1 } })).toBeNull();
@@ -111,6 +112,16 @@ describe('pure helpers', () => {
     for (const t of s.targets) t.state = t.id === 'school' ? 'intact' : 'ruined';
     s.rescue.stage = 'secured';
     expect(activeIncidents(s)).toEqual([]);
+  });
+
+  test('activeIncidents: a special drop on the ground (with an expiry) is one too, an ordinary weapon is not', () => {
+    const s = new Sim(1).snapshot();
+    for (const t of s.targets) t.state = 'intact';
+    s.weaponsOnGround = [
+      { id: 1, kind: 'baton', pos: { x: 10, y: 20 }, expiresAt: null },
+      { id: 2, kind: 'marteau', pos: { x: 30, y: 40 }, expiresAt: 99 },
+    ];
+    expect(activeIncidents(s)).toEqual([{ id: 'drop@30,40', kind: 'weaponDrop', pos: { x: 30, y: 40 } }]);
   });
 
   test('arrows snap to 8 directions and only turn by multiples of 90°', () => {
@@ -393,7 +404,7 @@ describe('Hud alerts and edge indicators', () => {
     hud.destroy();
   });
 
-  test('an incident banner is dropped once its incident is over, queued or on screen; round and drop banners stay', () => {
+  test('an incident banner is dropped once its incident is over, queued or on screen; a round banner stays, a drop banner lasts while its weapon is on the ground', () => {
     const hud = new Hud(document.body, null);
     const a = hud.root.querySelector<HTMLElement>('.bb-alert')!;
     const title = () => (a.hidden ? null : a.querySelector('.title')!.textContent);
@@ -420,14 +431,35 @@ describe('Hud alerts and edge indicators', () => {
     expect(title()).toBe('ABRIBUS SACCAGÉ !');
     hud.update(snap(calm), view);
     expect(title()).toBeNull();
-    // round and drop banners are not tied to an incident
+    // a round banner is not tied to an incident; a drop banner lasts while its weapon is on the ground
+    const dropped = (x: Snapshot): void => {
+      calm(x);
+      x.weaponsOnGround = [{ id: 7, kind: 'marteau', pos: { x: 5, y: 5 }, expiresAt: 30 }];
+    };
     hud.onEvents([waveEv, { type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 5, y: 5 } }]);
-    hud.update(snap(calm), view);
-    hud.update(snap(calm), view);
+    hud.update(snap(dropped), view);
+    hud.update(snap(dropped), view);
     expect(title()).toBe('MANCHE 3 !');
     vi.advanceTimersByTime(ALERT_MS);
-    hud.update(snap(calm), view);
+    hud.update(snap(dropped), view);
     expect(title()).toBe('ARME SPÉCIALE !');
+    // picked up or expired: the banner goes at once
+    hud.update(snap(calm), view);
+    expect(title()).toBeNull();
+    hud.destroy();
+  });
+
+  test('a special drop gets an « ARME » edge indicator while it lies on the ground', () => {
+    const hud = new Hud(document.body, null);
+    const edges = () => [...hud.root.querySelectorAll<HTMLElement>('.bb-edge')];
+    const off = { ...view, x: 5000, y: 5000 };
+    hud.update(snap((x) => { calm(x); x.weaponsOnGround = [{ id: 3, kind: 'baton', pos: { x: 100, y: 100 }, expiresAt: 40 }]; }), off);
+    expect(edges()).toHaveLength(1);
+    expect(edges()[0]!.querySelector('.lbl')!.textContent).toBe('ARME');
+    expect(edges()[0]!.classList.contains('tone-drop')).toBe(true);
+    // an ordinary weapon has none; a picked-up drop loses its indicator
+    hud.update(snap((x) => { calm(x); x.weaponsOnGround = [{ id: 4, kind: 'baton', pos: { x: 100, y: 100 }, expiresAt: null }]; }), off);
+    expect(edges()).toHaveLength(0);
     hud.destroy();
   });
 

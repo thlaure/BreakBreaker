@@ -93,6 +93,7 @@
 }
 .bb-edge.tone-fire { --edge: var(--bb-fire); }
 .bb-edge.tone-warn { --edge: var(--bb-accent); }
+.bb-edge.tone-drop { --edge: #7be0ff; }
 .bb-edge .arrow { display: inline-flex; width: 16px; height: 16px; align-items: center; justify-content: center; color: var(--edge); }
 .bb-edge .ico { display: inline-flex; }
 .bb-edge .txt { display: flex; flex-direction: column; }

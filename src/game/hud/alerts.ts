@@ -4,7 +4,7 @@ import type { CasseKind, SimEvent, Vec } from '../../sim/types';
 
 /**
  * Incident alerts: a pixel banner when an incident, a round or a special weapon drop starts, and one edge indicator per
- * active incident. Generic on purpose: a new kind of "casse" only needs an entry in INCIDENT_ALERTS (and a headline
+ * active incident (special drops included, while on the ground). Generic on purpose: a new kind of "casse" only needs an entry in INCIDENT_ALERTS (and a headline
  * line); `alertFromEvent` / `activeIncidents` read the generic CasseStarted event and `snapshot.targets`. A round start
  * has no position: its banner shows no arrow and no distance.
  */
@@ -77,11 +77,16 @@ export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: 
   return { ...INCIDENT_ALERTS[kind], meta, positioned: true };
 }
 
-/** An incident on the map: what it is and where. */
+/** An incident on the map (or a special drop waiting to be picked up): what it is and where. */
 export interface Incident {
   id: string;
-  kind: IncidentKind;
+  kind: IncidentKind | 'weaponDrop';
   pos: Vec;
+}
+
+/** `activeIncidents` id of the special drop lying at `pos` (the drop banner knows only its position). */
+function dropId(pos: Vec): string {
+  return `drop@${pos.x},${pos.y}`;
 }
 
 /** Something the banner announces: an incident or drop (with a position) or a round start (pos null). */
@@ -94,8 +99,8 @@ export interface Alert {
   /** Round starts only. */
   headline?: RoundHeadline;
   /**
-   * Id of the incident in `activeIncidents` (target id or 'rescue') for incident alerts: the banner drops the alert once
-   * that incident is over. Absent for round starts and drops, which always run their course.
+   * Id of the incident in `activeIncidents` (target id, 'rescue' or the drop's id) for incident and drop alerts: the
+   * banner drops the alert once that incident is over or that weapon gone. Absent for round starts, which run their course.
    */
   incident?: string;
 }
@@ -112,15 +117,19 @@ export function alertFromEvent(e: SimEvent): Alert | null {
     return { id: `round#${e.index}`, kind: 'round', pos: null, wave: e.index, total: e.total, headline: e.headline };
   // a second urgency is announced by its own start event; a drop that found no spot has nothing to show
   if (e.type === 'TwistStarted' && e.kind === 'weaponDrop' && e.pos)
-    return { id: `drop@${e.pos.x},${e.pos.y}`, kind: 'weaponDrop', pos: { ...e.pos }, wave: 0, total: 0 };
+    return { id: dropId(e.pos), kind: 'weaponDrop', pos: { ...e.pos }, wave: 0, total: 0, incident: dropId(e.pos) };
   return null;
 }
 
-/** Incidents that still need Paul: every target under an urgent attack (at its door), the rescue while threatened. */
+/**
+ * Incidents that still need Paul: every target under an urgent attack (at its door), the rescue while threatened, and
+ * every special drop (a weapon with an expiry) until it is picked up or vanishes.
+ */
 export function activeIncidents(s: Snapshot): Incident[] {
   const out: Incident[] = [];
   for (const t of s.targets) if (t.state === 'attacked') out.push({ id: t.id, kind: t.kind, pos: { ...t.door } });
   if (s.rescue?.stage === 'threat') out.push({ id: 'rescue', kind: s.rescue.kind, pos: { ...s.rescue.victimPos } });
+  for (const w of s.weaponsOnGround) if (w.expiresAt !== null) out.push({ id: dropId(w.pos), kind: 'weaponDrop', pos: { ...w.pos } });
   return out;
 }
 
@@ -386,9 +395,10 @@ export class AlertBanner {
   }
 
   /**
-   * Drops incident alerts whose incident is no longer active (`active` = `activeIncidents` ids), queued or on screen,
-   * so a banner never announces an urgency that is already over (e.g. during the breather). Alerts pushed since the
-   * previous call are kept once (their start may not be in this snapshot yet); round starts and drops are never dropped.
+   * Drops incident and drop alerts whose incident is no longer active (`active` = `activeIncidents` ids), queued or on
+   * screen, so a banner never announces an urgency that is already over (e.g. during the breather) nor a weapon already
+   * gone. Alerts pushed since the previous call are kept once (their start may not be in this snapshot yet); round
+   * starts are never dropped.
    */
   prune(active: ReadonlySet<string>): void {
     const stale = (a: Alert): boolean => a.incident !== undefined && !active.has(a.incident) && !this.fresh.has(a);
