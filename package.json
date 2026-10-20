@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "bench": "node scripts/bench-sim.mjs",
     "assets": "node scripts/fetch-assets.mjs && node scripts/build-lpc.mjs",
-    "hero": "node scripts/build-hero.mjs"
+    "hero": "node scripts/build-hero.mjs",
+    "favicon": "node scripts/build-favicon.mjs"
   },
   "dependencies": {
     "phaser": "4.2.1"

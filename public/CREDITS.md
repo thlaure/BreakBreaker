@@ -43,6 +43,7 @@ Licences : [CC-BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/), [CC-
 - Licence : <https://creativecommons.org/publicdomain/zero/1.0/>
 - Les drapeaux (`assets/props/flags.png`) sont dessinés par le code du projet.
 - L'illustration de la page d'accueil (`src/site/hero.png`) est composée par `npm run hero` (`scripts/build-hero.mjs`) à partir de ces tuiles et des sprites LPC ci-dessus : œuvre dérivée, mêmes auteurs et mêmes licences (CC-BY-SA 3.0 pour les couches LPC qui l'exigent).
+- L'icône du site (`public/favicon.png`, `public/apple-touch-icon.png`) est composée par `npm run favicon` (`scripts/build-favicon.mjs`) à partir de la tête du sprite de Paul (LPC) : œuvre dérivée, mêmes auteurs et mêmes licences (CC-BY-SA 3.0 pour les couches LPC qui l'exigent).
 
 ## Polices
 
