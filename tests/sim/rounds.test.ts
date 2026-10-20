@@ -492,7 +492,7 @@ test('a toolbox repair in the sim: ready until Agir is pressed, then snapshot pr
   for (let i = 0; i < 60 * CONFIG.kit.repairSec; i++) ev.push(...sim.step(IDLE));
   expect(of(ev, 'TargetRepaired')).toHaveLength(1);
   expect(sim.rules.stats.repairs).toBe(1);
-  expect(sim.snapshot().targets.find((t) => t.id === 'busStop')).toMatchObject({ state: 'intact', hp: 36 });
+  expect(sim.snapshot().targets.find((t) => t.id === 'busStop')).toMatchObject({ state: 'intact', hp: 60 });
 });
 
 describe('a burning target stays so until put out (no fire going out by itself)', () => {
