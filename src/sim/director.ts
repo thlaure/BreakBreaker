@@ -201,6 +201,8 @@ export class Director {
   private lastHeadline: CasseKind | null = null;
   private readonly counters: Record<BeatKind, number> = { school: 0, car: 0, busStop: 0, rescue: 0 };
   private variantCursor = 0;
+  /** Fill firebombers handed out this round (CONFIG.firebomber.maxPerRound at most). */
+  private firebombers = 0;
 
   /** Pressure for the current round and session KOs. */
   pressure(kos: number): number {
@@ -246,6 +248,7 @@ export class Director {
     this.objectives = [];
     this.twistDone = false;
     this.roster.clear();
+    this.firebombers = 0;
     this.scoreAtStart = host.rules.score;
     const keep = host.attacks.filter((a) => !a.resolved());
     host.attacks.splice(0, host.attacks.length, ...keep);
@@ -406,7 +409,12 @@ export class Director {
     return n;
   }
 
-  /** Splits `n` fill rioters into groups of about groupSize (bigger ones last: the last group is the climax). */
+  /**
+   * Splits `n` fill rioters into groups of about groupSize (bigger ones last: the last group is the climax). Roles:
+   * rock throwers (THROWER_SHARE, from round 2), and from CONFIG.firebomber.fromRound firebombers: the round's fill
+   * slot 4, 12, 20… (1 in `fillEvery`, rounded: at least 1 once the fill has 4) unless that slot throws rocks, then the
+   * next contact slot; at most `maxPerRound` per round.
+   */
   private fillGroups(n: number, prefix = `round#${this.round}:fill`): FillGroup[] {
     if (n <= 0) return [];
     const groups = Math.ceil(n / CONFIG.round.groupSize);
@@ -415,13 +423,23 @@ export class Director {
     const share = this.round >= 2 ? THROWER_SHARE : 0;
     const first = this.fill.reduce((m, g) => m + g.reqs.length, 0);
     const out: FillGroup[] = [];
+    const fb = CONFIG.firebomber;
+    const fbWanted =
+      this.round >= fb.fromRound ? Math.min(fb.maxPerRound, Math.floor((first + n + fb.fillEvery / 2) / fb.fillEvery)) : 0;
+    let owed = 0;
     let i = first;
     for (let g = 0; g < groups; g++) {
       const size = base + (g >= groups - extra ? 1 : 0);
       const reqs: SpawnRequest[] = [];
       for (let k = 0; k < size; k++, i++) {
         // floor((i+1)·s) > floor(i·s) marks exactly floor(n·s) throwers, spread through the fill
-        const role: Role = Math.floor((i + 1) * share) > Math.floor(i * share) ? 'thrower' : 'contact';
+        let role: Role = Math.floor((i + 1) * share) > Math.floor(i * share) ? 'thrower' : 'contact';
+        if (fbWanted > 0 && i % fb.fillEvery === fb.fillEvery / 2 - 1) owed++;
+        if (role === 'contact' && owed > 0 && this.firebombers < fbWanted) {
+          role = 'firebomber';
+          owed--;
+          this.firebombers++;
+        }
         reqs.push({ variant: this.variant(), role, round: this.round, incidentId: `${prefix}#${this.fill.length + g + 1}` });
       }
       out.push({ id: reqs[0]!.incidentId!, reqs, climax: false, seen: new Set() });

@@ -70,6 +70,30 @@ export const CONFIG = {
   target: { fireDps: 2, degradeDps: 1.2, maxDegraders: 4, smoulderDps: 0.7 },
   /** `burstDamage`: hp a bottle takes off a target already on fire (no new ignition, no new announcement). */
   molotov: { windup: 1.5, range: 96, burstDamage: 8 },
+  /**
+   * Firebombers (« Lanceurs sur Paul »): ranged rioters who throw Molotovs at Paul. They keep `keepMin`–`keepMax` px
+   * from him with a clear line, raise a lit bottle for `windup` s (aimed at where Paul stood when it started), throw
+   * every `throwInterval` s; the bottle flies `flightSec` s and leaves a fire patch. Paul within `fallback` px → they
+   * fight as contacts. From `fromRound`: about 1 fill rioter in `fillEvery` (>= 1 once the fill has 4, at most
+   * `maxPerRound` per round), and the last Molotov of each site attack turns firebomber after its throw at the site.
+   */
+  firebomber: {
+    keepMin: 140,
+    keepMax: 260,
+    fallback: 100,
+    windup: 1.2,
+    flightSec: 0.7,
+    throwInterval: 5,
+    fromRound: 3,
+    fillEvery: 8,
+    maxPerRound: 3,
+  },
+  /**
+   * Ground fire left by a firebomb: `radius` px, `lifeSec` s, at most `maxAlive` (a new one pushes the oldest out).
+   * Paul standing inside takes `damage` every `tickSec` s through the normal damage path (invulnerability frames and
+   * mode furie apply). Rioters are not hurt; a patch never ignites a target.
+   */
+  firePatch: { radius: 30, lifeSec: 3.5, maxAlive: 6, damage: 4, tickSec: 0.5 },
   kit: { maxGround: 2, pickupRadius: 20, repairSec: 2, applyRange: 48, safetyRadius: 64, minPlaceFromPlayer: 64 },
   round: {
     totals: [10, 14, 18, 22],

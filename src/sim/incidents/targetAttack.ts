@@ -34,7 +34,8 @@ export function molotovCount(kind: CasseKind, round: number): number {
  * Who attacks a target of `kind` in `round` at `pressure`. Requests carry `round`; the attack stamps its own
  * `incidentId` and `site` when it requests them (a car lineup fits either car). Variants cycle over the whole list.
  * Molotov throwers come on top of the rest of the lineup, at the head of the first line; the round-1 school keeps one
- * in its first line and sends a second one with its reinforcements, after the cinematic.
+ * in its first line and sends a second one with its reinforcements, after the cinematic. From round CONFIG.firebomber.fromRound the last Molotov is marked
+ * `afterThrow: 'firebomber'` (it throws at Paul after its bottle hit the site).
  */
 export function lineup(kind: CasseKind, round: number, pressure: number): AttackComposition {
   let first: Role[];
@@ -55,7 +56,13 @@ export function lineup(kind: CasseKind, round: number, pressure: number): Attack
   let v = 0;
   const req = (role: Role): SpawnRequest => ({ variant: VARIANTS[v++ % VARIANTS.length]!, role, round });
   const firstLine = first.map(req);
-  return { firstLine, reinforcements: reinf.map(req) };
+  const reinforcements = reinf.map(req);
+  if (round >= CONFIG.firebomber.fromRound) {
+    // the attack's last Molotov throws at Paul after its bottle hit the site
+    const last = [...firstLine, ...reinforcements].filter((r) => r.role === 'molotov').pop();
+    if (last) last.afterThrow = 'firebomber';
+  }
+  return { firstLine, reinforcements };
 }
 
 function kindOf(target: TargetId): CasseKind {

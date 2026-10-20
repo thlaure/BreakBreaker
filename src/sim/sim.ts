@@ -1,6 +1,7 @@
 import { CONFIG } from './config';
 import { Director, spawnPoints, type RoundPhase, type RoundSummary } from './director';
 import { EntryQueue, type Spawner } from './entry';
+import { FirePatches } from './firepatch';
 import { Stations, type StationMessage } from './healing';
 import { Horde, type Hostile, type HordeCtx } from './hostiles';
 import type { RescueIncident, RescueKind, RescueStage } from './incidents/rescue';
@@ -62,6 +63,8 @@ export interface Snapshot {
     hp: number;
     /** Winding up a blow, a throw or a Molotov. */
     windup: boolean;
+    /** Holding up a lit bottle (a Molotov or firebomber windup; not a firebomber's melee blow). */
+    bottleUp: boolean;
   }[];
   rocks: { id: number; state: RockState; owner: 'enemy' | 'player'; kind: 'caillou' | 'pave' | 'brique'; pos: Vec }[];
   telegraphs: Telegraph[];
@@ -94,8 +97,12 @@ export interface Snapshot {
     /** Agir was pressed: the repair progresses on its own. */
     started: boolean;
   };
-  /** Bottles in flight (render only). */
+  /** Bottles in flight toward a target (render only). */
   molotovs: Telegraph[];
+  /** Firebombers' bottles in flight toward where Paul stood (`until` = landing). */
+  firebombs: Telegraph[];
+  /** Ground fire left by firebombs (Paul only); `secondsLeft` until it goes out. */
+  firePatches: { id: number; pos: Vec; r: number; secondsLeft: number }[];
   /** The latest school attack; `integrity` = school hp in percent. */
   school: { stage: SchoolStage; integrity: number; status: ReturnType<SchoolIncident['status']> };
   rescue: { stage: RescueStage; remaining: number; victimPos: Vec; kind: RescueKind } | null;
@@ -137,7 +144,7 @@ export function segmentRectEntry(a: Vec, b: Vec, r: Rect): number | null {
 
 /**
  * Deterministic session facade driven one fixed step at a time by the Phaser layer.
- * Step order: player move → sweep/return → hostiles → queue entries → rocks → damage → KO check → Molotovs routed to
+ * Step order: player move → sweep/return → hostiles → queue entries → rocks → damage → fire patches → KO check → Molotovs routed to
  * the attack on their target → attacks → rescue → toolboxes → heals → weapons (pickups, furie timer) → director.
  * Mode furie (CONFIG.furie) changes the player move, the strike and the damage taken; a KO ends it.
  * While the school cinematic is running, only its timer advances.
@@ -162,6 +169,7 @@ export class Sim {
   school: SchoolIncident = new SchoolIncident(this.targets, this.objectiveSpawner);
   readonly stations = new Stations(DISTRICT.stations);
   readonly toolboxes = new Toolboxes();
+  readonly firePatches = new FirePatches();
   readonly director = new Director();
   readonly weapons: Weapons;
   readonly rand: () => number;
@@ -268,6 +276,7 @@ export class Sim {
       }
       ev.push(e);
       if (e.type === 'MolotovThrown') molotovs.push(e);
+      else if (e.type === 'FirebombThrown') this.firePatches.throwBottle(e.from, e.to, e.until);
       else if (e.type === 'EnemyThrowStarted') this.telegraphs.push({ from: v(e.from), to: v(e.to), until: e.until });
       else if (e.type === 'ProjectilePickedUp') this.rules.stats.rocksPicked += 1;
       else if (e.type === 'ProjectileReturned') this.rules.stats.rocksReturned += 1;
@@ -276,6 +285,15 @@ export class Sim {
         this.hit(e.targetLifeId, e.damage, ev);
       }
     }
+    // ground fire: Paul only, through the same damage path (invulnerability frames, mode furie)
+    ev.push(
+      ...this.firePatches.step(now, this.grid, p.pos, (amount) => {
+        const a = this.weapons.furie() ? amount * CONFIG.furie.damageTakenMul : amount;
+        if (this.invulnerable || !damagePlayer(p, a, now)) return false;
+        ev.push({ type: 'PlayerDamaged', amount: a });
+        return true;
+      }),
+    );
     this.telegraphs = this.telegraphs.filter((t) => t.until > now);
     this.molotovs = this.molotovs.filter((t) => t.until > now);
 
@@ -344,6 +362,7 @@ export class Sim {
         role: h.role,
         hp: h.hp,
         windup: h.state === 'windup',
+        bottleUp: h.state === 'windup' && this.horde.bottleUp(h.lifeId),
       })),
       rocks: [...this.rocks.flying(), ...this.rocks.ground()].map((k) => ({
         id: k.id,
@@ -378,6 +397,8 @@ export class Sim {
         ...this.repairView(),
       },
       molotovs: this.molotovs.map((t) => ({ from: v(t.from), to: v(t.to), until: t.until })),
+      firebombs: this.firePatches.flying().map((b) => ({ from: v(b.from), to: v(b.to), until: b.landAt })),
+      firePatches: this.firePatches.view(this.now),
       school: {
         stage: this.school.stage,
         integrity: this.school.integrity(),

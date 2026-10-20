@@ -21,7 +21,7 @@ export interface InputFrame {
 }
 
 export type Variant = 'classic' | 'palestinian' | 'antifa';
-export type Role = 'contact' | 'thrower' | 'degrader' | 'aggressor' | 'molotov';
+export type Role = 'contact' | 'thrower' | 'degrader' | 'aggressor' | 'molotov' | 'firebomber';
 export type TargetId = 'school' | 'car1' | 'car2' | 'busStop';
 /** What kind of attack a round's "casse" is (Phase C extends both unions). */
 export type CasseKind = 'school' | 'car' | 'busStop';
@@ -64,6 +64,10 @@ export type SimEvent =
   /** A non-school target comes under attack. */
   | { type: 'CasseStarted'; incidentId: string; kind: CasseKind; target: TargetId; pos: Vec; round: number; total: number }
   | { type: 'MolotovThrown'; from: Vec; to: Vec; target: TargetId }
+  /** A firebomber's bottle left its hand toward `to` (where Paul stood when the windup began); it lands at `until`. */
+  | { type: 'FirebombThrown'; from: Vec; to: Vec; until: number }
+  /** A firebomb landed: a fire patch burns at `pos` (Paul only; never a target). */
+  | { type: 'FirePatchStarted'; id: number; pos: Vec }
   /**
    * A Molotov set a target on fire: what the HUD announces (« ÉCOLE EN FEU ! »…) and the alarm cue. `pos` = the
    * target's door, `round` = the attack's round, `total` = the round roster when known.

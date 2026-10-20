@@ -47,7 +47,10 @@ export interface HordeCtx {
 
 /** Per-hostile AI bookkeeping kept out of the public Hostile shape. */
 interface Aux {
-  windKind: 'contact' | 'throw' | 'molotov' | null;
+  /** 'bottle' = a firebomber's Molotov aimed at Paul (counts in the throw windup cap like a rock). */
+  windKind: 'contact' | 'throw' | 'molotov' | 'bottle' | null;
+  /** A Molotov marked so turns into this role once its bottle hit its site (then it goes for Paul). */
+  afterThrow: 'firebomber' | null;
   throwTo: Vec | null;
   /** Index of the site attack point this degrader / Molotov goes for. */
   pointIdx: number | null;
@@ -108,6 +111,7 @@ export class Horde {
     target?: Hostile['target'];
     site?: TargetId;
     round?: number;
+    afterThrow?: 'firebomber';
   }): Hostile | null {
     if (this.active().length >= CONFIG.caps.hostiles) return null;
     const maxHp = opts.maxHp ?? CONFIG.hostile.baseHp;
@@ -131,6 +135,7 @@ export class Horde {
     this.list.push(h);
     this.aux.set(h.lifeId, {
       windKind: null,
+      afterThrow: opts.afterThrow ?? null,
       throwTo: null,
       pointIdx: null,
       progressPos: { ...h.pos },
@@ -189,7 +194,7 @@ export class Horde {
     for (const h of act) {
       if (h.state !== 'windup') continue;
       const k = this.auxOf(h).windKind;
-      if (k === 'throw') this.wt++;
+      if (k === 'throw' || k === 'bottle') this.wt++;
       else if (k === 'contact') this.wc++;
     }
 
@@ -256,6 +261,7 @@ export class Horde {
       return this.steer(h, a, goal, ctx.fields.victim, now, ctx);
     }
     if (h.role === 'thrower') return this.thrower(h, a, now, ctx, ev);
+    if (h.role === 'firebomber') return this.firebomber(h, a, now, ctx, ev);
     return this.contact(h, a, now, ctx, ev);
   }
 
@@ -350,6 +356,48 @@ export class Horde {
     return ZERO;
   }
 
+  /**
+   * Like a rock thrower with a lit bottle (CONFIG.firebomber): keeps keepMin–keepMax px from Paul with a clear line,
+   * winds up (EnemyThrowStarted, aimed at where Paul stands now) then throws (FirebombThrown, landing `flightSec`
+   * later where he stood: a moving Paul dodges it). Paul within `fallback` px → a contact. KO'd during the windup:
+   * nothing is thrown (KO hostiles are not stepped).
+   */
+  private firebomber(h: Hostile, a: Aux, now: number, ctx: HordeCtx, ev: SimEvent[]): Vec {
+    const p = ctx.player;
+    const fb = CONFIG.firebomber;
+    if (h.state === 'windup' && a.windKind === 'bottle') {
+      if (now < h.stateUntil - EPS) return ZERO;
+      a.windKind = null;
+      this.wt--;
+      ev.push({ type: 'FirebombThrown', from: { ...h.pos }, to: { ...a.throwTo! }, until: now + fb.flightSec });
+      a.throwTo = null;
+      h.state = 'recover';
+      h.stateUntil = h.nextAttackAt;
+      return ZERO;
+    }
+    const d = dist(h.pos, p.pos);
+    if (d < fb.fallback || (h.state === 'windup' && a.windKind === 'contact')) return this.contact(h, a, now, ctx, ev);
+    if (d > fb.keepMax || !ctx.grid.lineClear(h.pos, p.pos)) return this.steer(h, a, p.pos, ctx.fields.player, now, ctx);
+    if (d < fb.keepMin) return norm(sub(h.pos, p.pos));
+    if (h.state === 'approach' && now >= h.nextAttackAt - EPS && this.wt < this.limit && !p.ko) {
+      const to = { ...p.pos };
+      h.state = 'windup';
+      h.stateUntil = now + fb.windup;
+      h.nextAttackAt = now + fb.throwInterval;
+      a.windKind = 'bottle';
+      a.throwTo = to;
+      this.wt++;
+      ev.push({ type: 'EnemyThrowStarted', from: { ...h.pos }, to: { ...to }, until: h.stateUntil });
+    }
+    return ZERO;
+  }
+
+  /** A Molotov or firebomber holding up a lit bottle right now (render: raised bottle and "!"). */
+  bottleUp(lifeId: number): boolean {
+    const k = this.aux.get(lifeId)?.windKind;
+    return k === 'molotov' || k === 'bottle';
+  }
+
   /** The standing site a degrader / Molotov goes for, or null (missing or ruined → it turns on Paul). */
   private siteOf(h: Hostile, ctx: HordeCtx): HordeSite | null {
     const s = h.site ? ctx.sites[h.site] : undefined;
@@ -378,7 +426,7 @@ export class Horde {
 
   /**
    * Walks to its site; within range of an attack point with a clear line, winds up (bottle raised), then throws at
-   * the door and turns on Paul as a contact. A KO during the windup throws nothing (KO hostiles are not stepped).
+   * the door and turns on Paul as a contact (or as a firebomber when marked `afterThrow`). A KO during the windup throws nothing (KO hostiles are not stepped).
    */
   private molotov(h: Hostile, a: Aux, site: HordeSite, now: number, ctx: HordeCtx, ev: SimEvent[]): Vec {
     if (h.state === 'windup' && a.windKind === 'molotov') {
@@ -386,6 +434,8 @@ export class Horde {
       a.windKind = null;
       h.state = 'approach';
       h.target = 'player';
+      // the attack's last Molotov (from CONFIG.firebomber.fromRound) keeps throwing, at Paul now
+      if (a.afterThrow) h.role = a.afterThrow;
       ev.push({ type: 'MolotovThrown', from: { ...h.pos }, to: { ...site.door }, target: h.site! });
       return ZERO;
     }
