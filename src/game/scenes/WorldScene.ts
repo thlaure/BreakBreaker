@@ -3,6 +3,8 @@ import { FixedClock } from '../../sim/clock';
 import { CONFIG } from '../../sim/config';
 import { Sim, type Snapshot } from '../../sim/sim';
 import type { InputFrame, SimEvent } from '../../sim/types';
+import { GameUi } from '../hud/ui';
+import type { CameraView } from '../hud/hud';
 import { createKeyboard } from '../input/keyboard';
 import { guardLifecycle, merge, type InputSource } from '../input/merge';
 import { createTouch } from '../input/touch';
@@ -31,7 +33,8 @@ export class WorldScene extends Phaser.Scene {
   private clock!: FixedClock;
   private input$: () => InputFrame = () => ({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false });
   private disposeInput: (() => void) | null = null;
-  private pauseText: Phaser.GameObjects.Text | null = null;
+  private ui: GameUi | null = null;
+  private sources: InputSource[] = [];
   private playerPos = { x: 0, y: 0 };
 
   private world!: WorldView;
@@ -59,24 +62,19 @@ export class WorldScene extends Phaser.Scene {
     this.input$ = fn;
   }
 
-  /** Task 14 replaces this with the real pause menu. */
-  private togglePause(): void {
-    if (this.sim.paused) this.resumeGame();
-    else this.pauseGame();
+  /** Releases every held game input (called by the UI when an overlay opens or the session ends). */
+  releaseInputs(): void {
+    for (const src of this.sources) src.releaseAll();
   }
 
-  private pauseGame(): void {
-    if (this.sim.paused) return;
-    this.sim.pause();
+  cameraView(): CameraView {
     const cam = this.cameras.main;
-    const c = cam.worldView;
-    this.pauseText ??= this.add.text(0, 0, 'Pause', { fontFamily: 'monospace', fontSize: '16px', color: '#ffffff', backgroundColor: '#000000aa', padding: { x: 6, y: 3 } }).setOrigin(0.5).setDepth(10000);
-    this.pauseText.setPosition(c.centerX, c.centerY).setVisible(true);
+    return { x: cam.worldView.x, y: cam.worldView.y, zoom: cam.zoom, width: cam.width, height: cam.height };
   }
 
-  private resumeGame(): void {
-    this.sim.resume();
-    this.pauseText?.setVisible(false);
+  /** Rejouer: fresh scene (new Sim), already running. Audio and prefs live outside the scene. */
+  restart(): void {
+    this.scene.restart({ autostart: true });
   }
 
   private setupInput(): void {
@@ -90,12 +88,13 @@ export class WorldScene extends Phaser.Scene {
           return { x: p.x, y: p.y };
         },
         () => this.playerPos,
-        { onPause: () => this.togglePause() },
+        { onPause: () => this.ui?.togglePause() },
       ),
     ];
     const touchRoot = document.getElementById('touch-ui');
-    if (touchRoot) sources.push(createTouch(touchRoot, { onPause: () => this.togglePause() }));
-    const offGuard = guardLifecycle(window, sources, () => this.pauseGame());
+    if (touchRoot) sources.push(createTouch(touchRoot, { onPause: () => this.ui?.togglePause() }));
+    const offGuard = guardLifecycle(window, sources, () => this.ui?.openPause());
+    this.sources = sources;
     this.input$ = merge(...sources);
     this.disposeInput = () => {
       offGuard();
@@ -106,15 +105,16 @@ export class WorldScene extends Phaser.Scene {
     };
   }
 
-  create(data?: { seed?: number }): void {
+  create(data?: { seed?: number; autostart?: boolean }): void {
     this.sim = new Sim(data?.seed ?? Date.now() >>> 0);
     this.clock = new FixedClock(CONFIG.step, CONFIG.maxCatchUpSteps);
     this.hitStopUntil = 0;
     this.struck = false;
     this.lastVisual = 0;
 
-    this.pauseText = null;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.ui?.destroy();
+      this.ui = null;
       this.disposeInput?.();
       this.disposeInput = null;
       this.scale.off(Phaser.Scale.Events.RESIZE, this.applyZoom, this);
@@ -140,6 +140,7 @@ export class WorldScene extends Phaser.Scene {
     cam.setDeadzone(24, 16);
     this.applyZoom();
     this.setupInput();
+    this.ui = new GameUi(this, data?.autostart ?? false);
     this.scale.on(Phaser.Scale.Events.RESIZE, this.applyZoom, this);
     this.render(snap, 0, 16);
   }
