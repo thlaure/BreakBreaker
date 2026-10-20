@@ -1308,7 +1308,7 @@ Landing et navigation sont P0. L’habillage final et un aperçu représentatif 
 
 Texte de présentation retenu : **« Défends le quartier. Tiens aussi longtemps que possible. »**
 
-Sous le lien Jouer : **« Solo · Ordinateur et téléphone · Sans compte »**. Afficher seulement les compatibilités réellement vérifiées. La mention « gratuit » ne sera ajoutée que si ce modèle de diffusion est confirmé.
+**Confirmé (1.6) :** aucune ligne de mentions (solo, plateformes, sans compte) sous le bouton Jouer. Si une telle mention revient, elle n’affichera que les compatibilités réellement vérifiées. La mention « gratuit » ne sera ajoutée que si ce modèle de diffusion est confirmé.
 
 Les chiffres d’équilibrage, l’architecture technique, les règles détaillées et la liste des fonctionnalités n’ont pas leur place sur la landing.
 

@@ -95,8 +95,7 @@ a:focus-visible, button:focus-visible, .table-wrap:focus-visible { outline: 3px 
   text-shadow: 0 3px 0 #c4372b, 0 6px 0 #7a1f2a, 0 10px 0 #14121c, 0 16px 28px rgba(0, 0, 0, 0.6);
 }
 .tagline { max-width: 26ch; margin: 1.5rem 0 0; font-size: clamp(1.15rem, 3.2vw, 1.7rem); line-height: 1.35; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7); }
-.cta { display: flex; flex-wrap: wrap; gap: 0.9rem; margin: 2rem 0 1rem; }
-.meta { margin: 0; color: var(--muted); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8); }
+.cta { display: flex; flex-wrap: wrap; gap: 0.9rem; margin: 2rem 0 0; }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; min-height: 52px; min-width: 52px; padding: 0 1.75rem;
