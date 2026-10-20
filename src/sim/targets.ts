@@ -30,8 +30,9 @@ export class Targets {
   damage(id: TargetId, hp: number): boolean {
     const s = this.get(id);
     if (s.state === 'ruined') return false;
-    s.hp = Math.max(0, s.hp - hp);
-    return s.hp <= 0;
+    const was = s.hp;
+    s.hp = Math.max(0, was - hp);
+    return was > 0 && s.hp <= 0;
   }
 
   /** False if already burning or ruined. */

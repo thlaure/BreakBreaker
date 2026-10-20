@@ -8,6 +8,7 @@ describe('Targets', () => {
     expect(t.get('car1').hp).toBe(40);
     expect(t.damage('car1', 50)).toBe(true);
     expect(t.get('car1').hp).toBe(0);
+    expect(t.damage('car1', 5)).toBe(false); // already at 0, not ruined yet
     t.ruin('car1', 'i1');
     expect(t.damage('car1', 5)).toBe(false);
     expect(t.standing('car1')).toBe(false);
