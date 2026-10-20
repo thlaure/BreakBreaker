@@ -248,3 +248,34 @@ test('lineup: later school and car compositions follow pressure; variants round-
   expect(lineup('busStop', 2, 8).firstLine.map((r) => r.role)).toEqual(['molotov', 'degrader', 'degrader', 'contact', 'contact', 'contact']);
   expect(lineup('car', 2, 99).firstLine).toHaveLength(7);
 });
+
+test('a target ruined by another source while urgent: destroyed once, no second ruin or penalty, never saved', () => {
+  const w = world('car1', only('degrader', 2));
+  w.attack.start();
+  w.tick(0.1);
+  expect(w.attack.urgent()).toBe(true);
+  // ruined elsewhere (e.g. another attack): this attack must not ruin it again, nor lose points, nor save it
+  w.targets.ruin('car1', 'other#1');
+  const ev = w.tick(0.1);
+  expect(w.attack.stage).toBe('destroyed');
+  expect(ev).toEqual([]);
+  expect(w.rules.score).toBe(0);
+  expect(w.targets.get('car1').lostIncidentId).toBe('other#1');
+  w.koAll();
+  expect(w.tick(3)).toEqual([]);
+  expect(w.attack.stage).toBe('destroyed');
+  expect(w.rules.score).toBe(0);
+});
+
+test('a ruin during the fire-out is not awarded as saved', () => {
+  const w = world('car1', only('degrader', 1));
+  w.attack.start();
+  w.tick(0.1);
+  w.koAll();
+  w.tick(0.1);
+  expect(w.attack.stage).toBe('fireOut');
+  w.targets.ruin('car1', 'other#1');
+  expect(w.tick(3)).toEqual([]);
+  expect(w.attack.stage).toBe('destroyed');
+  expect(w.rules.score).toBe(0);
+});

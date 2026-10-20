@@ -27,9 +27,12 @@ describe('formatSummary', () => {
       x.ended = true;
       x.endCause = 'ko';
       x.score = 12;
-      x.wave = 3;
+      x.round = 3;
       x.kos = 9;
-      x.stats = { schoolsSaved: 1, schoolsLost: 0, rescuesOk: 0, rescuesFailed: 1, healsUsed: 2, rocksPicked: 4, rocksReturned: 3, rocksHit: 2, activeSeconds: 125.4 };
+      x.stats = {
+        ...x.stats,
+        ...{ schoolsSaved: 1, schoolsLost: 0, rescuesOk: 0, rescuesFailed: 1, healsUsed: 2, rocksPicked: 4, rocksReturned: 3, rocksHit: 2, activeSeconds: 125.4 },
+      };
     });
     const f = formatSummary(s, 20);
     expect(f.title).toBe('KO');
@@ -37,7 +40,7 @@ describe('formatSummary', () => {
     const r = rows(s, 20);
     expect(r['Score']).toBe('12');
     expect(r['Record']).toBe('20');
-    expect(r['Vague atteinte']).toBe('3');
+    expect(r['Manche atteinte']).toBe('3');
     expect(r['Casseurs neutralisés']).toBe('9');
     expect(r['École']).toBe('sauvée');
     expect(r['Secours']).toBe('manqué');
@@ -192,13 +195,13 @@ describe('GameAudio.reset', () => {
     expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(1);
   });
 
-  test('a wave announcement does not sound the incident alarm (waves are frequent)', async () => {
+  test('a round announcement does not sound the incident alarm (rounds are frequent)', async () => {
     const { GameAudio } = await import('../../src/game/audio');
     const a = new GameAudio();
     const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
-    a.onEvents([{ type: 'WaveAnnounced', index: 3, total: 5 }]);
-    a.onEvents([{ type: 'WaveAnnounced', index: 3, total: 5 }]);
-    a.onEvents([{ type: 'WaveAnnounced', index: 4, total: 7 }]);
+    a.onEvents([{ type: 'RoundStarted', index: 3, total: 18, headline: 'car' }]);
+    a.onEvents([{ type: 'RoundStarted', index: 3, total: 18, headline: 'car' }]);
+    a.onEvents([{ type: 'RoundStarted', index: 4, total: 22, headline: 'school' }]);
     expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(0);
   });
 });
@@ -216,10 +219,10 @@ describe('GameAudio.onEvents', () => {
 });
 
 describe('waveLine', () => {
-  test('wave number alone without an objective, else « Vague N : K/T casseurs »', () => {
-    expect(waveLine(snap())).toBe('Vague 1');
-    expect(waveLine(snap((x) => { x.wave = 3; x.waveTotal = 9; x.waveKos = 4; }))).toBe('Vague 3 : 4/9 casseurs');
-    expect(waveLine(snap((x) => { x.wave = 7; x.waveTotal = 1; x.waveKos = 0; }))).toBe('Vague 7 : 0/1 casseur');
+  test('round number alone without a roster, else « Manche N : K/T casseurs »', () => {
+    expect(waveLine(snap())).toBe('Manche 1');
+    expect(waveLine(snap((x) => { x.round = 3; x.roundTotal = 9; x.roundKos = 4; }))).toBe('Manche 3 : 4/9 casseurs');
+    expect(waveLine(snap((x) => { x.round = 7; x.roundTotal = 1; x.roundKos = 0; }))).toBe('Manche 7 : 0/1 casseur');
   });
 });
 

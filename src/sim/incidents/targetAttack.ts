@@ -106,6 +106,11 @@ export class TargetAttack {
     const ev: SimEvent[] = [];
     if (this.stage === 'idle' || this.resolved()) return ev;
     this.track(ctx.horde);
+    if (!this.targets.standing(this.target)) {
+      // ruined by another source: this attack is lost too, but the ruin and its penalty were already counted
+      this.stage = 'destroyed';
+      return ev;
+    }
 
     if (this.stage === 'cinematic') {
       this.timer -= dt;

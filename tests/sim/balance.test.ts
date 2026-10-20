@@ -1,98 +1,93 @@
 import { describe, expect, test } from 'vitest';
 import { CONFIG } from '../../src/sim/config';
-import {
-  WAVE_ACTIVE_CAP,
-  WAVE_FIRST_DELAY,
-  WAVE_SPAWN_INTERVAL,
-  pressure,
-  waveSize,
-} from '../../src/sim/director';
+import { THROWER_SHARE, pressure, tableTotal } from '../../src/sim/director';
 import { Sim } from '../../src/sim/sim';
-import type { InputFrame } from '../../src/sim/types';
+import type { Role } from '../../src/sim/types';
+import { IDLE, autopilot } from './autopilot';
 
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false };
-
-/** Runs the intro, school and rescue with instant KOs until the first wave starts. */
-function toWaves(seed = 3): Sim {
+/** Plays rounds with instant KOs until round `n` has just started. */
+function toRound(n: number, seed = 3): Sim {
   const sim = new Sim(seed, { invulnerable: true });
-  for (let i = 0; i < 60 * 120 && sim.director.phase !== 'waves'; i++) {
-    for (const h of sim.horde.active()) sim.horde.applyHit(h.lifeId, 99);
-    sim.step(IDLE);
-  }
-  expect(sim.director.phase).toBe('waves');
+  for (let i = 0; i < 60 * 600 && !(sim.director.round === n && sim.director.phase === 'play'); i++) sim.step(autopilot(sim));
+  expect(sim.director).toMatchObject({ round: n, phase: 'play' });
   return sim;
 }
 
-describe('wave balancing', () => {
-  test('waves grow slowly: 5, 7, 9 … capped at 18', () => {
-    expect(waveSize(1)).toBe(5);
-    expect(waveSize(2)).toBe(7);
-    expect(waveSize(3)).toBe(9);
-    expect(waveSize(20)).toBe(18);
+const isFill = (id: string | null, round: number, group?: number): boolean =>
+  id !== null && id.startsWith(`round#${round}:fill#`) && (group === undefined || id.endsWith(`#${group}`));
+
+describe('round balancing', () => {
+  test('round rosters grow slowly: 10, 14, 18, 22, then +4, capped at 40', () => {
+    expect(tableTotal(1)).toBe(10);
+    expect(tableTotal(2)).toBe(14);
+    expect(tableTotal(4)).toBe(22);
+    expect(tableTotal(5)).toBe(26);
+    expect(tableTotal(8)).toBe(38);
+    expect(tableTotal(30)).toBe(CONFIG.round.maxTotal);
   });
 
-  test('pressure rises slowly with waves and KOs', () => {
-    expect(pressure(0, 0)).toBe(1);
+  test('pressure rises slowly with rounds and KOs', () => {
+    expect(pressure(1, 0)).toBe(1);
     expect(pressure(1, 29)).toBe(1);
     expect(pressure(2, 0)).toBe(2);
     expect(pressure(3, 30)).toBe(3);
     expect(pressure(50, 500)).toBe(CONFIG.pressureMax);
   });
 
-  test('rioters of a wave enter one by one, never more than the active cap', () => {
-    const sim = toWaves();
+  test('rioters of a round enter one by one, never more than the entry gate', () => {
+    const sim = toRound(3);
     sim.rules.kos = 500; // even at max pressure
-    let prev = sim.horde.active().length;
+    const known = new Set(sim.horde.list.map((h) => h.lifeId));
     let maxActive = 0;
     for (let i = 0; i < 60 * 60; i++) {
       sim.step(IDLE);
-      const n = sim.horde.active().length;
-      expect(n - prev).toBeLessThanOrEqual(1); // never a burst
-      prev = n;
-      maxActive = Math.max(maxActive, n);
+      // rescue aggressors appear around their victim at once; everyone else walks in through the queue
+      const entered = sim.horde.list.filter((h) => !known.has(h.lifeId) && h.role !== 'aggressor');
+      expect(entered.length).toBeLessThanOrEqual(1); // never a burst
+      for (const h of sim.horde.list) known.add(h.lifeId);
+      maxActive = Math.max(maxActive, sim.horde.active().length);
     }
-    expect(maxActive).toBeLessThanOrEqual(WAVE_ACTIVE_CAP);
+    expect(maxActive).toBeLessThanOrEqual(CONFIG.round.gate + CONFIG.rescue.aggressors[1]);
     expect(maxActive).toBeGreaterThan(4);
   });
 
-  test('entries are spaced by the spawn interval', () => {
-    const sim = toWaves();
-    const times: number[] = [];
-    let prev = sim.horde.active().length;
-    for (let i = 0; i < 60 * 20; i++) {
-      sim.step(IDLE);
-      const n = sim.horde.active().length;
-      if (n > prev) times.push(sim.now);
-      prev = n;
-    }
-    for (let k = 1; k < times.length; k++) expect(times[k]! - times[k - 1]!).toBeGreaterThanOrEqual(WAVE_SPAWN_INTERVAL - 1e-6);
-  });
-
-  test('discrete waves: the next one is announced only once the whole wave is down; its first rioter walks in after WAVE_FIRST_DELAY', () => {
-    const sim = toWaves();
-    const first = sim.director.wave;
-    // let the whole wave enter (idle Paul), then clear all but one rioter: no new wave yet
+  test('fill groups are discrete: the next one is queued only once the current one is down, then enters firstDelay later; the climax group enters 0.8 s apart', () => {
+    const sim = toRound(2);
+    // round 2: car (4) + rescue (3) → 7 fill rioters in two groups, the last one (4) is the climax
     for (let i = 0; i < 60 * 40; i++) sim.step(IDLE);
-    const all = sim.horde.active();
-    expect(all.length).toBeGreaterThan(1);
-    for (const h of all.slice(1)) sim.horde.applyHit(h.lifeId, 99);
+    const g1 = sim.horde.list.filter((h) => isFill(h.incidentId, 2, 1));
+    expect(g1.length).toBe(3);
+    for (const h of g1.slice(1)) sim.horde.applyHit(h.lifeId, 99);
     for (let i = 0; i < 60 * 5; i++) sim.step(IDLE);
-    expect(sim.director.wave).toBe(first);
-    sim.horde.applyHit(all[0]!.lifeId, 99);
+    expect(sim.horde.list.some((h) => isFill(h.incidentId, 2, 2))).toBe(false);
+    sim.horde.applyHit(g1[0]!.lifeId, 99);
     const cleared = sim.now;
-    while (sim.director.wave === first && sim.now < cleared + 5) sim.step(IDLE);
-    expect(sim.director.wave).toBe(first + 1);
-    expect(sim.horde.active()).toHaveLength(0); // announced on an empty map: no overlap with the previous wave
-    while (sim.horde.active().length === 0 && sim.now < cleared + 10) sim.step(IDLE);
-    expect(sim.now - cleared).toBeGreaterThanOrEqual(WAVE_FIRST_DELAY - CONFIG.step - 1e-9);
-    expect(sim.now - cleared).toBeLessThanOrEqual(WAVE_FIRST_DELAY + 2 * CONFIG.step + 1e-9);
+    const entries: number[] = [];
+    for (let i = 0; i < 60 * 10; i++) {
+      const before = sim.horde.list.filter((h) => isFill(h.incidentId, 2, 2)).length;
+      sim.step(IDLE);
+      if (sim.horde.list.filter((h) => isFill(h.incidentId, 2, 2)).length > before) entries.push(sim.now);
+    }
+    expect(entries).toHaveLength(4);
+    expect(entries[0]! - cleared).toBeGreaterThanOrEqual(CONFIG.round.firstDelay - CONFIG.step - 1e-9);
+    expect(entries[0]! - cleared).toBeLessThanOrEqual(CONFIG.round.firstDelay + 2 * CONFIG.step + 1e-9);
+    for (let k = 1; k < entries.length; k++) expect(entries[k]! - entries[k - 1]!).toBeCloseTo(CONFIG.round.climaxInterval, 1);
   });
 
-  test('the first fill wave (wave 3) has no rock throwers', () => {
-    const sim = toWaves();
-    expect(sim.director.wave).toBe(3);
-    expect(sim.director.fillWaves).toBe(1);
-    for (let i = 0; i < 60 * 15; i++) sim.step(IDLE);
-    expect(sim.horde.active().some((h) => h.role === 'thrower')).toBe(false);
+  test('round 1 has no rock throwers; from round 2 a fifth of the fill throws rocks', () => {
+    const sim = new Sim(4, { invulnerable: true });
+    const roles = new Map<number, { round: number | null; role: Role; fill: boolean }>();
+    for (let i = 0; i < 60 * 600 && sim.director.round <= 3; i++) {
+      sim.step(autopilot(sim));
+      for (const h of sim.horde.list)
+        if (!roles.has(h.lifeId)) roles.set(h.lifeId, { round: h.round, role: h.role, fill: isFill(h.incidentId, h.round ?? 0) });
+    }
+    const all = [...roles.values()];
+    expect(all.filter((r) => r.round === 1).some((r) => r.role === 'thrower')).toBe(false);
+    for (const round of [2, 3]) {
+      const fill = all.filter((r) => r.round === round && r.fill);
+      expect(fill.length).toBeGreaterThan(0);
+      expect(fill.filter((r) => r.role === 'thrower')).toHaveLength(Math.floor(fill.length * THROWER_SHARE));
+    }
   });
 });

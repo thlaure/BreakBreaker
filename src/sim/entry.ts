@@ -10,9 +10,16 @@ export interface SpawnRequest {
   round?: number;
 }
 
+/** `front` jumps the line; `interval` paces the batch; `firstDelay` overrides the wait before its first rioter. */
+export interface RequestOpts {
+  front?: boolean;
+  interval?: number;
+  firstDelay?: number;
+}
+
 /** Where incidents and the director send the rioters they want on the map. */
 export interface Spawner {
-  request(reqs: SpawnRequest[], opts?: { front?: boolean; interval?: number }): void;
+  request(reqs: SpawnRequest[], opts?: RequestOpts): void;
 }
 
 export interface EntryCfg {
@@ -63,13 +70,13 @@ export class EntryQueue implements Spawner {
     this.batches = [];
   }
 
-  request(reqs: SpawnRequest[], opts: { front?: boolean; interval?: number } = {}): void {
+  request(reqs: SpawnRequest[], opts: RequestOpts = {}): void {
     if (reqs.length === 0) return;
     const b: Batch = {
       reqs: reqs.map((r) => ({ ...r })),
       front: opts.front ?? false,
       interval: opts.interval ?? this.cfg.interval,
-      wait: this.cfg.firstDelay,
+      wait: opts.firstDelay ?? this.cfg.firstDelay,
     };
     if (!b.front) {
       this.batches.push(b);

@@ -4,12 +4,12 @@ import type { Snapshot } from '../../sim/sim';
 import type { SimEvent, Vec } from '../../sim/types';
 
 /**
- * Incident alerts: a pixel banner when an incident or a fill wave starts and one edge indicator per active incident.
+ * Incident alerts: a pixel banner when an incident or a round starts and one edge indicator per active incident.
  * Generic on purpose: a new kind of "casse" event only needs an entry in INCIDENT_ALERTS and a line in
- * `alertFromEvent` / `activeIncidents`. A fill wave has no position: its banner shows no arrow and no distance.
+ * `alertFromEvent` / `activeIncidents`. A round start has no position: its banner shows no arrow and no distance.
  */
 export type IncidentKind = 'school' | 'groupHarassed' | 'elderlyRobbed';
-/** Everything the banner can announce: positioned incidents and position-less fill waves. */
+/** Everything the banner can announce: positioned incidents and position-less round starts. */
 export type AlertKind = IncidentKind | 'wave';
 export type AlertTone = 'fire' | 'warn' | 'wave';
 export type AlertIcon = 'flame' | 'alert' | 'horde';
@@ -33,9 +33,9 @@ export const INCIDENT_ALERTS: Readonly<Record<IncidentKind, AlertSpec>> = {
 
 /** What the banner shows for an alert: the spec plus the wave line and whether it points somewhere. */
 export interface ShownAlert extends AlertSpec {
-  /** Small « Vague N · T casseurs » line of an incident banner (empty when unknown or for a fill wave). */
+  /** Small « Manche N · T casseurs » line of an incident banner (empty when unknown or for a round start). */
   meta: string;
-  /** False for a fill wave: no arrow, no distance. */
+  /** False for a round start: no arrow, no distance. */
   positioned: boolean;
 }
 
@@ -48,15 +48,15 @@ export function casseurs(n: number): string {
 export function incidentAlert(kind: AlertKind, wave = 0, total = 0): ShownAlert {
   if (kind === 'wave')
     return {
-      title: `VAGUE ${wave} !`,
+      title: `MANCHE ${wave} !`,
       sub: `${casseurs(total)} à neutraliser`,
-      label: 'VAGUE',
+      label: 'MANCHE',
       tone: 'wave',
       icon: 'horde',
       meta: '',
       positioned: false,
     };
-  const meta = wave > 0 && total > 0 ? `Vague ${wave} · ${casseurs(total)}` : '';
+  const meta = wave > 0 && total > 0 ? `Manche ${wave} · ${casseurs(total)}` : '';
   return { ...INCIDENT_ALERTS[kind], meta, positioned: true };
 }
 
@@ -67,7 +67,7 @@ export interface Incident {
   pos: Vec;
 }
 
-/** Something the banner announces: an incident (with a position) or a fill wave (pos null), with its wave/total. */
+/** Something the banner announces: an incident (with a position) or a round start (pos null), with its round/total. */
 export interface Alert {
   id: string;
   kind: AlertKind;
@@ -76,11 +76,11 @@ export interface Alert {
   total: number;
 }
 
-/** The alert announced by a sim event (incident start or fill wave), or null. */
+/** The alert announced by a sim event (incident start or round start), or null. */
 export function alertFromEvent(e: SimEvent): Alert | null {
   if (e.type === 'SchoolStarted') return { id: e.incidentId, kind: 'school', pos: { ...e.pos }, wave: e.wave, total: e.total };
   if (e.type === 'RescueStarted') return { id: e.incidentId, kind: e.kind, pos: { ...e.pos }, wave: e.wave, total: e.total };
-  if (e.type === 'WaveAnnounced') return { id: `wave#${e.index}`, kind: 'wave', pos: null, wave: e.index, total: e.total };
+  if (e.type === 'RoundStarted') return { id: `round#${e.index}`, kind: 'wave', pos: null, wave: e.index, total: e.total };
   return null;
 }
 
@@ -259,9 +259,9 @@ export const ALERT_MS = 6000;
 const QUEUE_MAX = 3;
 
 /**
- * Top-centre pixel banner announcing a new incident or fill wave (role="alert"). One at a time; later ones queue and
+ * Top-centre pixel banner announcing a new incident or round (role="alert"). One at a time; later ones queue and
  * show after. For a positioned alert the arrow and distance are refreshed by `track(playerPos)` while visible
- * (aria-hidden: not re-announced); a fill wave has neither.
+ * (aria-hidden: not re-announced); a round start has neither.
  */
 export class AlertBanner {
   readonly el: HTMLElement;

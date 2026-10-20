@@ -27,7 +27,7 @@ const rescueEv = (kind: 'groupHarassed' | 'elderlyRobbed'): SimEvent => ({
   wave: 2,
   total: 3,
 });
-const waveEv: SimEvent = { type: 'WaveAnnounced', index: 3, total: 9 };
+const waveEv: SimEvent = { type: 'RoundStarted', index: 3, total: 9, headline: 'car' };
 
 beforeEach(() => {
   document.body.innerHTML = '';
@@ -42,18 +42,18 @@ describe('pure helpers', () => {
     expect(incidentAlert('elderlyRobbed')).toMatchObject({ title: 'VOL EN COURS !', sub: 'Une personne âgée est menacée', label: 'VOL', tone: 'warn', icon: 'alert' });
   });
 
-  test('alertFromEvent maps incident starts and fill waves (a wave has no position)', () => {
+  test('alertFromEvent maps incident starts and round starts (a round has no position)', () => {
     expect(alertFromEvent(schoolEv)).toEqual({ id: 'school#1', kind: 'school', pos: DOOR, wave: 1, total: 11 });
     expect(alertFromEvent(rescueEv('elderlyRobbed'))).toEqual({ id: 'rescue#1', kind: 'elderlyRobbed', pos: { x: 900, y: 600 }, wave: 2, total: 3 });
-    expect(alertFromEvent(waveEv)).toEqual({ id: 'wave#3', kind: 'wave', pos: null, wave: 3, total: 9 });
+    expect(alertFromEvent(waveEv)).toEqual({ id: 'round#3', kind: 'wave', pos: null, wave: 3, total: 9 });
     expect(alertFromEvent({ type: 'HealCompleted' })).toBeNull();
   });
 
-  test('incidentAlert: wave banner title/sub; incidents get a « Vague N · T casseurs » line', () => {
-    expect(incidentAlert('wave', 3, 9)).toMatchObject({ title: 'VAGUE 3 !', sub: '9 casseurs à neutraliser', meta: '', tone: 'wave', icon: 'horde', positioned: false });
+  test('incidentAlert: round banner title/sub; incidents get a « Manche N · T casseurs » line', () => {
+    expect(incidentAlert('wave', 3, 9)).toMatchObject({ title: 'MANCHE 3 !', sub: '9 casseurs à neutraliser', meta: '', tone: 'wave', icon: 'horde', positioned: false });
     expect(incidentAlert('wave', 4, 1).sub).toBe('1 casseur à neutraliser');
-    expect(incidentAlert('school', 1, 11)).toMatchObject({ title: 'ÉCOLE EN FEU !', meta: 'Vague 1 · 11 casseurs', positioned: true });
-    expect(incidentAlert('elderlyRobbed', 2, 3).meta).toBe('Vague 2 · 3 casseurs');
+    expect(incidentAlert('school', 1, 11)).toMatchObject({ title: 'ÉCOLE EN FEU !', meta: 'Manche 1 · 11 casseurs', positioned: true });
+    expect(incidentAlert('elderlyRobbed', 2, 3).meta).toBe('Manche 2 · 3 casseurs');
     expect(incidentAlert('school').meta).toBe('');
   });
 
@@ -120,7 +120,7 @@ describe('AlertBanner', () => {
     expect(b.el.className).toContain('tone-fire');
     expect(b.el.querySelector('.title')!.textContent).toBe('ÉCOLE EN FEU !');
     expect(b.el.querySelector('.sub')!.textContent).toBe('Rejoins l’école');
-    expect(b.el.querySelector<HTMLElement>('.meta')!.textContent).toBe('Vague 1 · 11 casseurs');
+    expect(b.el.querySelector<HTMLElement>('.meta')!.textContent).toBe('Manche 1 · 11 casseurs');
     expect(b.el.querySelector<HTMLElement>('.meta')!.hidden).toBe(false);
     expect(b.el.querySelector<HTMLElement>('.dir')!.hidden).toBe(false);
     expect(b.el.querySelector('.ico svg')).toBeTruthy();
@@ -154,7 +154,7 @@ describe('AlertBanner', () => {
     expect(b.el.hidden).toBe(true);
   });
 
-  test('fill wave: « VAGUE 3 ! », objective line, no arrow or distance, queued like other alerts', () => {
+  test('round start: « MANCHE 3 ! », objective line, no arrow or distance, queued like other alerts', () => {
     const b = new AlertBanner(document.body);
     b.push(alertFromEvent(rescueEv('groupHarassed'))!);
     b.push(alertFromEvent(waveEv)!);
@@ -162,7 +162,7 @@ describe('AlertBanner', () => {
     expect(b.el.hidden).toBe(false);
     expect(b.el.getAttribute('role')).toBe('alert');
     expect(b.el.className).toContain('tone-wave');
-    expect(b.el.querySelector('.title')!.textContent).toBe('VAGUE 3 !');
+    expect(b.el.querySelector('.title')!.textContent).toBe('MANCHE 3 !');
     expect(b.el.querySelector('.sub')!.textContent).toBe('9 casseurs à neutraliser');
     expect(b.el.querySelector<HTMLElement>('.meta')!.hidden).toBe(true);
     expect(b.el.querySelector<HTMLElement>('.dir')!.hidden).toBe(true);
@@ -195,33 +195,33 @@ describe('Hud alerts and edge indicators', () => {
     const a = hud.root.querySelector<HTMLElement>('.bb-alert')!;
     expect(a.hidden).toBe(false);
     expect(a.textContent).toContain('ÉCOLE EN FEU !');
-    expect(a.textContent).toContain('Vague 1 · 11 casseurs');
+    expect(a.textContent).toContain('Manche 1 · 11 casseurs');
     hud.destroy();
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  test('onEvents pops the wave banner for WaveAnnounced', () => {
+  test('onEvents pops the round banner for RoundStarted', () => {
     const hud = new Hud(document.body, null);
     hud.onEvents([waveEv]);
     const a = hud.root.querySelector<HTMLElement>('.bb-alert')!;
     expect(a.hidden).toBe(false);
-    expect(a.textContent).toContain('VAGUE 3 !');
+    expect(a.textContent).toContain('MANCHE 3 !');
     hud.update(snap(() => {}), view);
     expect(a.querySelector('.dist')!.textContent).toBe('');
     hud.destroy();
   });
 
-  test('HUD wave line shows K/T and pulses when the wave number changes', () => {
+  test('HUD round line shows K/T and pulses when the round number changes', () => {
     const hud = new Hud(document.body, null);
-    const line = () => [...hud.root.querySelectorAll<HTMLElement>('.stat')].find((e) => e.textContent!.startsWith('Vague'))!;
+    const line = () => [...hud.root.querySelectorAll<HTMLElement>('.stat')].find((e) => e.textContent!.startsWith('Manche'))!;
     hud.update(snap(() => {}), view);
-    expect(line().textContent).toBe('Vague 1');
+    expect(line().textContent).toBe('Manche 1');
     expect(line().classList.contains('pulse')).toBe(false);
-    hud.update(snap((x) => { x.waveTotal = 11; x.waveKos = 4; }), view);
-    expect(line().textContent).toBe('Vague 1 : 4/11 casseurs');
+    hud.update(snap((x) => { x.roundTotal = 11; x.roundKos = 4; }), view);
+    expect(line().textContent).toBe('Manche 1 : 4/11 casseurs');
     expect(line().classList.contains('pulse')).toBe(false);
-    hud.update(snap((x) => { x.wave = 2; x.waveTotal = 3; }), view);
-    expect(line().textContent).toBe('Vague 2 : 0/3 casseurs');
+    hud.update(snap((x) => { x.round = 2; x.roundTotal = 3; }), view);
+    expect(line().textContent).toBe('Manche 2 : 0/3 casseurs');
     expect(line().classList.contains('pulse')).toBe(true);
     expect(hud.root.textContent).toContain('Casseurs neutralisés : 0');
     hud.destroy();

@@ -3,6 +3,13 @@ export interface SessionStats {
   schoolsLost: number;
   rescuesOk: number;
   rescuesFailed: number;
+  /** Every target (school included) saved / destroyed, and ruins repaired. */
+  targetsSaved: number;
+  targetsLost: number;
+  repairs: number;
+  roundsCompleted: number;
+  /** Rounds completed with every objective succeeded (bonus). */
+  roundsPerfect: number;
   healsUsed: number;
   rocksPicked: number;
   rocksReturned: number;
@@ -16,6 +23,11 @@ function emptyStats(): SessionStats {
     schoolsLost: 0,
     rescuesOk: 0,
     rescuesFailed: 0,
+    targetsSaved: 0,
+    targetsLost: 0,
+    repairs: 0,
+    roundsCompleted: 0,
+    roundsPerfect: 0,
     healsUsed: 0,
     rocksPicked: 0,
     rocksReturned: 0,

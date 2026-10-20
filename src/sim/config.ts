@@ -24,7 +24,7 @@ export const CONFIG = {
   school: { cinematicSec: 3 },
   rescue: { threatSeconds: 25, aggressors: [2, 4], thanksSec: 1.5, bonus: 6 },
   heal: { amount: 25 },
-  weapons: { firstSpawn: 10, spawnEvery: [15, 25] as const, maxGround: 2, pickupRadius: 20, minDist: 160, maxDist: 480 },
+  weapons: { firstSpawn: 10, spawnEvery: [15, 25] as const, maxGround: 2, pickupRadius: 20, minDist: 160, maxDist: 480, dropLifetime: 15 },
   caps: { hostiles: 40, windupsContact: [2, 4], windupsThrow: [2, 4] },
   target: { fireDps: 2, degradeDps: 1.2, maxDegraders: 4, repairPct: 0.6, fireOutSec: 1.5 },
   molotov: { windup: 1.5, range: 96 },
@@ -45,6 +45,5 @@ export const CONFIG = {
   },
   casse: { scores: { school: [8, -3, 5], car: [4, -2, 3], busStop: [4, -2, 3] } },
   pressureMax: 12,
-  idlePatrolSec: 25,
   rulesVersion: 'slice-0.2.0',
 } as const;

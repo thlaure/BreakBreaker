@@ -18,6 +18,8 @@ export interface GroundWeapon {
   id: number;
   kind: WeaponKind;
   pos: Vec;
+  /** Sim time at which an unclaimed special drop vanishes; null for the timed street spawns. */
+  expiresAt: number | null;
 }
 
 export interface HeldWeapon {
@@ -35,6 +37,8 @@ export class Weapons {
   held: HeldWeapon | null = null;
   private nextSpawnAt: number;
   private nextId = 1;
+  /** Sim time of the last step (special drops are stamped with it). */
+  private now = 0;
 
   constructor(
     private readonly grid: Grid,
@@ -50,7 +54,9 @@ export class Weapons {
 
   step(dt: number, now: number, player: Player): SimEvent[] {
     void dt;
+    this.now = now;
     const ev: SimEvent[] = [];
+    this.ground = this.ground.filter((g) => g.expiresAt === null || now < g.expiresAt);
     const taken = this.ground.find((g) => dist(g.pos, player.pos) <= CONFIG.weapons.pickupRadius);
     if (taken && !player.ko) {
       this.ground = this.ground.filter((g) => g !== taken);
@@ -64,13 +70,26 @@ export class Weapons {
         const pos = this.freeSpot(player.pos);
         if (pos) {
           const kind = KINDS[Math.floor(this.rand() * KINDS.length)]!;
-          const w = { id: this.nextId++, kind, pos };
+          const w = { id: this.nextId++, kind, pos, expiresAt: null };
           this.ground.push(w);
           ev.push({ type: 'WeaponSpawned', kind, pos: { ...pos } });
         }
       }
     }
     return ev;
+  }
+
+  /**
+   * Special drop (round twist / round end): a random weapon 160–480 px from Paul right now, outside the timer and the
+   * ground cap; it vanishes after CONFIG.weapons.dropLifetime s if nobody takes it. Null when no free spot was found.
+   */
+  dropSpecial(player: Vec): GroundWeapon | null {
+    const pos = this.freeSpot(player);
+    if (!pos) return null;
+    const kind = KINDS[Math.floor(this.rand() * KINDS.length)]!;
+    const w: GroundWeapon = { id: this.nextId++, kind, pos, expiresAt: this.now + CONFIG.weapons.dropLifetime };
+    this.ground.push(w);
+    return w;
   }
 
   /** Call after each swing with the number of rioters hit. */

@@ -118,7 +118,7 @@ export class Hud {
     this.toolsBox = null;
   };
   private lastNow = -1;
-  /** Wave number last shown (the line pulses once when it changes). */
+  /** Round number last shown (the line pulses once when it changes). */
   private lastWave = -1;
   private lastRescue = Number.POSITIVE_INFINITY;
   private rescueDrain: 'en cours' | 'interrompu' = 'en cours';
@@ -187,7 +187,7 @@ export class Hud {
     this.onResize();
   }
 
-  /** Sim events of the frame: a new incident or fill wave pops the alert banner. */
+  /** Sim events of the frame: a new incident or round pops the alert banner. */
   onEvents(events: SimEvent[]): void {
     for (const e of events) {
       const inc = alertFromEvent(e);
@@ -246,14 +246,14 @@ export class Hud {
     c.text(this.score, `Score : ${s.score}`);
     c.text(this.kos, `Casseurs neutralisés : ${s.kos}`);
     c.text(this.wave, waveLine(s));
-    if (s.wave !== this.lastWave) {
+    if (s.round !== this.lastWave) {
       if (this.lastWave >= 0) {
         // restart the stepped pulse (CSS, off under prefers-reduced-motion)
         this.wave.classList.remove('pulse');
         void this.wave.offsetWidth;
         this.wave.classList.add('pulse');
       }
-      this.lastWave = s.wave;
+      this.lastWave = s.round;
     }
     c.text(this.weapon, weaponLine(s));
     this.slots.forEach((slot, i) => {

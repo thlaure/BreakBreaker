@@ -47,7 +47,7 @@ export function formatSummary(s: Snapshot, record: number | null): SummaryData {
     rows: [
       { label: 'Score', value: String(s.score) },
       { label: 'Record', value: record === null ? '—' : String(record) },
-      { label: 'Vague atteinte', value: String(s.wave) },
+      { label: 'Manche atteinte', value: String(s.round) },
       { label: 'Casseurs neutralisés', value: String(s.kos) },
       { label: 'École', value: school },
       { label: 'Secours', value: rescue },
@@ -108,10 +108,10 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
   return out;
 }
 
-/** HUD wave line: « Vague 3 : 4/9 casseurs », or just « Vague 1 » while the wave has no objective yet (intro). */
+/** HUD round line: « Manche 3 : 4/18 casseurs », or just « Manche 1 » while the round has no roster yet (intro). */
 export function waveLine(s: Snapshot): string {
-  if (s.waveTotal <= 0) return `Vague ${s.wave}`;
-  return `Vague ${s.wave} : ${s.waveKos}/${s.waveTotal} ${s.waveTotal === 1 ? 'casseur' : 'casseurs'}`;
+  if (s.roundTotal <= 0) return `Manche ${s.round}`;
+  return `Manche ${s.round} : ${s.roundKos}/${s.roundTotal} ${s.roundTotal === 1 ? 'casseur' : 'casseurs'}`;
 }
 
 /** HUD weapon line: weapon name and strikes left, or bare hands. */
