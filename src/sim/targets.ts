@@ -46,11 +46,12 @@ export class Targets {
     return true;
   }
 
-  /** Puts the fire out; returns the incident that set it (null if it was not burning). hp is not restored. */
+  /** Puts the fire out and restores full health (a toolbox repair always does); returns the incident that set it (null if it was not burning). */
   extinguish(id: TargetId): string | null {
     const s = this.get(id);
     if (!s.burning) return null;
     const incident = s.fireIncidentId;
+    s.hp = s.maxHp;
     s.burning = false;
     s.fireIncidentId = null;
     return incident;
@@ -65,14 +66,14 @@ export class Targets {
     s.lostIncidentId = incidentId;
   }
 
-  /** Returns the lost incident id (once) and restores hp to repairPct of max; null if not ruined. */
+  /** Returns the lost incident id (once) and restores full health; null if not ruined. */
   repair(id: TargetId): string | null {
     const s = this.get(id);
     if (s.state !== 'ruined') return null;
     const lost = s.lostIncidentId;
     s.state = 'intact';
     s.lostIncidentId = null;
-    s.hp = Math.round(s.maxHp * CONFIG.target.repairPct);
+    s.hp = s.maxHp;
     return lost;
   }
 

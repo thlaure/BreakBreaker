@@ -23,7 +23,7 @@ const EPS = 1e-9;
 /**
  * Toolboxes: up to CONFIG.kit.maxGround lie on the ground, Paul carries at most one (walk over it to take it).
  * Next to a ruin or a burning target with a toolbox and no hostile close, pressing Agir (F / touch Agir) starts the
- * repair (a ruin is rebuilt to repairPct hp, a fire is put out with hp unchanged); it then
+ * repair (a ruin is rebuilt, a fire is put out; either way the target is back to full health); it then
  * completes after CONFIG.kit.repairSec without holding the key. Moving away from the door, a hostile coming close or a
  * KO resets the progress and the start (a new press is needed).
  */

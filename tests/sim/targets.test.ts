@@ -24,15 +24,15 @@ describe('Targets', () => {
     t.ruin('busStop', 'i2');
     expect(t.ignite('busStop', 'busStop#1')).toBe(false);
   });
-  test('repair returns the lost incident id once and restores 60 % of max hp (60 for school, 36 for a car)', () => {
+  test('repair returns the lost incident id once and restores full health (100 for the school, 60 for a car)', () => {
     const t = new Targets();
     t.ruin('school', 'sch');
     t.ruin('car1', 'c1');
     expect(t.repair('school')).toBe('sch');
     expect(t.repair('school')).toBeNull();
-    expect(t.get('school').hp).toBe(60);
+    expect(t.get('school').hp).toBe(100);
     expect(t.repair('car1')).toBe('c1');
-    expect(t.get('car1').hp).toBe(36);
+    expect(t.get('car1').hp).toBe(60);
     expect(t.standing('car1')).toBe(true);
   });
   test('refill brings intact targets back to max, leaves ruins at 0', () => {

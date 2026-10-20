@@ -46,7 +46,7 @@ export const CONFIG = {
    * `fireDps` while the attack lasts; `smoulderDps` once its rioters are all KO but the fire still burns (school 100 hp
    * ≈ 143 s, car 60 hp ≈ 86 s): a fire never goes out by itself, only a toolbox puts it out.
    */
-  target: { fireDps: 2, degradeDps: 1.2, maxDegraders: 4, repairPct: 0.6, smoulderDps: 0.7 },
+  target: { fireDps: 2, degradeDps: 1.2, maxDegraders: 4, smoulderDps: 0.7 },
   molotov: { windup: 1.5, range: 96 },
   kit: { maxGround: 2, pickupRadius: 20, repairSec: 2, applyRange: 48, safetyRadius: 64, minPlaceFromPlayer: 64 },
   round: {

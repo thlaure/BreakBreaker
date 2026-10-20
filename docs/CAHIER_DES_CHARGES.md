@@ -422,7 +422,7 @@ flowchart TD
   E -->|Santé à zéro| G[Ruine persistante : session continue]
   G --> H[Ramasser une caisse à outils]
   H --> I[Appuyer sur F près de la ruine : 2 s, abords sûrs]
-  I --> J[Lieu réparé à 60 %, plein en fin de manche]
+  I --> J[Lieu réparé à 100 %]
   F --> K[Étudiants et formations projetées]
   F2 --> K
   J --> K
@@ -468,7 +468,7 @@ La caisse n’est consommée qu’à la fin des 2 s. Interruption : aucun gain, 
 
 ### 10.7 Résultat d’une réparation
 
-Le lieu revient à **60 % de sa santé**, puis au maximum à la fin de la manche suivante ; sa fonction reprend (l’école peut de nouveau recevoir des étudiants). Points : +5 pour un bâtiment, +3 pour le mobilier urbain, sans effacer la pénalité déjà subie ni ajouter le bonus de sauvetage : sauver avant destruction reste mieux récompensé.
+Le lieu revient à **100 % de sa santé** (ruine réparée ou feu éteint) ; sa fonction reprend (l’école peut de nouveau recevoir des étudiants). Points : +5 pour un bâtiment, +3 pour le mobilier urbain, sans effacer la pénalité déjà subie ni ajouter le bonus de sauvetage : sauver avant destruction reste mieux récompensé.
 
 Une réparation ne recrée ni l’attaque perdue ni une nouvelle occurrence d’assaut. Chaque lieu conserve la référence de son dernier incident détruit et de sa réparation pour empêcher le double bonus. Une nouvelle attaque ultérieure est annoncée et identifiée séparément.
 
@@ -1156,7 +1156,7 @@ Tests de règles ; intégration avec horloge contrôlée ; navigateur avec rendu
 | RC-55 | Lieu détruit puis changement de manche | Lieu toujours en ruine jusqu’à sa réparation par caisse à outils. |
 | RC-56 | Ramasser une caisse à outils | En passant dessus : un objet retiré, « Caisse 1/1 » ; stock jamais supérieur à un. |
 | RC-57 | Caisse déjà portée | Caisse au sol non consommée et aucun doublon. |
-| RC-58 | Réparer en zone sûre | Un appui sur F près de la ruine sans casseur proche, puis 2 s sans maintien : caisse consommée une fois, lieu à 60 %, fonction rétablie. |
+| RC-58 | Réparer en zone sûre | Un appui sur F près de la ruine sans casseur proche, puis 2 s sans maintien : caisse consommée une fois, lieu à 100 %, fonction rétablie. |
 | RC-59 | Réparation interrompue (éloignement ou casseur à 64 px) | Progression remise à zéro, aucune caisse consommée ni réparation partielle gratuite. |
 | RC-60 | Caisse portée près d’un lieu intact | Aucune réparation, consommation ou gain de points. |
 | RC-61 | Réparer après une perte | Bonus tardif unique, pénalité conservée, pas de cumul avec bonus de sauvetage. |
@@ -1188,7 +1188,7 @@ Tests de règles ; intégration avec horloge contrôlée ; navigateur avec rendu
 | RC-94 | Compteur et rythme des manches | Jamais 0 : manche 1 dès le départ ; HUD « Manche N : K/T casseurs » avec K borné à T et ne comptant que les KO de la manche ; à l’intérieur d’une manche, une fois l’intro terminée, aucune période de plus de 3 s sans casseur actif ; **exception :** le répit de 6 s entre deux manches, sans aucune entrée (v1.9). |
 | RC-95 | Molotov | Élan visible de 1,5 s à 96 px au plus du lieu, ligne dégagée ; KO pendant l’élan = pas de feu ; une seconde bouteille ne relance pas un feu en cours. |
 | RC-96 | Santé d’un lieu | Barre au-dessus du lieu et carte HUD « <lieu> N % » ; feu 2 PV/s, dégradeurs 1,2 PV/s chacun (quatre au plus) ; un feu ne s’éteint jamais seul : après le dernier KO il continue à 0,7 PV/s, à travers les manches, jusqu’à son extinction par caisse à outils ou la ruine ; à zéro, ruine persistante, pénalité unique, session poursuivie. |
-| RC-97 | Réparation et extinction par Agir | Caisse ramassée en passant dessus (une portée, deux au sol au plus, posées en début et en fin de manche) ; à 48 px d’une ruine ou d’un lieu en feu sans casseur à 64 px, « F — Réparer » / « F — Éteindre le feu » (bouton Agir au tactile) ; un appui puis 2 s sans maintien → ruine à 60 % ou feu éteint (santé inchangée), points de réparation ; sans appui rien ne se passe ; s’éloigner ou laisser approcher un casseur remet à zéro ; messages « Caisse à outils requise », « Abords non sécurisés », « Réparation… ». |
+| RC-97 | Réparation et extinction par Agir | Caisse ramassée en passant dessus (une portée, deux au sol au plus, posées en début et en fin de manche) ; à 48 px d’une ruine ou d’un lieu en feu sans casseur à 64 px, « F — Réparer » / « F — Éteindre le feu » (bouton Agir au tactile) ; un appui puis 2 s sans maintien → ruine ou feu éteint, santé remise à 100 %, points de réparation ; sans appui rien ne se passe ; s’éloigner ou laisser approcher un casseur remet à zéro ; messages « Caisse à outils requise », « Abords non sécurisés », « Réparation… ». |
 | RC-98 | Panneau de manche | Pendant le répit uniquement : « Manche N terminée », KO, objectifs réussi/perdu, points, « Bonus +5 » seulement s’il est gagné, « Soins rechargés », « Manche N+1 dans 4… » ; non modal, ne couvre ni Paul ni le panneau de santé, lisible à 375 × 812. |
 | RC-79 | Apparition d’armes | Emplacement libre praticable à 160–480 px de Paul, hors groupe pacifique ; première après environ 10 s, puis toutes les 15 à 25 s ; jamais plus de deux au sol. |
 | RC-80 | Ramasser une arme en tenant déjà une | Nouvelle arme tenue, ancienne remplacée ; HUD « Arme : <nom> (<coups>) ». |

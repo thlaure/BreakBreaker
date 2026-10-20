@@ -60,14 +60,14 @@ describe('toolboxes', () => {
     expect(kit.ground).toHaveLength(1);
   });
 
-  test('one press of Agir next to the ruined school, no rioter near: 2 s later (key released) repaired to 60 hp, toolbox used, +5, the -3 stays', () => {
+  test('one press of Agir next to the ruined school, no rioter near: 2 s later (key released) repaired to 100 hp, toolbox used, +5, the -3 stays', () => {
     const { kit, targets, player, rules, press } = setup('school');
     rules.award('school-i1:lost', -3);
     kit.carried = true;
     player.pos = { x: door('school').x + 30, y: door('school').y };
     const ev = press(2);
     expect(ev).toEqual([{ type: 'TargetRepaired', target: 'school', incidentId: 'school-i1' }]);
-    expect(targets.get('school').hp).toBe(60);
+    expect(targets.get('school').hp).toBe(100);
     expect(targets.standing('school')).toBe(true);
     expect(kit.carried).toBe(false);
     expect(rules.score).toBe(2);
@@ -186,7 +186,7 @@ describe('toolboxes', () => {
     expect(kit.started).toBe(false);
   });
 
-  test('a burning target needs the toolbox too: one press puts the fire out (hp unchanged), FireOut + TargetRepaired, +5 once, toolbox used', () => {
+  test('a burning target needs the toolbox too: one press puts the fire out (health back to 100), FireOut + TargetRepaired, +5 once, toolbox used', () => {
     const { kit, targets, player, rules, step, run, press } = setup(null);
     targets.get('school').hp = 41;
     targets.ignite('school', 'school#2');
@@ -202,7 +202,7 @@ describe('toolboxes', () => {
       { type: 'FireOut', target: 'school' },
       { type: 'TargetRepaired', target: 'school', incidentId: 'school#2' },
     ]);
-    expect(targets.get('school')).toMatchObject({ burning: false, hp: 41, state: 'intact' });
+    expect(targets.get('school')).toMatchObject({ burning: false, hp: 100, state: 'intact' });
     expect(kit.carried).toBe(false);
     expect(rules.score).toBe(CONFIG.casse.scores.school[2]);
     // nothing left to repair there
