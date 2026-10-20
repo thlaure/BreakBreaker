@@ -1,5 +1,6 @@
 import { CONTROLS, RULES, SATIRE_NOTICE } from '../../content/controls';
 import type { SummaryData } from './format';
+import { SITE_BASE } from '../assets';
 import { renderMarkdown } from './markdown';
 
 export interface MenuActions {
@@ -105,7 +106,7 @@ export class Menus {
     };
     if (this.credits !== null) return fill(this.credits);
     body.textContent = 'Chargement…';
-    fetch('/CREDITS.md')
+    fetch(`${SITE_BASE}CREDITS.md`)
       .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
       .then((t) => {
         this.credits = renderMarkdown(t);

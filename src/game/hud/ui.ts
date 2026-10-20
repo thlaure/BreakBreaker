@@ -1,6 +1,7 @@
 import type { Sim, Snapshot } from '../../sim/sim';
 import type { SimEvent } from '../../sim/types';
 import { GameAudio } from '../audio';
+import { SITE_BASE } from '../assets';
 import { loadPrefs, loadRecord, saveRecord, savePrefs, type Prefs } from '../storage';
 import { formatSummary } from './format';
 import { Hud, type CameraView } from './hud';
@@ -54,12 +55,13 @@ export class GameUi {
         resume: () => this.resume(),
         toggleSound: () => this.toggleSound(),
         stopGame: () => this.stopGame(),
-        leave: () => location.assign('/'),
+        leave: () => location.assign(SITE_BASE),
         replay: () => this.host.restart(),
         click: () => this.audio.play('ui_click'),
       },
       this.prefs.muted,
     );
+    this.audio.reset();
     this.host.events.on('hud', this.onHud as never);
     this.host.events.on('sim-events', this.onEvents as never);
     document.addEventListener('visibilitychange', this.onVisibility);

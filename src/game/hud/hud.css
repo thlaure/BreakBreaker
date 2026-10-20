@@ -17,6 +17,8 @@
 .bb-card .status::before { content: '● '; }
 .bb-card.st-interrompu { border-left-color: #8ab4ff; }
 .bb-card.st-interrompu .status::before { content: '‖ '; }
+.bb-card.st-sécurisé { border-left-color: var(--bb-ok); }
+.bb-card.st-sécurisé .status::before { content: '◆ '; }
 .bb-card.st-sauvé { border-left-color: var(--bb-ok); }
 .bb-card.st-sauvé .status::before { content: '✔ '; }
 .bb-card.st-perdu { border-left-color: var(--bb-bad); }

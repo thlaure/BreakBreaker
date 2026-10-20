@@ -21,7 +21,7 @@ export class BootScene extends Phaser.Scene {
     this.load.spritesheet('urban', `${BASE}tiles/urban.png`, { frameWidth: 16, frameHeight: 16 });
     this.load.spritesheet('city', `${BASE}tiles/city.png`, { frameWidth: 16, frameHeight: 16 });
     this.load.spritesheet('flags', `${BASE}props/flags.png`, { frameWidth: 16, frameHeight: 12 });
-    // Playback is Task 14; loading them here keeps a single loading phase.
+    // Loaded here to keep a single loading phase (GameAudio decodes its own copies after Commencer).
     for (const key of SFX) this.load.audio(key, `${BASE}sfx/${key}.ogg`);
   }
 

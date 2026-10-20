@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { CONTROLS, RULES } from '../../src/content/controls';
 import { contextPrompt, formatDuration, formatSummary, incidentLines } from '../../src/game/hud/format';
 import { renderMarkdown } from '../../src/game/hud/markdown';
@@ -128,7 +128,7 @@ describe('incidentLines', () => {
     expect(school).toMatchObject({ time: '', status: 'sauvé' });
     expect(rescue).toMatchObject({ name: 'Secours', time: '13 s', status: 'en cours' });
     s.rescue = { stage: 'secured', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
-    expect(incidentLines(s, 'en cours')[1]).toMatchObject({ status: 'interrompu' });
+    expect(incidentLines(s, 'en cours')[1]).toMatchObject({ status: 'sécurisé' });
     s.rescue = { stage: 'failed', remaining: 0, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
     expect(incidentLines(s, 'en cours')[1]).toMatchObject({ status: 'perdu', time: '' });
   });
@@ -150,5 +150,20 @@ describe('content', () => {
     expect(RULES.length).toBeGreaterThanOrEqual(4);
     expect(RULES.length).toBeLessThanOrEqual(5);
     expect(CONTROLS.some((c) => c.action === 'Pause' && c.keyboard === 'Échap')).toBe(true);
+  });
+});
+
+describe('GameAudio.reset', () => {
+  test('clears the per-incident alarm memory so the alarm can play again after Rejouer', async () => {
+    const { GameAudio } = await import('../../src/game/audio');
+    const a = new GameAudio();
+    const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
+    const ev = [{ type: 'BuildingThreatStarted', incidentId: 'school#1' }] as const;
+    a.onEvents([...ev], 0);
+    a.onEvents([...ev], 1);
+    expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(1);
+    a.reset();
+    a.onEvents([...ev], 0);
+    expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(2);
   });
 });

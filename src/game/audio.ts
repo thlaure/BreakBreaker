@@ -94,6 +94,12 @@ export class GameAudio {
     }
   }
 
+  /** New run: forget per-run bookkeeping (alarm per incident id) and silence the fire loop. */
+  reset(): void {
+    this.alarmed.clear();
+    this.setThreat(0);
+  }
+
   setMuted(muted: boolean): void {
     this.muted = muted;
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(muted ? 0 : 1, this.ctx.currentTime, 0.02);

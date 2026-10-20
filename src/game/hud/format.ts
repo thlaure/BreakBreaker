@@ -4,7 +4,7 @@ import type { Vec } from '../../sim/types';
 const STATION_RANGE = 28;
 const HELP_RANGE = 32;
 
-export type IncidentStatus = 'en cours' | 'interrompu' | 'perdu' | 'sauvé';
+export type IncidentStatus = 'en cours' | 'interrompu' | 'sécurisé' | 'perdu' | 'sauvé';
 
 export function formatDuration(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
@@ -89,7 +89,7 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
   const r = s.rescue;
   if (r) {
     const status: IncidentStatus =
-      r.stage === 'completed' ? 'sauvé' : r.stage === 'failed' ? 'perdu' : r.stage === 'secured' ? 'interrompu' : rescueDrain;
+      r.stage === 'completed' ? 'sauvé' : r.stage === 'failed' ? 'perdu' : r.stage === 'secured' ? 'sécurisé' : rescueDrain;
     const over = r.stage === 'completed' || r.stage === 'failed';
     out.push({ key: 'rescue', name: 'Secours', time: over ? '' : secs(r.remaining), status, target: r.victimPos });
   }

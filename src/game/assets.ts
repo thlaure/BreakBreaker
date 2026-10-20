@@ -46,4 +46,6 @@ export const TILE = {
 /** flags.png frames (16×12). */
 export const FLAG = { fr: 0, palestinian: 1, antifa: 2 } as const;
 
-export const BASE = '/assets/';
+/** Site root (Vite base); assets, credits and the landing page all hang off it. */
+export const SITE_BASE: string = import.meta.env?.BASE_URL ?? '/';
+export const BASE = `${SITE_BASE}assets/`;
