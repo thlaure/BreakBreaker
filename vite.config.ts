@@ -29,6 +29,8 @@ function landingContent(): Plugin {
 }
 
 export default defineConfig({
+  // GitHub Pages serves the site under /<repo>/; CI sets BASE_PATH=/BreakBreaker/. Local dev and tests use '/'.
+  base: process.env.BASE_PATH ?? '/',
   plugins: [landingContent()],
   build: {
     rollupOptions: {

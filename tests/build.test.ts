@@ -52,10 +52,11 @@ test('production bundle: no dev handle, no stress mode, no cheat', () => {
 const decode = (s: string) =>
   s.replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
-test('landing has one h1, a real /jouer/ link and no script', () => {
+test('landing has one h1, a real relative jouer/ link and no script', () => {
   const html = readFileSync(out('index.html'), 'utf8');
   expect(html.match(/<h1/g)?.length).toBe(1);
-  expect(html).toMatch(/href="\/jouer\/\?go"/); // starts the game at once, no start screen
+  expect(html).toMatch(/href="jouer\/\?go"/); // relative (works under a sub-path); starts the game at once
+  expect(html).not.toMatch(/<a [^>]*href="\/(?!\/)/); // no root-absolute <a> links: the site may be served under /<repo>/
   expect(html).not.toMatch(/<script/);
 });
 

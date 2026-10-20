@@ -26,9 +26,29 @@ jobs:
       - run: npm run typecheck
       # Includes a production build check in a temp folder (tests/build.test.ts).
       - run: npm test
+      # GitHub Pages serves the site under /<repo>/.
       - run: npm run build
-      - uses: actions/upload-artifact@v4
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
-          name: dist
           path: dist/
-          retention-days: 7
+
+  deploy:
+    # Continuous deployment: only after the checks pass on main.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
