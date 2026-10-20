@@ -7,7 +7,7 @@ Branch `feat/furie-mode` (cut from `fix/phase-a-playtest`), four commits on top 
 | `e23a9e1` | sim: `furie` pickup, timer, effects, launch payload, round gating, snapshot + events |
 | `bef0dcb` | render: aura, launched KO bodies, POW / BOUM bubbles, pickup orb, furie camera shake |
 | `77bb687` | HUD / audio: weapon line, alerts and edge indicator, help rule, power-up / hum / power-down |
-| docs commit | CAHIER_DES_CHARGES v1.9.3 (section 8.8, RC-99 to RC-102, changelog), README, this report |
+| `f12bbf4` | CAHIER_DES_CHARGES v1.9.3 (section 8.8, RC-99 to RC-102, changelog), README, this report |
 
 Final checks: `npx vitest run` 335/335 (306 before), `npm run typecheck` clean, `npm run build` ok,
 `npm run bench` per-step mean ≈ 0.20 ms (budget 0.3 ms; 0.203 before the change).
