@@ -4,10 +4,10 @@ import type { Snapshot } from '../../sim/sim';
 import type { SimEvent, TargetId, Vec } from '../../sim/types';
 import { FLAG } from '../assets';
 import { DEPTH } from './depth';
-import { FACADE_H, type WorldView } from './world';
+import { FACADE_H, buildingIndex, type BuildingPart, type WorldView } from './world';
 
 type TargetSnap = Snapshot['targets'][number];
-type SchoolParts = WorldView['schoolParts'];
+type BuildingParts = WorldView['buildingParts'];
 
 const OUTLINE = 0x14121c;
 /** Props are drawn from 1-px logical textures scaled ×2, like the city tiles. */
@@ -279,7 +279,8 @@ const BAR_COLORS: [number, number][] = [
 
 /**
  * One destructible target: hp bar, fire + smoke while `burning`, ruin (scorched, debris, smoke wisps) while ruined,
- * back to normal once repaired. The school tints its building parts and raises the French flag once saved; props
+ * back to normal once repaired. A building (school, retro video-game shop) dims its own parts when ruined, and the
+ * school raises the French flag once saved; props
  * (cars, bus shelter) are drawn on their solid footprint and swap to a wreck texture.
  */
 class TargetView {
@@ -307,7 +308,7 @@ class TargetView {
   constructor(
     scene: Phaser.Scene,
     readonly def: TargetDef,
-    private readonly parts: SchoolParts,
+    private readonly parts: readonly BuildingPart[],
   ) {
     const f = def.footprint;
     const bottom = f.y + f.h;
@@ -372,7 +373,7 @@ class TargetView {
       .setDepth(big ? bottom + 0.5 : DEPTH.decal + 1)
       .setVisible(false);
     this.drawDebris(f);
-    if (big) {
+    if (def.kind === 'school') {
       // mast on the front edge of the roof, so it reads from the street in front of the school
       const mx = cx + 48;
       const my = bottom - FACADE_H - 2;
@@ -380,7 +381,7 @@ class TargetView {
       const flag = scene.add.image(1, -34, 'flags', FLAG.fr).setOrigin(0, 0).setScale(1.5);
       this.mast = scene.add.container(mx, my, [pole, flag]).setDepth(DEPTH.roof + 3).setVisible(false);
     }
-    // the school's bar sits on the front of its roof, just above the flames, so it shows from the door
+    // a building's bar sits on the front of its roof, just above the flames, so it shows from the door
     const barTop = big ? bottom - FACADE_H - 56 : f.y - PROP_RISE[def.kind === 'busStop' ? 'busStop' : 'car'] - 12;
     this.bar = big ? new HpBar(scene, cx, barTop, 64, 10) : new HpBar(scene, cx, barTop, 36, 8);
   }
@@ -435,11 +436,12 @@ class TargetView {
       if (p instanceof Phaser.GameObjects.TileSprite) {
         if (ruined) p.setTint(0x3a3438);
         else p.clearTint();
-      } else if (p instanceof Phaser.GameObjects.Text) p.setAlpha(ruined ? 0.45 : 1);
+      } else if (p.name === 'glow') p.setVisible(!ruined);
+      else if (p instanceof Phaser.GameObjects.Text || p instanceof Phaser.GameObjects.Graphics) p.setAlpha(ruined ? 0.45 : 1);
     }
   }
 
-  /** Static ruin decals: rubble in front of the school, soot + glass / metal bits around a prop. */
+  /** Static ruin decals: rubble in front of a building, soot + glass / metal bits around a prop. */
   private drawDebris(f: Rect): void {
     const g = this.debris;
     let seed = 7 + f.x + f.y;
@@ -475,8 +477,11 @@ export class TargetsLayer {
   private readonly dust: Phaser.GameObjects.Particles.ParticleEmitter;
   private readonly steam: Phaser.GameObjects.Particles.ParticleEmitter;
 
-  constructor(scene: Phaser.Scene, schoolParts: SchoolParts) {
-    for (const def of DISTRICT.targets) this.views.set(def.id, new TargetView(scene, def, def.prop ? [] : schoolParts));
+  constructor(scene: Phaser.Scene, buildingParts: BuildingParts) {
+    for (const def of DISTRICT.targets) {
+      const parts = def.prop ? [] : (buildingParts.get(buildingIndex(def.footprint)) ?? []);
+      this.views.set(def.id, new TargetView(scene, def, parts));
+    }
     this.sparkle = scene.add
       .particles(0, 0, 'px', {
         lifespan: { min: 500, max: 800 },

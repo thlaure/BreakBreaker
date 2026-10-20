@@ -164,7 +164,7 @@ export class WorldScene extends Phaser.Scene {
     makeFurieTextures(this);
     this.reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.world = new WorldView(this);
-    this.targetViews = new TargetsLayer(this, this.world.schoolParts);
+    this.targetViews = new TargetsLayer(this, this.world.buildingParts);
     this.stations = new StationsView(this);
     this.group = new GroupView(this);
     this.victim = new VictimView(this);
