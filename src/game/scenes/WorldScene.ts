@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { FixedClock } from '../../sim/clock';
 import { CONFIG } from '../../sim/config';
 import { Sim, type Snapshot } from '../../sim/sim';
+import { stressTarget, stressTick } from '../debug';
 import type { InputFrame, SimEvent } from '../../sim/types';
 import { GameUi } from '../hud/ui';
 import type { CameraView } from '../hud/hud';
@@ -30,6 +31,8 @@ export function integerZoom(width: number, height: number): number {
  */
 export class WorldScene extends Phaser.Scene {
   sim!: Sim;
+  private stress = 0;
+  private stressState = { n: 0 };
   private clock!: FixedClock;
   private input$: () => InputFrame = () => ({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false });
   private disposeInput: (() => void) | null = null;
@@ -106,7 +109,8 @@ export class WorldScene extends Phaser.Scene {
   }
 
   create(data?: { seed?: number; autostart?: boolean }): void {
-    this.sim = new Sim(data?.seed ?? Date.now() >>> 0);
+    this.stress = import.meta.env.DEV ? stressTarget() : 0;
+    this.sim = new Sim(data?.seed ?? Date.now() >>> 0, { invulnerable: this.stress > 0 });
     this.clock = new FixedClock(CONFIG.step, CONFIG.maxCatchUpSteps);
     this.hitStopUntil = 0;
     this.struck = false;
@@ -160,7 +164,10 @@ export class WorldScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     const steps = this.clock.advance(delta / 1000);
     const events: SimEvent[] = [];
-    for (let i = 0; i < steps; i++) events.push(...this.sim.step(this.readInput()));
+    for (let i = 0; i < steps; i++) {
+      if (import.meta.env.DEV && this.stress > 0) stressTick(this.sim, this.stress, this.stressState);
+      events.push(...this.sim.step(this.readInput()));
+    }
     const snap = this.sim.snapshot();
     this.playerPos = snap.player.pos;
     this.react(events, time);

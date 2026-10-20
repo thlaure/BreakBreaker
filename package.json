@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "bench": "node scripts/bench-sim.mjs",
     "assets": "node scripts/fetch-assets.mjs && node scripts/build-lpc.mjs"
   },
   "dependencies": {
