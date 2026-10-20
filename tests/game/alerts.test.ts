@@ -664,3 +664,8 @@ describe('mode furie alerts', () => {
     hud.destroy();
   });
 });
+
+test('firebombs and their fire patches raise no banner (only a fire on a target does)', () => {
+  expect(alertFromEvent({ type: 'FirebombThrown', from: { x: 0, y: 0 }, to: { x: 9, y: 9 }, until: 2 })).toBeNull();
+  expect(alertFromEvent({ type: 'FirePatchStarted', id: 1, pos: { x: 9, y: 9 } })).toBeNull();
+});

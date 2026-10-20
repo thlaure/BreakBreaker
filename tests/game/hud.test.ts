@@ -361,6 +361,17 @@ describe('GameAudio.onEvents', () => {
     a.onEvents([{ type: 'EnemyRockThrown', rockId: 3 }]);
     expect(play).toHaveBeenCalledWith('throw');
   });
+
+  test('a firebomb whooshes like a Molotov when thrown; its fire patch raises no alarm', async () => {
+    const { GameAudio } = await import('../../src/game/audio');
+    const a = new GameAudio();
+    const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
+    const whoosh = vi.spyOn(a, 'whoosh').mockImplementation(() => undefined);
+    a.onEvents([{ type: 'FirebombThrown', from: { x: 0, y: 0 }, to: { x: 9, y: 9 }, until: 2 }]);
+    expect(whoosh).toHaveBeenCalledTimes(1);
+    a.onEvents([{ type: 'FirePatchStarted', id: 1, pos: { x: 9, y: 9 } }]);
+    expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(0);
+  });
 });
 
 describe('waveLine', () => {

@@ -212,8 +212,9 @@ export class PaulView {
 }
 
 /**
- * Molotov rioter's bottle: held at his side, raised and lit (flickering flame + "!" over his head) during the windup,
- * gone once thrown (a windup that ends without a KO is the throw).
+ * Molotov rioter's bottle: held at his side, raised and lit (flickering flame + "!" over his head) while he holds a
+ * bottle up (`bottleUp`), gone once thrown (a bottle windup that ends without a KO is the throw). A firebomber always
+ * has a fresh one in hand (a Molotov that turned firebomber after its site throw picks one up again).
  */
 class BottleProp {
   private readonly bottle: Phaser.GameObjects.Image;
@@ -230,10 +231,11 @@ class BottleProp {
 
   update(h: HostileSnap, depth: number, nowMs: number): void {
     const ko = h.state === 'ko';
-    if (this.wasWindup && !h.windup && !ko) this.held = false;
-    this.wasWindup = h.windup;
+    if (h.role === 'firebomber') this.held = true;
+    else if (this.wasWindup && !h.bottleUp && !ko) this.held = false;
+    this.wasWindup = h.bottleUp;
     const held = this.held && !ko;
-    const lit = held && h.windup;
+    const lit = held && h.bottleUp;
     this.bottle.setVisible(held);
     this.flame.setVisible(lit);
     this.bang.setVisible(lit);
@@ -305,7 +307,7 @@ class HostileView {
     const flagFrame = h.variant === 'palestinian' ? 1 : h.variant === 'antifa' ? 2 : -1;
     this.flag = flagFrame >= 0 ? scene.add.image(0, 0, 'flags', flagFrame).setOrigin(0, 1) : null;
     this.pole = flagFrame >= 0 ? scene.add.rectangle(0, 0, 1, 22, 0x5a4632).setOrigin(0.5, 1) : null;
-    this.bottle = h.role === 'molotov' ? new BottleProp(scene) : null;
+    this.bottle = h.role === 'molotov' || h.role === 'firebomber' ? new BottleProp(scene) : null;
   }
 
   launch(from: Vec, launch: Launch, nowMs: number, ctx: LaunchCtx): void {

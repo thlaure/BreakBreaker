@@ -14,7 +14,7 @@ import { Grid } from '../../sim/map/grid';
 import { HostileLayer, PaulView } from '../render/actors';
 import { FurieAura, PowBubbles, makeFurieTextures } from '../render/furie';
 import { GroupView, VictimView } from '../render/crowd';
-import { MolotovFx, RockLayer, TelegraphLayer } from '../render/fx';
+import { FirePatchLayer, MolotovFx, RockLayer, TelegraphLayer } from '../render/fx';
 import { TargetsLayer, makeTargetTextures } from '../render/targets';
 import { StationsView, ToolboxView, WorldView, makeRockTextures, makeTextures } from '../render/world';
 import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapons';
@@ -54,6 +54,9 @@ export class WorldScene extends Phaser.Scene {
   private targetViews!: TargetsLayer;
   private toolboxes!: ToolboxView;
   private molotovFx!: MolotovFx;
+  /** Firebombers' bottles flying at where Paul stood, and the fire they leave. */
+  private firebombFx!: MolotovFx;
+  private firePatches!: FirePatchLayer;
   private stations!: StationsView;
   private group!: GroupView;
   private victim!: VictimView;
@@ -175,6 +178,8 @@ export class WorldScene extends Phaser.Scene {
     this.weaponsOnGround = new WeaponLayer(this);
     this.telegraphs = new TelegraphLayer(this);
     this.molotovFx = new MolotovFx(this);
+    this.firePatches = new FirePatchLayer(this);
+    this.firebombFx = new MolotovFx(this, CONFIG.firebomber.flightSec);
     const snap = this.sim.snapshot();
     this.playerPos = { ...snap.player.pos };
     this.furieAura = new FurieAura(this);
@@ -304,6 +309,8 @@ export class WorldScene extends Phaser.Scene {
     this.victim.update(snap.rescue, time);
     this.targetViews.update(snap, time, dtMs);
     this.molotovFx.update(snap.molotovs, snap.now, time);
+    this.firePatches.update(snap.firePatches, time);
+    this.firebombFx.update(snap.firebombs, snap.now, time);
     this.toolboxes.update(snap.toolboxes, snap.player, time);
     this.stations.update(snap.stations, time);
     this.world.update(snap.player.pos);

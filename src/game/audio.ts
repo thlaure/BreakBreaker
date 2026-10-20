@@ -345,6 +345,7 @@ export class GameAudio {
           this.play('pickup');
           break;
         case 'MolotovThrown':
+        case 'FirebombThrown':
           this.whoosh();
           break;
         case 'FurieStarted':
