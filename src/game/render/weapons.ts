@@ -34,7 +34,10 @@ export function makeWeaponTextures(scene: Phaser.Scene): void {
   g.destroy();
 }
 
-/** Weapons lying in the street: bob, gentle sway and a pulsing glow so they read as pickups. */
+/**
+ * Weapons lying in the street: bob, gentle sway and a pulsing glow so they read as pickups. The mode furie pickup
+ * (`weapon_furie`, see render/furie.ts) floats higher, pulses in size and has a bigger additive golden glow.
+ */
 export class WeaponLayer {
   private readonly items = new Map<number, { glow: Phaser.GameObjects.Ellipse; sprite: Phaser.GameObjects.Image }>();
 
@@ -47,16 +50,26 @@ export class WeaponLayer {
       seen.add(w.id);
       let it = this.items.get(w.id);
       if (!it) {
-        const glow = this.scene.add.ellipse(w.pos.x, w.pos.y + 6, 26, 10, 0xffe066, 0.35).setDepth(w.pos.y - 1);
+        const furie = w.kind === 'furie';
+        const glow = this.scene.add
+          .ellipse(w.pos.x, w.pos.y + 6, furie ? 34 : 26, furie ? 14 : 10, furie ? 0xfff09a : 0xffe066, 0.35)
+          .setDepth(w.pos.y - 1);
+        if (furie) glow.setBlendMode(Phaser.BlendModes.ADD);
         const sprite = this.scene.add.image(w.pos.x, w.pos.y, `weapon_${w.kind}`).setOrigin(0.5, 1).setDepth(w.pos.y);
         it = { glow, sprite };
         this.items.set(w.id, it);
       }
       const phase = nowMs / 1000 + w.id;
-      it.sprite.setY(w.pos.y + 4 - Math.round(2 + 2 * Math.sin(phase * 3)));
-      it.sprite.setAngle(Math.sin(phase * 2) * 12);
       const pulse = 0.5 + 0.5 * Math.sin(phase * 4);
-      it.glow.setAlpha(0.2 + 0.35 * pulse).setScale(0.9 + 0.2 * pulse);
+      if (w.kind === 'furie') {
+        it.sprite.setY(w.pos.y - Math.round(5 + 3 * Math.sin(phase * 3)));
+        it.sprite.setAngle(0).setScale(Math.round((1 + 0.15 * pulse) * 8) / 8);
+        it.glow.setAlpha(0.35 + 0.45 * pulse).setScale(0.85 + 0.35 * pulse);
+      } else {
+        it.sprite.setY(w.pos.y + 4 - Math.round(2 + 2 * Math.sin(phase * 3)));
+        it.sprite.setAngle(Math.sin(phase * 2) * 12);
+        it.glow.setAlpha(0.2 + 0.35 * pulse).setScale(0.9 + 0.2 * pulse);
+      }
       const left = w.expiresAt === null ? Infinity : w.expiresAt - simNow;
       const off = left < BLINK_SEC && Math.floor(nowMs / (left < 1 ? 70 : 140)) % 2 === 0;
       it.sprite.setAlpha(off ? 0.2 : 1);
