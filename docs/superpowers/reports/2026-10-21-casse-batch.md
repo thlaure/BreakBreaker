@@ -128,3 +128,92 @@ indicator, card). Steady-flow, balance and determinism tests stay green with no 
 - The CAHIER's earlier « Commerce pillé » proposal (shutter, shopkeeper, +4/+5) is marked as not delivered (§23.1) and
   its catalogue/alert rows now describe the delivered shop.
 - Commit trailer uses `Claude Opus 5.5` (the model actually used), not the `Sonnet 5.5` named in the batch rules.
+
+## Task C — Equestrian monument with a French flag + capture the flag (and random headline casse)
+
+User requests: « une statue d'un cavalier qui tient un drapeau français […] ils arrivent à remplacer le drapeau français
+par un drapeau palestinien. Le but : un capture the flag […] pour pouvoir remettre le drapeau français », then
+(mid-task) « ça ne peut pas être aléatoire ? » about the headline casse of each round.
+
+| Commit | Scope |
+| --- | --- |
+| `c35c8e2` | sim: `DISTRICT.monument`, solid plinth, `Monument` / `MonumentIncident`, director alternation, random headline from round 2, snapshot + events + stats; tests |
+| `6661646` | render / HUD / audio: statue, waving flags, swap animation, zone ring, sparkle; banners, edge indicator, flag card; alarm / chime |
+| `1d9e895` | sim: the snapshot shows an occupation from its first step (banner pruning) |
+| (docs commit) | CAHIER_DES_CHARGES v1.9.4 entry extended (§11 rewritten, EX-15, §2.x states, §12.2, §13, §14.1, RC-32, RC-106, RC-107–RC-110), README, this report |
+
+Final checks: `npx vitest run` 396/396, `npm run typecheck` clean, `npm run build` ok, `npm run bench` per-step mean
+≈ 0.20–0.21 ms (budget 0.3 ms).
+
+### Representation
+
+The monument is **not** a target: no hp, not in `Targets`, no ruin/toolbox logic. To reuse the horde's site mechanism
+without touching `TargetId`, horde sites are widened to `SiteId = TargetId | 'monument'` (`Hostile.site`,
+`SpawnRequest.site`, `HordeCtx.sites`); `Sim.sites()` adds the plinth site (eight attack points, mast as "door", own
+flow field) while an occupation's rioters are still standing. `MolotovThrown.target` stays a `TargetId` (Molotovs are
+never monument-bound).
+
+### Sim (`src/sim`)
+
+- `map/district.ts`: `monument { plinth R(33,21,2,2), zone {1088,704,112}, mast {1088,672}, attackPoints }` (the eight
+  free tiles around the plinth). `map/grid.ts`: the plinth is solid like a prop.
+- `monument.ts` (new): `Monument` (flag `french` | `palestinian`, capture `progress`, `swaps`, `paulInZone`,
+  `contested`) steps the capture any time the flag is Palestinian (breather included; pause / Paul KO freeze it as the
+  sim does not step): Paul within 112 px and no active hostile within 112 px → +dt up to 8 s → `FlagCaptured {swap}`,
+  `monument#<swap>:captured` +10. `MonumentIncident` (`monument#n`): occupiers = `occupierCount(n, round)` (6, then
+  min(8, 5 + floor(round/3))), variants round-robin, role degrader, site 'monument', objective spawner (front);
+  swap timer += dt × min(3, occupiers in state 'degrade') (kept while nobody is there) → at 4 s `FlagSwapped`,
+  `:lost` −3, stage `swapped` (settled, not urgent; its rioters keep holding the plinth until KO'd); all KO first →
+  `MonumentDefended`, `:saved` +4.
+- `director.ts`: `BeatKind` gains `monument`; `roundPlan(round, rand, targets, last, monument)` — second beat =
+  monument from round 4 when the flag is French and last round's plan had no monument, else rescue; no free casse →
+  that beat alone (headline `monument` possible). Occupations count in the round total, are urgent while `occupy`,
+  settle the beat on defended/swapped, summary « Monument : réussi/perdu ». Launch re-checks the flag (dropped → fill).
+- **Random headline (product-owner request mid-task)**: round 1 stays the school; from round 2 the headline is a seeded
+  draw among every kind with a free target (school, shop, car, bus stop), weight 2, 1 for last round's headline; the
+  scripted r2 shop / r3 car|busStop of task B is gone. Twists, rescue fallback and "second urgency prefers a target not
+  attacked this round" unchanged.
+- `sim.ts`: occupations stepped after the target attacks, then the capture; snapshot `monument { flag, capture,
+  captureSec, inZone, contested, swaps, occupation {id, stage, swap, swapSec} | null, mast, zone }`; stats
+  `monumentsDefended`, `flagsLost`, `flagsCaptured`. Events `MonumentAttacked`, `MonumentDefended`, `FlagSwapped`,
+  `FlagCaptured`; `RoundStarted.headline` may be `monument`.
+
+### Render / HUD / audio (`src/game`)
+
+- `render/monument.ts` (new): runtime 1-px textures drawn ×2 — stone plinth with a blank bronze plaque, dark bronze
+  horse and rider holding a light flagpole with a gilded finial; cloths 12×9 in 3 ripple frames (tricolour; black /
+  white / green with the red hoist triangle). Swap: the shown flag slides down and fades, the new one rises (0.5 s).
+  Ground ring: faint neutral circle while French; red tint + ring while Palestinian, crawling red hatch marks when
+  contested, blue/white arc filling with the capture. Tricolour sparkle on `FlagCaptured`.
+- `hud/alerts.ts`: kinds `monument` (« MONUMENT ATTAQUÉ ! » / « Défends le drapeau », MONUMENT) and `flag`
+  (« DRAPEAU REMPLACÉ ! » / « Reprends le monument », DRAPEAU), warn tone, new neutral pennant icon; short
+  position-less `flagCaptured` « DRAPEAU RÉCUPÉRÉ ! » (tone `win`, 2.6 s); headline « Monument menacé ».
+  `activeIncidents` id `monument` (flag while Palestinian, else occupation while `occupy`) so stale banners are pruned.
+- `hud/format.ts` + `hud.ts`: card « Drapeau · capture N/8 s » with a blue capture bar, status « en cours » /
+  « zone contestée » / « à reprendre »; no prompt (no key). `audio.ts`: alarm once per occupation, chime on defence /
+  capture, the land thud on a swap. Checked in the browser: statue with the French flag, swap to the Palestinian flag,
+  ring + arc + card during a capture, back to French with +10.
+
+### Tests
+
+`tests/sim/monument.test.ts` (map: plinth solid / non-overlapping / reachable points and zone edge; occupier counts and
+mixed variants; swap at 4 s with one occupier, ×3 faster with three, no faster with five, none → no swap, timer kept;
+defended +4; no occupation while Palestinian; capture 8 s +10 once, pause out of zone / contested keeps progress, KO
+body does not contest; two cycles award both; in the sim: round 4 monument defended with K = T, swap → perdu, flag
+persists rounds 5–7 with no new occupation, capture during the breather; determinism) and
+`tests/game/monument-hud.test.ts` (banners, active incident ids, card, round panel name, Hud edge labels and card,
+stale pruning, sounds). Updated `rounds.test.ts` / `shop.test.ts` (random headline: deterministic per seed, every kind
+over seeds for round 2, round 1 always the school, ruined/burning never drawn, weights; alternation rounds 4–9),
+`balance.test.ts` (round-4 objective counts the occupation), `rules.test.ts` (new stats). Steady-flow and balance bot
+tests green with no re-tuning.
+
+### Notes / concerns
+
+- Occupiers are ordinary degraders: when Paul comes within 220 px they leave the plinth to fight him, which pauses the
+  swap timer — defending works by going there, as intended; after a swap they hold the plinth (contesting the zone)
+  until KO'd.
+- West edge of the zone sits on the tile of a tree trunk (C(30,22), 113 px from the centre): the zone is still
+  reachable on its other sides; the test checks east/south/north edge points.
+- The rescue no longer appears in monument rounds (every other round from round 4 while the flag is French), as
+  specified; with a Palestinian flag every round has the rescue.
+- Commit trailer uses `Claude Opus 5.5` (the model actually used), as in tasks A and B.

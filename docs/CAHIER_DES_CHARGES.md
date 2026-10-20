@@ -102,7 +102,7 @@ La révision 1.5 intègre des décisions **confirmées** : héros fictif Paul, b
 | EX-12 | Santé et petits soins conservés. |
 | EX-13 | Session arcade sans durée limite, découpée en manches, poursuivie jusqu’au KO du joueur. |
 | EX-14 | École à défendre : première ligne, vague, réparation, retour des étudiants et formations projetées. |
-| EX-15 | Captures de drapeau sur des monuments, avec zone contestée et changement de drapeau. |
+| EX-15 | Captures de drapeau sur des monuments, avec zone contestée et changement de drapeau. **Modifié (v1.9.4, demande du porteur du projet) :** une statue équestre dont le cavalier tient un drapeau français ; des casseurs s’en prennent à la statue et, en quelques secondes, remplacent le drapeau français par un drapeau palestinien ; Paul le reprend en capture du drapeau (section 11). |
 | EX-16 | Flèche et zone au sol pour les objectifs. |
 | EX-17 | Chaque casseur KO ajoute une unité au compteur neutre « Casseurs neutralisés », sans doublon. |
 | EX-18 | Score, record local, pause, arrêt volontaire et son après geste utilisateur. |
@@ -198,7 +198,7 @@ Les toits ou parties hautes qui masquent Paul deviennent transparents ou dispara
 
 ### 5.4 États
 
-École dégradée/en feu, reconstruction, ouverte, perdue puis éventuellement reconquise. Monument occupé, contesté, capturé, réoccupé. Boutique bloquée, dégagée, ouverte. Soins chargés/épuisés ; armes au sol ; groupes pacifiques toujours reconnaissables.
+École dégradée/en feu, reconstruction, ouverte, perdue puis éventuellement reconquise. Monument au drapeau français, attaqué, drapeau remplacé, zone contestée, drapeau repris (v1.9.4). Boutique bloquée, dégagée, ouverte. Soins chargés/épuisés ; armes au sol ; groupes pacifiques toujours reconnaissables.
 
 Chaque nouvel assaut est annoncé et identifié ; les bonus ne sont pas rejoués par un changement purement graphique. Un lieu détruit reste en ruine tant qu’il n’a pas été réparé avec une caisse à outils ; une transition de manche ne le répare pas gratuitement.
 
@@ -507,36 +507,39 @@ Les arrivées se suspendent si l’école est attaquée ou détruite. Les compte
 
 ## 11. Objectif monument
 
+**Réécrit (v1.9.4, demande du porteur du projet).** L’ancienne version (monument occupé dès le départ, défenseurs à l’entrée dans la zone, capture de 12 s) est remplacée par la règle ci-dessous.
+
 ### 11.1 Présentation
 
-Monument en pixel art inspiré de Victor Hugo, avec silhouette reconnaissable, socle, plaque et mât. Quartier et implantation fictifs. Le premier état porte un drapeau palestinien.
+Une **statue équestre** fictive en pixel art : un cheval et son cavalier en bronze sombre sur un socle de pierre à plaque vierge, le cavalier tenant une hampe. **Le drapeau tenu est d’abord le drapeau français** (bleu #0055a4, blanc, rouge #ef4135). Le tissu ondule (trois images). Aucune personne réelle n’est représentée. Le socle est solide comme le mobilier urbain : tuiles 33–34 × 21–22 (`R(33,21,2,2)`), mât en {1088, 672}, zone de capture circulaire {1088, 704} de rayon 112 px. Huit points d’occupation entourent le socle sur les tuiles libres ; socle, bord de zone et points sont atteignables depuis l’apparition de Paul et les entrées, sans chevaucher bâtiment, mobilier, station, arbre ni groupe pacifique.
 
-Le monument entre dans la progression à la manche 4 proposée (section 12.2). Lors de sa première apparition, l’épisode école de la manche doit être résolu avant son activation, qu’il soit réussi ou perdu. Une perte de l’école ne bloque donc pas la session à vie. Lors des manches suivantes, le directeur peut varier l’ordre des objectifs.
+Le monument n’a pas de santé et n’est pas un lieu de casse : il ne brûle pas, n’est pas réparé par caisse à outils et n’entre pas dans les ruines. Son drapeau, en revanche, **persiste comme une ruine** : une fois remplacé, il le reste d’une manche à l’autre et pendant les répits, jusqu’à ce que Paul le reprenne.
 
-### 11.2 Déclenchement
+### 11.2 Occupation (« MONUMENT ATTAQUÉ ! »)
 
-La première entrée dans une zone activée déclenche six défenseurs lors de la première occurrence : deux de chaque variante. Une nouvelle entrée ne recrée pas de défenseur. Les apparitions sont hors du cercle, hors obstacles et hors distance de frappe immédiate du joueur.
+Dès la manche 4, la deuxième étape de la manche alterne entre le monument et le secours : monument quand le drapeau est français et que la manche précédente n’avait pas le monument, sinon secours. **Aucune occupation ne démarre tant que le drapeau est palestinien.** Si aucun lieu de casse n’est libre, l’étape restante est seule et donne son titre à la manche (« Monument menacé »).
 
-### 11.3 Capture locale
+Une occupation (`monument#n`) envoie **6 casseurs** la première fois, puis min(8, 5 + ⌊manche ÷ 3⌋). Ils entrent par la file d’entrée (en tête, comme les autres objectifs), variantes **mélangées en alternance** (classique, drapeau palestinien, Antifa), et marchent jusqu’au socle comme des dégradeurs ; ils comptent dans K/T et chaque KO vaut +1. Ils peuvent se détourner vers Paul quand il approche (règle d’attraction de la section 9).
 
-La capture conserve une durée locale de référence de 12 secondes. Ce n’est pas une limite de partie : aucun temps global n’est en train de s’épuiser.
+Tant qu’au moins un casseur de l’occupation se tient au socle, un compteur de remplacement avance d’1 s par seconde **par casseur au socle (trois au plus comptés)** ; il garde sa valeur quand ils s’en éloignent. À **4 s** (environ 1,3 s à trois), le drapeau français est remplacé par le drapeau palestinien : animation (le drapeau descend, l’autre monte, 0,5 s), bannière « DRAPEAU REMPLACÉ ! » / « Reprends le monument », −3 une seule fois par occurrence. L’occupation est alors réglée pour la manche (objectif « perdu ») : la manche peut se clore, mais ses casseurs restent au socle et doivent être mis KO comme les autres. Si tous les casseurs de l’occupation sont KO avant le remplacement, le monument est **défendu** : +4 une fois, objectif « réussi ».
+
+### 11.3 Capture du drapeau
+
+Seulement quand le drapeau est palestinien, **à tout moment, répit compris** :
 
 | Situation | Progression |
 | --- | --- |
-| Objectif non actif | Verrouillée |
-| Joueur hors cercle | Suspendue, valeur conservée |
-| Joueur dans le cercle avec un défenseur actif à l’intérieur | Suspendue : « Zone contestée » |
-| Joueur dans le cercle sans défenseur actif à l’intérieur | Avance |
-| 12 secondes atteintes, défenseur encore actif hors cercle | Attente de sa mise au sol |
-| 12 secondes atteintes, tous les défenseurs KO et joueur présent | Capture réussie |
+| Drapeau français | Aucune capture |
+| Paul hors de la zone (distance au centre > 112 px) | Suspendue, valeur conservée |
+| Paul dans la zone avec un hostile actif à l’intérieur | Suspendue : « zone contestée » |
+| Paul dans la zone, aucun hostile actif à l’intérieur | Avance d’1 s par seconde |
+| 8 s atteintes | Drapeau français rétabli |
 
-Les personnes protégées et les corps KO ne contestent pas. La règle utilise les états et positions de gameplay, pas la visibilité d’un modèle.
+Aucune touche : rester dans la zone suffit. Les corps KO et les personnes protégées ne contestent pas ; pause et KO de Paul figent la progression. À 8 s : drapeau français (animation inverse), son de confirmation, étincelles bleu-blanc-rouge, bannière courte « DRAPEAU RÉCUPÉRÉ ! », **+10 une seule fois par remplacement** (clé `monument#<n° du remplacement>:captured`). Plusieurs cycles remplacement / capture dans une session sont comptés chacun.
 
-### 11.4 Résolution et réoccupation
+### 11.4 Affichage
 
-Remplacement visible du drapeau palestinien par le français, son de confirmation, +10 proposé une seule fois par occurrence. La session continue immédiatement après une courte célébration facultative.
-
-Le monument reste acquis jusqu’à une nouvelle réoccupation annoncée dans une manche ultérieure. Cette nouvelle occurrence a son propre identifiant, ses défenseurs et sa jauge. Pas de changement de drapeau arbitraire hors événement de gameplay. Un retrait du joueur avant la fin ne crée ni défaite globale ni réapparition gratuite des défenseurs.
+Bannière « MONUMENT ATTAQUÉ ! » / « Défends le drapeau » au début de l’occupation (palette jaune, icône fanion neutre, flèche et distance), indicateur en bord d’écran « MONUMENT » pendant l’occupation puis « DRAPEAU » tant que le drapeau est palestinien ; carte « Drapeau — capture N/8 s » avec une mini-barre, « zone contestée » quand un hostile bloque. Au sol, l’anneau de la zone est discret quand le drapeau est français, rouge quand il est palestinien, hachuré quand la zone est contestée, avec un arc qui se remplit pendant la capture. Les drapeaux des casseurs restent purement cosmétiques (section 9) ; aucune variante n’est désignée comme occupante.
 
 ## 12. Mode arcade, manches, événements, progression et soins
 
@@ -552,7 +555,7 @@ Les délais de frappe, la destruction d’un bâtiment attaqué, la détresse d�
 
 **Modifié (v1.9) — rythme d’une manche.** Une manche alterne temps forts et temps faibles : (1) **répit de 6 s** sans aucune entrée de casseur, avec le panneau non bloquant « Manche N terminée » (KO, objectifs « réussi » / « perdu », points, « Bonus +5 » s’il est gagné, « Soins rechargés », compte à rebours « Manche N+1 dans 4… »), stations de soin rechargées, santé des lieux sauvés ou réparés remise au maximum (jamais celle d’un lieu encore en feu), caisses à outils reposées (aussi au début de la manche) et une arme posée près de Paul ; la manche 1 n’a pas de répit, l’intro de 4 s en tient lieu ; (2) **annonce** par la bannière pixel « MANCHE N ! » avec la casse phare de la manche (« Voiture menacée · 18 casseurs » : rien n’est encore en feu) ; (3) **montée** : le premier groupe file vers le lieu attaqué ; (4) **retournement** dès que la moitié de l’effectif est KO : une seconde urgence ailleurs ou une arme spéciale à aller chercher (« ARME SPÉCIALE ! », disparaît après 15 s ; à partir de la manche 4, c’est un mode furie, « MODE FURIE DISPONIBLE ! », section 8.8) ; (5) **apogée** : le dernier groupe de la manche entre plus serré (0,8 s d’intervalle) ; (6) **récompense** : bonus +5 si tous les objectifs sont réussis, puis retour au répit. Le répit commence quand tout l’effectif de la manche est KO. Le joueur conserve sa santé, son score, ses KO, ses formations, son stock de pierres, sa caisse à outils portée, son arme tenue avec ses coups restants et son historique de soins.
 
-Les casseurs affectés aux objectifs (première ligne, renforts, défenseurs, agresseurs de secours) font partie de l’effectif de la manche. Une réparation optionnelle d’un bâtiment déjà perdu n’empêche pas la transition. Les secours déjà déclenchés doivent être résolus ou reportés explicitement avec leur état ; ils ne disparaissent pas gratuitement au changement de manche. La boutique, détaillée en section 23, fait partie de la cible de diffusion : elle apparaît comme « commerce pillé » dès la manche 2, puis dans le mélange des manches suivantes. **Modifié (v1.9.4, demande du porteur du projet) :** la boutique livrée est une **boutique de jeux vidéo rétro** (« JEUX RÉTRO »), un bâtiment à protéger comme l’école (santé, Molotov, dégradeurs, feu qui couve jusqu’à la caisse à outils, réparation à pleine santé), sans rideau ni commerçant ; elle ouvre la manche 2 et entre ensuite dans le tirage.
+Les casseurs affectés aux objectifs (première ligne, renforts, défenseurs, agresseurs de secours) font partie de l’effectif de la manche. Une réparation optionnelle d’un bâtiment déjà perdu n’empêche pas la transition. Les secours déjà déclenchés doivent être résolus ou reportés explicitement avec leur état ; ils ne disparaissent pas gratuitement au changement de manche. La boutique, détaillée en section 23, fait partie de la cible de diffusion : elle apparaît comme « commerce pillé » dès la manche 2, puis dans le mélange des manches suivantes. **Modifié (v1.9.4, demande du porteur du projet) :** la boutique livrée est une **boutique de jeux vidéo rétro** (« JEUX RÉTRO »), un bâtiment à protéger comme l’école (santé, Molotov, dégradeurs, feu qui couve jusqu’à la caisse à outils, réparation à pleine santé), sans rideau ni commerçant ; elle entre dans le tirage au sort de la casse phare dès la manche 2 (tirage aléatoire, v1.9.4).
 
 Progression proposée (valeurs **Proposé**, à équilibrer) :
 
@@ -561,7 +564,7 @@ Progression proposée (valeurs **Proposé**, à équilibrer) :
 | 1 | 10 | École ; casseurs au contact uniquement | École en feu |
 | 2 | 14 | École, secours puis commerce ; apparition des lanceurs | + Commerce pillé (rideau forcé) |
 | 3 | 18 | Deux urgences simultanées ; nouvelle arme (gant de boxe à ressort) | + Voiture en feu, abribus saccagé (l’un des deux par manche) |
-| 4 | 22 | Ajout du monument ; casseurs renforcés | + Monument occupé |
+| 4 | 22 | Ajout du monument (v1.9.4 : occupation un tour sur deux à la place du secours tant que le drapeau est français) ; casseurs renforcés | + Monument attaqué, drapeau remplacé |
 | 5 | 26 | Deux lieux attaqués à la fois puis monument ou secours ; nouvelle arme (bouclier) | + École maternelle en feu, kiosque saccagé |
 | 6 et suivantes | +4 par manche, plafonné à 40 grâce à la file d’entrée | Deux lieux attaqués à la fois tirés dans le catalogue, puis monument ou secours ; une nouvelle arme ou un nouveau type d’ennemi toutes les deux manches (Kamehame en manche 7) | + Mairie attaquée (manche 7), bibliothèque en feu (manche 9) |
 
@@ -573,7 +576,7 @@ Progression proposée (valeurs **Proposé**, à équilibrer) :
 | Boutique de jeux rétro (livré, v1.9.4) | Bâtiment 5, au sud-ouest du centre (porte au sud) ; pas de rideau | Manche 2 | 100 PV | +6 / −2 / +4 |
 | Voiture en feu | Deux emplacements de voiture garée | Manche 2 (phase A) | 60 PV | +4 / −2 / +3 |
 | Abribus saccagé | Abribus | Manche 2 (phase A) | 60 PV | +4 / −2 / +3 |
-| Monument occupé | Monument (capture, section 11) | Manche 4 | — | +10 à la capture |
+| Monument attaqué (livré, v1.9.4) | Statue équestre au drapeau français, à l’est du centre (section 11) | Manche 4 | — (pas de santé) | +4 défendu / −3 drapeau remplacé / +10 drapeau repris |
 | École maternelle en feu | Bâtiment sud-ouest | Manche 5 | 100 PV | +8 / −3 / +5 |
 | Kiosque saccagé | Kiosque à journaux | Manche 5 | 60 PV | +4 / −2 / +3 |
 | Mairie attaquée | Bâtiment nord | Manche 7 | 100 PV | +8 / −3 / +5 |
@@ -583,7 +586,7 @@ Progression proposée (valeurs **Proposé**, à équilibrer) :
 
 Déroulement interne : les casseurs entrent un par un, le premier d’un groupe 2 s après sa mise en file puis à 1,5 s d’intervalle (0,8 s pour le groupe d’apogée), avec au plus douze casseurs en attente d’entrée sur la carte à la fois ; les suivants attendent dans une file d’entrée. Les casseurs des objectifs passent en tête de file. L’effectif T de la manche vaut `max(casseurs des objectifs, [10, 14, 18, 22][N−1] ou min(40, 22 + 4·(N − 4)))` ; il compte tous les casseurs de la manche (objectifs, agresseurs, retournement), seules les patrouilles de maintien du flux en sont exclues.
 
-**Numérotation et objectif des manches.** Les manches sont numérotées à partir de 1 dès le début de la partie ; le numéro n’affiche jamais 0. Chaque manche a un objectif « K/T » : T casseurs à neutraliser, K casseurs de cette manche déjà mis KO (borné entre 0 et T). Pendant l’intro de 4 s, aucun objectif n’est encore fixé (« Manche 1 »). En phase A de la tranche 2 : manche 1 = école puis secours, manche 2 = voiture ou abribus puis secours avec arme spéciale en retournement, manche 3 et suivantes = un lieu tiré au sort parmi ceux intacts (moins souvent celui de la manche précédente) puis secours, avec une seconde urgence en retournement. **Modifié (v1.9.4) :** manche 2 = boutique de jeux rétro puis secours (arme spéciale en retournement ; boutique en ruine ou en feu : secours seul), manche 3 = voiture ou abribus, manche 4 et suivantes = un lieu tiré parmi école, voiture, abribus et boutique, intacts et hors feu (poids 2, poids 1 pour celui de la manche précédente). Attaque de la boutique : ses lanceurs de Molotov en tête, puis deux dégradeurs et un casseur au contact, plus min(6, 2 + pression ÷ 3) dégradeurs et casseurs au contact en alternance, comme l’école après la manche 1 ; variantes toujours mélangées.
+**Numérotation et objectif des manches.** Les manches sont numérotées à partir de 1 dès le début de la partie ; le numéro n’affiche jamais 0. Chaque manche a un objectif « K/T » : T casseurs à neutraliser, K casseurs de cette manche déjà mis KO (borné entre 0 et T). Pendant l’intro de 4 s, aucun objectif n’est encore fixé (« Manche 1 »). En phase A de la tranche 2 : manche 1 = école puis secours, manche 2 = voiture ou abribus puis secours avec arme spéciale en retournement, manche 3 et suivantes = un lieu tiré au sort parmi ceux intacts (moins souvent celui de la manche précédente) puis secours, avec une seconde urgence en retournement. **Modifié (v1.9.4) :** manche 2 = boutique de jeux rétro puis secours (arme spéciale en retournement ; boutique en ruine ou en feu : secours seul), manche 3 = voiture ou abribus, manche 4 et suivantes = un lieu tiré parmi école, voiture, abribus et boutique, intacts et hors feu (poids 2, poids 1 pour celui de la manche précédente). **Modifié (v1.9.4, demande du porteur du projet : « ça ne peut pas être aléatoire ? ») :** la manche 1 reste l’école (apprentissage : premier Molotov, cinématique, renforts) ; **à partir de la manche 2, la casse phare est tirée au sort** (tirage déterministe par graine) parmi tous les lieux libres — debout, hors feu, sans attaque en cours : école, boutique, voitures, abribus — poids 2, poids 1 pour celui de la manche précédente (il peut revenir, rarement ; rien n’est imposé). Deuxième étape : le secours, ou dès la manche 4 le monument en alternance (section 11). Aucun lieu libre : la deuxième étape seule. Attaque de la boutique : ses lanceurs de Molotov en tête, puis deux dégradeurs et un casseur au contact, plus min(6, 2 + pression ÷ 3) dégradeurs et casseurs au contact en alternance, comme l’école après la manche 1 ; variantes toujours mélangées.
 
 **Flux régulier dans une manche, répit entre deux (RC-94).** À l’intérieur d’une manche, une fois l’intro terminée, il ne s’écoule jamais plus d’environ 3 s sans casseur actif sur la carte : si personne n’est actif pendant 1,5 s, le groupe suivant entre aussitôt, sinon une patrouille hors effectif. **Exception voulue :** les 6 s de répit entre deux manches sont un temps faible délibéré, sans aucune entrée, demandé par le porteur du projet ; elles remplacent l’ancienne règle « la manche suivante démarre pendant le bilan ».
 
@@ -734,7 +737,9 @@ La réduction de qualité graphique ne modifie pas ces délais. Un mode découve
 | Réparation tardive par caisse à outils | +5 (bâtiment) / +3 (mobilier urbain), sans cumul avec le +8 de sauvetage de la même occurrence | Proposition |
 | Secours réussi | +6 par événement, une seule fois | Proposition |
 | Secours manqué | Aucun bonus ; pas de défaite globale | Proposition |
-| Monument capturé | +10 par occurrence | Proposition |
+| Monument défendu (tous les occupants KO avant le remplacement) | +4 par occurrence | Livré (v1.9.4) |
+| Drapeau du monument remplacé | −3 une fois par occurrence | Livré (v1.9.4) |
+| Drapeau du monument repris (capture) | +10 par remplacement | Livré (v1.9.4) |
 | Boutique dégagée puis rouverte | +4 puis +5 par occurrence | Brief initial |
 | Manche entièrement réussie sans personne protégée frappée | +5 une fois à sa clôture | Proposition arcade |
 | Soin ou formation projetée | 0 | Proposition pour éviter l’attente rentable |
@@ -794,12 +799,12 @@ Les groupes pacifiques ont un signe lisible de neutralité et une alerte distinc
 | Voiture en feu (livré, v1.9) | « VOITURE EN FEU ! » | « Chasse les casseurs » | VOITURE | orange/rouge, flamme |
 | Abribus saccagé (livré, v1.9) | « ABRIBUS SACCAGÉ ! » | « Arrête la casse » | ABRIBUS | jaune, vitre brisée |
 | Kiosque saccagé | « KIOSQUE SACCAGÉ ! » | « Protège le kiosque » | KIOSQUE | jaune, vitre brisée |
-| Monument occupé | « MONUMENT OCCUPÉ ! » | « Reprends le drapeau » | MONUMENT | jaune, fanion |
+| Monument attaqué (livré, v1.9.4) | « MONUMENT ATTAQUÉ ! » puis « DRAPEAU REMPLACÉ ! » ; « DRAPEAU RÉCUPÉRÉ ! » (courte, sans flèche) | « Défends le drapeau » puis « Reprends le monument » | MONUMENT puis DRAPEAU | jaune, fanion neutre |
 | École maternelle en feu | « MATERNELLE EN FEU ! » | « Rejoins l’école maternelle » | MATERNELLE | orange/rouge, flamme |
 | Mairie attaquée | « MAIRIE ATTAQUÉE ! » | « Défends la mairie » | MAIRIE | orange/rouge, flamme |
 | Bibliothèque en feu | « BIBLIOTHÈQUE EN FEU ! » | « Sauve la bibliothèque » | BIBLIO | orange/rouge, flamme |
 
-Un lieu attaqué, un commerce en cours de pillage et un monument occupé ont chacun leur indicateur en bord d’écran tant qu’ils sont actifs.
+Un lieu attaqué, un commerce en cours de pillage et le monument (attaqué, puis tant que son drapeau est à reprendre) ont chacun leur indicateur en bord d’écran tant qu’ils sont actifs.
 
 Afficher les états : préparation ennemie, pierre en vol, pierre récupérable, stock plein, arme au sol, arme brisée, soin chargé ou épuisé, santé au maximum, cercle contesté, objectif résolu, fin de manche. Les annonces ne doivent pas masquer une zone d’impact ou une échappatoire. Au plus deux alertes urgentes sont détaillées ; une sélection affiche le trajet ou la direction vers l’incident choisi.
 
@@ -1157,7 +1162,7 @@ Tests de règles ; intégration avec horloge contrôlée ; navigateur avec rendu
 | RC-29 | Santé de l’école à zéro | Ruine persistante, pénalité unique, session continuée et réparation par caisse à outils possible. |
 | RC-30 | Étudiant entrant | Une formation par entrée, aucune file ou population illimitée. |
 | RC-31 | Capture avec contestation / sortie | Jauge suspendue, valeur conservée. |
-| RC-32 | Capture réussie | Conditions de temps local et défenseurs réunies, drapeau français, session poursuivie. |
+| RC-32 | Capture réussie | **Modifié (v1.9.4) :** drapeau palestinien, Paul 8 s cumulées dans la zone sans hostile actif à l’intérieur (pause hors zone ou zone contestée, progression gardée) → drapeau français, +10 une fois par remplacement, session poursuivie. |
 | RC-33 | Boutique rouverte | Gains uniques, pas de soin complet implicite. |
 | RC-34 | Passer une manche | Effectif neutralisé et objectifs résolus : répit de 6 s sans entrée de casseur avec le panneau non bloquant « Manche N terminée », stations rechargées, puis annonce « MANCHE N+1 ! » ; score, santé, stock, caisse et arme conservés ; la règle des 3 s sans casseur actif ne s’applique qu’à l’intérieur d’une manche (RC-94). |
 | RC-35 | Reprendre un objectif | Nouvelle occurrence explicite et nouveaux gains possibles, pas un doublon. |
@@ -1224,7 +1229,11 @@ Tests de règles ; intégration avec horloge contrôlée ; navigateur avec rendu
 | RC-103 | Lanceur sur Paul (v1.9.4) | Élan de 1,2 s visible (bouteille levée, « ! », ligne de visée) puis bouteille vers l’endroit où Paul était au début de l’élan ; Paul qui bouge ne prend rien ; KO pendant l’élan = aucune bouteille ; flaque de 3,5 s, 4 PV toutes les 0,5 s dedans (moitié en mode furie), rien dehors, six flaques au plus ; aucun casseur ni lieu touché. |
 | RC-104 | Présence des lanceurs sur Paul (v1.9.4) | Aucun en manches 1–2 ; dès la manche 3, au moins un dans un remplissage de quatre casseurs ou plus, trois au plus par manche ; le dernier lanceur de Molotov d’une attaque devient lanceur sur Paul après sa bouteille sur le lieu ; manches toujours closes à K = T. |
 | RC-105 | Boutique de jeux rétro (v1.9.4) | Bâtiment de 100 PV devant lequel les casseurs se placent (trois points d’attaque et la porte, atteignables depuis l’apparition) ; Molotov = « BOUTIQUE EN FEU ! » / « Défends la boutique », indicateur « BOUTIQUE », carte « Boutique NN % » ; tous les casseurs KO sans feu = +6, ruine = −2 une fois, extinction ou réparation par caisse à outils = +4 et retour à 100 PV ; enseigne « JEUX RÉTRO », manette pixel, auvent rayé, vitrines éclairées ; chaque KO compte +1, variantes mélangées. |
-| RC-106 | Place de la boutique dans les manches (v1.9.4) | Manche 2 = boutique puis secours (secours seul si elle est en ruine ou en feu) ; manche 3 = voiture ou abribus ; dès la manche 4, la boutique est tirée avec les autres lieux intacts hors feu, moitié moins souvent juste après une manche où elle était la casse phare. |
+| RC-106 | Place de la boutique dans les manches (v1.9.4) | **Modifié (v1.9.4) :** dès la manche 2, la boutique est tirée au sort avec les autres lieux intacts hors feu, moitié moins souvent juste après une manche où elle était la casse phare ; jamais en ruine ou en feu. |
+| RC-107 | Statue équestre (v1.9.4) | Socle solide R(33,21,2,2) qui bloque déplacement et vue ; zone {1088, 704, 112} ; points d’occupation et bord de zone atteignables ; cavalier en bronze tenant un drapeau français qui ondule au début de la partie. |
+| RC-108 | Occupation du monument (v1.9.4) | Dès la manche 4, en alternance avec le secours tant que le drapeau est français ; 6 casseurs la première fois puis min(8, 5 + ⌊manche ÷ 3⌋), variantes mélangées ; un casseur au socle remplace le drapeau en 4 s (trois : environ 1,3 s, pas plus vite au-delà) → « DRAPEAU REMPLACÉ ! », −3 une fois ; tous KO avant = +4 ; manche close à K = T. |
+| RC-109 | Drapeau persistant et capture (v1.9.4) | Le drapeau palestinien reste d’une manche à l’autre et pendant les répits, sans nouvelle occupation ; capture possible à tout moment, répit compris ; deux cycles remplacement / capture rapportent chacun +10. |
+| RC-110 | Casse phare aléatoire (v1.9.4) | Manche 1 = école ; dès la manche 2, tirage déterministe par graine parmi les lieux libres, chaque type de lieu pouvant ouvrir la manche 2 selon la graine ; aucun lieu en ruine ou en feu tiré. |
 | RC-79 | Apparition d’armes | Emplacement libre praticable à 160–480 px de Paul, hors groupe pacifique ; première après environ 10 s, puis toutes les 15 à 25 s ; jamais plus de deux au sol. |
 | RC-80 | Ramasser une arme en tenant déjà une | Nouvelle arme tenue, ancienne remplacée ; HUD « Arme : <nom> (<coups>) ». |
 | RC-81 | Frapper avec une arme | KO en un coup à la portée de l’arme ; charge consommée seulement si au moins un casseur est touché. |
@@ -1384,7 +1393,7 @@ Une capture d’écran pixelisée, une conversion de perspective ou les anciens 
 - **1.9 — 21 octobre 2026 :** tranche 2 « Fun », phase A. Les vagues deviennent des manches rythmées (répit de 6 s avec panneau non bloquant « Manche N terminée », annonce « MANCHE N ! » avec la casse phare, montée, retournement à mi-effectif, apogée, bonus +5) ; RC-94 garde la règle des 3 s à l’intérieur d’une manche avec l’exception voulue du répit. Modèle de santé pour tous les lieux à la place de la réserve de 30 s (section 10) : casseur Molotov (élan 1,5 s, KO = pas de feu), feu et dégradeurs, extinction automatique 1,5 s après le dernier KO, ruines persistantes ; voiture et abribus attaquables ; caisses à outils et réparation automatique sans F (sections 10.6 et 10.7). Levée de l’interdiction des armes à feu pour des tireurs et un flashball cartoon (EX-07, phase B à venir) ; renvoi vers la conception des phases B à D (section 24). EX-20, EX-21, EX-26 et les RC des kits, délais et manches (RC-25, RC-27, RC-29, RC-34, RC-52 à RC-60, RC-67, RC-85, RC-91, RC-93, RC-94) alignées ; RC-95 à RC-98 ; une bannière d’incident devenue caduque est retirée de la file.
 - **1.9.1 — 21 octobre 2026 :** retours de partie (phase A). Le feu n’est annoncé (bannière, alarme) qu’au lancer de la bouteille ; titres de manche neutres (« École menacée »…) ; indicateur jaune puis flamme. Casseurs attirés par Paul (220 px / 320 px, ligne dégagée ; à trois hostiles actifs au plus, ceux qui tiennent leur poste depuis 6 s viennent à lui ; Molotov jamais détourné) et entrées par les trois points les plus proches à 320 px au moins. Réparation et extinction lancées par Agir (F, bouton Agir) sans maintien, 2 s, interrompues par l’éloignement ou un casseur ; caisses posées aussi en début de manche. Un lieu en feu ou détruit le reste jusqu’à sa réparation : plus d’extinction automatique, le feu continue à 0,7 PV/s après l’attaque. Plusieurs lanceurs de Molotov par attaque selon la manche (1, 2, 3 puis 4 ; deux au plus pour le mobilier urbain ; le second de la manche 1 avec les renforts de l’école), décalés de 0,25 s ; une bouteille sur un lieu déjà en feu lui retire 8 PV d’un coup. Les mentions de la v1.9 sur l’extinction et la réparation automatiques sont remplacées (sections 7, 9.2, 9.3, 10, 12.2, 14.1, 18, RC-58, RC-96, RC-97).
 - **1.9.3 — 21 octobre 2026 :** mode furie (section 8.8), à la demande du porteur du projet : bonus rare ramassé comme une arme qui active pour 12 s vitesse ×1,35, portée ×1,5, 8 cibles, KO en un coup sans usure d’arme et dégâts reçus ×0,5, sans remplacer l’arme tenue ; casseurs KO envolés en tourbillon (visuel seulement) ; aura jaune-blanc, bulles « POW ! » / « BOUM ! », bannières « MODE FURIE DISPONIBLE ! » et « MODE FURIE ! », indicateur « FURIE », sons dédiés. Arme du retournement remplacée par un mode furie dès la manche 4 et environ une apparition chronométrée sur six dès la manche 6 (sections 8.8, 12.2, 14, 16 ; RC-99 à RC-102).
-- **1.9.4 — 21 octobre 2026 :** lanceurs sur Paul (section 10.9), à la demande du porteur du projet : dès la manche 3, quelques casseurs lancent leurs Molotov sur Paul (environ un casseur de remplissage sur huit, trois au plus par manche, et le dernier lanceur de Molotov de chaque attaque après sa bouteille sur le lieu) ; élan de 1,2 s avec ligne de visée, bouteille de 0,7 s vers la position de Paul au début de l’élan, flaque de feu de 3,5 s (4 PV toutes les 0,5 s, moitié en mode furie, six au plus), sans bannière (sections 8, 10.9, 16 ; RC-103, RC-104). Carte « Comment jouer » bloquante au lancement (RC-70, RC-87) : la partie attend une touche, un clic ou un toucher. Boutique de jeux vidéo rétro (sections 10, 12.2, 14, 24 ; RC-105, RC-106), à la demande du porteur du projet : nouveau bâtiment à protéger (100 PV, +6 / −2 / +4), casse phare de la manche 2 (la voiture ou l’abribus passent en manche 3), puis dans le tirage dès la manche 4 ; « BOUTIQUE EN FEU ! », enseigne pixel « JEUX RÉTRO » ; le rideau et le commerçant de la section 23.1 restent non livrés.
+- **1.9.4 — 21 octobre 2026 :** lanceurs sur Paul (section 10.9), à la demande du porteur du projet : dès la manche 3, quelques casseurs lancent leurs Molotov sur Paul (environ un casseur de remplissage sur huit, trois au plus par manche, et le dernier lanceur de Molotov de chaque attaque après sa bouteille sur le lieu) ; élan de 1,2 s avec ligne de visée, bouteille de 0,7 s vers la position de Paul au début de l’élan, flaque de feu de 3,5 s (4 PV toutes les 0,5 s, moitié en mode furie, six au plus), sans bannière (sections 8, 10.9, 16 ; RC-103, RC-104). Carte « Comment jouer » bloquante au lancement (RC-70, RC-87) : la partie attend une touche, un clic ou un toucher. Boutique de jeux vidéo rétro (sections 10, 12.2, 14, 24 ; RC-105, RC-106), à la demande du porteur du projet : nouveau bâtiment à protéger (100 PV, +6 / −2 / +4), casse phare de la manche 2 (la voiture ou l’abribus passent en manche 3), puis dans le tirage dès la manche 4 ; « BOUTIQUE EN FEU ! », enseigne pixel « JEUX RÉTRO » ; le rideau et le commerçant de la section 23.1 restent non livrés. Statue équestre au drapeau français et capture du drapeau (section 11 réécrite, EX-15, sections 12.2, 13, 14.1 ; RC-32, RC-107 à RC-109), à la demande du porteur du projet : dès la manche 4, en alternance avec le secours, des casseurs attaquent la statue et remplacent en quelques secondes le drapeau français par un drapeau palestinien (−3) ; tous KO avant = +4 ; le drapeau reste palestinien jusqu’à ce que Paul tienne 8 s la zone sans hostile à l’intérieur (+10 par reprise). Casse phare tirée au sort à partir de la manche 2 (manche 1 = école ; RC-106, RC-110), à la demande du porteur du projet.
 
 ## 26. Landing page et accès au jeu
 
