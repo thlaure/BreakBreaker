@@ -282,7 +282,7 @@ export class Sim {
       this.molotovs.push({ from: v(e.from), to: v(e.to), until: now + MOLOTOV_FLIGHT_SEC });
       // at most one live attack per target: the bottle belongs to it
       const owner = this.attacks.find((a) => a.target === e.target && !a.resolved());
-      if (owner) ev.push(...owner.onMolotov(e));
+      if (owner) ev.push(...owner.onMolotov(e, this.attackCtx()));
     }
     for (const a of this.attacks) ev.push(...a.step(dt, this.attackCtx()));
     if (this.rescue) ev.push(...this.rescue.step(dt, { horde: this.horde, rules: this.rules, player: p, spawner: this.objectiveSpawner }));

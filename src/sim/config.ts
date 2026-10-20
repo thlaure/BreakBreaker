@@ -47,7 +47,8 @@ export const CONFIG = {
    * ≈ 143 s, car 60 hp ≈ 86 s): a fire never goes out by itself, only a toolbox puts it out.
    */
   target: { fireDps: 2, degradeDps: 1.2, maxDegraders: 4, smoulderDps: 0.7 },
-  molotov: { windup: 1.5, range: 96 },
+  /** `burstDamage`: hp a bottle takes off a target already on fire (no new ignition, no new announcement). */
+  molotov: { windup: 1.5, range: 96, burstDamage: 8 },
   kit: { maxGround: 2, pickupRadius: 20, repairSec: 2, applyRange: 48, safetyRadius: 64, minPlaceFromPlayer: 64 },
   round: {
     totals: [10, 14, 18, 22],

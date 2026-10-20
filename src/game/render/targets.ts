@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { DISTRICT, type Rect, type TargetDef } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
-import type { SimEvent, TargetId } from '../../sim/types';
+import type { SimEvent, TargetId, Vec } from '../../sim/types';
 import { FLAG } from '../assets';
 import { DEPTH } from './depth';
 import { FACADE_H, type WorldView } from './world';
@@ -15,6 +15,8 @@ const PX = 2;
 /** World px a prop texture rises above its footprint (it is anchored on the footprint's bottom edge). */
 const PROP_RISE: Record<'car' | 'busStop', number> = { car: 10, busStop: 16 };
 const FLASH_MS = 120;
+/** Extra flare of a target already burning hit by another bottle. */
+const FLARE_MS = 350;
 /** Hp bar: white flash on a hp drop, at most once per this many ms (fire and degraders drain every step). */
 const BAR_FLASH_MS = 90;
 const BAR_FLASH_EVERY_MS = 450;
@@ -298,6 +300,8 @@ class TargetView {
   }
   private ruined = false;
   private flashUntil = 0;
+  /** Render time until which an extra bottle's flare brightens the glow (0 = none). */
+  private flareUntil = 0;
   readonly zone: Phaser.Geom.Rectangle;
 
   constructor(
@@ -393,13 +397,26 @@ class TargetView {
     this.smoke.emitting = burning || ruined;
     this.smoke.frequency = burning ? this.smokeFreq.burning : this.smokeFreq.wisps;
     this.glow.setVisible(burning);
-    if (burning) this.glow.setAlpha(0.18 + 0.12 * Math.abs(Math.sin(nowMs / 70) * Math.sin(nowMs / 113)));
+    if (burning) {
+      const flare = this.flareUntil > nowMs ? (0.5 * (this.flareUntil - nowMs)) / FLARE_MS : 0;
+      this.glow.setAlpha(Math.min(1, 0.18 + 0.12 * Math.abs(Math.sin(nowMs / 70) * Math.sin(nowMs / 113)) + flare));
+    }
     this.mast?.setVisible(schoolSaved && !ruined);
     if (this.sprite && this.flashUntil > 0 && nowMs >= this.flashUntil) {
       this.flashUntil = 0;
       this.sprite.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
     }
     this.bar.update(t.hp / t.maxHp, !ruined && (t.hp < t.maxHp || t.state === 'attacked'), nowMs, dtMs);
+  }
+
+  /**
+   * A further bottle landed on a target already in flames: a burst of extra flames and a bright glow for FLARE_MS,
+   * on top of the running fire (which keeps going).
+   */
+  flare(nowMs: number): void {
+    if (!this.burning) return;
+    this.fire.emitParticle(this.def.prop ? 24 : 40);
+    this.flareUntil = nowMs + FLARE_MS;
   }
 
   /** Short white flash of the prop (repair). */
@@ -452,6 +469,8 @@ class TargetView {
 /** Every target's view plus the one-shot bursts of their events (fire out, collapse, repair). */
 export class TargetsLayer {
   private readonly views = new Map<TargetId, TargetView>();
+  /** Bottles seen in flight, by key, with where they land. */
+  private readonly inFlight = new Map<string, Vec>();
   private readonly sparkle: Phaser.GameObjects.Particles.ParticleEmitter;
   private readonly dust: Phaser.GameObjects.Particles.ParticleEmitter;
   private readonly steam: Phaser.GameObjects.Particles.ParticleEmitter;
@@ -494,6 +513,15 @@ export class TargetsLayer {
   }
 
   update(snap: Snapshot, nowMs: number, dtMs: number): void {
+    // a bottle that just landed on a target already shown burning flares it (the sim took its burst damage)
+    const flying = new Set<string>();
+    for (const m of snap.molotovs) flying.add(`${m.until}@${m.to.x},${m.to.y}`);
+    for (const [key, to] of this.inFlight) {
+      if (flying.has(key)) continue;
+      this.inFlight.delete(key);
+      for (const v of this.views.values()) if (v.def.door.x === to.x && v.def.door.y === to.y && v.isBurning) v.flare(nowMs);
+    }
+    for (const m of snap.molotovs) this.inFlight.set(`${m.until}@${m.to.x},${m.to.y}`, m.to);
     const saved = snap.school.stage === 'saved';
     for (const t of snap.targets) {
       const v = this.views.get(t.id);

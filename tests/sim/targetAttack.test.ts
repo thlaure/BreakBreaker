@@ -49,7 +49,7 @@ function world(target: TargetId, comp: AttackComposition, opts: { spawn?: Vec; s
       now += DT;
       for (const e of horde.step(DT, now, ctx())) {
         ev.push(e);
-        if (e.type === 'MolotovThrown') ev.push(...attack.onMolotov(e));
+        if (e.type === 'MolotovThrown') ev.push(...attack.onMolotov(e, { horde, rules }));
       }
       spawner.step();
       ev.push(...attack.step(DT, { horde, rules }));
@@ -63,8 +63,11 @@ function world(target: TargetId, comp: AttackComposition, opts: { spawn?: Vec; s
     return ev;
   };
   const mine = () => horde.list.filter((h) => h.incidentId === attack.id);
+  /** A bottle lands on the attacked target's door. */
+  const bottle = (): SimEvent[] =>
+    attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def(target).door, target }, { horde, rules });
   const koAll = () => mine().forEach((h) => horde.applyHit(h.lifeId, 99));
-  return { horde, rules, targets, attack, player, ctx, run, tick, mine, koAll, now: () => now };
+  return { horde, rules, targets, attack, player, ctx, run, tick, mine, koAll, bottle, now: () => now };
 }
 
 const only = (role: 'molotov' | 'degrader', n = 1): AttackComposition => ({
@@ -122,12 +125,14 @@ test('a molotov KO during its windup throws nothing and the car never burns', ()
 test('burning school with 3 degraders loses (2 + 3 × 1.2) hp per second; a 5th degrader adds nothing over 4', () => {
   const w = world('school', only('degrader', 5));
   w.attack.start();
-  expect(w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('school').door, target: 'school' })).toEqual([
+  expect(w.bottle()).toEqual([
     // the fire is what the HUD announces: the event carries the kind, the door and the round
     { type: 'TargetIgnited', target: 'school', incidentId: 'school#1', kind: 'school', pos: def('school').door, round: 1 },
   ]);
-  // a second bottle on a burning target ignites nothing
-  expect(w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('school').door, target: 'school' })).toEqual([]);
+  // a second bottle on a burning target ignites nothing (no new banner / alarm) but deals its burst damage
+  expect(w.bottle()).toEqual([]);
+  expect(w.targets.get('school').hp).toBe(100 - CONFIG.molotov.burstDamage);
+  w.targets.get('school').hp = 100;
   w.mine().slice(0, 3).forEach((h) => (h.state = 'degrade'));
   w.tick(1);
   expect(w.targets.get('school').hp).toBeCloseTo(100 - (CONFIG.target.fireDps + 3 * CONFIG.target.degradeDps), 6);
@@ -177,7 +182,7 @@ test('all attackers KO while burning: it smoulders (settled, not urgent, not res
   expect(CONFIG.target.smoulderDps).toBe(0.7);
   const w = world('school', lineup('school', 2, 0), { school: true });
   w.attack.start();
-  w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('school').door, target: 'school' });
+  w.bottle();
   w.koAll();
   const ev0 = w.tick(DT);
   expect(w.attack.stage).toBe('smoulder');
@@ -209,7 +214,7 @@ test('all attackers KO while burning: it smoulders (settled, not urgent, not res
 test('a smouldering target burnt down to 0: ruined once, −3 once, BuildingDestroyed, destroyed', () => {
   const w = world('car1', only('molotov'));
   w.attack.start();
-  w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('car1').door, target: 'car1' });
+  w.bottle();
   w.koAll();
   w.tick(DT);
   expect(w.attack.stage).toBe('smoulder');
@@ -226,7 +231,7 @@ test('a smouldering target burnt down to 0: ruined once, −3 once, BuildingDest
 test('hp 0: destroyed, target ruined, −3 once, BuildingDestroyed carries the target; start() on a ruin returns false', () => {
   const w = world('school', lineup('school', 1, 0), { school: true });
   w.attack.start();
-  w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('school').door, target: 'school' });
+  w.bottle();
   w.targets.get('school').hp = 1;
   const ev = w.tick(1);
   expect(w.attack.stage).toBe('destroyed');
@@ -313,7 +318,7 @@ test('a ruin from another source during the smoulder is neither awarded nor pena
   const w = world('car1', only('degrader', 1));
   w.attack.start();
   w.tick(0.1);
-  w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('car1').door, target: 'car1' });
+  w.bottle();
   w.koAll();
   w.tick(0.1);
   expect(w.attack.stage).toBe('smoulder');
@@ -321,4 +326,23 @@ test('a ruin from another source during the smoulder is neither awarded nor pena
   expect(w.tick(3)).toEqual([]);
   expect(w.attack.stage).toBe('destroyed');
   expect(w.rules.score).toBe(0);
+});
+
+test('a bottle on an already burning target: burst of 8 hp, no TargetIgnited; a burst at low hp ruins once, −3 once', () => {
+  expect(CONFIG.molotov.burstDamage).toBe(8);
+  const w = world('school', only('degrader', 2));
+  w.attack.start();
+  expect(w.bottle().map((e) => e.type)).toEqual(['TargetIgnited']);
+  expect(w.bottle()).toEqual([]);
+  expect(w.bottle()).toEqual([]);
+  expect(w.targets.get('school')).toMatchObject({ hp: 100 - 2 * 8, burning: true });
+  w.targets.get('school').hp = 5;
+  expect(w.bottle()).toEqual([{ type: 'BuildingDestroyed', incidentId: 'school#1', target: 'school' }]);
+  expect(w.attack.stage).toBe('destroyed');
+  expect(w.targets.get('school')).toMatchObject({ state: 'ruined', lostIncidentId: 'school#1' });
+  expect(w.rules.score).toBe(CONFIG.casse.scores.school[1]);
+  // a resolved attack takes no more bottles; no second ruin or penalty
+  expect(w.bottle()).toEqual([]);
+  expect(w.tick(1)).toEqual([]);
+  expect(w.rules.score).toBe(CONFIG.casse.scores.school[1]);
 });

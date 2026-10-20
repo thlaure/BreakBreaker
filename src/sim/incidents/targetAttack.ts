@@ -102,9 +102,18 @@ export class TargetAttack {
     return true;
   }
 
-  /** A bottle landed on a target: sets this attack's target on fire while it is being attacked. */
-  onMolotov(e: Extract<SimEvent, { type: 'MolotovThrown' }>): SimEvent[] {
+  /**
+   * A bottle landed on a target while it is being attacked: sets it on fire, or, already burning, takes
+   * CONFIG.molotov.burstDamage hp off it (ruin path as for the fire).
+   */
+  onMolotov(e: Extract<SimEvent, { type: 'MolotovThrown' }>, ctx: AttackCtx): SimEvent[] {
     if (e.target !== this.target || !this.urgent()) return [];
+    if (this.targets.get(this.target).burning) {
+      // already on fire: no new ignition (no banner, no alarm) but the bottle still hurts
+      const ev: SimEvent[] = [];
+      if (this.targets.damage(this.target, CONFIG.molotov.burstDamage)) this.destroy(ctx, ev);
+      return ev;
+    }
     if (!this.targets.ignite(this.target, this.id)) return [];
     const door = DISTRICT.targets.find((t) => t.id === this.target)!.door;
     return [{ type: 'TargetIgnited', target: this.target, incidentId: this.id, kind: this.kind, pos: { ...door }, round: this.round }];
@@ -171,7 +180,7 @@ export class TargetAttack {
     return ev;
   }
 
-  /** hp 0: ruin, loss points once. */
+  /** hp 0 (fire, degraders or a bottle burst): ruin, loss points once. */
   private destroy(ctx: AttackCtx, ev: SimEvent[]): void {
     this.targets.ruin(this.target, this.id);
     this.lose();
