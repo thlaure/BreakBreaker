@@ -112,7 +112,7 @@ La révision 1.5 intègre des décisions **confirmées** : héros fictif Paul, b
 | EX-23 | Déplacement libre, mais impossibilité de traverser les bâtiments, les troncs d’arbre et les obstacles solides. |
 | EX-24 | Landing page publique simple donnant accès au jeu ; contenu et fonctionnement définis ici, direction visuelle traitée séparément avec Claude. |
 | EX-25 | Armes ramassables apparaissant aléatoirement dans les rues ; chacune met un casseur KO en un coup, avec portée et nombre de coups propres ; aucune arme à feu (section 8.7). |
-| EX-26 | Manches à effectif fixe : un nombre de casseurs à neutraliser et un à trois objectifs par manche, écran « Manche N terminée » et courte respiration entre deux manches (section 12.2). |
+| EX-26 | Manches à effectif fixe : un nombre de casseurs à neutraliser et un à trois objectifs par manche, panneau « Manche N terminée » non bloquant et aucun temps mort entre deux manches : la manche suivante démarre pendant l’affichage du bilan (section 12.2). |
 | EX-27 | Landing sobre (titre, accroche, boutons Jouer et Commandes, pied de page) avec visuel original ; règles et instructions affichées au lancement du jeu ; bouton « Commandes » (modale) sur la landing et dans le jeu (section 26). |
 | EX-28 | Alerte visible dans le style pixel du jeu à l’apparition de chaque incident (« ÉCOLE EN FEU ! », « AGRESSION EN COURS ! », « VOL EN COURS ! ») avec flèche et distance, puis indicateur en bord d’écran par incident actif hors écran ; système générique réutilisé par les futurs événements de casse (section 14.1). |
 
@@ -167,7 +167,7 @@ La première école est indiquée, ainsi qu’un groupe pacifique et un soin pro
 
 ### 4.3 Boucle
 
-Explorer → repérer un objectif / un soin / une arme → combattre ou contourner → esquiver et récupérer des pierres → les renvoyer → résoudre les objectifs et neutraliser l’effectif de la manche → écran « Manche N terminée » et respiration → nouvelle manche.
+Explorer → repérer un objectif / un soin / une arme → combattre ou contourner → esquiver et récupérer des pierres → les renvoyer → résoudre les objectifs et neutraliser l’effectif de la manche → panneau « Manche N terminée » (non bloquant) pendant que la manche suivante démarre.
 
 La réussite des objectifs n’arrête pas la session. Santé, score, KO, soins utilisés, stock porté et arme tenue persistent entre objectifs et manches, sous les règles de réapprovisionnement.
 
@@ -525,7 +525,7 @@ Les délais de frappe, la destruction d’un bâtiment attaqué, la détresse d�
 
 **Confirmé :** les manches remplacent les vagues sans fin comme structure cible. Une manche fixe un nombre de casseurs à mettre KO et un à trois objectifs. Elle se termine quand tout son effectif a été neutralisé et que ses objectifs sont résolus, réussis ou perdus. Un objectif échoué ne termine jamais la session ; seul le KO de Paul y met fin.
 
-Entre deux manches : écran de bilan « Manche N terminée » (KO, objectifs réussis ou perdus, points gagnés), recharge des stations de soin, courte respiration sans nouvel assaut, puis annonce de la manche suivante. Le joueur conserve sa santé, son score, ses KO, ses formations, son stock de pierres, son kit porté, son arme tenue avec ses coups restants et son historique de soins.
+Entre deux manches : un panneau de bilan non bloquant « Manche N terminée » (KO, objectifs réussis ou perdus, points gagnés, bonus, nouveautés) s’affiche environ 6 s, sans masquer Paul, **pendant que la manche suivante a déjà commencé** (annonce « MANCHE N+1 ! », premier casseur dans la seconde et demie) ; les stations de soin sont rechargées. Aucun temps mort : la règle du flux régulier (jamais plus d’environ 3 s sans casseur actif) vaut aussi entre deux manches. Le joueur conserve sa santé, son score, ses KO, ses formations, son stock de pierres, son kit porté, son arme tenue avec ses coups restants et son historique de soins.
 
 Les casseurs affectés aux objectifs (première ligne, renforts, défenseurs, agresseurs de secours) font partie de l’effectif de la manche. Une réparation optionnelle d’un bâtiment déjà perdu n’empêche pas la transition. Les secours déjà déclenchés doivent être résolus ou reportés explicitement avec leur état ; ils ne disparaissent pas gratuitement au changement de manche. La boutique, détaillée en section 23, fait partie de la cible de diffusion : elle apparaît comme « commerce pillé » dès la manche 2, puis dans le mélange des manches suivantes.
 
@@ -562,7 +562,7 @@ Déroulement interne proposé : les casseurs entrent un par un, à 1,5 seconde d
 
 **Flux régulier, sans trou.** Aucun repos entre deux vagues : la vague suivante démarre dès que la file d’entrée est vide et qu’il reste au plus trois casseurs actifs, et son premier casseur entre au plus 1,5 s après le début de la vague. La respiration entre l’école et le secours est de 2 s. Une fois l’intro terminée, il ne s’écoule jamais plus d’environ 3 s sans casseur actif sur la carte ; la patrouille de sécurité (3 casseurs après 25 s sans personne) reste en place. La première vague de remplissage (vague 3) ne comporte aucun lanceur.
 
-Préparer au moins quatre compositions d’assaut et plusieurs points d’apparition. Aucun nouvel objectif ne doit se déclencher pendant une cinématique suspendue. Les respirations entre manches sont des délais locaux ; elles n’imposent pas un chronomètre de partie.
+Préparer au moins quatre compositions d’assaut et plusieurs points d’apparition. Aucun nouvel objectif ne doit se déclencher pendant une cinématique suspendue. Le panneau de bilan entre manches est un délai local d’affichage ; il n’impose pas un chronomètre de partie.
 
 ### 12.3 Directeur de pression
 
@@ -638,7 +638,7 @@ Une baisse de fréquence de rendu ne doit pas modifier les trajectoires et conta
 | --- | --- |
 | Santé du héros à zéro | Défaite arcade et bilan définitif |
 | Objectif perdu | Pénalité ou bonus manqué ; session poursuivie |
-| Manche terminée | Écran « Manche N terminée », stations rechargées, respiration, nouvelle manche ; santé, score et arme conservés |
+| Manche terminée | Panneau « Manche N terminée » non bloquant, stations rechargées, nouvelle manche déjà lancée ; santé, score et arme conservés |
 | Pause | Session suspendue, aucun résultat validé |
 | Arrêt volontaire | Bilan marqué « Session interrompue volontairement » |
 | Problème technique irrécupérable | Sortie technique signalée, pas de fausse défaite enregistrée |
@@ -1130,7 +1130,7 @@ Tests de règles ; intégration avec horloge contrôlée ; navigateur avec rendu
 | RC-31 | Capture avec contestation / sortie | Jauge suspendue, valeur conservée. |
 | RC-32 | Capture réussie | Conditions de temps local et défenseurs réunies, drapeau français, session poursuivie. |
 | RC-33 | Boutique rouverte | Gains uniques, pas de soin complet implicite. |
-| RC-34 | Passer une manche | Effectif neutralisé et objectifs résolus : écran « Manche N terminée », stations rechargées, respiration ; score, santé, stock et arme conservés. |
+| RC-34 | Passer une manche | Effectif neutralisé et objectifs résolus : panneau non bloquant « Manche N terminée » (~6 s) pendant que la manche suivante démarre, stations rechargées ; score, santé, stock et arme conservés ; aucune période de plus de 3 s sans casseur actif. |
 | RC-35 | Reprendre un objectif | Nouvelle occurrence explicite et nouveaux gains possibles, pas un doublon. |
 | RC-36 | Marcher sur un point de soin chargé | +25 immédiat plafonné à 100, sans touche ni maintien ; charge consommée une seule fois. |
 | RC-37 | Repasser sur une station utilisée | « Épuisé », aucun gain jusqu’à la manche suivante. |
@@ -1266,7 +1266,7 @@ Installation PWA facultative, démarrage hors connexion après cache complet, ma
 | Armes | Bâton, Marteau, Panneau de signalisation ; apparition aléatoire, usure et bris | Gant de boxe à ressort, Kamehame, Bouclier |
 | Objectifs | École (première ligne, renforts, délai local), secours dynamique | Monument, boutique, kits de réparation |
 | Soins | Stations au contact, petits soins de terrain | — |
-| Structure | Vagues successives avec pression `P = min(12, 1 + floor(vague / 2) + floor(KO / 30))`, entrée un par un, au plus 12 sur la carte | Manches à effectif fixe, écran « Manche N terminée », progression de la section 12.2 |
+| Structure | Vagues successives avec pression `P = min(12, 1 + floor(vague / 2) + floor(KO / 30))`, entrée un par un, au plus 12 sur la carte | Manches à effectif fixe, panneau « Manche N terminée » non bloquant, progression de la section 12.2 |
 | Score et bilan | Score, compteur « Casseurs neutralisés », record local, bilan | Statistiques de manche |
 | Accès | Landing sur `/`, jeu sur `/jouer/`, démarrage immédiat par `/jouer/?go` | — |
 | Validation | Tests Vitest de simulation et build de vérification | Recette sur appareils réels et endurance |
@@ -1335,7 +1335,7 @@ Une capture d’écran pixelisée, une conversion de perspective ou les anciens 
 - **1.5 — 20 octobre 2026 :** héros renommé Paul, commerçant fictif, sans référence à une personne réelle ; barème égal (+1 par KO, drapeaux cosmétiques) ; compteur neutre « Casseurs neutralisés » à la place de l’ancien compteur et suppression des lignes satiriques du bilan ; frappe circulaire à 360° (56 px, trois cibles) ; soins appliqués au contact ; armes ramassables (section 8.7, EX-25) et nouvelles armes proposées pour la tranche 2 ; manches à effectif fixe remplaçant les vagues sans fin (EX-26) et nouvelle formule de pression ; choix techniques effectifs (Phaser 4.2.1, Vite, TypeScript, Vitest, simulation pure, tuiles 32 px, LPC/Kenney) ; lancement direct par `/jouer/?go` ; section 24 décrivant la première tranche ; recette RC-79 à RC-85.
 - **1.6 — 20 octobre 2026 :** landing sobre avec visuel original en pixel art (scène composée à partir des tuiles et sprites du jeu par `npm run hero`, drapeaux exclus ; pas de photographie d’événement réel) et police pixel Press Start 2P (licence SIL OFL 1.1, créditée) ; règles et instructions affichées au lancement du jeu (carte « Comment jouer » non bloquante avec `?go`, écran de départ pour l’accès direct) ; bouton « Commandes » (modale) sur la landing et dans le jeu ; EX-27 et RC-86 à RC-90.
 - **1.7 — 21 octobre 2026 :** le secours se termine automatiquement une fois les agresseurs neutralisés (bulle « MERCI ! » environ 1,5 s, bonus +6 une fois), sans maintien de F ; bulles de victime « À L’AIDE ! » / « MERCI ! » ; alertes d’incident dans le style pixel du jeu (bannière « ÉCOLE EN FEU ! », « AGRESSION EN COURS ! », « VOL EN COURS ! » avec flèche et distance, indicateurs en bord d’écran par incident actif), génériques pour les futurs événements de casse ; ligne Agir de la section 7 réservée aux réparations et au rideau ; icône du site (favicon pixel, tête de Paul) ; EX-28, RC-62, RC-65, RC-66 ajustés, RC-91 et RC-92.
-- **1.8 — 21 octobre 2026 :** vagues numérotées à partir de 1 (école = vague 1, secours = vague 2, puis vagues de remplissage), jamais 0 ; objectif K/T par vague affiché dans le HUD (« Vague N : K/T casseurs ») ; chaque vague annoncée (bannière pixel « VAGUE N ! » sans flèche, ligne « Vague N · T casseurs » sur les bannières de l’école et du secours) ; flux régulier sans repos entre vagues (premier casseur ≤ 1,5 s après le début d’une vague, respiration école → secours de 2 s, jamais plus de 3 s sans casseur actif) ; RC-85 ajustée, RC-93 et RC-94.
+- **1.8 — 21 octobre 2026 :** vagues numérotées à partir de 1 (école = vague 1, secours = vague 2, puis vagues de remplissage), jamais 0 ; objectif K/T par vague affiché dans le HUD (« Vague N : K/T casseurs ») ; chaque vague annoncée (bannière pixel « VAGUE N ! » sans flèche, ligne « Vague N · T casseurs » sur les bannières de l’école et du secours) ; flux régulier sans repos entre vagues (premier casseur ≤ 1,5 s après le début d’une vague, respiration école → secours de 2 s, jamais plus de 3 s sans casseur actif) ; RC-85 ajustée, RC-93 et RC-94. Entre les manches, le bilan devient un panneau non bloquant sans temps mort (la manche suivante démarre pendant son affichage).
 
 ## 26. Landing page et accès au jeu
 
