@@ -241,11 +241,11 @@ describe('incidentLines', () => {
     const [rescue, none] = incidentLines(s, 'en cours');
     expect(none).toBeUndefined();
     expect(rescue).toMatchObject({ name: 'Secours', time: '13 s', status: 'en cours' });
-    s.rescue = { stage: 'secured', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+    s.rescue = { id: 'rescue#1', stage: 'secured', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
     expect(incidentLines(s, 'en cours')[0]).toMatchObject({ status: 'sécurisé' });
-    s.rescue = { stage: 'failed', remaining: 0, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+    s.rescue = { id: 'rescue#1', stage: 'failed', remaining: 0, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
     expect(incidentLines(s, 'en cours')).toEqual([]);
-    s.rescue = { stage: 'completed', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+    s.rescue = { id: 'rescue#1', stage: 'completed', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
     expect(incidentLines(s, 'en cours')).toEqual([]);
   });
 });

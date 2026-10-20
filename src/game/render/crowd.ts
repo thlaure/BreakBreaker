@@ -159,8 +159,9 @@ export class VictimView {
       this.clear();
       return;
     }
-    const key = `${rescue.victimPos.x},${rescue.victimPos.y}`;
-    if (this.view && key !== this.key) this.clear(); // a new rescue elsewhere
+    // one view per rescue: a new rescue (even at the same site as the last one) never reuses the previous, faded victim
+    const key = rescue.id;
+    if (this.view && key !== this.key) this.clear();
     this.key = key;
     if (!this.view) {
       const sheet = rescue.kind === 'elderlyRobbed' ? 'elder_1' : 'elder_2';

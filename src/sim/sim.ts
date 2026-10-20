@@ -106,7 +106,7 @@ export interface Snapshot {
   firePatches: { id: number; pos: Vec; r: number; secondsLeft: number }[];
   /** The latest school attack; `integrity` = school hp in percent. */
   school: { stage: SchoolStage; integrity: number; status: ReturnType<SchoolIncident['status']> };
-  rescue: { stage: RescueStage; remaining: number; victimPos: Vec; kind: RescueKind } | null;
+  rescue: { id: string; stage: RescueStage; remaining: number; victimPos: Vec; kind: RescueKind } | null;
   stations: { id: string; pos: Vec; charged: boolean }[];
   stationMessage: StationMessage;
   /** Weapon in Paul's hands (null = bare hands) and strikes left. */
@@ -434,7 +434,7 @@ export class Sim {
         integrity: this.school.integrity(),
         status: this.school.status(),
       },
-      rescue: r ? { stage: r.stage, remaining: r.remaining, victimPos: v(r.victimPos), kind: r.kind } : null,
+      rescue: r ? { id: r.id, stage: r.stage, remaining: r.remaining, victimPos: v(r.victimPos), kind: r.kind } : null,
       stations: this.stations.list.map((s) => ({ id: s.id, pos: v(s.pos), charged: s.charged })),
       stationMessage: this.stationMessage,
       weapon: this.weapons.held ? { ...this.weapons.held } : null,

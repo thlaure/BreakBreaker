@@ -618,3 +618,18 @@ describe('a burning target stays so until put out (no fire going out by itself)'
     }
   });
 });
+
+test('the snapshot names each rescue, so a new rescue at the same site is never mistaken for the previous one (invisible victim bug)', () => {
+  const sim = new Sim(5, { invulnerable: true });
+  const ids: string[] = [];
+  drive(
+    sim,
+    () => {
+      const id = sim.snapshot().rescue?.id;
+      if (id && !ids.includes(id)) ids.push(id);
+      return ids.length >= 2;
+    },
+    { koAfterSec: 1 },
+  );
+  expect(ids).toEqual(['rescue#1', 'rescue#2']);
+});
