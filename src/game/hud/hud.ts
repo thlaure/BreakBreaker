@@ -30,7 +30,6 @@ import {
 } from './format';
 
 /** How long the launch card stays on screen if the player does not close it. */
-const INTRO_MS = 25_000;
 
 export interface CameraView {
   /** World coordinates of the top-left corner of the visible area. */
@@ -154,7 +153,7 @@ export class Hud {
 
   private readonly tools = el('div', 'bb-tools');
   private intro: HTMLElement | null = null;
-  private introTimer: ReturnType<typeof setTimeout> | null = null;
+  private introCleanup: (() => void) | null = null;
 
   constructor(
     parent: HTMLElement,
@@ -216,13 +215,14 @@ export class Hud {
   }
 
   /**
-   * Non-blocking card shown when the game launches (the game is already running): goal + the main keys.
-   * Closes with its button, on its own after INTRO_MS, or when `hideIntro` is called.
+   * Blocking card shown when the game launches: goal + the main keys, over a dimmed screen. The game waits (the caller
+   * pauses the sim); any key, click or tap anywhere calls `onDismiss` (once) and closes it. `hideIntro` closes it silently.
    */
-  showIntro(touch: boolean): void {
+  showIntro(touch: boolean, onDismiss: () => void = () => undefined): void {
     this.hideIntro();
     const card = el('div', 'bb-intro');
-    card.setAttribute('role', 'status');
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-label', 'Comment jouer');
     card.append(el('b', 'title', 'Comment jouer'), el('p', 'goal', INTRO_GOAL));
     const list = el('dl', 'keys');
     for (const name of INTRO_ACTIONS) {
@@ -230,18 +230,36 @@ export class Hud {
       if (!row) continue;
       list.append(el('dt', '', name), el('dd', '', touch ? row.touch : row.keyboard));
     }
-    const close = el('button', 'close', 'Compris');
-    close.type = 'button';
-    close.addEventListener('click', () => this.hideIntro());
-    card.append(list, close);
-    this.intro = card;
-    this.root.append(card);
-    this.introTimer = setTimeout(() => this.hideIntro(), INTRO_MS);
+    const go = el('p', 'go', touch ? 'Touche l’écran pour commencer' : 'Appuie sur une touche pour commencer');
+    card.append(list, go);
+    const veil = el('div', 'bb-intro-veil');
+    veil.append(card);
+    let done = false;
+    const dismiss = (e: Event): void => {
+      if (done) return;
+      // a lone modifier (Maj, Ctrl…) is not "a key": wait for a real one
+      if (e instanceof KeyboardEvent && ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(e.key)) return;
+      done = true;
+      // the key that starts the game must not also act in it
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      this.hideIntro();
+      onDismiss();
+    };
+    // capture on window: the key or tap never reaches the game controls underneath
+    window.addEventListener('keydown', dismiss, true);
+    window.addEventListener('pointerdown', dismiss, true);
+    this.introCleanup = () => {
+      window.removeEventListener('keydown', dismiss, true);
+      window.removeEventListener('pointerdown', dismiss, true);
+    };
+    this.intro = veil;
+    this.root.append(veil);
   }
 
   hideIntro(): void {
-    if (this.introTimer) clearTimeout(this.introTimer);
-    this.introTimer = null;
+    this.introCleanup?.();
+    this.introCleanup = null;
     this.intro?.remove();
     this.intro = null;
   }

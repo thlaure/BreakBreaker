@@ -17,7 +17,7 @@ export interface UiHost {
   restart(): void;
 }
 
-type Phase = 'start' | 'playing' | 'paused' | 'ending' | 'ended';
+type Phase = 'start' | 'intro' | 'playing' | 'paused' | 'ending' | 'ended';
 
 const KO_SUMMARY_DELAY_MS = 700;
 const UNLOCK_EVENTS = ['keydown', 'pointerdown'] as const;
@@ -70,11 +70,12 @@ export class GameUi {
     this.host.events.on('sim-events', this.onEvents as never);
     document.addEventListener('visibilitychange', this.onVisibility);
     if (autostart) {
-      this.phase = 'playing';
+      // No start screen on this page, but the instructions card blocks the game until a key or tap.
+      this.phase = 'intro';
       this.hud.show(true);
-      this.audio.resume();
-      // The game is already running (no start screen): show the instructions over it.
-      this.hud.showIntro(document.getElementById('touch-ui')?.classList.contains('visible') ?? false);
+      this.host.sim.pause();
+      this.host.releaseInputs();
+      this.hud.showIntro(document.getElementById('touch-ui')?.classList.contains('visible') ?? false, () => this.endIntro());
       // No Commencer click on this page: the first key, click or tap unlocks audio (browsers require a gesture here).
       if (!this.audio.unlocked) {
         const unlock = (): void => {
@@ -129,6 +130,16 @@ export class GameUi {
     this.host.releaseInputs();
     this.audio.suspend();
     this.menus.showControls();
+  }
+
+  /** The key or tap that dismissed the instructions card: the game starts now. */
+  private endIntro(): void {
+    if (this.phase !== 'intro') return;
+    this.phase = 'playing';
+    void this.audio.unlock();
+    this.audio.resume();
+    this.host.releaseInputs();
+    this.host.sim.resume();
   }
 
   private start(): void {
