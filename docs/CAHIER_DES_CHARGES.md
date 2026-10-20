@@ -527,17 +527,34 @@ Les délais de frappe, la destruction d’un bâtiment attaqué, la détresse d�
 
 Entre deux manches : écran de bilan « Manche N terminée » (KO, objectifs réussis ou perdus, points gagnés), recharge des stations de soin, courte respiration sans nouvel assaut, puis annonce de la manche suivante. Le joueur conserve sa santé, son score, ses KO, ses formations, son stock de pierres, son kit porté, son arme tenue avec ses coups restants et son historique de soins.
 
-Les casseurs affectés aux objectifs (première ligne, renforts, défenseurs, agresseurs de secours) font partie de l’effectif de la manche. Une réparation optionnelle d’un bâtiment déjà perdu n’empêche pas la transition. Les secours déjà déclenchés doivent être résolus ou reportés explicitement avec leur état ; ils ne disparaissent pas gratuitement au changement de manche. La boutique, détaillée en section 23, fait partie de la cible de diffusion et s’insère dans le mélange des manches suivantes.
+Les casseurs affectés aux objectifs (première ligne, renforts, défenseurs, agresseurs de secours) font partie de l’effectif de la manche. Une réparation optionnelle d’un bâtiment déjà perdu n’empêche pas la transition. Les secours déjà déclenchés doivent être résolus ou reportés explicitement avec leur état ; ils ne disparaissent pas gratuitement au changement de manche. La boutique, détaillée en section 23, fait partie de la cible de diffusion : elle apparaît comme « commerce pillé » dès la manche 2, puis dans le mélange des manches suivantes.
 
 Progression proposée (valeurs **Proposé**, à équilibrer) :
 
-| Manche | Casseurs à neutraliser | Objectifs et nouveautés |
-| --- | ---: | --- |
-| 1 | 10 | École ; casseurs au contact uniquement |
-| 2 | 14 | École et secours ; apparition des lanceurs |
-| 3 | 18 | Deux urgences simultanées ; nouvelle arme |
-| 4 | 22 | Ajout du monument ; casseurs renforcés |
-| 5 et suivantes | +4 par manche, plafonné vers 40 grâce à la file d’entrée | Mélange aléatoire pondéré des objectifs ; une nouvelle arme ou un nouveau type d’ennemi toutes les deux manches |
+| Manche | Casseurs à neutraliser | Objectifs et nouveautés | Casse (nouveaux éléments) |
+| --- | ---: | --- | --- |
+| 1 | 10 | École ; casseurs au contact uniquement | École en feu |
+| 2 | 14 | École, secours puis commerce ; apparition des lanceurs | + Commerce pillé (rideau forcé) |
+| 3 | 18 | Deux urgences simultanées ; nouvelle arme (gant de boxe à ressort) | + Voiture en feu, abribus saccagé (l’un des deux par manche) |
+| 4 | 22 | Ajout du monument ; casseurs renforcés | + Monument occupé |
+| 5 | 26 | Deux lieux attaqués à la fois puis monument ou secours ; nouvelle arme (bouclier) | + École maternelle en feu, kiosque saccagé |
+| 6 et suivantes | +4 par manche, plafonné à 40 grâce à la file d’entrée | Deux lieux attaqués à la fois tirés dans le catalogue, puis monument ou secours ; une nouvelle arme ou un nouveau type d’ennemi toutes les deux manches (Kamehame en manche 7) | + Mairie attaquée (manche 7), bibliothèque en feu (manche 9) |
+
+**Catalogue de casse — Proposé.** Chaque élément de casse est un lieu de la carte (bâtiment existant ou mobilier urbain ajouté) avec des états visibles : intact → attaqué (feu, fumée, vitres brisées) → ruine persistante → réparé par kit. Il réutilise la mécanique de l’école : une seule réserve de temps qui ne décroît que pendant une dégradation effective, ruine qui persiste entre les manches, réparation par kit (section 10.6), apparitions comptées dans l’effectif de la manche. Un lieu en ruine n’est plus tiré au sort tant qu’il n’est pas réparé ; s’il était prévu, ses casseurs rejoignent la file de la manche.
+
+| Élément | Lieu | Disponible dès | Réserve | Points sauvé / perdu / réparé |
+| --- | --- | ---: | ---: | --- |
+| École en feu | École (nord-ouest) | Manche 1 | 30 s | +8 / −3 / +5 |
+| Commerce pillé | Boutique ; puis rideau à relever avec Agir | Manche 2 | 30 s | +4 dispersé, +5 rideau / 0 / +5 |
+| Voiture en feu | Deux emplacements de voiture garée | Manche 3 | 20 s | +4 / −2 / +3 |
+| Abribus saccagé | Abribus | Manche 3 | 20 s | +4 / −2 / +3 |
+| Monument occupé | Monument (capture, section 11) | Manche 4 | — | +10 à la capture |
+| École maternelle en feu | Bâtiment sud-ouest | Manche 5 | 30 s | +8 / −3 / +5 |
+| Kiosque saccagé | Kiosque à journaux | Manche 5 | 20 s | +4 / −2 / +3 |
+| Mairie attaquée | Bâtiment nord | Manche 7 | 30 s | +8 / −3 / +5 |
+| Bibliothèque en feu | Bâtiment sud | Manche 9 | 30 s | +8 / −3 / +5 |
+
+À partir de la manche 5, deux lieux sont attaqués en même temps (nouveautés de la manche d’abord, puis tirage pondéré favorisant les lieux absents de la manche précédente), dans la limite de deux urgences simultanées (une seule en manches 1 et 2). Seule l’école principale garde la séquence première ligne + renforts ; les autres lieux ont une seule ligne de casseurs. Chaque incident déclenche l’alerte pixel de la section 14.1. Le mobilier urbain ajouté (voitures, abribus, kiosque) est solide, laisse au moins une tuile libre autour de lui, reste à l’écart du groupe pacifique, des points d’apparition et des stations, et ne coupe aucun passage.
 
 Déroulement interne proposé : les casseurs entrent un par un, à 1,5 seconde d’intervalle, avec au plus douze casseurs sur la carte à la fois ; les suivants attendent dans une file d’entrée. Une vague regroupe des entrées consécutives et six secondes de repos séparent deux vagues. La première vague ne comporte aucun lanceur.
 
@@ -735,6 +752,21 @@ Santé de Paul, score, manche, compteur « Casseurs neutralisés » et casseurs 
 Les groupes pacifiques ont un signe lisible de neutralité et une alerte distincte si une victime est en détresse. Une icône neutre ne doit jamais être remplacée par un marqueur d’ennemi sur une victime. La cible de contact ou de renvoi assisté ne peut pas les désigner. Les projectiles doivent se distinguer du sol, des pierres ramassables, des armes au sol, des soins et des décors.
 
 **Alertes d’incident.** À l’apparition de chaque incident, une bannière dans le style pixel du jeu (police pixel, bordures franches, ombre portée dure de 4 px, animations par paliers) s’affiche en haut au centre, sans recouvrir le panneau de santé ni le bouton Commandes, lisible jusqu’à 320 px de large : « ÉCOLE EN FEU ! » (palette orange/rouge, icône flamme, « Rejoins l’école »), « AGRESSION EN COURS ! » (« Une personne est menacée ») ou « VOL EN COURS ! » (« Une personne âgée est menacée ») en palette jaune avec icône d’alerte. Elle porte une flèche pixel orientée de Paul vers l’incident, mise à jour en continu, et la distance en mètres (une tuile = 1 m). Elle disparaît seule après environ six secondes ; une seconde alerte attend la fin de la première. Elle est annoncée aux lecteurs d’écran (`role="alert"`) et n’est pas interactive. Ensuite, chaque incident actif (école menacée, victime menacée) dont la cible est hors écran a un indicateur en bord d’écran : icône, libellé court (« ÉCOLE », « AGRESSION », « VOL »), distance et flèche, sur fond sombre (contraste ≥ 4,5:1), à l’écart du panneau, du bouton Commandes et des commandes tactiles. Toutes ces animations sont coupées avec `prefers-reduced-motion`. Le système est générique (type, libellé, position) : les futurs événements de casse le réutilisent.
+
+**Alertes des éléments de casse — Proposé** (même style, même file d’attente ; nouvelles icônes pixel : rideau forcé, vitre brisée, fanion neutre sans drapeau national) :
+
+| Élément | Titre | Sous-titre | Libellé du bord d’écran | Palette et icône |
+| --- | --- | --- | --- | --- |
+| Commerce pillé | « COMMERCE PILLÉ ! » | « Disperse les pilleurs » | COMMERCE | jaune, rideau forcé |
+| Voiture en feu | « VOITURE EN FEU ! » | « Chasse les casseurs » | VOITURE | orange/rouge, flamme |
+| Abribus saccagé | « ABRIBUS SACCAGÉ ! » | « Arrête la casse » | ABRIBUS | jaune, vitre brisée |
+| Kiosque saccagé | « KIOSQUE SACCAGÉ ! » | « Protège le kiosque » | KIOSQUE | jaune, vitre brisée |
+| Monument occupé | « MONUMENT OCCUPÉ ! » | « Reprends le drapeau » | MONUMENT | jaune, fanion |
+| École maternelle en feu | « MATERNELLE EN FEU ! » | « Rejoins l’école maternelle » | MATERNELLE | orange/rouge, flamme |
+| Mairie attaquée | « MAIRIE ATTAQUÉE ! » | « Défends la mairie » | MAIRIE | orange/rouge, flamme |
+| Bibliothèque en feu | « BIBLIOTHÈQUE EN FEU ! » | « Sauve la bibliothèque » | BIBLIO | orange/rouge, flamme |
+
+Un lieu attaqué, un commerce en cours de pillage et un monument occupé ont chacun leur indicateur en bord d’écran tant qu’ils sont actifs.
 
 Afficher les états : préparation ennemie, pierre en vol, pierre récupérable, stock plein, arme au sol, arme brisée, soin chargé ou épuisé, santé au maximum, cercle contesté, objectif résolu, fin de manche. Les annonces ne doivent pas masquer une zone d’impact ou une échappatoire. Au plus deux alertes urgentes sont détaillées ; une sélection affiche le trajet ou la direction vers l’incident choisi.
 
@@ -1294,7 +1326,7 @@ Une capture d’écran pixelisée, une conversion de perspective ou les anciens 
 - **1.4 — 19 octobre 2026 :** landing page, contenu de présentation, routes distinctes, chargement différé du jeu et recette du parcours site → jeu.
 - **1.5 — 20 octobre 2026 :** héros renommé Paul, commerçant fictif, sans référence à une personne réelle ; barème égal (+1 par KO, drapeaux cosmétiques) ; compteur neutre « Casseurs neutralisés » à la place de l’ancien compteur et suppression des lignes satiriques du bilan ; frappe circulaire à 360° (56 px, trois cibles) ; soins appliqués au contact ; armes ramassables (section 8.7, EX-25) et nouvelles armes proposées pour la tranche 2 ; manches à effectif fixe remplaçant les vagues sans fin (EX-26) et nouvelle formule de pression ; choix techniques effectifs (Phaser 4.2.1, Vite, TypeScript, Vitest, simulation pure, tuiles 32 px, LPC/Kenney) ; lancement direct par `/jouer/?go` ; section 24 décrivant la première tranche ; recette RC-79 à RC-85.
 - **1.6 — 20 octobre 2026 :** landing sobre avec visuel original en pixel art (scène composée à partir des tuiles et sprites du jeu par `npm run hero`, drapeaux exclus ; pas de photographie d’événement réel) et police pixel Press Start 2P (licence SIL OFL 1.1, créditée) ; règles et instructions affichées au lancement du jeu (carte « Comment jouer » non bloquante avec `?go`, écran de départ pour l’accès direct) ; bouton « Commandes » (modale) sur la landing et dans le jeu ; EX-27 et RC-86 à RC-90.
-- **1.7 — 21 octobre 2026 :** le secours se termine automatiquement une fois les agresseurs neutralisés (bulle « MERCI ! » environ 1,5 s, bonus +6 une fois), sans maintien de F ; bulles de victime « À L’AIDE ! » / « MERCI ! » ; alertes d’incident dans le style pixel du jeu (bannière « ÉCOLE EN FEU ! », « AGRESSION EN COURS ! », « VOL EN COURS ! » avec flèche et distance, indicateurs en bord d’écran par incident actif), génériques pour les futurs événements de casse ; ligne Agir de la section 7 réservée aux réparations et au rideau ; EX-28, RC-62, RC-65, RC-66 ajustés, RC-91 et RC-92.
+- **1.7 — 21 octobre 2026 :** le secours se termine automatiquement une fois les agresseurs neutralisés (bulle « MERCI ! » environ 1,5 s, bonus +6 une fois), sans maintien de F ; bulles de victime « À L’AIDE ! » / « MERCI ! » ; alertes d’incident dans le style pixel du jeu (bannière « ÉCOLE EN FEU ! », « AGRESSION EN COURS ! », « VOL EN COURS ! » avec flèche et distance, indicateurs en bord d’écran par incident actif), génériques pour les futurs événements de casse ; ligne Agir de la section 7 réservée aux réparations et au rideau ; icône du site (favicon pixel, tête de Paul) ; EX-28, RC-62, RC-65, RC-66 ajustés, RC-91 et RC-92.
 
 ## 26. Landing page et accès au jeu
 
@@ -1314,6 +1346,7 @@ Landing et navigation sont P0. L’habillage final et un aperçu représentatif 
 | Présentation | Nom du jeu et une phrase de promesse (le genre est dans la description du site, pas en surtitre) | Bouton principal « Jouer » ; bouton secondaire « Commandes » |
 | Commandes | Modale (sans JavaScript) avec le tableau des commandes ordinateur et téléphone, issu de la même source que le jeu | Ouverte par le bouton « Commandes », fermée par « Fermer », Échap ou clic extérieur |
 | Pied de page | Version et statut prototype/version jouable, crédits, lien vers le code source, mention de fiction satirique | Crédits, code source |
+| Icône du site | Favicon pixel art tiré de la tête de Paul (`npm run favicon` : `favicon.png` 32 × 32 et `apple-touch-icon.png` 180 × 180), couleur de thème `#14121c`, liée depuis `/` et `/jouer/`, créditée comme dérivé LPC | Aucune |
 
 Texte de présentation retenu : **« Défends le quartier. Tiens aussi longtemps que possible. »**
 
