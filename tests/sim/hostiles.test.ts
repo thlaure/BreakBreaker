@@ -213,3 +213,33 @@ test('degrader genuinely stuck on a trunk advances to the next facade point', ()
   expect(d(h.pos, B)).toBeLessThanOrEqual(24); // stuck branch moved its goal from A to B
   expect(d(h.pos, A)).toBeGreaterThan(24);
 });
+
+test('EnemyRockThrown fires on the step the enemy rock is spawned, with its id', () => {
+  const player = createPlayer({ x: 656, y: 720 });
+  const ctx = mkCtx(player);
+  const horde = new Horde();
+  horde.spawn({ variant: 'antifa', role: 'thrower', pos: { x: 856, y: 720 } });
+  const thrown: number[] = [];
+  for (let i = 0; i < 180 && thrown.length === 0; i++) {
+    const before = ctx.rocks.flying().length;
+    for (const e of horde.step(DT, i * DT, ctx)) if (e.type === 'EnemyRockThrown') thrown.push(e.rockId);
+    if (thrown.length === 0) expect(ctx.rocks.flying()).toHaveLength(before);
+  }
+  expect(thrown).toHaveLength(1);
+  expect(ctx.rocks.flying().map((r) => r.id)).toEqual(thrown);
+});
+
+test('no EnemyRockThrown when the flying cap cancels the throw', () => {
+  const player = createPlayer({ x: 656, y: 720 });
+  const ctx = mkCtx(player);
+  vi.spyOn(ctx.rocks, 'spawnEnemy').mockReturnValue(null);
+  const horde = new Horde();
+  horde.spawn({ variant: 'antifa', role: 'thrower', pos: { x: 856, y: 720 } });
+  let started = 0;
+  for (let i = 0; i < 180; i++)
+    for (const e of horde.step(DT, i * DT, ctx)) {
+      expect(e.type).not.toBe('EnemyRockThrown');
+      if (e.type === 'EnemyThrowStarted') started++;
+    }
+  expect(started).toBeGreaterThan(0);
+});

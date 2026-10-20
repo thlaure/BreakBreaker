@@ -44,14 +44,20 @@ export class SchoolIncident {
     return (100 * this.remaining) / CONFIG.school.threatSeconds;
   }
 
-  status(): 'en cours' | 'interrompu' | 'perdu' | 'sauvé' {
+  status(): 'en cours' | 'interrompu' | 'renforts' | 'perdu' | 'sauvé' {
     if (this.stage === 'destroyed') return 'perdu';
     if (this.stage === 'saved') return 'sauvé';
+    if (this.stage === 'cinematic') return 'renforts';
     return this.wasDecreasing ? 'en cours' : 'interrompu';
   }
 
   suspended(): boolean {
     return this.stage === 'cinematic';
+  }
+
+  /** Ends the cinematic early: the next step spawns the reinforcements (once). No-op in any other stage. */
+  skipCinematic(): void {
+    if (this.stage === 'cinematic') this.cinematicLeft = 0;
   }
 
   start(horde: Horde, spawns: Vec[]): void {

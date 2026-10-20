@@ -9,6 +9,7 @@ export class FixedClock {
   /** Returns number of fixed steps to run; excess beyond maxSteps is dropped. */
   advance(realDtSec: number): number {
     if (this.paused) return 0;
+    if (!Number.isFinite(realDtSec) || realDtSec < 0) return 0;
     this.acc += realDtSec;
     let n = Math.floor(this.acc / this.step + 1e-9);
     if (n > this.maxSteps) {

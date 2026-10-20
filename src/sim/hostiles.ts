@@ -242,6 +242,7 @@ export class Horde {
       const rock = ctx.rocks.spawnEnemy(h.pos, a.throwTo!, now);
       a.throwTo = null;
       if (rock) {
+        ev.push({ type: 'EnemyRockThrown', rockId: rock.id });
         h.state = 'recover';
         h.stateUntil = h.nextAttackAt;
       } else {

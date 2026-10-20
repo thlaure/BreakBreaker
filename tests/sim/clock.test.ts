@@ -22,3 +22,10 @@ test('activeTime accumulates stepped simulated seconds', () => {
   c.advance(3);
   expect(c.activeTime).toBeCloseTo(5 / 60, 9);
 });
+test('non-finite or negative dt is ignored (treated as 0)', () => {
+  const c = new FixedClock(1 / 60, 5);
+  for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, -1]) expect(c.advance(bad)).toBe(0);
+  expect(c.activeTime).toBe(0);
+  // accumulator not poisoned
+  expect(c.advance(1 / 60)).toBe(1);
+});

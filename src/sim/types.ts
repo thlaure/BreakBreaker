@@ -19,6 +19,8 @@ export type Role = 'contact' | 'thrower' | 'degrader' | 'aggressor';
 export type SimEvent =
   | { type: 'HitConfirmed'; targetLifeId: number; damage: number; source: 'melee' | 'rock' }
   | { type: 'EnemyThrowStarted'; from: Vec; to: Vec; until: number }
+  /** An enemy rock actually left the thrower's hand (not emitted when the flying cap cancels the throw). */
+  | { type: 'EnemyRockThrown'; rockId: number }
   | { type: 'ProjectileLanded'; rockId: number }
   | { type: 'ProjectilePickedUp'; rockId: number }
   | { type: 'ProjectileReturned'; rockId: number }

@@ -112,6 +112,11 @@ export class Sim {
     this.paused = false;
   }
 
+  /** Player skip (Agir / Espace / tap) of the school cinematic; no-op outside it. */
+  skipCinematic(): void {
+    this.school.skipCinematic();
+  }
+
   quit(): void {
     this.rules.end('quit');
   }

@@ -130,3 +130,32 @@ test('leaving/re-entering zone keeps same id and reserve (RC-26, RC-54)', () => 
   expect(inc.id).toBe('school#1');
   expect(inc.stage).toBe('firstLine');
 });
+
+test('status reads "renforts" during the cinematic, never "interrompu"', () => {
+  const { inc, run, koAll } = setup();
+  koAll();
+  run(DT);
+  expect(inc.stage).toBe('cinematic');
+  expect(inc.status()).toBe('renforts');
+});
+
+test('skipCinematic spawns the 8 reinforcements exactly once on the next step', () => {
+  const { inc, run, horde, koAll } = setup();
+  const reinforcements = () => horde.list.filter((h) => h.incidentId === inc.id && h.state !== 'ko');
+  inc.skipCinematic(); // firstLine: no-op
+  run(DT);
+  expect(inc.stage).toBe('firstLine');
+  koAll();
+  run(DT);
+  expect(inc.stage).toBe('cinematic');
+  inc.skipCinematic();
+  inc.skipCinematic();
+  expect(inc.stage).toBe('cinematic');
+  run(DT);
+  expect(inc.stage).toBe('reinforcements');
+  expect(reinforcements()).toHaveLength(CONFIG.school.reinforcements);
+  inc.skipCinematic(); // reinforcements: no-op
+  run(1);
+  expect(inc.stage).toBe('reinforcements');
+  expect(reinforcements()).toHaveLength(CONFIG.school.reinforcements);
+});

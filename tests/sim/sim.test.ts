@@ -285,4 +285,44 @@ describe('Sim facade', () => {
     expect(after.player.pos).toEqual(before.player.pos);
     expect(after.now).toBe(before.now);
   });
+  test('skipCinematic ends the cinematic: next step spawns 8 reinforcements once; no-op otherwise', () => {
+    const sim = new Sim(21, { invulnerable: true });
+    sim.skipCinematic(); // intro: no-op
+    expect(sim.school.stage).toBe('idle');
+    let i = 0;
+    for (; i < 60 * 30 && sim.school.stage !== 'cinematic'; i++) {
+      for (const h of sim.horde.active()) sim.horde.applyHit(h.lifeId, 99);
+      sim.step(IDLE);
+    }
+    expect(sim.school.stage).toBe('cinematic');
+    expect(sim.snapshot().school.status).toBe('renforts');
+    sim.skipCinematic();
+    sim.skipCinematic();
+    sim.step(IDLE);
+    expect(sim.school.stage).toBe('reinforcements');
+    const count = () => sim.horde.active().filter((h) => h.incidentId === sim.school.id).length;
+    expect(count()).toBe(CONFIG.school.reinforcements);
+    sim.skipCinematic();
+    for (let k = 0; k < 30; k++) sim.step(IDLE);
+    expect(count()).toBe(CONFIG.school.reinforcements);
+  });
+
+  test('EnemyRockThrown is emitted once per enemy rock actually spawned, deterministically', () => {
+    const run = () => {
+      const sim = new Sim(7, { invulnerable: true });
+      const thrown: number[] = [];
+      for (let i = 0; i < 60 * 30 && sim.school.stage !== 'cinematic'; i++) {
+        for (const h of sim.horde.active()) sim.horde.applyHit(h.lifeId, 99);
+        sim.step(IDLE);
+      }
+      sim.skipCinematic(); // reinforcements include 2 throwers
+      for (let i = 0; i < 60 * 30; i++)
+        for (const e of sim.step(IDLE)) if (e.type === 'EnemyRockThrown') thrown.push(e.rockId);
+      return thrown;
+    };
+    const a = run();
+    expect(a.length).toBeGreaterThan(0);
+    expect(new Set(a).size).toBe(a.length);
+    expect(run()).toEqual(a);
+  });
 });
