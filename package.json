@@ -10,7 +10,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "bench": "node scripts/bench-sim.mjs",
-    "assets": "node scripts/fetch-assets.mjs && node scripts/build-lpc.mjs"
+    "assets": "node scripts/fetch-assets.mjs && node scripts/build-lpc.mjs",
+    "hero": "node scripts/build-hero.mjs"
   },
   "dependencies": {
     "phaser": "4.2.1"

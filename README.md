@@ -17,7 +17,7 @@ A full session in a single district, playable with keyboard/mouse or touch:
 - **Waves**: after the intro, the school and the rescue, waves follow until Paul is knocked out (or the player quits). Rioters enter one by one, with a rest between waves. No global timer.
 - End-of-session summary (score, local best, wave reached, stats) and Replay.
 
-The landing page (title, "Jouer", "Commandes" modal) has an original illustrated hero. Its "Jouer" link (`/jouer/?go`) starts the game right away, with a "Comment jouer" card over the running game; a "Commandes" button in the game opens the keys and rules. Opening `/jouer/` directly shows the rules screen first.
+The landing page (title, "Jouer", "Commandes" modal) has an original pixel-art hero: a top-down street scene (burning school, Paul, rioters, flying rocks, a heal kit, a peaceful group) composed from the game's own tiles and LPC sprites by `npm run hero`, shown full-bleed with `image-rendering: pixelated`, with the Press Start 2P pixel font (SIL OFL 1.1) for the title and buttons. Its "Jouer" link (`/jouer/?go`) starts the game right away, with a "Comment jouer" card over the running game; a "Commandes" button in the game opens the keys and rules. Opening `/jouer/` directly shows the rules screen first.
 
 Design choices:
 
@@ -56,6 +56,7 @@ npm run preview    # preview the build
 npm test           # vitest run (includes a production build check, in a temp folder)
 npm run typecheck  # tsc --noEmit
 npm run assets     # download and assemble assets (LPC sprites, tiles, sounds) and regenerate public/CREDITS.md
+npm run hero       # regenerate the landing hero src/site/hero.png from the game tiles and sprites (deterministic, offline)
 npm run bench      # cost of one simulation step under load (40 rioters, 24 rocks in flight)
 ```
 
