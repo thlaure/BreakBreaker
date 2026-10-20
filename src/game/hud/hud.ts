@@ -1,8 +1,21 @@
 import { CONFIG } from '../../sim/config';
 import { DISTRICT } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
-import type { Vec } from '../../sim/types';
+import type { SimEvent, Vec } from '../../sim/types';
 import { CONTROLS, INTRO_ACTIONS, INTRO_GOAL } from '../../content/controls';
+import {
+  AlertBanner,
+  activeIncidents,
+  alertFromEvent,
+  bearingDeg,
+  edgePosition,
+  formatMeters,
+  incidentAlert,
+  pixelSvg,
+  setArrow,
+  type Box,
+  type Incident,
+} from './alerts';
 import { DEFAULT_ACT_LABEL, contextPrompt, incidentLines, weaponLine, type IncidentLine } from './format';
 
 /** How long the launch card stays on screen if the player does not close it. */
@@ -18,13 +31,16 @@ export interface CameraView {
   height: number;
 }
 
-const ARROW_PAD = 44;
+/** Half-size (px) of an edge indicator and its distance from the screen border. */
+const EDGE_HALF: Vec = { x: 66, y: 20 };
+const EDGE_PAD = 8;
+/** Touch buttons in the bottom-right corner (see jouer/index.html), kept clear of the edge indicators. */
+const TOUCH_PAD_W = 200;
+const TOUCH_PAD_H = 210;
 const SLOTS = CONFIG.rock.maxCarried;
-const ICONS = { school: '⌂', rescue: '✚' } as const;
+const ICONS = { school: pixelSvg('flame', 1), rescue: pixelSvg('alert', 1) } as const;
 const TILE = CONFIG.tile;
 const SCHOOL_DOOR = DISTRICT.school.door;
-
-const same = (a: Vec, b: Vec): boolean => a.x === b.x && a.y === b.y;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text = ''): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
@@ -55,6 +71,12 @@ class Cache {
   }
 }
 
+interface Edge {
+  root: HTMLElement;
+  arrow: HTMLElement;
+  dist: HTMLElement;
+}
+
 interface Card {
   root: HTMLElement;
   ico: HTMLElement;
@@ -64,7 +86,10 @@ interface Card {
   dist: HTMLElement;
 }
 
-/** HTML overlay `#hud` (top-left), contextual prompt under Paul and an edge arrow toward the active objective. */
+/**
+ * HTML overlay `#hud`: stats and incident cards (top-left), contextual prompt under Paul, an alert banner when an
+ * incident starts and one edge indicator per active incident whose target is off-screen.
+ */
 export class Hud {
   readonly root = el('div', 'bb-hud');
   private readonly c = new Cache();
@@ -78,17 +103,19 @@ export class Hud {
   private readonly top = el('div', 'bb-top');
   private readonly cards: Record<'school' | 'rescue', Card>;
   private readonly prompt = el('div', 'bb-prompt');
-  private readonly arrow = el('div', 'bb-arrow');
-  private readonly arrowGlyph = el('span', 'glyph', '➤');
-  private readonly arrowLabel = el('span', 'lbl');
+  private readonly edges = el('div', 'bb-edges');
+  private readonly edgeEls = new Map<string, Edge>();
+  private readonly alert: AlertBanner;
   private readonly banner = el('div', 'bb-banner');
   private readonly bannerHint = el('span', 'hint');
   private readonly actBtn: HTMLElement | null;
   private readonly touchRoot: HTMLElement | null;
-  /** Cached `.bb-top` box (the arrow keeps clear of it); refreshed on resize and when a card shows/hides. */
-  private topBox: { right: number; bottom: number } | null = null;
+  /** Cached `.bb-top` / `.bb-tools` boxes (indicators and banner keep clear of them); refreshed on resize and card changes. */
+  private topBox: Box | null = null;
+  private toolsBox: Box | null = null;
   private readonly onResize = (): void => {
     this.topBox = null;
+    this.toolsBox = null;
   };
   private lastNow = -1;
   private lastRescue = Number.POSITIVE_INFINITY;
@@ -133,8 +160,6 @@ export class Hud {
     };
     this.cards = { school: mk(), rescue: mk() };
     top.append(hp, l1, l2, cards);
-    this.arrow.append(this.arrowGlyph, this.arrowLabel);
-    this.arrow.hidden = true;
     this.prompt.hidden = true;
     this.prompt.setAttribute('aria-live', 'polite');
     this.banner.append(el('b', 'title', 'Renforts en approche !'), this.bannerHint);
@@ -143,18 +168,29 @@ export class Hud {
     const cmd = el('button', 'bb-controls-btn', 'Commandes');
     cmd.type = 'button';
     cmd.setAttribute('aria-haspopup', 'dialog');
+    cmd.setAttribute('aria-label', 'Commandes'); // keeps its name when it shrinks to a "?" on touch
     cmd.addEventListener('click', () => this.opts.onControls?.());
     this.tools.append(cmd);
-    this.root.append(top, this.prompt, this.arrow, this.banner, this.tools);
+    this.root.append(top, this.prompt, this.edges, this.banner, this.tools);
+    this.alert = new AlertBanner(this.root);
     parent.append(this.root);
     this.touchRoot = touchRoot;
     this.actBtn = touchRoot?.querySelector<HTMLElement>('[data-action=act]') ?? null;
+    if (this.actBtn) this.actBtn.style.display = 'none';
     window.addEventListener('resize', this.onResize);
   }
 
   show(on: boolean): void {
     this.root.hidden = !on;
-    this.topBox = null;
+    this.onResize();
+  }
+
+  /** Sim events of the frame: a new incident pops the alert banner. */
+  onEvents(events: SimEvent[]): void {
+    for (const e of events) {
+      const inc = alertFromEvent(e);
+      if (inc) this.alert.push(inc);
+    }
   }
 
   /**
@@ -190,9 +226,13 @@ export class Hud {
 
   destroy(): void {
     this.hideIntro();
+    this.alert.destroy();
     window.removeEventListener('resize', this.onResize);
     this.root.remove();
-    if (this.actBtn) this.actBtn.textContent = DEFAULT_ACT_LABEL;
+    if (this.actBtn) {
+      this.actBtn.textContent = DEFAULT_ACT_LABEL;
+      this.actBtn.style.display = 'none';
+    }
   }
 
   update(s: Snapshot, view: CameraView): void {
@@ -217,14 +257,21 @@ export class Hud {
     const touch = this.touchRoot?.classList.contains('visible') ?? false;
     const cinematic = s.school.stage === 'cinematic' && !s.ended;
     this.banner.hidden = !cinematic;
-    if (cinematic) c.text(this.bannerHint, touch ? 'Touchez l’écran pour passer' : 'Agir / Espace pour passer');
+    if (cinematic) c.text(this.bannerHint, touch ? 'Touchez l’écran pour passer' : 'Espace ou F pour passer');
 
     const p = cinematic ? null : contextPrompt(s, touch);
     this.prompt.hidden = !p;
     c.text(this.prompt, p?.text ?? '');
-    if (this.actBtn) c.text(this.actBtn, p?.label ?? DEFAULT_ACT_LABEL);
+    if (this.actBtn) {
+      // Only an actionable prompt shows the touch Agir button (none in this slice; repairs will use it).
+      c.style(this.actBtn, p?.label ? '' : 'display:none');
+      c.text(this.actBtn, p?.label ?? DEFAULT_ACT_LABEL);
+    }
 
-    this.updateArrow(s, view);
+    if (s.ended) this.alert.clear();
+    this.alert.track(s.player.pos);
+    this.placeAlert();
+    this.updateEdges(s.ended ? [] : activeIncidents(s), s, view, touch);
   }
 
   /** The snapshot has no rescue status: infer drain from the reserve between sim steps (kept while paused). */
@@ -249,8 +296,8 @@ export class Hud {
     }
     if (!line) return;
     const slug = line.status.replace(/\s/g, '-');
-    c.cls(card.root, `bb-card st-${slug}`);
-    c.text(card.ico, ICONS[line.key]);
+    c.cls(card.root, `bb-card k-${line.key} st-${slug}`);
+    if (!card.ico.firstChild) card.ico.innerHTML = ICONS[line.key];
     c.text(card.name, line.name);
     c.text(card.time, line.time);
     c.text(card.status, line.status);
@@ -260,34 +307,71 @@ export class Hud {
     c.text(card.dist, over ? '' : `${tiles} m`);
   }
 
-  private updateArrow(s: Snapshot, view: CameraView): void {
-    const t = s.objective;
-    if (!t) {
-      this.arrow.hidden = true;
-      return;
+  private boxes(): { top: Box; tools: Box } {
+    const box = (e: HTMLElement): Box => {
+      const r = e.getBoundingClientRect();
+      return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+    };
+    this.topBox ??= box(this.top);
+    this.toolsBox ??= box(this.tools);
+    return { top: this.topBox, tools: this.toolsBox };
+  }
+
+  /** Top centre, or just under the stats panel / Commandes button when the screen is too narrow to fit between. */
+  private placeAlert(): void {
+    const a = this.alert.el;
+    if (a.hidden) return;
+    const { top, tools } = this.boxes();
+    const w = a.offsetWidth;
+    const left = (window.innerWidth - w) / 2;
+    const clash = left < top.right + 8 || left + w > tools.left - 8;
+    this.c.style(a, clash ? `top:${Math.round(Math.max(top.bottom, tools.bottom) + 8)}px` : '');
+  }
+
+  /** One pixel indicator per active incident, at the screen edge toward it, only while it is off-screen. */
+  private updateEdges(list: Incident[], s: Snapshot, view: CameraView, touch: boolean): void {
+    const seen = new Set<string>();
+    const { top, tools } = this.boxes();
+    const avoid: Box[] = [top, { left: tools.left, top: 0, right: view.width, bottom: tools.bottom }];
+    if (touch) avoid.push({ left: view.width - TOUCH_PAD_W, top: view.height - TOUCH_PAD_H, right: view.width, bottom: view.height });
+    for (const inc of list) {
+      const screen = { x: (inc.pos.x - view.x) * view.zoom, y: (inc.pos.y - view.y) * view.zoom };
+      const at = edgePosition(screen, view, EDGE_HALF, EDGE_PAD, avoid);
+      if (!at) continue;
+      seen.add(inc.id);
+      const e = this.edge(inc);
+      this.c.style(e.root, `left:${at.x}px;top:${at.y}px`);
+      setArrow(e.arrow, bearingDeg(at, screen));
+      this.c.text(e.dist, formatMeters(s.player.pos, inc.pos));
     }
-    const sx = (t.x - view.x) * view.zoom;
-    const sy = (t.y - view.y) * view.zoom;
-    const m = ARROW_PAD / 2;
-    if (sx >= m && sx <= view.width - m && sy >= m && sy <= view.height - m) {
-      this.arrow.hidden = true;
-      return;
+    for (const [id, e] of this.edgeEls) {
+      if (seen.has(id)) continue;
+      e.root.remove();
+      this.edgeEls.delete(id);
     }
-    const cx = view.width / 2;
-    const cy = view.height / 2;
-    const dx = sx - cx;
-    const dy = sy - cy;
-    const k = Math.min((cx - ARROW_PAD) / Math.abs(dx || 1e-6), (cy - ARROW_PAD) / Math.abs(dy || 1e-6));
-    const x = Math.round(cx + dx * k);
-    let y = Math.round(cy + dy * k);
-    // keep clear of the HUD card in the top-left corner
-    this.topBox ??= (({ right, bottom }) => ({ right, bottom }))(this.top.getBoundingClientRect());
-    const box = this.topBox;
-    if (x < box.right + 30 && y < box.bottom + 24) y = Math.round(box.bottom + 24);
-    const deg = Math.round((Math.atan2(dy, dx) * 180) / Math.PI);
-    this.arrow.hidden = false;
-    this.c.style(this.arrow, `left:${x}px;top:${y}px`);
-    this.c.style(this.arrowGlyph, `transform:rotate(${deg}deg)`);
-    this.c.text(this.arrowLabel, same(t, SCHOOL_DOOR) ? 'École' : 'Secours');
+  }
+
+  private edge(inc: Incident): Edge {
+    const key = inc.id;
+    const spec = incidentAlert(inc.kind);
+    let e = this.edgeEls.get(key);
+    if (e && e.root.dataset.kind !== inc.kind) {
+      e.root.remove();
+      e = undefined;
+    }
+    if (e) return e;
+    const root = el('div', `bb-edge tone-${spec.tone}`);
+    root.dataset.kind = inc.kind;
+    const arrow = el('span', 'arrow');
+    const ico = el('span', 'ico');
+    ico.innerHTML = pixelSvg(spec.icon, 2);
+    const txt = el('span', 'txt');
+    const dist = el('span', 'dist');
+    txt.append(el('b', 'lbl', spec.label), dist);
+    root.append(arrow, ico, txt);
+    this.edges.append(root);
+    e = { root, arrow, dist };
+    this.edgeEls.set(key, e);
+    return e;
   }
 }

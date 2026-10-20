@@ -31,7 +31,8 @@ export type SimEvent =
   | { type: 'BuildingThreatPaused'; incidentId: string }
   | { type: 'BuildingDestroyed'; incidentId: string }
   | { type: 'SchoolRestored'; incidentId: string }
-  | { type: 'RescueStarted'; incidentId: string }
+  | { type: 'SchoolStarted'; incidentId: string; pos: Vec }
+  | { type: 'RescueStarted'; incidentId: string; pos: Vec; kind: 'groupHarassed' | 'elderlyRobbed' }
   | { type: 'RescueSecured'; incidentId: string }
   | { type: 'RescueCompleted'; incidentId: string }
   | { type: 'RescueFailed'; incidentId: string }

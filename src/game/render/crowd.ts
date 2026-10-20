@@ -45,19 +45,83 @@ export class GroupView {
   }
 }
 
-/** Rescue victim: elder at victimPos; yellow "!" while threatened; walks away and fades once the rescue ends. */
+/** Pixel font of the bubbles (loaded by BootScene before the world starts), with a monospace fallback. */
+const BUBBLE_FONT = '"Press Start 2P", ui-monospace, monospace';
+const BUBBLE_INK = 0x14121c;
+const BUBBLE_PAD = 3;
+/** Tail tip of the bubble, above the victim's feet. */
+const BUBBLE_Y = -46;
+const BOB_MS = 250;
+
+type BubbleKind = 'help' | 'thanks';
+const BUBBLES: Record<BubbleKind, { text: string; color: string }> = {
+  help: { text: 'À L’AIDE !', color: '#c4372b' },
+  thanks: { text: 'MERCI !', color: '#1b7a35' }, // >= 5:1 on the white bubble
+};
+
+/**
+ * Pixel speech bubble (white, 1 px dark border, stepped tail pointing down) whose origin is the tail tip.
+ * Every coordinate is a whole pixel so it stays crisp under the integer camera zoom.
+ */
+class Bubble {
+  readonly root: Phaser.GameObjects.Container;
+  private readonly g: Phaser.GameObjects.Graphics;
+  private readonly text: Phaser.GameObjects.Text;
+  private kind: BubbleKind | null = null;
+
+  constructor(scene: Phaser.Scene) {
+    this.g = scene.add.graphics();
+    this.text = scene.add.text(0, 0, '', { fontFamily: BUBBLE_FONT, fontSize: '8px', color: '#000' });
+    this.root = scene.add.container(0, 0, [this.g, this.text]).setDepth(DEPTH.overlay).setVisible(false);
+  }
+
+  set(kind: BubbleKind | null): void {
+    if (kind === this.kind) return;
+    this.kind = kind;
+    this.root.setVisible(kind !== null);
+    if (!kind) return;
+    const b = BUBBLES[kind];
+    this.text.setText(b.text).setColor(b.color);
+    this.text.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+    const tw = Math.ceil(this.text.width);
+    const th = Math.ceil(this.text.height);
+    const bw = tw + 2 * BUBBLE_PAD;
+    const bh = th + 2 * BUBBLE_PAD;
+    const left = -Math.floor(bw / 2);
+    const top = -(bh + 4);
+    const g = this.g.clear();
+    g.fillStyle(BUBBLE_INK, 1).fillRect(left - 1, top - 1, bw + 2, bh + 2);
+    g.fillStyle(0xffffff, 1).fillRect(left, top, bw, bh);
+    // stepped tail: rows of 7/5/3/1 dark px with 5/3/1 white px inside
+    for (let i = 0; i < 4; i++) {
+      const dark = 7 - 2 * i;
+      g.fillStyle(BUBBLE_INK, 1).fillRect(-Math.floor(dark / 2), -4 + i, dark, 1);
+      const white = dark - 2;
+      if (white > 0) g.fillStyle(0xffffff, 1).fillRect(-Math.floor(white / 2), -4 + i, white, 1);
+    }
+    this.text.setPosition(left + BUBBLE_PAD, top + BUBBLE_PAD);
+  }
+
+  /** Whole-number scale keeps the bubble about 16 screen px tall at camera zoom 1 and 2 (crisp, readable). */
+  place(x: number, y: number, alpha = 1): void {
+    const scale = Math.max(1, Math.round(2 / (this.root.scene.cameras.main.zoom || 1)));
+    this.root.setPosition(Math.round(x), Math.round(y)).setAlpha(alpha).setScale(scale);
+  }
+}
+
+/**
+ * Rescue victim: elder at victimPos with a pixel speech bubble — « À L’AIDE ! » (red, stepped bob) while threatened,
+ * « MERCI ! » (green) once safe, until they have walked away. Failed: no bubble, the victim retreats. Never an enemy
+ * marker on the victim.
+ */
 export class VictimView {
   private view: CharView | null = null;
-  private readonly alert: Phaser.GameObjects.Container;
+  private readonly bubble: Bubble;
   private leaving = false;
   private key = '';
 
   constructor(private readonly scene: Phaser.Scene) {
-    const g = scene.add.graphics();
-    g.fillStyle(0xffd23f, 1).fillTriangle(0, -10, 8, 5, -8, 5);
-    g.lineStyle(1, 0x3a2a00, 1).strokeTriangle(0, -10, 8, 5, -8, 5);
-    g.fillStyle(0x3a2a00, 1).fillRect(-1, -5, 2, 6).fillRect(-1, 2, 2, 2);
-    this.alert = scene.add.container(0, 0, [g]).setDepth(DEPTH.overlay).setVisible(false);
+    this.bubble = new Bubble(scene);
   }
 
   update(rescue: Snapshot['rescue'], timeMs: number): void {
@@ -90,11 +154,15 @@ export class VictimView {
         onComplete: () => v.sprite.setVisible(false),
       });
     }
-    const threat = rescue.stage === 'threat';
-    this.alert.setVisible(threat);
-    if (threat) {
-      const pulse = 1 + 0.12 * Math.sin(timeMs / 120);
-      this.alert.setPosition(rescue.victimPos.x, rescue.victimPos.y - 66).setScale(pulse);
+    if (rescue.stage === 'threat') {
+      this.bubble.set('help');
+      const bob = Math.floor(timeMs / BOB_MS) % 2 === 0 ? 0 : -2;
+      this.bubble.place(rescue.victimPos.x, rescue.victimPos.y + BUBBLE_Y + bob);
+    } else if (rescue.stage === 'secured' || (rescue.stage === 'completed' && v.sprite.visible && v.sprite.alpha > 0.05)) {
+      this.bubble.set('thanks');
+      this.bubble.place(v.sprite.x, rescue.victimPos.y + BUBBLE_Y, rescue.stage === 'completed' ? v.sprite.alpha : 1);
+    } else {
+      this.bubble.set(null);
     }
   }
 
@@ -102,6 +170,6 @@ export class VictimView {
     if (this.view) this.scene.tweens.killTweensOf(this.view.sprite);
     this.view?.destroy();
     this.view = null;
-    this.alert.setVisible(false);
+    this.bubble.set(null);
   }
 }

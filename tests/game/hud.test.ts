@@ -92,19 +92,17 @@ describe('contextPrompt', () => {
     const s = snap((x) => {
       x.stationMessage = 'Santé au maximum';
     });
-    expect(contextPrompt(s)).toEqual({ text: 'Santé au maximum', label: 'Agir' });
+    // informational: no touch Agir button for it
+    expect(contextPrompt(s)).toEqual({ text: 'Santé au maximum', label: null });
   });
 
-  test('help prompt when rescue secured and close to the victim', () => {
+  test('no "Aider" prompt next to a secured victim: the rescue completes by itself', () => {
     const s = snap((x) => {
       x.rescue = { stage: 'secured', remaining: 10, victimPos: { x: 100, y: 100 }, kind: 'groupHarassed' };
-      x.player.pos = { x: 120, y: 100 };
+      x.player.pos = { x: 110, y: 100 };
     });
-    expect(contextPrompt(s)).toEqual({ text: 'F — Aider', label: 'Aider' });
-    expect(contextPrompt(s, true)).toEqual({ text: 'Aider', label: 'Aider' });
-    expect(contextPrompt(s, false)).toEqual({ text: 'F — Aider', label: 'Aider' });
-    s.player.pos = { x: 300, y: 100 };
     expect(contextPrompt(s)).toBeNull();
+    expect(contextPrompt(s, true)).toBeNull();
   });
 });
 
@@ -163,6 +161,11 @@ describe('content', () => {
     expect(RULES.length).toBeLessThanOrEqual(5);
     expect(CONTROLS.some((c) => c.action === 'Pause' && c.keyboard === 'Échap')).toBe(true);
   });
+
+  test('no Agir row: rescuing needs no key, F only skips the school sequence in this slice', () => {
+    expect(CONTROLS.some((c) => /Agir|aider/i.test(c.action) || /maintenir/.test(c.keyboard))).toBe(false);
+    for (const r of RULES) expect(r).not.toMatch(/maintenir|\bF\b/);
+  });
 });
 
 describe('GameAudio.reset', () => {
@@ -177,6 +180,16 @@ describe('GameAudio.reset', () => {
     a.reset();
     a.onEvents([...ev]);
     expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(2);
+  });
+
+  test('alarm once on RescueStarted too', async () => {
+    const { GameAudio } = await import('../../src/game/audio');
+    const a = new GameAudio();
+    const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
+    const e = { type: 'RescueStarted', incidentId: 'rescue#1', pos: { x: 1, y: 2 }, kind: 'groupHarassed' } as const;
+    a.onEvents([e]);
+    a.onEvents([e]);
+    expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(1);
   });
 });
 

@@ -42,7 +42,10 @@ export class GameUi {
   private removeUnlock: () => void = () => undefined;
 
   private readonly onHud = (s: Snapshot): void => this.frame(s);
-  private readonly onEvents = (ev: SimEvent[]): void => this.audio.onEvents(ev);
+  private readonly onEvents = (ev: SimEvent[]): void => {
+    this.audio.onEvents(ev);
+    this.hud.onEvents(ev);
+  };
   private readonly onVisibility = (): void => {
     if (document.visibilityState === 'hidden') this.audio.suspend();
   };

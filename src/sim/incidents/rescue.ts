@@ -13,12 +13,9 @@ export interface RescueCtx {
   horde: Horde;
   rules: Rules;
   player: Player;
-  actHeld: boolean;
-  playerDamaged: boolean;
 }
 
 const VARIANTS: Variant[] = ['classic', 'palestinian', 'antifa'];
-const HELP_RANGE = 32;
 const SPAWN_MIN_FROM_PLAYER = 160;
 const OFFSET_MIN = 48;
 const OFFSET_MAX = 80;
@@ -26,7 +23,8 @@ const ATTEMPTS = 16;
 
 /**
  * Rescue incident: aggressors threaten a victim at `victimPos`. The distress reserve only drains while an aggressor
- * is threatening. Knocking them all out secures the victim; holding act next to them for 1 s completes the rescue.
+ * is threatening. Knocking them all out secures the victim (reserve frozen); CONFIG.rescue.thanksSec later the rescue
+ * completes by itself (+bonus once) — no key, no range, no hold.
  * The victim is not a Hostile, so it is never part of Horde.views() and cannot be hit by sweeps or rocks.
  */
 export class RescueIncident {
@@ -34,7 +32,8 @@ export class RescueIncident {
   victimPos: Vec = { x: 0, y: 0 };
   stage: RescueStage = 'threat';
   remaining: number = CONFIG.rescue.threatSeconds;
-  helpProgress = 0;
+  /** Seconds since the victim was secured (the "MERCI !" beat before completion). */
+  thanks = 0;
 
   private ids = new Set<number>();
   private pending = 0;
@@ -59,7 +58,7 @@ export class RescueIncident {
     if (this.stage === 'completed' || this.stage === 'failed') return events;
     if (!this.announced) {
       this.announced = true;
-      events.push({ type: 'RescueStarted', incidentId: this.id });
+      events.push({ type: 'RescueStarted', incidentId: this.id, pos: { ...this.victimPos }, kind: this.kind });
     }
 
     if (this.stage === 'threat') {
@@ -80,20 +79,15 @@ export class RescueIncident {
       }
       if (this.pending === 0 && this.allKo(ctx.horde)) {
         this.stage = 'secured';
-        this.helpProgress = 0;
+        this.thanks = 0;
         events.push({ type: 'RescueSecured', incidentId: this.id });
       }
       return events;
     }
 
-    // secured: help the victim
-    const inRange = dist(ctx.player.pos, this.victimPos) <= HELP_RANGE;
-    if (!ctx.actHeld || !inRange || ctx.playerDamaged) {
-      this.helpProgress = 0;
-      return events;
-    }
-    this.helpProgress += dt;
-    if (this.helpProgress >= CONFIG.rescue.helpSec - 1e-9) {
+    // secured: the victim thanks Paul, then the rescue completes by itself
+    this.thanks += dt;
+    if (this.thanks >= CONFIG.rescue.thanksSec - 1e-9) {
       this.stage = 'completed';
       ctx.rules.award(`${this.id}:ok`, CONFIG.rescue.bonus);
       events.push({ type: 'RescueCompleted', incidentId: this.id });

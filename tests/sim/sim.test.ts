@@ -56,7 +56,6 @@ describe('Sim facade', () => {
     expect(started).toBeGreaterThan(0);
     const s = sim.snapshot();
     expect(s.hostiles.filter((h) => h.role === 'degrader')).toHaveLength(CONFIG.school.firstLine);
-    expect(s.objective).toEqual(DISTRICT.school.door);
     expect(sim.director.phase).toBe('school');
     // spawned at edge points >= 320 px from Paul
     expect(s.hp).toBe(CONFIG.player.maxHp);
@@ -302,5 +301,32 @@ describe('Sim facade', () => {
     expect(a.length).toBeGreaterThan(0);
     expect(new Set(a).size).toBe(a.length);
     expect(run()).toEqual(a);
+  });
+  test('SchoolStarted and RescueStarted are emitted once each, with positions; rescue completes with no key', () => {
+    const sim = new Sim(7, { invulnerable: true });
+    const events: SimEvent[] = [];
+    let pauseChecked = false;
+    for (let i = 0; i < 60 * 90 && sim.rules.stats.rescuesOk === 0; i++) {
+      // KO every hostile (school and aggressors); IDLE input: no key is ever pressed
+      for (const h of sim.horde.active()) sim.horde.applyHit(h.lifeId, 99);
+      if (sim.school.stage === 'cinematic') sim.skipCinematic();
+      if (!pauseChecked && sim.rescue?.stage === 'secured') {
+        pauseChecked = true;
+        sim.pause();
+        for (let k = 0; k < 300; k++) sim.step(IDLE);
+        expect(sim.rescue.stage).toBe('secured');
+        sim.resume();
+      }
+      events.push(...sim.step(IDLE));
+    }
+    const school = events.filter((e) => e.type === 'SchoolStarted');
+    expect(school).toEqual([{ type: 'SchoolStarted', incidentId: sim.school.id, pos: DISTRICT.school.door }]);
+    const rescue = events.filter((e) => e.type === 'RescueStarted');
+    expect(rescue).toHaveLength(1);
+    expect(rescue[0]).toEqual({ type: 'RescueStarted', incidentId: 'rescue#1', pos: sim.rescue!.victimPos, kind: sim.rescue!.kind });
+    expect(pauseChecked).toBe(true);
+    expect(sim.rescue!.stage).toBe('completed');
+    expect(sim.rules.stats.rescuesOk).toBe(1);
+    expect(events.filter((e) => e.type === 'RescueCompleted')).toHaveLength(1);
   });
 });

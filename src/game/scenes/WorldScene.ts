@@ -191,7 +191,7 @@ export class WorldScene extends Phaser.Scene {
     for (let i = 0; i < steps; i++) {
       if (import.meta.env.DEV && this.stress > 0) stressTick(this.sim, this.stress, this.stressState);
       const f = this.readInput();
-      // Agir (rising edge) or Espace / clic (strike) skips the school cinematic
+      // F (rising edge) or Espace / clic (strike) skips the school cinematic
       if ((f.act && !this.prevAct) || f.strike) this.trySkipCinematic();
       this.prevAct = f.act;
       events.push(...this.sim.step(f));

@@ -173,6 +173,7 @@ export class GameAudio {
           this.play('hurt');
           break;
         case 'BuildingThreatStarted':
+        case 'RescueStarted':
           if (!this.alarmed.has(e.incidentId)) {
             this.alarmed.add(e.incidentId);
             this.play('alarm');

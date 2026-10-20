@@ -8,8 +8,9 @@ Specification: [`docs/CAHIER_DES_CHARGES.md`](docs/CAHIER_DES_CHARGES.md) (v1.5,
 
 A full session in a single district, playable with keyboard/mouse or touch:
 
-- **School defense**: a first line of rioters damages the façade; the school's countdown only runs while it is being damaged. Once the first line is down, a short "Renforts en approche !" sequence (skippable with Act / Space or a tap) announces 8 reinforcements.
-- **Rescue**: reach a threatened victim, knock out the attackers, then help (hold Act).
+- **School defense**: a first line of rioters damages the façade; the school's countdown only runs while it is being damaged. Once the first line is down, a short "Renforts en approche !" sequence (skippable with Space or F, or a tap) announces 8 reinforcements.
+- **Rescue**: reach a threatened victim (« À L’AIDE ! » bubble) and knock out the attackers: the rescue then ends by itself (« MERCI ! », +6), no key to press.
+- **Alerts**: each new incident pops a pixel-style banner (« ÉCOLE EN FEU ! », « AGRESSION EN COURS ! », « VOL EN COURS ! ») with an arrow and the distance, and an indicator at the screen edge points to every active incident that is off-screen.
 - **Rocks**: throwers telegraph their throws; Paul picks up fallen rocks (3 max) and throws them back.
 - **Circular strikes**: Paul's strike hits all around him (up to 3 rioters).
 - **Weapons**: a stick, a hammer or a road sign appears at random in the streets; walk over it to pick it up. Weapons knock a rioter out in one hit, reach further and wear out after a number of hits (15 / 8 / 10).
@@ -33,7 +34,6 @@ Design choices:
 | Move | ZQSD, WASD or arrows | Joystick (left half of the screen) |
 | Strike | Space or left click | Frapper button |
 | Throw a rock back | E or right click (aim with the mouse) | Renvoyer button (tap = last aim, drag = aim) |
-| Act (help a victim) | F (hold) | Agir button (hold) |
 | Run | Shift | Push the joystick all the way |
 | Pause | Esc | Pause button |
 

@@ -5,6 +5,22 @@ import { hideLoading, showMessage, showProgress } from '../loadingUi';
 import { createCharAnims } from '../render/actors';
 
 const SFX_PREFIX = 'sfx:';
+/** Never wait longer than this for the pixel font (the game starts anyway with the monospace fallback). */
+const FONT_WAIT_MS = 2000;
+
+/** Resolves once 'Press Start 2P' (declared in hud.css) is loaded, after FONT_WAIT_MS, or on failure. */
+export function waitForPixelFont(timeoutMs = FONT_WAIT_MS): Promise<void> {
+  const fonts = typeof document !== 'undefined' ? document.fonts : undefined;
+  if (!fonts?.load) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, timeoutMs);
+    const done = (): void => {
+      clearTimeout(timer);
+      resolve();
+    };
+    fonts.load('8px "Press Start 2P"').then(done, done);
+  });
+}
 const sfxKey = (key: Sfx): string => SFX_PREFIX + key;
 
 /** Loads every asset, drives the HTML progress bar, builds the character animations, then starts the world. */
@@ -47,7 +63,10 @@ export class BootScene extends Phaser.Scene {
       return;
     }
     createCharAnims(this, layout);
-    hideLoading();
-    this.scene.start('world');
+    // Phaser text (victim bubbles) is drawn with the pixel font: wait for it (bounded) before starting the world.
+    void waitForPixelFont().then(() => {
+      hideLoading();
+      this.scene.start('world');
+    });
   }
 }

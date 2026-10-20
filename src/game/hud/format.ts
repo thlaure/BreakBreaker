@@ -2,8 +2,6 @@ import type { Snapshot } from '../../sim/sim';
 import type { Vec } from '../../sim/types';
 import { WEAPONS } from '../../sim/weapons';
 
-const HELP_RANGE = 32;
-
 /** 'renforts': the school cinematic (reinforcements on their way) — the countdown is frozen, not interrupted. */
 export type IncidentStatus = 'en cours' | 'interrompu' | 'renforts' | 'sécurisé' | 'perdu' | 'sauvé';
 
@@ -49,22 +47,21 @@ export function formatSummary(s: Snapshot, record: number | null): SummaryData {
   };
 }
 
-const d = (a: Vec, b: Vec): number => Math.hypot(a.x - b.x, a.y - b.y);
-
 export interface Prompt {
   text: string;
-  /** Short label for the touch Agir button. */
-  label: string;
+  /** Short label for the touch Agir button; null for an informational prompt (the button stays hidden). */
+  label: string | null;
 }
 
 export const DEFAULT_ACT_LABEL = 'Agir';
 
-/** `touch`: the touch controls are visible, so the keyboard hint ("F — ") is dropped. */
-export function contextPrompt(s: Snapshot, touch = false): Prompt | null {
-  const p = s.player.pos;
-  const key = touch ? '' : 'F — ';
-  if (s.rescue?.stage === 'secured' && d(p, s.rescue.victimPos) <= HELP_RANGE) return { text: `${key}Aider`, label: 'Aider' };
-  if (s.stationMessage) return { text: s.stationMessage, label: DEFAULT_ACT_LABEL };
+/**
+ * Contextual prompt under Paul. In this slice only the heal stations produce one, and it is informational (no key):
+ * a rescue completes by itself. `touch` is kept for actionable prompts (repairs, shop shutter) that will drop the
+ * keyboard hint ("F — ") on touch screens.
+ */
+export function contextPrompt(s: Snapshot, _touch = false): Prompt | null {
+  if (s.stationMessage) return { text: s.stationMessage, label: null };
   return null;
 }
 

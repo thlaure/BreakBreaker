@@ -50,7 +50,6 @@ export interface Snapshot {
   /** Weapon in Paul's hands (null = bare hands) and strikes left. */
   weapon: { kind: WeaponKind; uses: number } | null;
   weaponsOnGround: { id: number; kind: WeaponKind; pos: Vec }[];
-  objective: Vec | null;
   stats: SessionStats;
 }
 
@@ -122,7 +121,7 @@ export class Sim {
     this.paused = false;
   }
 
-  /** Player skip (Agir / Espace / tap) of the school cinematic; no-op outside it. */
+  /** Player skip (F / Espace / tap) of the school cinematic; no-op outside it. */
   skipCinematic(): void {
     this.school.skipCinematic();
   }
@@ -178,13 +177,9 @@ export class Sim {
     const rockEv = this.rocks.step(dt, now, this.rockCtx(victimPos));
 
     // damage, hits and rock bookkeeping
-    let damaged = false;
     for (const e of [...hordeEv, ...rockEv]) {
       if (e.type === 'PlayerDamaged') {
-        if (!this.invulnerable && damagePlayer(p, e.amount, now)) {
-          damaged = true;
-          ev.push(e);
-        }
+        if (!this.invulnerable && damagePlayer(p, e.amount, now)) ev.push(e);
         continue;
       }
       ev.push(e);
@@ -208,10 +203,7 @@ export class Sim {
     }
 
     ev.push(...this.school.step(dt, this.schoolCtx()));
-    if (this.rescue)
-      ev.push(
-        ...this.rescue.step(dt, { horde: this.horde, rules: this.rules, player: p, actHeld: input.act, playerDamaged: damaged }),
-      );
+    if (this.rescue) ev.push(...this.rescue.step(dt, { horde: this.horde, rules: this.rules, player: p }));
 
     const heal = this.stations.step({ player: p, rules: this.rules });
     ev.push(...heal.events);
@@ -227,7 +219,6 @@ export class Sim {
     const p = this.player;
     const r = this.rescue;
     const victim = r && (r.stage === 'threat' || r.stage === 'secured') ? v(r.victimPos) : null;
-    const schoolUrgent = this.school.stage === 'firstLine' || this.school.stage === 'reinforcements';
     return {
       now: this.now,
       paused: this.paused,
@@ -271,7 +262,6 @@ export class Sim {
       stationMessage: this.stationMessage,
       weapon: this.weapons.held ? { ...this.weapons.held } : null,
       weaponsOnGround: this.weapons.ground.map((w) => ({ id: w.id, kind: w.kind, pos: v(w.pos) })),
-      objective: schoolUrgent ? v(DISTRICT.school.door) : victim,
       stats: { ...this.rules.stats },
     };
   }

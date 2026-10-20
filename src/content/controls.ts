@@ -21,7 +21,6 @@ export const CONTROLS: readonly ControlRow[] = [
   { action: 'Se déplacer', keyboard: 'ZQSD, WASD ou flèches', touch: 'Joystick (moitié gauche de l’écran)' },
   { action: 'Frapper', keyboard: 'Espace ou clic gauche', touch: 'Bouton Frapper' },
   { action: 'Renvoyer une pierre', keyboard: 'E ou clic droit', touch: 'Bouton Renvoyer : toucher = dernière visée, glisser = viser' },
-  { action: 'Agir (aider une victime)', keyboard: 'F (maintenir)', touch: 'Bouton Agir (maintenir)' },
   { action: 'Courir', keyboard: 'Maj', touch: 'Pousser le joystick à fond' },
   { action: 'Pause', keyboard: 'Échap', touch: 'Bouton Pause' },
 ];

@@ -110,6 +110,7 @@ export class Director {
       case 'intro':
         if (this.timer >= INTRO_SEC - 1e-9) {
           host.school.start(host.horde, spawnPoints(host.player.pos));
+          events.push({ type: 'SchoolStarted', incidentId: host.school.id, pos: { ...DISTRICT.school.door } });
           this.enter('school');
         }
         break;
@@ -126,7 +127,7 @@ export class Director {
         }
         break;
       case 'rescue':
-        // A secured victim is no longer urgent: waves may start while Paul goes to help.
+        // A secured victim is no longer urgent: waves may start while the victim thanks Paul.
         if (!host.rescue || host.rescue.stage !== 'threat') {
           this.enter('waves');
           this.launchWave(host, events);
