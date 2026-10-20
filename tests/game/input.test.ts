@@ -221,6 +221,42 @@ describe('touch', () => {
   });
 });
 
+describe('touch fixes', () => {
+  test('touch pointerdown on canvas shows UI when not coarse', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    const { root } = setupTouch();
+    expect(root.classList.contains('visible')).toBe(false);
+    const canvas = document.createElement('canvas');
+    document.body.appendChild(canvas);
+    ptr(canvas, 'pointerdown', 9, 5, 5, 'touch');
+    expect(root.classList.contains('visible')).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  test('mouse pointerdown in the stick zone does not start the joystick', () => {
+    const { touch, stick } = setupTouch();
+    ptr(stick, 'pointerdown', 1, 100, 300, 'mouse');
+    ptr(window, 'pointermove', 1, 190, 300, 'mouse');
+    expect(touch.read().move).toEqual({ x: 0, y: 0 });
+  });
+
+  test('second finger on Renvoyer keeps the first finger drag aim', () => {
+    const { touch, rock } = setupTouch();
+    ptr(rock, 'pointerdown', 3, 500, 300);
+    ptr(window, 'pointermove', 3, 500, 200);
+    ptr(rock, 'pointerdown', 4, 510, 310);
+    expect(touch.read().aim!.y).toBeCloseTo(-1);
+  });
+
+  test('pointercancel never throws', () => {
+    const { touch, rock } = setupTouch();
+    ptr(rock, 'pointerdown', 3, 500, 300);
+    ptr(window, 'pointermove', 3, 500, 200);
+    ptr(window, 'pointercancel', 3, 500, 200);
+    expect(touch.read().throwRock).toBe(false);
+  });
+});
+
 describe('merge', () => {
   test('combines move (clamped), ORs booleans, first aim wins', () => {
     const a = { read: () => ({ move: { x: 1, y: 0 }, strike: true }), releaseAll() {} };

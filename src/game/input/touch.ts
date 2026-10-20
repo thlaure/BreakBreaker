@@ -37,7 +37,9 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
   let pendingAim: Vec | null = null; // aim delivered with the release throw
   let lastAim: Vec | null = null;
 
-  const show = (): void => root.classList.add('visible');
+  const show = (): void => {
+    root.classList.add('visible', 'touched');
+  };
   if (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches) show();
 
   const stickVec = (): Vec => {
@@ -82,12 +84,15 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
     const pauseEl = btn('pause');
     if (strikeEl?.contains(t)) strike = true;
     else if (throwEl?.contains(t)) {
-      if (!rock) rock = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY };
-      aimed = false;
+      if (!rock) {
+        rock = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY };
+        aimed = false;
+      }
     } else if (actEl?.contains(t)) {
       if (actId === null) actId = e.pointerId;
     } else if (pauseEl?.contains(t)) opts.onPause?.();
     else if (zone?.contains(t)) {
+      if (e.pointerType === 'mouse') return;
       if (!stick) {
         stick = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY };
         drawKnob();
@@ -111,7 +116,7 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
       if (rockAim()) aimed = true;
     }
   };
-  const up = (e: PointerEvent): void => {
+  const end = (e: PointerEvent, cancelled: boolean): void => {
     if (stick && e.pointerId === stick.id) {
       stick = null;
       drawKnob();
@@ -120,12 +125,16 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
     if (rock && e.pointerId === rock.id) {
       const a = rockAim();
       if (a) lastAim = a;
-      pendingAim = a ?? lastAim;
-      throwRock = true;
+      if (!cancelled) {
+        pendingAim = a ?? lastAim;
+        throwRock = true;
+      }
       rock = null;
       aimed = false;
     }
   };
+  const up = (e: PointerEvent): void => end(e, false);
+  const cancel = (e: PointerEvent): void => end(e, true);
   const releaseAll = (): void => {
     stick = null;
     actId = null;
@@ -137,11 +146,15 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
     drawKnob();
   };
 
+  const seen = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch') show();
+  };
   root.addEventListener('pointerdown', down);
   const w = root.ownerDocument.defaultView ?? window;
   w.addEventListener('pointermove', move);
   w.addEventListener('pointerup', up);
-  w.addEventListener('pointercancel', up);
+  w.addEventListener('pointercancel', cancel);
+  w.addEventListener('pointerdown', seen, true);
   const ctx = (e: Event): void => e.preventDefault();
   root.addEventListener('contextmenu', ctx);
 
@@ -172,7 +185,8 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
       root.removeEventListener('contextmenu', ctx);
       w.removeEventListener('pointermove', move);
       w.removeEventListener('pointerup', up);
-      w.removeEventListener('pointercancel', up);
+      w.removeEventListener('pointercancel', cancel);
+      w.removeEventListener('pointerdown', seen, true);
     },
   };
 }
