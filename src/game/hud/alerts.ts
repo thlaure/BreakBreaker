@@ -93,13 +93,21 @@ export interface Alert {
   total: number;
   /** Round starts only. */
   headline?: RoundHeadline;
+  /**
+   * Id of the incident in `activeIncidents` (target id or 'rescue') for incident alerts: the banner drops the alert once
+   * that incident is over. Absent for round starts and drops, which always run their course.
+   */
+  incident?: string;
 }
 
 /** The alert announced by a sim event (incident, round or special-drop start), or null. */
 export function alertFromEvent(e: SimEvent): Alert | null {
-  if (e.type === 'SchoolStarted') return { id: e.incidentId, kind: 'school', pos: { ...e.pos }, wave: e.wave, total: e.total };
-  if (e.type === 'CasseStarted') return { id: e.incidentId, kind: e.kind, pos: { ...e.pos }, wave: e.round, total: e.total };
-  if (e.type === 'RescueStarted') return { id: e.incidentId, kind: e.kind, pos: { ...e.pos }, wave: e.wave, total: e.total };
+  if (e.type === 'SchoolStarted')
+    return { id: e.incidentId, kind: 'school', pos: { ...e.pos }, wave: e.wave, total: e.total, incident: 'school' };
+  if (e.type === 'CasseStarted')
+    return { id: e.incidentId, kind: e.kind, pos: { ...e.pos }, wave: e.round, total: e.total, incident: e.target };
+  if (e.type === 'RescueStarted')
+    return { id: e.incidentId, kind: e.kind, pos: { ...e.pos }, wave: e.wave, total: e.total, incident: 'rescue' };
   if (e.type === 'RoundStarted')
     return { id: `round#${e.index}`, kind: 'round', pos: null, wave: e.index, total: e.total, headline: e.headline };
   // a second urgency is announced by its own start event; a drop that found no spot has nothing to show
@@ -321,6 +329,8 @@ export class AlertBanner {
   private readonly dist: HTMLElement;
   private current: Alert | null = null;
   private readonly queue: Alert[] = [];
+  /** Alerts pushed since the last `prune`: their incident may not show in the snapshot yet. */
+  private readonly fresh = new Set<Alert>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private lastDist = '';
 
@@ -354,6 +364,7 @@ export class AlertBanner {
   }
 
   push(incident: Alert): void {
+    this.fresh.add(incident);
     if (this.current) {
       this.queue.push(incident);
       if (this.queue.length > QUEUE_MAX) this.queue.shift();
@@ -374,7 +385,23 @@ export class AlertBanner {
     }
   }
 
+  /**
+   * Drops incident alerts whose incident is no longer active (`active` = `activeIncidents` ids), queued or on screen,
+   * so a banner never announces an urgency that is already over (e.g. during the breather). Alerts pushed since the
+   * previous call are kept once (their start may not be in this snapshot yet); round starts and drops are never dropped.
+   */
+  prune(active: ReadonlySet<string>): void {
+    const stale = (a: Alert): boolean => a.incident !== undefined && !active.has(a.incident) && !this.fresh.has(a);
+    for (let i = this.queue.length - 1; i >= 0; i--) if (stale(this.queue[i]!)) this.queue.splice(i, 1);
+    if (this.current && stale(this.current)) {
+      if (this.timer) clearTimeout(this.timer);
+      this.next();
+    }
+    this.fresh.clear();
+  }
+
   clear(): void {
+    this.fresh.clear();
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     this.queue.length = 0;

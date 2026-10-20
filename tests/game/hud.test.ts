@@ -276,16 +276,20 @@ describe('GameAudio.reset', () => {
 });
 
 describe('GameAudio.onEvents', () => {
-  test('chime plays once per TargetSaved / TargetRepaired / RoundCompleted', async () => {
+  test('chime plays once per TargetSaved / TargetRepaired / RoundCompleted, at most once per batch', async () => {
     const { GameAudio } = await import('../../src/game/audio');
     const a = new GameAudio();
     const chime = vi.spyOn(a, 'chime').mockImplementation(() => undefined);
     a.onEvents([{ type: 'TargetSaved', incidentId: 'car#2', target: 'car1' }]);
     expect(chime).toHaveBeenCalledTimes(1);
-    a.onEvents([{ type: 'TargetRepaired', target: 'busStop', incidentId: 'busStop#3' }, { type: 'RoundCompleted', index: 3, bonus: true }]);
+    a.onEvents([{ type: 'TargetRepaired', target: 'busStop', incidentId: 'busStop#3' }]);
+    a.onEvents([{ type: 'RoundCompleted', index: 3, bonus: true }]);
     expect(chime).toHaveBeenCalledTimes(3);
+    // the round's last KO saves a target and completes the round in the same step: one chime
+    a.onEvents([{ type: 'TargetSaved', incidentId: 'school#4', target: 'school' }, { type: 'RoundCompleted', index: 4, bonus: true }]);
+    expect(chime).toHaveBeenCalledTimes(4);
     a.onEvents([{ type: 'FireOut', target: 'car1' }, { type: 'StationsRecharged' }]);
-    expect(chime).toHaveBeenCalledTimes(3);
+    expect(chime).toHaveBeenCalledTimes(4);
   });
 
   test('casse alarm once per incident, whoosh on a Molotov, pickup sound on a toolbox', async () => {

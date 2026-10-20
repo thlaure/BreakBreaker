@@ -299,11 +299,13 @@ export class Hud {
       c.text(this.actBtn, p?.label ?? DEFAULT_ACT_LABEL);
     }
 
+    const active = s.ended ? [] : activeIncidents(s);
     if (s.ended) this.alert.clear();
+    else this.alert.prune(new Set(active.map((i) => i.id)));
     this.alert.track(s.player.pos);
     this.placeAlert();
     this.updateRound(roundPanel(s));
-    this.updateEdges(s.ended ? [] : activeIncidents(s), s, view, touch);
+    this.updateEdges(active, s, view, touch);
   }
 
   /** The snapshot has no rescue status: infer drain from the reserve between sim steps (kept while paused). */

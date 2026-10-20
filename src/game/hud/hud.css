@@ -37,6 +37,7 @@
 .bb-card .dist { color: #d8cfe0; }
 /* mini health bar of an attacked target (pixel: hard border, no radius) */
 .bb-card .hpbar { display: inline-flex; width: 40px; height: 6px; border: 2px solid #000; background: #3a3448; box-shadow: 0 0 0 1px #4a4360; }
+.bb-card .hpbar[hidden] { display: none; }
 .bb-card .hpbar .fill { height: 100%; background: var(--bb-ok); }
 .bb-card .hpbar .fill.low { background: var(--bb-bad); }
 .bb-card.st-en-feu .hpbar .fill:not(.low) { background: var(--bb-fire); }

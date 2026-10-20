@@ -55,10 +55,10 @@ describe('pure helpers', () => {
   });
 
   test('alertFromEvent maps incident starts and round starts (a round has no position)', () => {
-    expect(alertFromEvent(schoolEv)).toEqual({ id: 'school#1', kind: 'school', pos: DOOR, wave: 1, total: 11 });
-    expect(alertFromEvent(rescueEv('elderlyRobbed'))).toEqual({ id: 'rescue#1', kind: 'elderlyRobbed', pos: { x: 900, y: 600 }, wave: 2, total: 3 });
+    expect(alertFromEvent(schoolEv)).toEqual({ id: 'school#1', kind: 'school', pos: DOOR, wave: 1, total: 11, incident: 'school' });
+    expect(alertFromEvent(rescueEv('elderlyRobbed'))).toEqual({ id: 'rescue#1', kind: 'elderlyRobbed', pos: { x: 900, y: 600 }, wave: 2, total: 3, incident: 'rescue' });
     expect(alertFromEvent(waveEv)).toEqual({ id: 'round#3', kind: 'round', pos: null, wave: 3, total: 9, headline: 'car' });
-    expect(alertFromEvent(casseEv('car', 'car1', { x: 50, y: 60 }))).toEqual({ id: 'car#3', kind: 'car', pos: { x: 50, y: 60 }, wave: 3, total: 18 });
+    expect(alertFromEvent(casseEv('car', 'car1', { x: 50, y: 60 }))).toEqual({ id: 'car#3', kind: 'car', pos: { x: 50, y: 60 }, wave: 3, total: 18, incident: 'car1' });
     expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 } })).toMatchObject({ kind: 'weaponDrop', pos: { x: 7, y: 8 } });
     // no banner for a drop that found no spot, nor for a second urgency (its own CasseStarted announces it)
     expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: null })).toBeNull();
@@ -390,6 +390,52 @@ describe('Hud alerts and edge indicators', () => {
     expect(p.querySelector('.count')!.textContent).toBe('Manche 3 dans 1…');
     hud.update(snap((x) => { calm(x); x.round = 3; x.roundPhase = 'play'; }), view);
     expect(p.hidden).toBe(true);
+    hud.destroy();
+  });
+
+  test('an incident banner is dropped once its incident is over, queued or on screen; round and drop banners stay', () => {
+    const hud = new Hud(document.body, null);
+    const a = hud.root.querySelector<HTMLElement>('.bb-alert')!;
+    const title = () => (a.hidden ? null : a.querySelector('.title')!.textContent);
+    const threat = (x: Snapshot): void => {
+      calm(x);
+      attack(x, 'car1');
+      x.rescue = { stage: 'threat', remaining: 20, victimPos: { x: 400, y: 300 }, kind: 'elderlyRobbed' };
+    };
+    // car + rescue start in the same frame: the rescue banner queues behind the car's
+    hud.onEvents([casseEv('car', 'car1', { x: 10, y: 10 }), rescueEv('elderlyRobbed')]);
+    hud.update(snap(threat), view);
+    expect(title()).toBe('VOITURE EN FEU !');
+    // fast KOs: the rescue resolves while still queued → never shown (no « VOL EN COURS ! » during the breather)
+    hud.update(snap((x) => { threat(x); x.rescue!.stage = 'completed'; }), view);
+    expect(title()).toBe('VOITURE EN FEU !');
+    // the car is saved too: its visible banner goes away at once, nothing left to show
+    hud.update(snap((x) => { calm(x); x.roundPhase = 'breather'; }), view);
+    expect(title()).toBeNull();
+    vi.advanceTimersByTime(ALERT_MS * 2);
+    expect(title()).toBeNull();
+    // a banner whose start is not in the snapshot yet survives one update
+    hud.onEvents([casseEv('busStop', 'busStop', { x: 10, y: 10 })]);
+    hud.update(snap(calm), view);
+    expect(title()).toBe('ABRIBUS SACCAGÉ !');
+    hud.update(snap(calm), view);
+    expect(title()).toBeNull();
+    // round and drop banners are not tied to an incident
+    hud.onEvents([waveEv, { type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 5, y: 5 } }]);
+    hud.update(snap(calm), view);
+    hud.update(snap(calm), view);
+    expect(title()).toBe('MANCHE 3 !');
+    vi.advanceTimersByTime(ALERT_MS);
+    hud.update(snap(calm), view);
+    expect(title()).toBe('ARME SPÉCIALE !');
+    hud.destroy();
+  });
+
+  test('the rescue card has no health bar', () => {
+    const hud = new Hud(document.body, null);
+    hud.update(snap((x) => { calm(x); x.rescue = { stage: 'threat', remaining: 20, victimPos: { x: 1, y: 1 }, kind: 'groupHarassed' }; }), view);
+    const card = [...hud.root.querySelectorAll<HTMLElement>('.bb-card')].find((c) => !c.hidden)!;
+    expect(card.querySelector<HTMLElement>('.hpbar')!.hidden).toBe(true);
     hud.destroy();
   });
 

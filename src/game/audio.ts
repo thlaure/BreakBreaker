@@ -223,6 +223,7 @@ export class GameAudio {
 
   /** Maps sim events to sounds (a thrown enemy rock sounds when it actually spawns: EnemyRockThrown). */
   onEvents(events: SimEvent[]): void {
+    let chimed = false;
     for (const e of events) {
       switch (e.type) {
         case 'HitConfirmed':
@@ -248,7 +249,9 @@ export class GameAudio {
         case 'TargetSaved':
         case 'TargetRepaired':
         case 'RoundCompleted':
-          this.chime();
+          // one chime per batch: a target saved by the round's last KO lands with RoundCompleted
+          if (!chimed) this.chime();
+          chimed = true;
           break;
         case 'PlayerDamaged':
           this.play('hurt');
