@@ -55,7 +55,7 @@ const decode = (s: string) =>
 test('landing has one h1, a real /jouer/ link and no script', () => {
   const html = readFileSync(out('index.html'), 'utf8');
   expect(html.match(/<h1/g)?.length).toBe(1);
-  expect(html).toMatch(/href="\/jouer\/"/);
+  expect(html).toMatch(/href="\/jouer\/\?go"/); // starts the game at once, no start screen
   expect(html).not.toMatch(/<script/);
 });
 

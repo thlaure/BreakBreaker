@@ -20,6 +20,7 @@ export interface UiHost {
 type Phase = 'start' | 'playing' | 'paused' | 'ending' | 'ended';
 
 const KO_SUMMARY_DELAY_MS = 700;
+const UNLOCK_EVENTS = ['keydown', 'pointerdown'] as const;
 
 let sharedAudio: GameAudio | null = null;
 function audioFor(prefs: Prefs): GameAudio {
@@ -38,6 +39,7 @@ export class GameUi {
   private readonly hud: Hud;
   private readonly menus: Menus;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private removeUnlock: () => void = () => undefined;
 
   private readonly onHud = (s: Snapshot): void => this.frame(s);
   private readonly onEvents = (ev: SimEvent[]): void => this.audio.onEvents(ev);
@@ -68,6 +70,17 @@ export class GameUi {
       this.phase = 'playing';
       this.hud.show(true);
       this.audio.resume();
+      // No Commencer click on this page: the first key, click or tap unlocks audio (browsers require a gesture here).
+      if (!this.audio.unlocked) {
+        const unlock = (): void => {
+          for (const t of UNLOCK_EVENTS) window.removeEventListener(t, unlock, true);
+          void this.audio.unlock();
+        };
+        for (const t of UNLOCK_EVENTS) window.addEventListener(t, unlock, true);
+        this.removeUnlock = () => {
+          for (const t of UNLOCK_EVENTS) window.removeEventListener(t, unlock, true);
+        };
+      }
     } else {
       this.host.sim.pause();
       this.host.releaseInputs();
@@ -76,6 +89,7 @@ export class GameUi {
   }
 
   destroy(): void {
+    this.removeUnlock();
     if (this.timer) clearTimeout(this.timer);
     this.host.events.off('hud', this.onHud as never);
     this.host.events.off('sim-events', this.onEvents as never);

@@ -28,14 +28,28 @@ export const BREATHER_SEC = 8;
 export const SPAWN_MIN_DIST = 320;
 export const RESCUE_PATH_MIN = 300;
 export const RESCUE_PATH_MAX = 900;
-export const NEXT_WAVE_AT = 3;
+/** Next wave is prepared once at most this many rioters are left and the wave queue is empty. */
+export const NEXT_WAVE_AT = 2;
+/** Rest (s) between a cleared wave and the next one. */
+export const WAVE_BREATHER_SEC = 6;
+/** Rioters of a wave enter one by one, this many seconds apart. */
+export const WAVE_SPAWN_INTERVAL = 1.5;
+/** Waves never put more than this many rioters on the map at once (the rest wait their turn). */
+export const WAVE_ACTIVE_CAP = 12;
+export const WAVE_MAX_SIZE = 18;
 export const PATROL_SIZE = 3;
-export const THROWER_SHARE = 0.3;
+/** Share of rock throwers in a wave (none in the first wave, so Paul learns to fight first). */
+export const THROWER_SHARE = 0.2;
 const VARIANTS: Variant[] = ['classic', 'palestinian', 'antifa'];
 
-/** Waves replace "manche" in this slice. */
+/** Waves replace "manche" in this slice. Rises one step every 2 waves and every 30 KOs. */
 export function pressure(waveIndex: number, kos: number): number {
-  return Math.min(CONFIG.pressureMax, 1 + waveIndex + Math.floor(kos / 12));
+  return Math.min(CONFIG.pressureMax, 1 + Math.floor(waveIndex / 2) + Math.floor(kos / 30));
+}
+
+/** Rioters in wave n (1-based): 5, 7, 9 … capped. */
+export function waveSize(wave: number): number {
+  return Math.min(WAVE_MAX_SIZE, 3 + 2 * wave);
 }
 
 /** Edge spawn points >= 320 px from Paul; if none qualifies, the farthest one. */
@@ -79,6 +93,10 @@ export class Director {
   private idle = 0;
   private variantCursor = 0;
   private spawnCursor = 0;
+  /** Rioters of the current wave still waiting to enter. */
+  private queue: Role[] = [];
+  private spawnTimer = 0;
+  private rest = 0;
 
   /** Pressure for the current wave (0-based wave index) and session KOs. */
   pressure(kos: number): number {
@@ -115,7 +133,7 @@ export class Director {
         }
         break;
       case 'waves':
-        if (host.horde.active().length <= NEXT_WAVE_AT) this.launchWave(host, events);
+        this.stepWave(dt, host, events);
         break;
     }
     this.idlePatrol(dt, host);
@@ -127,17 +145,42 @@ export class Director {
     this.timer = 0;
   }
 
+  /** Feeds the queued rioters one by one; once the wave is nearly cleared, rests, then launches the next. */
+  private stepWave(dt: number, host: DirectorHost, events: SimEvent[]): void {
+    const active = host.horde.active().length;
+    if (this.queue.length > 0) {
+      this.spawnTimer += dt;
+      if (this.spawnTimer >= WAVE_SPAWN_INTERVAL - 1e-9 && active < WAVE_ACTIVE_CAP) this.enterNext(host);
+      return;
+    }
+    if (active > NEXT_WAVE_AT) {
+      this.rest = 0;
+      return;
+    }
+    this.rest += dt;
+    if (this.rest >= WAVE_BREATHER_SEC - 1e-9) this.launchWave(host, events);
+  }
+
   private launchWave(host: DirectorHost, events: SimEvent[]): void {
     this.wave += 1;
-    const p = this.pressure(host.rules.kos);
-    const size = Math.max(0, Math.min(CONFIG.caps.hostiles - host.horde.active().length, 4 + 2 * p));
-    const pts = spawnPoints(host.player.pos);
+    this.rest = 0;
+    const size = waveSize(this.wave);
+    const share = this.wave === 1 ? 0 : THROWER_SHARE;
+    this.queue = [];
     for (let i = 0; i < size; i++) {
-      // floor((i+1)·0.3) > floor(i·0.3) marks exactly floor(size·0.3) throwers, spread through the wave
-      const thrower = Math.floor((i + 1) * THROWER_SHARE) > Math.floor(i * THROWER_SHARE);
-      if (!this.spawn(host, thrower ? 'thrower' : 'contact', pts)) break;
+      // floor((i+1)·s) > floor(i·s) marks exactly floor(size·s) throwers, spread through the wave
+      const thrower = Math.floor((i + 1) * share) > Math.floor(i * share);
+      this.queue.push(thrower ? 'thrower' : 'contact');
     }
     events.push({ type: 'WaveAnnounced', index: this.wave });
+    this.enterNext(host);
+  }
+
+  private enterNext(host: DirectorHost): void {
+    const role = this.queue[0];
+    if (!role) return;
+    if (this.spawn(host, role, spawnPoints(host.player.pos))) this.queue.shift();
+    this.spawnTimer = 0;
   }
 
   /** 25 s with nobody active → a small patrol of 3 contacts. */
