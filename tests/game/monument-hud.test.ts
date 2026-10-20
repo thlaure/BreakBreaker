@@ -32,7 +32,7 @@ afterEach(() => vi.useRealTimers());
 
 describe('monument alerts', () => {
   test('banners: « MONUMENT ATTAQUÉ ! » at the monument (warn, flag icon), « DRAPEAU REMPLACÉ ! », short « DRAPEAU RÉCUPÉRÉ ! »', () => {
-    expect(alertFromEvent(attacked)).toEqual({ id: 'monument#1', kind: 'monument', pos: MAST, wave: 4, total: 28, incident: 'monument' });
+    expect(alertFromEvent(attacked)).toEqual({ id: 'monument#1', kind: 'monument', pos: MAST, wave: 4, total: 28, incident: 'monument:occupy' });
     expect(incidentAlert('monument', 4, 28)).toMatchObject({
       title: 'MONUMENT ATTAQUÉ !',
       sub: 'Défends le drapeau',
@@ -41,7 +41,7 @@ describe('monument alerts', () => {
       meta: 'Manche 4 · 28 casseurs',
       positioned: true,
     });
-    expect(alertFromEvent(swapped)).toEqual({ id: 'monument#1:swap', kind: 'flag', pos: MAST, wave: 0, total: 0, incident: 'monument' });
+    expect(alertFromEvent(swapped)).toEqual({ id: 'monument#1:swap', kind: 'flag', pos: MAST, wave: 0, total: 0, incident: 'monument:flag' });
     expect(incidentAlert('flag')).toMatchObject({ title: 'DRAPEAU REMPLACÉ !', sub: 'Reprends le monument', label: 'DRAPEAU', positioned: true });
     expect(alertFromEvent(captured)).toEqual({ id: 'flag#1', kind: 'flagCaptured', pos: null, wave: 0, total: 0 });
     const won = incidentAlert('flagCaptured');
@@ -52,22 +52,22 @@ describe('monument alerts', () => {
     expect(incidentLook('flag')).toEqual({ tone: 'warn', icon: 'flag' });
   });
 
-  test('activeIncidents: the monument while occupied, the flag while Palestinian (one id: monument), nothing when French and calm', () => {
-    expect(activeIncidents(snap()).filter((i) => i.id === 'monument')).toEqual([]);
+  test('activeIncidents: the occupation (monument:occupy) while occupied, the flag (monument:flag) while Palestinian, nothing when French and calm', () => {
+    expect(activeIncidents(snap()).filter((i) => i.id.startsWith('monument'))).toEqual([]);
     const occ = snap((x) => {
       x.monument.occupation = { id: 'monument#1', stage: 'occupy', swap: 1, swapSec: 4 };
     });
-    expect(activeIncidents(occ).filter((i) => i.id === 'monument')).toEqual([{ id: 'monument', kind: 'monument', pos: MAST }]);
+    expect(activeIncidents(occ).filter((i) => i.id.startsWith('monument'))).toEqual([{ id: 'monument:occupy', kind: 'monument', pos: MAST }]);
     const defended = snap((x) => {
       x.monument.occupation = { id: 'monument#1', stage: 'defended', swap: 1, swapSec: 4 };
     });
-    expect(activeIncidents(defended).filter((i) => i.id === 'monument')).toEqual([]);
+    expect(activeIncidents(defended).filter((i) => i.id.startsWith('monument'))).toEqual([]);
     const lost = snap((x) => {
       palestinian(x);
       x.monument.occupation = { id: 'monument#1', stage: 'swapped', swap: 4, swapSec: 4 };
       x.roundPhase = 'breather';
     });
-    expect(activeIncidents(lost).filter((i) => i.id === 'monument')).toEqual([{ id: 'monument', kind: 'flag', pos: MAST }]);
+    expect(activeIncidents(lost).filter((i) => i.id.startsWith('monument'))).toEqual([{ id: 'monument:flag', kind: 'flag', pos: MAST }]);
   });
 
   test('card « Drapeau — capture 5/8 s » with a capture bar; « zone contestée » when blocked; none while French', () => {
@@ -110,6 +110,38 @@ describe('monument in the Hud', () => {
     hud.update(snap(), off);
     expect(label()).toEqual([]);
     expect(hud.root.querySelector('.bb-card.k-flag')).toBeNull();
+    hud.destroy();
+  });
+
+  test('a queued « MONUMENT ATTAQUÉ ! » is dropped once the flag is swapped: « DRAPEAU REMPLACÉ ! » shows, never the stale one after it', () => {
+    const hud = new Hud(document.body, null);
+    const a = hud.root.querySelector<HTMLElement>('.bb-alert')!;
+    const school: SimEvent = { type: 'TargetIgnited', target: 'school', incidentId: 'school#2', kind: 'school', pos: { ...DISTRICT.school.door }, round: 4 };
+    const occupied = (x: Snapshot): void => {
+      x.monument.occupation = { id: 'monument#1', stage: 'occupy', swap: 0, swapSec: 4 };
+      x.targets.find((t) => t.id === 'school')!.state = 'burning';
+    };
+    // the school fire is on screen, the occupation waits behind it
+    hud.onEvents([school, attacked]);
+    hud.update(snap(occupied), off);
+    expect(a.textContent).toContain('ÉCOLE EN FEU !');
+    // the flag is swapped before the occupation banner got its turn
+    hud.onEvents([swapped]);
+    const lost = (x: Snapshot): void => {
+      occupied(x);
+      palestinian(x);
+      x.monument.occupation!.stage = 'swapped';
+    };
+    hud.update(snap(lost), off);
+    hud.update(snap(lost), off);
+    const shown: string[] = [];
+    for (let k = 0; k < 3; k++) {
+      vi.advanceTimersByTime(6100);
+      hud.update(snap(lost), off);
+      if (!a.hidden) shown.push(a.querySelector('.title')!.textContent!);
+    }
+    expect(shown[0]).toBe('DRAPEAU REMPLACÉ !');
+    expect(shown).not.toContain('MONUMENT ATTAQUÉ !');
     hud.destroy();
   });
 

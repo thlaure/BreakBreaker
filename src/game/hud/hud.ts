@@ -29,8 +29,6 @@ import {
   type RoundPanel,
 } from './format';
 
-/** How long the launch card stays on screen if the player does not close it. */
-
 export interface CameraView {
   /** World coordinates of the top-left corner of the visible area. */
   x: number;

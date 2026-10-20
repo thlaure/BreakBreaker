@@ -117,9 +117,10 @@ export function roundPlan(
   targets: Targets,
   last: CasseKind | null = null,
   monument: MonumentPlan | null = null,
+  isFree: (id: TargetId) => boolean = (id) => targets.standing(id) && !targets.get(id).burning,
 ): RoundPlan {
-  // a burning target (fire not put out yet) is not attacked again
-  const intact = (k: CasseKind): boolean => TARGETS_OF[k].some((id) => targets.standing(id) && !targets.get(id).burning);
+  // a kind is drawn only with a free target (the director's free(): standing, not burning, no unresolved attack)
+  const intact = (k: CasseKind): boolean => TARGETS_OF[k].some(isFree);
   let first: CasseKind | null = null;
   if (round === 1) first = intact('school') ? 'school' : null;
   else {
@@ -288,10 +289,14 @@ export class Director {
     // toolboxes at round start as well as at round end (round 1 has some too)
     ev.push(...host.toolboxes.place(DISTRICT.kitSites, host.player.pos));
 
-    const plan = roundPlan(this.round, host.rand, host.targets, this.lastHeadline, {
-      french: host.monument.flag === 'french',
-      lastWasMonument: this.lastMonument,
-    });
+    const plan = roundPlan(
+      this.round,
+      host.rand,
+      host.targets,
+      this.lastHeadline,
+      { french: host.monument.flag === 'french', lastWasMonument: this.lastMonument },
+      (id) => this.free(id, host),
+    );
     this.plan = plan;
     this.lastHeadline = plan.headline === 'rescue' || plan.headline === 'monument' ? null : plan.headline;
     this.lastMonument = plan.beats.some((b) => b.includes('monument'));

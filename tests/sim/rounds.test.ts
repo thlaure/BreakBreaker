@@ -73,6 +73,14 @@ describe('round catalogue', () => {
     }
   });
 
+  test('the draw only picks targets the given free() accepts (an unresolved attack makes a target unavailable)', () => {
+    const t = new Targets();
+    const busy = new Set(['school', 'car1', 'car2', 'shop']);
+    for (let s = 1; s <= 30; s++) expect(roundPlan(2 + (s % 6), rng(s), t, null, null, (id) => !busy.has(id)).headline).toBe('busStop');
+    busy.add('busStop');
+    expect(roundPlan(4, rng(1), t, null, null, (id) => !busy.has(id)).beats).toEqual([['rescue']]);
+  });
+
   test('from round 4 the second beat alternates monument / rescue while the flag is French; never the monument while Palestinian', () => {
     const t = new Targets();
     let last = false;

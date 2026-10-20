@@ -91,9 +91,9 @@ Final checks: `npx vitest run` 371/371, `npm run typecheck` clean, `npm run buil
 - `incidents/targetAttack.ts`: buildings (school, shop) share the 4-Molotov cap and the pressure extras
   (`min(6, 2 + floor(p / 3))`, degrader/contact alternating); the round-1 school special case is unchanged. Variants
   still round-robin; the round-3+ firebomber marking applies to the shop like any attack.
-- `director.ts`: `TARGETS_OF` / counters get `shop`; `headlineKinds(round)`: r2 `['shop']`, r3 `['car','busStop']`,
-  r4+ all four kinds; same weighting (2, or 1 for last round's headline from r3); still one `rand()` per draw. A ruined
-  or burning shop in r2 → rescue-only round (same fallback as before). Twist second urgency picks the shop like any
+- `director.ts`: `TARGETS_OF` / counters get `shop`; at the time `headlineKinds(round)` scripted r2 `['shop']`, r3
+  `['car','busStop']`, r4+ all four kinds. **Superseded in task C** (product-owner request): round 1 = school, from
+  round 2 a seeded random draw among every free kind (weight 2, 1 for last round's); `headlineKinds` is gone. Twist second urgency picks the shop like any
   free target.
 - Ignition, smoulder, toolbox extinguish/repair, ruin and award keys (`shop#n:saved`, `:lost`, `:extinguished`,
   `:repaired`) all come from the existing generic code.
@@ -123,8 +123,8 @@ indicator, card). Steady-flow, balance and determinism tests stay green with no 
 
 ### Notes / concerns
 
-- Round 3 can no longer open with the school (spec: round 3 headline car|busStop); the school comes back in the draw
-  from round 4.
+- (Superseded in task C) Rounds 2–3 were scripted here (shop, then car|busStop); since task C every kind, the school
+  included, can be drawn from round 2.
 - The CAHIER's earlier « Commerce pillé » proposal (shutter, shopkeeper, +4/+5) is marked as not delivered (§23.1) and
   its catalogue/alert rows now describe the delivered shop.
 - Commit trailer uses `Claude Opus 5.5` (the model actually used), not the `Sonnet 5.5` named in the batch rules.

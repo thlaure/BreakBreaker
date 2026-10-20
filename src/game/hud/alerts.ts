@@ -183,11 +183,11 @@ export function alertFromEvent(e: SimEvent): Alert | null {
   }
   // picked up: short position-less banner (a reset while on is announced again)
   if (e.type === 'FurieStarted') return { id: 'furie', kind: 'furie', pos: null, wave: 0, total: 0 };
-  // the monument: occupation start, flag replaced (both tied to the 'monument' incident), flag captured back (short)
+  // the monument: occupation start ('monument:occupy'), flag replaced ('monument:flag'), flag captured back (short)
   if (e.type === 'MonumentAttacked')
-    return { id: e.incidentId, kind: 'monument', pos: { ...e.pos }, wave: e.round, total: e.total, incident: 'monument' };
+    return { id: e.incidentId, kind: 'monument', pos: { ...e.pos }, wave: e.round, total: e.total, incident: 'monument:occupy' };
   if (e.type === 'FlagSwapped')
-    return { id: `${e.incidentId}:swap`, kind: 'flag', pos: { ...e.pos }, wave: 0, total: 0, incident: 'monument' };
+    return { id: `${e.incidentId}:swap`, kind: 'flag', pos: { ...e.pos }, wave: 0, total: 0, incident: 'monument:flag' };
   if (e.type === 'FlagCaptured') return { id: `flag#${e.swap}`, kind: 'flagCaptured', pos: null, wave: 0, total: 0 };
   return null;
 }
@@ -202,10 +202,11 @@ export function activeIncidents(s: Snapshot): Incident[] {
   for (const t of s.targets)
     if (t.state === 'attacked' || t.state === 'burning') out.push({ id: t.id, kind: t.kind, pos: { ...t.door }, burning: t.burning });
   if (s.rescue?.stage === 'threat') out.push({ id: 'rescue', kind: s.rescue.kind, pos: { ...s.rescue.victimPos } });
-  // the monument: its flag to take back (any time, breather included), or an occupation under way
+  // the monument: its flag to take back (any time, breather included), or an occupation under way. Distinct ids, so an
+  // occupation banner still queued is dropped once the flag is swapped (or the occupation is over)
   const m = s.monument;
-  if (m.flag === 'palestinian') out.push({ id: 'monument', kind: 'flag', pos: { ...m.mast } });
-  else if (m.occupation?.stage === 'occupy') out.push({ id: 'monument', kind: 'monument', pos: { ...m.mast } });
+  if (m.flag === 'palestinian') out.push({ id: 'monument:flag', kind: 'flag', pos: { ...m.mast } });
+  else if (m.occupation?.stage === 'occupy') out.push({ id: 'monument:occupy', kind: 'monument', pos: { ...m.mast } });
   for (const w of s.weaponsOnGround)
     if (w.expiresAt !== null) out.push({ id: dropId(w.pos), kind: w.kind === 'furie' ? 'furieDrop' : 'weaponDrop', pos: { ...w.pos } });
   return out;
