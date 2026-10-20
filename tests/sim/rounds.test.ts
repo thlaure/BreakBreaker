@@ -310,7 +310,7 @@ describe('rounds in the sim', () => {
     for (let i = 0; sim.horde.active().length < CONFIG.caps.hostiles - 1; i++)
       sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { ...far[i % far.length]! } });
     for (let i = 0; i < 60 * 30 && !sim.rescue; i++) sim.step(IDLE);
-    expect(sim.school.stage).toBe('saved');
+    expect(sim.school.settled()).toBe(true); // saved, or smouldering if the reinforcements' Molotov threw
     const r = sim.rescue!;
     expect(sim.horde.list.filter((h) => h.incidentId === r.id)).toHaveLength(1);
     expect(r.total).toBeGreaterThan(1);

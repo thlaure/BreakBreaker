@@ -25,24 +25,32 @@ export interface AttackCtx {
 
 const VARIANTS: Variant[] = ['classic', 'palestinian', 'antifa'];
 
+/** Molotov throwers of an attack in `round`: min(4, 1 + floor(round / 2)), at most 2 on a prop (car, bus stop). */
+export function molotovCount(kind: CasseKind, round: number): number {
+  return Math.min(kind === 'school' ? 4 : 2, 1 + Math.floor(round / 2));
+}
+
 /**
  * Who attacks a target of `kind` in `round` at `pressure`. Requests carry `round`; the attack stamps its own
  * `incidentId` and `site` when it requests them (a car lineup fits either car). Variants cycle over the whole list.
+ * Molotov throwers come on top of the rest of the lineup, at the head of the first line; the round-1 school keeps one
+ * in its first line and sends a second one with its reinforcements, after the cinematic.
  */
 export function lineup(kind: CasseKind, round: number, pressure: number): AttackComposition {
   let first: Role[];
   let reinf: Role[] = [];
   if (kind === 'school' && round === 1) {
     first = ['molotov', 'degrader', 'degrader'];
-    reinf = [...Array<Role>(4).fill('degrader'), ...Array<Role>(3).fill('contact')];
-  } else if (kind === 'school') {
-    first = ['molotov', 'degrader', 'degrader', 'contact'];
-    const extra = Math.min(6, 2 + Math.floor(pressure / 3));
-    for (let i = 0; i < extra; i++) first.push(i % 2 === 0 ? 'degrader' : 'contact');
+    reinf = ['molotov', ...Array<Role>(4).fill('degrader'), ...Array<Role>(3).fill('contact')];
   } else {
-    first = ['molotov', 'degrader', 'degrader', 'contact'];
-    const extra = Math.min(3, Math.floor(pressure / 4));
-    for (let i = 0; i < extra; i++) first.push('contact');
+    first = [...Array<Role>(molotovCount(kind, round)).fill('molotov'), 'degrader', 'degrader', 'contact'];
+    if (kind === 'school') {
+      const extra = Math.min(6, 2 + Math.floor(pressure / 3));
+      for (let i = 0; i < extra; i++) first.push(i % 2 === 0 ? 'degrader' : 'contact');
+    } else {
+      const extra = Math.min(3, Math.floor(pressure / 4));
+      for (let i = 0; i < extra; i++) first.push('contact');
+    }
   }
   let v = 0;
   const req = (role: Role): SpawnRequest => ({ variant: VARIANTS[v++ % VARIANTS.length]!, role, round });

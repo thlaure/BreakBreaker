@@ -76,6 +76,8 @@ const STUCK_SEC = 2;
 const QUEUE_DIST = 64;
 const MAX_KO_BODIES = 16;
 const THROW_POSTPONE = 0.25;
+/** Extra windup per Molotov of the same site already winding up: their bottles never leave on the same step. */
+const MOLOTOV_STAGGER = 0.25;
 const EPS = 1e-9;
 const ZERO: Vec = { x: 0, y: 0 };
 
@@ -389,8 +391,12 @@ export class Horde {
     }
     const goal = this.sitePoint(h, a, site.points);
     if (dist(h.pos, goal) <= CONFIG.molotov.range && ctx.grid.lineClear(h.pos, goal)) {
+      // the n-th of a site's Molotovs raising a bottle at once holds it n × MOLOTOV_STAGGER longer (no windup cap applies)
+      let latest = now + CONFIG.molotov.windup - MOLOTOV_STAGGER;
+      for (const o of this.list)
+        if (o !== h && o.site === h.site && o.state === 'windup' && this.auxOf(o).windKind === 'molotov') latest = Math.max(latest, o.stateUntil);
       h.state = 'windup';
-      h.stateUntil = now + CONFIG.molotov.windup;
+      h.stateUntil = Math.max(now + CONFIG.molotov.windup, latest + MOLOTOV_STAGGER);
       a.windKind = 'molotov';
       return ZERO;
     }

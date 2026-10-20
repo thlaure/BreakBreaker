@@ -256,13 +256,13 @@ test('hp 0: destroyed, target ruined, −3 once, BuildingDestroyed carries the t
   expect(w.horde.list.filter((h) => h.incidentId === 'school#2')).toEqual([]);
 });
 
-test('round-1 school: 3 first-line, cinematic, 7 reinforcements, total 10', () => {
+test('round-1 school: 3 first-line (1 Molotov), cinematic, 8 reinforcements (the second Molotov among them)', () => {
   const comp = lineup('school', 1, 0);
   expect(comp.firstLine.map((r) => r.role)).toEqual(['molotov', 'degrader', 'degrader']);
-  expect(comp.reinforcements.map((r) => r.role)).toEqual([...Array(4).fill('degrader'), ...Array(3).fill('contact')]);
+  expect(comp.reinforcements.map((r) => r.role)).toEqual(['molotov', ...Array(4).fill('degrader'), ...Array(3).fill('contact')]);
   const w = world('school', comp, { school: true });
   const school = w.attack as SchoolIncident;
-  expect(school.total()).toBe(10);
+  expect(school.total()).toBe(comp.firstLine.length + comp.reinforcements.length);
   school.start();
   expect(w.mine()).toHaveLength(3);
   expect(new Set(w.mine().map((h) => h.variant)).size).toBe(3);
@@ -279,21 +279,37 @@ test('round-1 school: 3 first-line, cinematic, 7 reinforcements, total 10', () =
   school.skipCinematic();
   w.tick(DT);
   expect(school.stage).toBe('reinforcements');
-  expect(w.mine().filter((h) => h.state !== 'ko')).toHaveLength(7);
+  expect(w.mine().filter((h) => h.state !== 'ko')).toHaveLength(comp.reinforcements.length);
   w.tick(1);
-  expect(w.mine().filter((h) => h.state !== 'ko')).toHaveLength(7);
+  expect(w.mine().filter((h) => h.state !== 'ko')).toHaveLength(comp.reinforcements.length);
+});
+
+test('Molotov throwers per attack: min(4, 1 + floor(round / 2)), props capped at 2, extra rioters in the first line', () => {
+  const molotovs = (c: AttackComposition) => [...c.firstLine, ...c.reinforcements].filter((r) => r.role === 'molotov').length;
+  expect([2, 3, 4, 5, 6, 7, 12].map((r) => molotovs(lineup('school', r, 0)))).toEqual([2, 2, 3, 3, 4, 4, 4]);
+  for (const kind of ['car', 'busStop'] as const)
+    expect([1, 2, 3, 4, 6, 12].map((r) => molotovs(lineup(kind, r, 0)))).toEqual([1, 2, 2, 2, 2, 2]);
+  // round 1: one bottle in the first line, the second comes with the reinforcements (after the cinematic)
+  expect(lineup('school', 1, 0).firstLine.filter((r) => r.role === 'molotov')).toHaveLength(1);
+  expect(lineup('school', 1, 0).reinforcements.filter((r) => r.role === 'molotov')).toHaveLength(1);
+  // extra, not replacing: the rest of the lineup is unchanged
+  for (const [kind, r] of [['school', 4], ['car', 5], ['busStop', 2]] as const) {
+    const c = lineup(kind, r, 6);
+    expect(c.firstLine.filter((x) => x.role !== 'molotov')).toHaveLength(c.firstLine.length - molotovs(c));
+    expect(c.firstLine.slice(0, molotovs(c)).every((x) => x.role === 'molotov')).toBe(true);
+  }
 });
 
 test('lineup: later school and car compositions follow pressure; variants round-robin', () => {
   const s = lineup('school', 3, 6);
   expect(s.reinforcements).toEqual([]);
-  expect(s.firstLine.map((r) => r.role)).toEqual(['molotov', 'degrader', 'degrader', 'contact', 'degrader', 'contact', 'degrader', 'contact']);
-  expect(lineup('school', 3, 99).firstLine).toHaveLength(4 + 6);
+  expect(s.firstLine.map((r) => r.role)).toEqual(['molotov', 'molotov', 'degrader', 'degrader', 'contact', 'degrader', 'contact', 'degrader', 'contact']);
+  expect(lineup('school', 3, 99).firstLine).toHaveLength(2 + 3 + 6);
   expect(s.firstLine.map((r) => r.variant).slice(0, 4)).toEqual(['classic', 'palestinian', 'antifa', 'classic']);
   expect(s.firstLine.every((r) => r.round === 3)).toBe(true);
-  expect(lineup('car', 2, 3).firstLine.map((r) => r.role)).toEqual(['molotov', 'degrader', 'degrader', 'contact']);
-  expect(lineup('busStop', 2, 8).firstLine.map((r) => r.role)).toEqual(['molotov', 'degrader', 'degrader', 'contact', 'contact', 'contact']);
-  expect(lineup('car', 2, 99).firstLine).toHaveLength(7);
+  expect(lineup('car', 2, 3).firstLine.map((r) => r.role)).toEqual(['molotov', 'molotov', 'degrader', 'degrader', 'contact']);
+  expect(lineup('busStop', 2, 8).firstLine.map((r) => r.role)).toEqual(['molotov', 'molotov', 'degrader', 'degrader', 'contact', 'contact', 'contact']);
+  expect(lineup('car', 2, 99).firstLine).toHaveLength(2 + 3 + 3);
 });
 
 test('a target ruined by another source while urgent: destroyed once, no second ruin or penalty, never saved', () => {
@@ -345,4 +361,51 @@ test('a bottle on an already burning target: burst of 8 hp, no TargetIgnited; a 
   expect(w.bottle()).toEqual([]);
   expect(w.tick(1)).toEqual([]);
   expect(w.rules.score).toBe(CONFIG.casse.scores.school[1]);
+});
+
+test('three Molotovs on one building: each throws on its own windup (staggered), 3 bottles, one ignition, two bursts', () => {
+  const w = world('school', only('molotov', 3));
+  w.attack.start();
+  const throws: number[] = [];
+  const ev: SimEvent[] = [];
+  for (let i = 0; i < 60 * 30 && throws.length < 3; i++) {
+    for (const e of w.run(DT)) {
+      ev.push(e);
+      if (e.type === 'MolotovThrown') throws.push(w.now());
+    }
+  }
+  expect(throws).toHaveLength(3);
+  // never two bottles in the same step
+  expect(new Set(throws.map((t) => Math.round(t * 60))).size).toBe(3);
+  expect(ev.filter((e) => e.type === 'TargetIgnited')).toHaveLength(1);
+  // the fire burns meanwhile: the bursts are the hp lost beyond it
+  const hp = w.targets.get('school').hp;
+  const burning = ev.findIndex((e) => e.type === 'TargetIgnited');
+  expect(burning).toBeGreaterThanOrEqual(0);
+  expect(hp).toBeLessThanOrEqual(100 - 2 * CONFIG.molotov.burstDamage);
+  expect(w.mine().every((h) => h.target === 'player')).toBe(true);
+});
+
+test('Paul close by does not divert Molotovs before their throw (several on one site)', () => {
+  const w = world('car1', only('molotov', 3), { spawn: { x: 528, y: 464 } });
+  w.attack.start();
+  let thrown = 0;
+  for (let i = 0; i < 60 * 30 && thrown < 3; i++) {
+    const [h] = w.mine();
+    w.player.pos = { x: h!.pos.x + 50, y: h!.pos.y };
+    for (const e of w.run(DT)) if (e.type === 'MolotovThrown') thrown++;
+    // only a Molotov that has thrown turns on Paul
+    expect(w.mine().filter((m) => m.target === 'player').length).toBeLessThanOrEqual(thrown);
+  }
+  expect(thrown).toBe(3);
+});
+
+test('Molotovs winding up together on one site are staggered: their bottles leave at least 0.25 s apart', () => {
+  // spawned already in range of the school, side by side: they would all start their windup on the same step
+  const w = world('school', only('molotov', 3), { spawn: { x: def('school').attackPoints[1]!.x, y: def('school').attackPoints[1]!.y + 40 } });
+  w.attack.start();
+  const throws: number[] = [];
+  for (let i = 0; i < 60 * 10 && throws.length < 3; i++) for (const e of w.run(DT)) if (e.type === 'MolotovThrown') throws.push(w.now());
+  expect(throws).toHaveLength(3);
+  for (let k = 1; k < 3; k++) expect(throws[k]! - throws[k - 1]!).toBeGreaterThanOrEqual(0.25 - 1e-6);
 });

@@ -67,7 +67,7 @@ test('integrity is the school hp in percent; status follows the fire', () => {
   expect(inc.status()).toBe('en feu');
 });
 
-test('first line KO -> cinematic 3 s -> exactly the 7 reinforcements, skipping does not double (RC-27)', () => {
+test('first line KO -> cinematic 3 s -> exactly the 8 reinforcements (second Molotov included), skipping does not double (RC-27)', () => {
   const { inc, run, horde, koAll, mine } = setup();
   expect(new Set(mine().map((h) => h.variant)).size).toBe(3);
   koAll();
@@ -84,7 +84,7 @@ test('first line KO -> cinematic 3 s -> exactly the 7 reinforcements, skipping d
   const active = horde.active().filter((h) => h.incidentId === inc.id);
   expect(active).toHaveLength(R1.reinforcements.length);
   const count = (r: string) => active.filter((h) => h.role === r).length;
-  expect([count('degrader'), count('contact')]).toEqual([4, 3]);
+  expect([count('molotov'), count('degrader'), count('contact')]).toEqual([1, 4, 3]);
 });
 
 test('spawn cap keeps reinforcements pending, never dropped', () => {
