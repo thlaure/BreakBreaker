@@ -438,7 +438,11 @@ export class Director {
     if (kind === 'secondUrgency' && this.urgent(host) < urgentCap(this.round)) {
       const reserved = new Set<TargetId>();
       for (const b of this.beats) for (const o of b) if (o.attack && !o.launched) reserved.add(o.attack.target);
-      const free = DISTRICT.targets.filter((t) => this.free(t.id, host) && !reserved.has(t.id));
+      const open = DISTRICT.targets.filter((t) => this.free(t.id, host) && !reserved.has(t.id));
+      // variety: a target already attacked this round only when no other one is free
+      const attacked = new Set(this.objectives.flatMap((o) => (o.attack ? [o.attack.target] : [])));
+      const fresh = open.filter((t) => !attacked.has(t.id));
+      const free = fresh.length > 0 ? fresh : open;
       if (free.length > 0) {
         const def = free[Math.floor(host.rand() * free.length) % free.length]!;
         const attack = this.attackOn(def.kind, def.id, host, this.pressure(host.rules.kos));

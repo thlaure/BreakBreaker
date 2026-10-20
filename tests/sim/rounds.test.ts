@@ -144,6 +144,27 @@ describe('rounds in the sim', () => {
     expect(of(done, 'RoundCompleted')).toHaveLength(1);
   });
 
+  test('the second urgency goes for a target not attacked yet this round whenever one is free (seeds 1-12, rounds 3 and 5)', () => {
+    let mattered = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      const sim = new Sim(seed, { invulnerable: true });
+      for (let i = 0; i < 60 * 1200 && sim.director.round <= 5; i++) {
+        const ev = sim.step(autopilot(sim));
+        if (!ev.some((e) => e.type === 'TwistStarted' && e.kind === 'secondUrgency')) continue;
+        const r = sim.director.round;
+        const extra = sim.attacks[sim.attacks.length - 1]!;
+        const earlier = new Set(sim.attacks.filter((a) => a.round === r && a !== extra).map((a) => a.target));
+        const free = DISTRICT.targets.filter(
+          (t) => sim.targets.standing(t.id) && !sim.attacks.some((a) => a !== extra && a.target === t.id && !a.resolved()),
+        );
+        if (free.some((t) => earlier.has(t.id))) mattered++;
+        if (free.some((t) => t.id !== extra.target && !earlier.has(t.id))) expect(earlier.has(extra.target)).toBe(false);
+      }
+    }
+    // some twists had an already-attacked target free again: the rule was actually exercised
+    expect(mattered).toBeGreaterThan(0);
+  });
+
   test('never more than 1 urgent incident in rounds 1-2 and 2 from round 3', () => {
     const sim = new Sim(13, { invulnerable: true });
     let peak = 0;
