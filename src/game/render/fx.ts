@@ -195,25 +195,30 @@ export class MolotovFx {
   }
 
   private acquire(m: Telegraph): Flight {
-    const f =
-      this.pool.pop() ??
-      ({
-        bottle: this.scene.add.image(0, 0, 'bottle').setScale(2).setDepth(DEPTH.foliage + 1),
-        flame: this.scene.add
-          .image(0, 0, 'flame')
-          .setOrigin(0.5, 1)
-          .setScale(2)
-          .setBlendMode(Phaser.BlendModes.ADD)
-          .setDepth(DEPTH.foliage + 1.1),
-        shadow: this.scene.add.ellipse(0, 0, 12, 5, 0x000000, 0.35).setDepth(DEPTH.decal + 3),
-      } as Flight);
-    f.from = m.from;
-    f.to = m.to;
-    f.until = m.until;
-    f.bottle.setVisible(true);
-    f.flame.setVisible(true);
-    f.shadow.setVisible(true);
-    return f;
+    const f = this.pool.pop();
+    if (f) {
+      f.from = m.from;
+      f.to = m.to;
+      f.until = m.until;
+      f.bottle.setVisible(true);
+      f.flame.setVisible(true);
+      f.shadow.setVisible(true);
+      return f;
+    }
+    return {
+      from: m.from,
+      to: m.to,
+      until: m.until,
+      seen: 0,
+      bottle: this.scene.add.image(0, 0, 'bottle').setScale(2).setDepth(DEPTH.foliage + 1),
+      flame: this.scene.add
+        .image(0, 0, 'flame')
+        .setOrigin(0.5, 1)
+        .setScale(2)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setDepth(DEPTH.foliage + 1.1),
+      shadow: this.scene.add.ellipse(0, 0, 12, 5, 0x000000, 0.35).setDepth(DEPTH.decal + 3),
+    };
   }
 
   private place(f: Flight, now: number, timeMs: number): void {

@@ -291,6 +291,11 @@ class TargetView {
   private readonly smokeFreq: { burning: number; wisps: number };
   private readonly textures: { intact: string; ruined: string } | null = null;
   private burning = false;
+
+  /** Whether the flames are currently shown. */
+  get isBurning(): boolean {
+    return this.burning;
+  }
   private ruined = false;
   private flashUntil = 0;
   readonly zone: Phaser.Geom.Rectangle;
@@ -493,10 +498,10 @@ export class TargetsLayer {
     for (const t of snap.targets) {
       const v = this.views.get(t.id);
       if (!v) continue;
-      // the sim ignites on the throw; the flames wait for the bottle to land on the door
+      // the sim ignites on the throw; a new fire waits for the bottle to land on the door (an existing one keeps going)
       const door = v.def.door;
-      const inFlight = snap.molotovs.some((m) => m.to.x === door.x && m.to.y === door.y);
-      v.update(t, t.burning && !inFlight, t.id === 'school' && saved, nowMs, dtMs);
+      const held = !v.isBurning && snap.molotovs.some((m) => m.to.x === door.x && m.to.y === door.y);
+      v.update(t, t.burning && !held, t.id === 'school' && saved, nowMs, dtMs);
     }
   }
 
