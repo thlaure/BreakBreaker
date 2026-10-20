@@ -119,7 +119,7 @@ test('saved: +8 once, stage saved after the fire dies out (RC-28)', () => {
   expect(rules.score).toBe(8);
 });
 
-test('destroyed: -3 once, stays destroyed, no late reinforcements (RC-29)', () => {
+test('destroyed: -3 once, stays destroyed; unsent reinforcements come once, at the ruin (RC-29, §9.1)', () => {
   const { inc, run, rules, horde, targets, degradeAll, koAll } = setup();
   targets.get('school').hp = 1;
   degradeAll();
@@ -132,7 +132,8 @@ test('destroyed: -3 once, stays destroyed, no late reinforcements (RC-29)', () =
   run(5);
   expect(inc.stage).toBe('destroyed');
   expect(rules.score).toBe(-3);
-  expect(horde.list.filter((h) => h.incidentId === inc.id)).toHaveLength(R1.firstLine.length);
+  // they count in the round total: sent once when the school falls (no site left: they go for Paul)
+  expect(horde.list.filter((h) => h.incidentId === inc.id)).toHaveLength(R1.firstLine.length + R1.reinforcements.length);
 });
 
 test('status reads "renforts" during the cinematic', () => {

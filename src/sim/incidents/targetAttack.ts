@@ -108,7 +108,7 @@ export class TargetAttack {
     this.track(ctx.horde);
     if (!this.targets.standing(this.target)) {
       // ruined by another source: this attack is lost too, but the ruin and its penalty were already counted
-      this.stage = 'destroyed';
+      this.lose();
       return ev;
     }
 
@@ -145,9 +145,8 @@ export class TargetAttack {
       ev.push({ type: 'BuildingThreatStarted', incidentId: this.id });
     }
     if (dps > 0 && this.targets.damage(this.target, dps * dt)) {
-      // rioters still to come stay in the round: with no site left they go for Paul
       this.targets.ruin(this.target, this.id);
-      this.stage = 'destroyed';
+      this.lose();
       ctx.rules.award(`${this.id}:lost`, CONFIG.casse.scores[this.kind][1]);
       ev.push({ type: 'BuildingDestroyed', incidentId: this.id, target: this.target });
       return ev;
@@ -188,6 +187,15 @@ export class TargetAttack {
   /** Extra events on success (the school adds `SchoolRestored`). */
   protected onSaved(): SimEvent[] {
     return [];
+  }
+
+  /**
+   * Destroyed. Reinforcements not sent yet are sent now: they count in the round total (§9.1), and with no site
+   * left they go for Paul.
+   */
+  private lose(): void {
+    if (this.stage === 'attack' || this.stage === 'cinematic') this.send(this.comp.reinforcements);
+    this.stage = 'destroyed';
   }
 
   private send(reqs: SpawnRequest[]): void {

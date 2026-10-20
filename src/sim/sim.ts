@@ -275,7 +275,7 @@ export class Sim {
       if (owner) ev.push(...owner.onMolotov(e));
     }
     for (const a of this.attacks) ev.push(...a.step(dt, this.attackCtx()));
-    if (this.rescue) ev.push(...this.rescue.step(dt, { horde: this.horde, rules: this.rules, player: p }));
+    if (this.rescue) ev.push(...this.rescue.step(dt, { horde: this.horde, rules: this.rules, player: p, spawner: this.objectiveSpawner }));
 
     const kit = this.toolboxes.step(dt, { player: p, horde: this.horde, targets: this.targets, rules: this.rules });
     ev.push(...kit.events);

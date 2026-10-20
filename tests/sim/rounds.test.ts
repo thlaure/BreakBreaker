@@ -249,8 +249,37 @@ describe('rounds in the sim', () => {
     expect(of(ev, 'RoundCompleted')).toEqual([{ type: 'RoundCompleted', index: 1, bonus: false }]);
     expect(sim.director.lastSummary!.objectives[0]).toEqual({ kind: 'school', result: 'perdu' });
     expect(sim.rules.stats).toMatchObject({ targetsLost: 1, schoolsLost: 1, roundsCompleted: 1, roundsPerfect: 0 });
+    // the reinforcements never sent before the ruin still play out: the breather starts at K = T (§9.1)
+    expect(sim.director.lastSummary!.kos).toBe(sim.director.total);
     drive(sim, roundStarted(2));
     expect(sim.rules.ended).toBe(false);
+  });
+
+  test('a school ruined before its reinforcements (seed 7, KO after 45 s): they still come, round ends at K = T', () => {
+    const sim = new Sim(7, { invulnerable: true });
+    const ev = drive(sim, roundCompleted(1), { koAfterSec: 45 });
+    expect(of(ev, 'BuildingDestroyed')[0]).toMatchObject({ target: 'school' });
+    expect(sim.director.lastSummary!.kos).toBe(sim.director.total);
+  });
+
+  test('a failed rescue with aggressors still to spawn: they come anyway, round ends at K = T', () => {
+    const sim = new Sim(3, { invulnerable: true });
+    drive(sim, () => sim.school.stage === 'fireOut');
+    // the map is full of patrols when the rescue starts: only one aggressor fits, the others stay pending
+    const far = DISTRICT.hostileSpawns;
+    for (let i = 0; sim.horde.active().length < CONFIG.caps.hostiles - 1; i++)
+      sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { ...far[i % far.length]! } });
+    for (let i = 0; i < 60 * 30 && !sim.rescue; i++) sim.step(IDLE);
+    const r = sim.rescue!;
+    expect(sim.horde.list.filter((h) => h.incidentId === r.id)).toHaveLength(1);
+    expect(r.total).toBeGreaterThan(1);
+    r.remaining = 0;
+    const failed = sim.step(IDLE);
+    expect(of(failed, 'RescueFailed')).toHaveLength(1);
+    sim.horde.dismiss((h) => h.round === null);
+    drive(sim, roundCompleted(1));
+    expect(sim.director.lastSummary!.objectives[1]).toEqual({ kind: 'rescue', result: 'perdu' });
+    expect(sim.director.lastSummary!.kos).toBe(sim.director.total);
   });
 
   test('K counts only round-tagged KOs, never exceeds T; patrols do not count', () => {

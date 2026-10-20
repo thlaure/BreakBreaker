@@ -1,5 +1,6 @@
 import { CONFIG } from '../config';
 import type { Horde } from '../hostiles';
+import type { Spawner } from '../entry';
 import type { Grid } from '../map/grid';
 import { dist } from '../math';
 import type { Player } from '../player';
@@ -13,6 +14,8 @@ export interface RescueCtx {
   horde: Horde;
   rules: Rules;
   player: Player;
+  /** Where aggressors still waiting to spawn go when the rescue fails (they still count in the round). */
+  spawner?: Spawner;
 }
 
 const VARIANTS: Variant[] = ['classic', 'palestinian', 'antifa'];
@@ -94,7 +97,14 @@ export class RescueIncident {
 
       if (this.remaining <= 0) {
         this.stage = 'failed';
+        // aggressors still to spawn are in the round total: they enter from the edges and go for Paul
+        const left = Array.from({ length: this.pending }, (_, i) => ({
+          variant: VARIANTS[(this.ids.size + i) % VARIANTS.length]!,
+          role: 'contact' as const,
+          round: this.round ?? undefined,
+        }));
         this.pending = 0;
+        ctx.spawner?.request(left);
         for (const h of ctx.horde.list) {
           if (!this.ids.has(h.lifeId) || h.state === 'ko') continue;
           h.role = 'contact';
