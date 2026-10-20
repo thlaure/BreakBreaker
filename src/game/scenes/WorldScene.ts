@@ -3,7 +3,9 @@ import { FixedClock } from '../../sim/clock';
 import { CONFIG } from '../../sim/config';
 import { Sim, type Snapshot } from '../../sim/sim';
 import type { InputFrame, SimEvent } from '../../sim/types';
-import { createDevKeyboard } from '../input/devKeyboard';
+import { createKeyboard } from '../input/keyboard';
+import { guardLifecycle, merge, type InputSource } from '../input/merge';
+import { createTouch } from '../input/touch';
 import { HostileLayer, PaulView } from '../render/actors';
 import { GroupView, VictimView } from '../render/crowd';
 import { RockLayer, TelegraphLayer } from '../render/fx';
@@ -28,7 +30,9 @@ export class WorldScene extends Phaser.Scene {
   sim!: Sim;
   private clock!: FixedClock;
   private input$: () => InputFrame = () => ({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false });
-  private disposeKeyboard: (() => void) | null = null;
+  private disposeInput: (() => void) | null = null;
+  private pauseText: Phaser.GameObjects.Text | null = null;
+  private playerPos = { x: 0, y: 0 };
 
   private world!: WorldView;
   private school!: SchoolView;
@@ -48,11 +52,58 @@ export class WorldScene extends Phaser.Scene {
     super('world');
   }
 
-  /** Replaces the input source (Task 13: keyboard + touch). The temporary dev keyboard is disposed. */
+  /** Replaces the input source (tests / alternative devices). Built-in keyboard + touch are disposed. */
   setInputSource(fn: () => InputFrame): void {
-    this.disposeKeyboard?.();
-    this.disposeKeyboard = null;
+    this.disposeInput?.();
+    this.disposeInput = null;
     this.input$ = fn;
+  }
+
+  /** Task 14 replaces this with the real pause menu. */
+  private togglePause(): void {
+    if (this.sim.paused) this.resumeGame();
+    else this.pauseGame();
+  }
+
+  private pauseGame(): void {
+    if (this.sim.paused) return;
+    this.sim.pause();
+    const cam = this.cameras.main;
+    const c = cam.worldView;
+    this.pauseText ??= this.add.text(0, 0, 'Pause', { fontFamily: 'monospace', fontSize: '16px', color: '#ffffff', backgroundColor: '#000000aa', padding: { x: 6, y: 3 } }).setOrigin(0.5).setDepth(10000);
+    this.pauseText.setPosition(c.centerX, c.centerY).setVisible(true);
+  }
+
+  private resumeGame(): void {
+    this.sim.resume();
+    this.pauseText?.setVisible(false);
+  }
+
+  private setupInput(): void {
+    const cam = this.cameras.main;
+    const sources: InputSource[] = [
+      createKeyboard(
+        window,
+        this.game.canvas,
+        (x, y) => {
+          const p = cam.getWorldPoint(x, y);
+          return { x: p.x, y: p.y };
+        },
+        () => this.playerPos,
+        { onPause: () => this.togglePause() },
+      ),
+    ];
+    const touchRoot = document.getElementById('touch-ui');
+    if (touchRoot) sources.push(createTouch(touchRoot, { onPause: () => this.togglePause() }));
+    const offGuard = guardLifecycle(window, sources, () => this.pauseGame());
+    this.input$ = merge(...sources);
+    this.disposeInput = () => {
+      offGuard();
+      for (const s of sources) {
+        s.releaseAll();
+        s.dispose?.();
+      }
+    };
   }
 
   create(data?: { seed?: number }): void {
@@ -62,12 +113,10 @@ export class WorldScene extends Phaser.Scene {
     this.struck = false;
     this.lastVisual = 0;
 
-    const dev = createDevKeyboard();
-    this.input$ = dev.read;
-    this.disposeKeyboard = dev.dispose;
+    this.pauseText = null;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.disposeKeyboard?.();
-      this.disposeKeyboard = null;
+      this.disposeInput?.();
+      this.disposeInput = null;
       this.scale.off(Phaser.Scale.Events.RESIZE, this.applyZoom, this);
     });
 
@@ -82,6 +131,7 @@ export class WorldScene extends Phaser.Scene {
     this.rocks = new RockLayer(this);
     this.telegraphs = new TelegraphLayer(this);
     const snap = this.sim.snapshot();
+    this.playerPos = { ...snap.player.pos };
     this.paul = new PaulView(this, snap.player.pos);
 
     const cam = this.cameras.main;
@@ -89,6 +139,7 @@ export class WorldScene extends Phaser.Scene {
     cam.startFollow(this.paul.sprite, true);
     cam.setDeadzone(24, 16);
     this.applyZoom();
+    this.setupInput();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.applyZoom, this);
     this.render(snap, 0, 16);
   }
@@ -110,6 +161,7 @@ export class WorldScene extends Phaser.Scene {
     const events: SimEvent[] = [];
     for (let i = 0; i < steps; i++) events.push(...this.sim.step(this.readInput()));
     const snap = this.sim.snapshot();
+    this.playerPos = snap.player.pos;
     this.react(events, time);
     if (time >= this.hitStopUntil) {
       this.render(snap, time, time - this.lastVisual);
