@@ -2,7 +2,7 @@
 
 export const RULES: readonly string[] = [
   'Pas de limite de temps : la partie se termine quand Paul est mis KO ou quand tu l’arrêtes volontairement.',
-  'Les bâtiments et les secours ont chacun un délai local ; en manquer un n’arrête pas la partie.',
+  'La partie avance par manches, avec 6 s de répit entre deux. Un lieu attaqué perd de la santé (feu, casse) : neutralise ses casseurs pour le sauver. Un lieu détruit n’arrête pas la partie ; passe sur une caisse à outils puis reste à côté de la ruine pour le réparer.',
   'Les groupes pacifiques et les victimes sont à protéger et à contourner : Paul ne peut pas les frapper.',
   'Des armes apparaissent au hasard dans les rues (bâton, marteau, panneau) : passe dessus pour les prendre. Elles mettent KO d’un coup, frappent plus loin et s’usent après quelques coups.',
   'Les pierres lancées par les casseurs tombent au sol : ramasse-les puis renvoie-les. Passe sur une station « Soins » pour récupérer de la santé (une fois par station).',
@@ -26,5 +26,5 @@ export const CONTROLS: readonly ControlRow[] = [
 ];
 
 /** One-line goal and the actions listed on the card shown when the game launches. */
-export const INTRO_GOAL = 'Défends l’école, secours les victimes, tiens le plus longtemps possible.';
+export const INTRO_GOAL = 'Défends l’école et le quartier, secours les victimes, tiens le plus de manches possible.';
 export const INTRO_ACTIONS: readonly string[] = ['Se déplacer', 'Frapper', 'Renvoyer une pierre', 'Courir'];

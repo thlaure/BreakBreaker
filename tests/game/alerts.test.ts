@@ -28,6 +28,15 @@ const rescueEv = (kind: 'groupHarassed' | 'elderlyRobbed'): SimEvent => ({
   total: 3,
 });
 const waveEv: SimEvent = { type: 'RoundStarted', index: 3, total: 9, headline: 'car' };
+const casseEv = (kind: 'car' | 'busStop', target: 'car1' | 'busStop', pos: { x: number; y: number }): SimEvent => ({
+  type: 'CasseStarted',
+  incidentId: `${kind}#3`,
+  kind,
+  target,
+  pos,
+  round: 3,
+  total: 18,
+});
 
 beforeEach(() => {
   document.body.innerHTML = '';
@@ -40,18 +49,28 @@ describe('pure helpers', () => {
     expect(incidentAlert('school')).toMatchObject({ title: 'ÉCOLE EN FEU !', sub: 'Rejoins l’école', label: 'ÉCOLE', tone: 'fire', icon: 'flame' });
     expect(incidentAlert('groupHarassed')).toMatchObject({ title: 'AGRESSION EN COURS !', sub: 'Une personne est menacée', label: 'AGRESSION', tone: 'warn', icon: 'alert' });
     expect(incidentAlert('elderlyRobbed')).toMatchObject({ title: 'VOL EN COURS !', sub: 'Une personne âgée est menacée', label: 'VOL', tone: 'warn', icon: 'alert' });
+    expect(incidentAlert('car')).toMatchObject({ title: 'VOITURE EN FEU !', sub: 'Chasse les casseurs', label: 'VOITURE', tone: 'fire', icon: 'flame' });
+    expect(incidentAlert('busStop')).toMatchObject({ title: 'ABRIBUS SACCAGÉ !', sub: 'Arrête la casse', label: 'ABRIBUS', tone: 'warn', icon: 'glass' });
+    expect(incidentAlert('weaponDrop')).toMatchObject({ title: 'ARME SPÉCIALE !', sub: 'Fonce la ramasser', positioned: true, meta: '' });
   });
 
   test('alertFromEvent maps incident starts and round starts (a round has no position)', () => {
     expect(alertFromEvent(schoolEv)).toEqual({ id: 'school#1', kind: 'school', pos: DOOR, wave: 1, total: 11 });
     expect(alertFromEvent(rescueEv('elderlyRobbed'))).toEqual({ id: 'rescue#1', kind: 'elderlyRobbed', pos: { x: 900, y: 600 }, wave: 2, total: 3 });
-    expect(alertFromEvent(waveEv)).toEqual({ id: 'round#3', kind: 'wave', pos: null, wave: 3, total: 9 });
+    expect(alertFromEvent(waveEv)).toEqual({ id: 'round#3', kind: 'round', pos: null, wave: 3, total: 9, headline: 'car' });
+    expect(alertFromEvent(casseEv('car', 'car1', { x: 50, y: 60 }))).toEqual({ id: 'car#3', kind: 'car', pos: { x: 50, y: 60 }, wave: 3, total: 18 });
+    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 } })).toMatchObject({ kind: 'weaponDrop', pos: { x: 7, y: 8 } });
+    // no banner for a drop that found no spot, nor for a second urgency (its own CasseStarted announces it)
+    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: null })).toBeNull();
+    expect(alertFromEvent({ type: 'TwistStarted', kind: 'secondUrgency', pos: { x: 1, y: 1 } })).toBeNull();
     expect(alertFromEvent({ type: 'HealCompleted' })).toBeNull();
   });
 
-  test('incidentAlert: round banner title/sub; incidents get a « Manche N · T casseurs » line', () => {
-    expect(incidentAlert('wave', 3, 9)).toMatchObject({ title: 'MANCHE 3 !', sub: '9 casseurs à neutraliser', meta: '', tone: 'wave', icon: 'horde', positioned: false });
-    expect(incidentAlert('wave', 4, 1).sub).toBe('1 casseur à neutraliser');
+  test('incidentAlert: round banner title/headline sub; incidents get a « Manche N · T casseurs » line', () => {
+    expect(incidentAlert('round', 3, 9, 'car')).toMatchObject({ title: 'MANCHE 3 !', sub: 'Voiture en feu · 9 casseurs', label: 'MANCHE', meta: '', tone: 'round', icon: 'horde', positioned: false });
+    expect(incidentAlert('round', 1, 10, 'school').sub).toBe('École en feu · 10 casseurs');
+    expect(incidentAlert('round', 2, 14, 'busStop').sub).toBe('Abribus saccagé · 14 casseurs');
+    expect(incidentAlert('round', 4, 1, 'rescue').sub).toBe('Agression en cours · 1 casseur');
     expect(incidentAlert('school', 1, 11)).toMatchObject({ title: 'ÉCOLE EN FEU !', meta: 'Manche 1 · 11 casseurs', positioned: true });
     expect(incidentAlert('elderlyRobbed', 2, 3).meta).toBe('Manche 2 · 3 casseurs');
     expect(incidentAlert('school').meta).toBe('');
@@ -79,13 +98,17 @@ describe('pure helpers', () => {
     expect(p.y).toBeLessThanOrEqual(580);
   });
 
-  test('activeIncidents: school while threatened, rescue only in threat', () => {
+  test('activeIncidents: every attacked target (at its door), rescue only in threat', () => {
     const s = new Sim(1).snapshot();
+    for (const t of s.targets) t.state = 'intact';
     expect(activeIncidents(s)).toEqual([]);
-    s.school.stage = 'attack';
+    const car = s.targets.find((t) => t.kind === 'car')!;
+    s.targets.find((t) => t.id === 'school')!.state = 'attacked';
+    car.state = 'attacked';
     s.rescue = { stage: 'threat', remaining: 9, victimPos: { x: 5, y: 6 }, kind: 'groupHarassed' };
-    expect(activeIncidents(s).map((i) => i.kind)).toEqual(['school', 'groupHarassed']);
-    s.school.stage = 'saved';
+    expect(activeIncidents(s).map((i) => i.kind)).toEqual(['school', 'car', 'groupHarassed']);
+    expect(activeIncidents(s).find((i) => i.kind === 'car')).toEqual({ id: car.id, kind: 'car', pos: car.door });
+    for (const t of s.targets) t.state = t.id === 'school' ? 'intact' : 'ruined';
     s.rescue.stage = 'secured';
     expect(activeIncidents(s)).toEqual([]);
   });
@@ -102,7 +125,7 @@ describe('pure helpers', () => {
   });
 
   test('pixel icons are crisp inline SVGs', () => {
-    for (const n of ['flame', 'alert', 'horde', 'arrow', 'arrowDiag'] as const) {
+    for (const n of ['flame', 'alert', 'horde', 'glass', 'star', 'arrow', 'arrowDiag'] as const) {
       const svg = pixelSvg(n);
       expect(svg).toContain('shape-rendering="crispEdges"');
       expect(svg).toContain('<rect');
@@ -154,16 +177,16 @@ describe('AlertBanner', () => {
     expect(b.el.hidden).toBe(true);
   });
 
-  test('round start: « MANCHE 3 ! », objective line, no arrow or distance, queued like other alerts', () => {
+  test('RoundStarted shows « MANCHE N ! » with its headline and casseurs count, no arrow or distance', () => {
     const b = new AlertBanner(document.body);
     b.push(alertFromEvent(rescueEv('groupHarassed'))!);
     b.push(alertFromEvent(waveEv)!);
     vi.advanceTimersByTime(ALERT_MS);
     expect(b.el.hidden).toBe(false);
     expect(b.el.getAttribute('role')).toBe('alert');
-    expect(b.el.className).toContain('tone-wave');
+    expect(b.el.className).toContain('tone-round');
     expect(b.el.querySelector('.title')!.textContent).toBe('MANCHE 3 !');
-    expect(b.el.querySelector('.sub')!.textContent).toBe('9 casseurs à neutraliser');
+    expect(b.el.querySelector('.sub')!.textContent).toBe('Voiture en feu · 9 casseurs');
     expect(b.el.querySelector<HTMLElement>('.meta')!.hidden).toBe(true);
     expect(b.el.querySelector<HTMLElement>('.dir')!.hidden).toBe(true);
     expect(b.el.querySelector('.ico svg')).toBeTruthy();
@@ -171,6 +194,34 @@ describe('AlertBanner', () => {
     expect(b.el.querySelector('.dist')!.textContent).toBe('');
     vi.advanceTimersByTime(ALERT_MS);
     expect(b.el.hidden).toBe(true);
+  });
+
+  test('CasseStarted car → « VOITURE EN FEU ! » positioned at the car; busStop → « ABRIBUS SACCAGÉ ! »', () => {
+    const b = new AlertBanner(document.body);
+    const at = { x: 1000, y: 400 };
+    b.push(alertFromEvent(casseEv('car', 'car1', at))!);
+    expect(b.el.className).toContain('tone-fire');
+    expect(b.el.querySelector('.title')!.textContent).toBe('VOITURE EN FEU !');
+    expect(b.el.querySelector('.sub')!.textContent).toBe('Chasse les casseurs');
+    expect(b.el.querySelector('.meta')!.textContent).toBe('Manche 3 · 18 casseurs');
+    expect(b.el.querySelector<HTMLElement>('.dir')!.hidden).toBe(false);
+    b.track({ x: at.x - 32 * 5, y: at.y });
+    expect(b.el.querySelector('.dist')!.textContent).toBe('5 m');
+    vi.advanceTimersByTime(ALERT_MS);
+    b.push(alertFromEvent(casseEv('busStop', 'busStop', at))!);
+    expect(b.el.className).toContain('tone-warn');
+    expect(b.el.querySelector('.title')!.textContent).toBe('ABRIBUS SACCAGÉ !');
+    expect(b.el.querySelector('.sub')!.textContent).toBe('Arrête la casse');
+  });
+
+  test('a special weapon drop is announced at the drop, with arrow and distance', () => {
+    const b = new AlertBanner(document.body);
+    b.push(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 320, y: 0 } })!);
+    expect(b.el.querySelector('.title')!.textContent).toBe('ARME SPÉCIALE !');
+    expect(b.el.querySelector('.sub')!.textContent).toBe('Fonce la ramasser');
+    expect(b.el.querySelector<HTMLElement>('.dir')!.hidden).toBe(false);
+    b.track({ x: 0, y: 0 });
+    expect(b.el.querySelector('.dist')!.textContent).toBe('10 m');
   });
 
   test('elderly robbery reads VOL EN COURS !', () => {
@@ -227,10 +278,21 @@ describe('Hud alerts and edge indicators', () => {
     hud.destroy();
   });
 
+  const calm = (x: Snapshot): void => {
+    for (const t of x.targets) t.state = 'intact';
+    x.school.stage = 'idle';
+  };
+  const attack = (x: Snapshot, id: string, hp?: number): void => {
+    const t = x.targets.find((t) => t.id === id)!;
+    t.state = 'attacked';
+    if (hp !== undefined) t.hp = hp;
+  };
+
   test('one indicator per active incident, only when off-screen', () => {
     const hud = new Hud(document.body, null);
     const s = snap((x) => {
-      x.school.stage = 'attack';
+      calm(x);
+      attack(x, 'school');
       x.rescue = { stage: 'threat', remaining: 20, victimPos: { x: 400, y: 300 }, kind: 'elderlyRobbed' };
       x.player.pos = { x: 400, y: 300 };
     });
@@ -246,6 +308,109 @@ describe('Hud alerts and edge indicators', () => {
     s.rescue!.stage = 'secured';
     hud.update(s, off);
     expect(edges().map((e) => e.querySelector('.lbl')!.textContent)).toEqual(['ÉCOLE']);
+  });
+
+  test('two attacked targets: second banner waits, both edge indicators show', () => {
+    const hud = new Hud(document.body, null);
+    const s = snap((x) => {
+      calm(x);
+      attack(x, 'car1');
+      attack(x, 'busStop');
+    });
+    const car = s.targets.find((t) => t.id === 'car1')!;
+    const bus = s.targets.find((t) => t.id === 'busStop')!;
+    hud.onEvents([casseEv('car', 'car1', car.door), casseEv('busStop', 'busStop', bus.door)]);
+    const a = hud.root.querySelector<HTMLElement>('.bb-alert')!;
+    expect(a.querySelector('.title')!.textContent).toBe('VOITURE EN FEU !');
+    hud.update(s, { ...view, x: 9000, y: 9000 });
+    const labels = [...hud.root.querySelectorAll('.bb-edge .lbl')].map((e) => e.textContent).sort();
+    expect(labels).toEqual(['ABRIBUS', 'VOITURE']);
+    vi.advanceTimersByTime(ALERT_MS);
+    expect(a.hidden).toBe(false);
+    expect(a.querySelector('.title')!.textContent).toBe('ABRIBUS SACCAGÉ !');
+    hud.destroy();
+  });
+
+  test('HUD reads « Manche N : K/T casseurs »; incident card shows the target hp %', () => {
+    const hud = new Hud(document.body, null);
+    hud.update(
+      snap((x) => {
+        calm(x);
+        x.roundTotal = 10;
+        x.roundKos = 3;
+        attack(x, 'school', 63.2);
+        attack(x, 'car1', 30);
+      }),
+      view,
+    );
+    expect(hud.root.textContent).toContain('Manche 1 : 3/10 casseurs');
+    const cards = [...hud.root.querySelectorAll<HTMLElement>('.bb-card')].filter((c) => !c.hidden);
+    expect(cards.map((c) => `${c.querySelector('.name')!.textContent} ${c.querySelector('.time')!.textContent}`)).toEqual(['École 64 %', 'Voiture 50 %']);
+    expect(cards[0]!.querySelector<HTMLElement>('.hpbar .fill')!.style.width).toBe('63%');
+    expect(cards[1]!.querySelector('.ico svg')).toBeTruthy();
+    // the car is saved: its card goes away
+    hud.update(snap((x) => { calm(x); attack(x, 'school', 70); }), view);
+    expect([...hud.root.querySelectorAll<HTMLElement>('.bb-card')].filter((c) => !c.hidden)).toHaveLength(1);
+    hud.destroy();
+  });
+
+  test('round panel lists objectives réussi/perdu, points, bonus only when earned, countdown; hidden outside the breather', () => {
+    const hud = new Hud(document.body, null);
+    const panel = () => hud.root.querySelector<HTMLElement>('.bb-round')!;
+    const breather = (bonus: boolean, left: number) =>
+      snap((x) => {
+        calm(x);
+        x.round = 2;
+        x.roundPhase = 'breather';
+        x.breatherLeft = left;
+        x.lastSummary = {
+          index: 2,
+          kos: 14,
+          objectives: bonus ? [{ kind: 'car', result: 'réussi' }, { kind: 'rescue', result: 'réussi' }] : [{ kind: 'car', result: 'perdu' }, { kind: 'rescue', result: 'réussi' }],
+          points: bonus ? 23 : 12,
+          bonus,
+        };
+      });
+    hud.update(snap(calm), view);
+    expect(panel().hidden).toBe(true);
+    hud.update(breather(false, 3.2), view);
+    const p = panel();
+    expect(p.hidden).toBe(false);
+    expect(p.getAttribute('role')).toBe('status');
+    expect(p.querySelector('.title')!.textContent).toBe('Manche 2 terminée');
+    expect(p.textContent).toContain('Casseurs neutralisés : 14');
+    expect([...p.querySelectorAll('.obj li')].map((li) => li.textContent)).toEqual(['Voiture : perdu', 'Secours : réussi']);
+    expect(p.textContent).toContain('+12 points');
+    expect(p.textContent).not.toContain('Bonus');
+    expect(p.textContent).toContain('Soins rechargés');
+    expect(p.querySelector('.count')!.textContent).toBe('Manche 3 dans 4…');
+    hud.update(breather(true, 0.4), view);
+    expect(p.textContent).toContain('Bonus +5');
+    expect(p.textContent).toContain('+23 points');
+    expect(p.querySelector('.count')!.textContent).toBe('Manche 3 dans 1…');
+    hud.update(snap((x) => { calm(x); x.round = 3; x.roundPhase = 'play'; }), view);
+    expect(p.hidden).toBe(true);
+    hud.destroy();
+  });
+
+  test('toolbox prompts are informational (no Agir button); the toolbox slot reads Caisse 0/1 or 1/1', () => {
+    document.body.innerHTML = '<div id="touch-ui" class="visible"><button data-action="act">Agir</button></div>';
+    const touch = document.getElementById('touch-ui')!;
+    const btn = touch.querySelector<HTMLElement>('[data-action=act]')!;
+    const hud = new Hud(document.body, touch);
+    const prompt = () => hud.root.querySelector<HTMLElement>('.bb-prompt')!;
+    hud.update(snap((x) => { x.toolboxes.message = 'Caisse à outils requise'; }), view);
+    expect(prompt().hidden).toBe(false);
+    expect(prompt().textContent).toBe('Caisse à outils requise');
+    expect(btn.style.display).toBe('none');
+    expect(hud.root.textContent).toContain('Caisse 0/1');
+    hud.update(snap((x) => { x.toolboxes.carried = true; x.toolboxes.message = 'Abords non sécurisés'; }), view);
+    expect(prompt().textContent).toBe('Abords non sécurisés');
+    expect(hud.root.textContent).toContain('Caisse 1/1');
+    hud.update(snap((x) => { x.toolboxes.carried = true; x.toolboxes.progress = 0.5; x.toolboxes.repairTarget = 'car1'; }), view);
+    expect(prompt().textContent).toBe('Réparation…');
+    expect(btn.style.display).toBe('none');
+    hud.destroy();
   });
 
   test('touch Agir button is hidden without an actionable prompt', () => {

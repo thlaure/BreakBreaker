@@ -1,3 +1,4 @@
+import type { Snapshot } from '../sim/sim';
 import type { SimEvent } from '../sim/types';
 import { SFX } from './assets';
 
@@ -15,6 +16,17 @@ const MAX_VOICES = 8;
 const SFX_GAIN = 0.7;
 const AMBIENCE_GAIN = 0.5;
 const FIRE_MAX = 0.6;
+
+/**
+ * Fire loop level for a frame: 0 when no target is attacked or burning, else 0.35..1 following the lowest health among
+ * them (a fire still going out after its attack keeps the loop at its floor).
+ */
+export function threatLevel(s: Snapshot): number {
+  if (s.ended) return 0;
+  let min = Number.POSITIVE_INFINITY;
+  for (const t of s.targets) if (t.state === 'attacked' || t.burning) min = Math.min(min, t.hp / t.maxHp);
+  return min === Number.POSITIVE_INFINITY ? 0 : 0.35 + 0.65 * (1 - Math.max(0, Math.min(1, min)));
+}
 
 /**
  * Raw WebAudio. The AudioContext is created only by `unlock()` (called from the Commencer click).
@@ -113,7 +125,7 @@ export class GameAudio {
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(muted ? 0 : 1, this.ctx.currentTime, 0.02);
   }
 
-  /** Fire loop volume follows the school threat: 0 when not threatened, 0..1 of FIRE_MAX otherwise. */
+  /** Fire loop volume follows the threat (see `threatLevel`): 0..1 of FIRE_MAX. */
   setThreat(level: number): void {
     this.threat = Math.max(0, Math.min(1, level));
     if (this.fireGain && this.ctx) this.fireGain.gain.setTargetAtTime(this.threat * FIRE_MAX, this.ctx.currentTime, 0.15);
@@ -149,6 +161,66 @@ export class GameAudio {
     }
   }
 
+  /** Short voice on the sfx bus (synthesised cues share the voice cap with the samples). */
+  private voice(build: (ctx: AudioContext, out: AudioNode, t: number) => AudioScheduledSourceNode): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.sfxBus || this.voices >= MAX_VOICES) return;
+    try {
+      const src = build(ctx, this.sfxBus, ctx.currentTime);
+      this.voices += 1;
+      src.onended = (): void => {
+        this.voices -= 1;
+        src.disconnect();
+      };
+    } catch {
+      /* silent */
+    }
+  }
+
+  /** Bright two-note chime (sine 660 → 880 Hz, 120 ms each): a target saved or repaired, a round won. */
+  chime(): void {
+    this.voice((ctx, out, t) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(660, t);
+      osc.frequency.setValueAtTime(880, t + 0.12);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.5, t + 0.01);
+      g.gain.setValueAtTime(0.5, t + 0.11);
+      g.gain.exponentialRampToValueAtTime(0.35, t + 0.13);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+      osc.connect(g).connect(out);
+      osc.start(t);
+      osc.stop(t + 0.25);
+      return osc;
+    });
+  }
+
+  /** Thrown Molotov: a 0.35 s noise burst through a band-pass sweeping down (whoosh). */
+  whoosh(): void {
+    this.voice((ctx, out, t) => {
+      const len = Math.floor(ctx.sampleRate * 0.35);
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.Q.value = 1.2;
+      bp.frequency.setValueAtTime(2400, t);
+      bp.frequency.exponentialRampToValueAtTime(400, t + 0.33);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.6, t + 0.08);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+      src.connect(bp).connect(g).connect(out);
+      src.start(t);
+      return src;
+    });
+  }
+
   /** Maps sim events to sounds (a thrown enemy rock sounds when it actually spawns: EnemyRockThrown). */
   onEvents(events: SimEvent[]): void {
     for (const e of events) {
@@ -166,13 +238,24 @@ export class GameAudio {
           break;
         case 'ProjectilePickedUp':
         case 'WeaponPickedUp':
+        case 'ToolboxPickedUp':
         case 'HealCompleted':
           this.play('pickup');
+          break;
+        case 'MolotovThrown':
+          this.whoosh();
+          break;
+        case 'TargetSaved':
+        case 'TargetRepaired':
+        case 'RoundCompleted':
+          this.chime();
           break;
         case 'PlayerDamaged':
           this.play('hurt');
           break;
+        // TargetIgnited needs no cue of its own: the fire loop follows burning targets (threatLevel, every frame)
         case 'BuildingThreatStarted':
+        case 'CasseStarted':
         case 'RescueStarted':
           if (!this.alarmed.has(e.incidentId)) {
             this.alarmed.add(e.incidentId);

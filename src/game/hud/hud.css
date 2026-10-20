@@ -35,6 +35,13 @@
 .bb-card.st-perdue { --bar: var(--bb-bad); }
 .bb-card.st-perdue .status::before { content: '✖ '; }
 .bb-card .dist { color: #d8cfe0; }
+/* mini health bar of an attacked target (pixel: hard border, no radius) */
+.bb-card .hpbar { display: inline-flex; width: 40px; height: 6px; border: 2px solid #000; background: #3a3448; box-shadow: 0 0 0 1px #4a4360; }
+.bb-card .hpbar .fill { height: 100%; background: var(--bb-ok); }
+.bb-card .hpbar .fill.low { background: var(--bb-bad); }
+.bb-card.st-en-feu .hpbar .fill:not(.low) { background: var(--bb-fire); }
+.bb-card.st-en-feu { --bar: var(--bb-fire); }
+.bb-line .stat.kit.full { color: var(--bb-fire); }
 .bb-prompt { position: absolute; left: 50%; top: calc(50% + 44px); transform: translateX(-50%); padding: 4px 10px; background: var(--bb-panel); border: 1px solid var(--bb-accent); border-radius: 6px; font-weight: bold; white-space: nowrap; }
 
 /* ---------- incident alerts (pixel style, see alerts.ts) ---------- */
@@ -52,7 +59,8 @@
 }
 .bb-alert.tone-fire { --edge: var(--bb-fire); --flash: #ffd166; --tint: #2c1410; }
 .bb-alert.tone-warn { --edge: var(--bb-accent); --flash: #fff7e0; --tint: #2a2210; }
-.bb-alert.tone-wave { --edge: #ff5a3c; --flash: #ffd166; --tint: #2c1012; }
+.bb-alert.tone-round { --edge: #ff5a3c; --flash: #ffd166; --tint: #2c1012; }
+.bb-alert.tone-drop { --edge: #7be0ff; --flash: #ffd166; --tint: #0f2230; }
 .bb-alert .ico { display: inline-flex; flex: none; }
 .bb-alert .txt { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .bb-alert .title { font-size: 16px; line-height: 1.25; font-weight: 400; color: var(--edge); text-shadow: 2px 2px 0 #000; }
@@ -89,7 +97,35 @@
 .bb-edge .txt { display: flex; flex-direction: column; }
 .bb-edge .lbl { font-weight: 400; color: var(--edge); }
 @keyframes bb-edge-pulse { 50% { border-color: #fff; } }
-@media (prefers-reduced-motion: reduce) { .bb-alert, .bb-edge, .bb-line .stat.pulse { animation: none; } }
+
+/* ---------- round panel (breather between rounds): non-modal, top centre, never over Paul ---------- */
+.bb-round {
+  --edge: var(--bb-ok);
+  position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; top: calc(12px + env(safe-area-inset-top));
+  box-sizing: border-box; max-width: calc(100vw - 24px); display: flex; flex-direction: column; align-items: center; gap: 7px;
+  padding: 10px 14px; background: var(--bb-ink); background-image: linear-gradient(#10261a, #10261a);
+  color: #fff; font: 8px/1.6 var(--bb-pixel); text-shadow: none; text-align: center; pointer-events: none;
+  box-shadow:
+    0 calc(-1 * var(--bb-px)) 0 0 var(--edge), 0 var(--bb-px) 0 0 var(--edge),
+    calc(-1 * var(--bb-px)) 0 0 0 var(--edge), var(--bb-px) 0 0 0 var(--edge),
+    0 calc(2 * var(--bb-px)) 0 0 #000, var(--bb-px) var(--bb-px) 0 0 #000;
+}
+.bb-round.in { animation: bb-alert-in 0.24s steps(3, end) both; }
+.bb-round .title { font-size: 14px; line-height: 1.25; font-weight: 400; color: var(--edge); text-shadow: 2px 2px 0 #000; }
+.bb-round .obj { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; margin: 0; padding: 0; list-style: none; }
+.bb-round .obj b { font-weight: 400; }
+.bb-round .obj .ok b { color: var(--bb-ok); }
+.bb-round .obj .ok b::before { content: '✔ '; }
+.bb-round .obj .bad b { color: var(--bb-bad); }
+.bb-round .obj .bad b::before { content: '✖ '; }
+.bb-round .score { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; font-size: 10px; color: var(--bb-accent); }
+.bb-round .bonus { color: #000; background: var(--bb-accent); padding: 2px 4px; animation: bb-bonus 0.5s steps(1, end) 0.3s 4; }
+.bb-round .heals { color: #8fe0a4; }
+.bb-round .heals::before { content: '♥ '; color: var(--bb-bad); }
+.bb-round .count { color: var(--bb-accent); }
+@keyframes bb-bonus { 50% { background: #fff; } }
+@media (max-width: 400px) { .bb-round { gap: 5px; padding: 6px 8px; } .bb-round .title { font-size: 11px; } .bb-round .score { font-size: 8px; } .bb-round, .bb-round .obj { font-size: 7px; } }
+@media (prefers-reduced-motion: reduce) { .bb-alert, .bb-edge, .bb-line .stat.pulse, .bb-round.in, .bb-round .bonus { animation: none; } }
 
 .bb-overlay { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-start; justify-content: center; overflow: auto; background: rgba(10, 8, 16, 0.88); color: var(--bb-fg); font: 16px/1.45 system-ui, sans-serif; -webkit-user-select: text; user-select: text; touch-action: pan-y; }
 .bb-overlay[data-panel='start'] { background: var(--bb-bg); }

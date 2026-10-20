@@ -1,6 +1,6 @@
 # BreakBreaker — Cahier des charges fonctionnel et technique
 
-**Version :** 1.8 — 21 octobre 2026  
+**Version :** 1.9 — 21 octobre 2026  
 **Périmètre :** jeu web 2D en pixel art, vue du dessus non isométrique, mode arcade par manches sans limite de durée, Paris, Paul (commerçant fictif) comme héros unique, ordinateur et téléphone  
 **Statut :** spécification de référence ; les décisions confirmées par le porteur du projet et les recommandations de conception sont identifiées. Une première tranche jouable existe (section 24) ; ce document ne constitue pas une validation de production ni une attestation que toutes les exigences sont déjà implémentées.  
 **Langue de lancement :** français  
@@ -93,7 +93,7 @@ La révision 1.5 intègre des décisions **confirmées** : héros fictif Paul, b
 | EX-04 | Paul, commerçant fictif, héros unique ; aucun écran de sélection d’apparence ; aucune référence à une personne réelle. |
 | EX-05 | Trois variantes de casseurs : classique, drapeau palestinien, drapeau Antifa. Le drapeau est purement cosmétique : même barème (+1 au KO), mêmes rôles possibles. |
 | EX-06 | Arrivée de hordes ; casseurs hostiles jusqu’au KO, sans reddition ni interpellation. |
-| EX-07 | Combat au contact, à mains nues ou avec des armes ramassées ; aucune arme à feu, aucun tir d’arme à feu, aucun gore. |
+| EX-07 | Combat au contact, à mains nues ou avec des armes ramassées ; aucun gore, aucun sang. **Modifié (v1.9) :** le porteur du projet lève l’ancienne interdiction des armes à feu pour les tireurs ennemis (AK-47, manches tardives) et le flashball de Paul, en style cartoon, tirs lisibles et esquivables ; prévu pour la phase B de la tranche 2, non livré dans la phase A. |
 | EX-08 | Projectiles ennemis de type caillou, pavé ou brique. |
 | EX-09 | Possibilité de récupérer des projectiles et de les renvoyer contre les casseurs. |
 | EX-10 | Groupes de manifestants pacifiques à éviter et non ciblables par Paul ; certains peuvent subir une menace ennemie et être secourus. |
@@ -111,7 +111,7 @@ La révision 1.5 intègre des décisions **confirmées** : héros fictif Paul, b
 | EX-22 | Événements dynamiques de secours : manifestants agressés, personne ou couple âgé menacé ou dépouillé ; délai local d’intervention. |
 | EX-23 | Déplacement libre, mais impossibilité de traverser les bâtiments, les troncs d’arbre et les obstacles solides. |
 | EX-24 | Landing page publique simple donnant accès au jeu ; contenu et fonctionnement définis ici, direction visuelle traitée séparément avec Claude. |
-| EX-25 | Armes ramassables apparaissant aléatoirement dans les rues ; chacune met un casseur KO en un coup, avec portée et nombre de coups propres ; aucune arme à feu (section 8.7). |
+| EX-25 | Armes ramassables apparaissant aléatoirement dans les rues ; chacune met un casseur KO en un coup, avec portée et nombre de coups propres ; armes à feu cartoon seulement dans les conditions d’EX-07 (section 8.7). |
 | EX-26 | Manches à effectif fixe : un nombre de casseurs à neutraliser et un à trois objectifs par manche, panneau « Manche N terminée » non bloquant et aucun temps mort entre deux manches : la manche suivante démarre pendant l’affichage du bilan (section 12.2). |
 | EX-27 | Landing sobre (titre, accroche, boutons Jouer et Commandes, pied de page) avec visuel original ; règles et instructions affichées au lancement du jeu ; bouton « Commandes » (modale) sur la landing et dans le jeu (section 26). |
 | EX-28 | Alerte visible dans le style pixel du jeu à l’apparition de chaque incident (« ÉCOLE EN FEU ! », « AGRESSION EN COURS ! », « VOL EN COURS ! ») avec flèche et distance, puis indicateur en bord d’écran par incident actif hors écran ; système générique réutilisé par les futurs événements de casse (section 14.1). |
@@ -149,7 +149,7 @@ La cible de diffusion inclut P0 et P1. Contenu minimal proposé : un quartier, t
 
 La carte doit pouvoir être parcourue librement, y compris entre deux objectifs. Les objectifs peuvent être activés progressivement pour l’apprentissage ; le joueur n’est pas enfermé dans une succession d’arènes fermées. La caméra ne doit pas tirer le joueur de force vers une mission.
 
-Hors périmètre : 3D, isométrie, monde ouvert de grande taille, construction de murs, couloirs obligatoires, conduite, armes à feu, gore, multijoueur, compte et inventaire complexe.
+Hors périmètre : 3D, isométrie, monde ouvert de grande taille, construction de murs, couloirs obligatoires, conduite, armes à feu réalistes, gore, multijoueur, compte et inventaire complexe. Les tireurs ennemis et le flashball cartoon d’EX-07 (v1.9) font exception.
 
 Cible de variété : plusieurs situations différentes dans les dix premières minutes si le joueur survit, sans durée minimale ou maximale imposée.
 
@@ -236,7 +236,7 @@ Adaptation paysage/portrait par cadrage et zones de HUD, sans étirer les sprite
 | Ramasser une pierre au sol | Automatique à portée si stock disponible | Automatique | Automatique |
 | Ramasser une arme | Automatique en passant dessus ; remplace l’arme tenue | Automatique | Automatique |
 | Se soigner à une station | Automatique en passant sur une station chargée | Automatique | Automatique |
-| Agir : réparer / relever un rideau (travail des manches) ; dans la première tranche, F sert seulement à passer la séquence de l’école | F | Bouton contextuel nommé, masqué sans action possible | Bouton d’action |
+| Agir : passer la séquence de l’école ; aucune action ne demande de maintenir F (secours, extinction du feu et réparation sont automatiques, v1.9) | F | Bouton contextuel nommé, masqué sans action possible | Bouton d’action |
 | Courir | Maj, maintien ou bascule | Bouton ou seuil du joystick selon essai | Bouton ou pression stick |
 | Pause / arrêter | Échap / menu | Bouton Pause | Menu |
 
@@ -260,7 +260,7 @@ Les contacts sont synchronisés aux images utiles de l’animation. Recul court,
 
 Le rôle « lanceur » est indépendant de la variante visuelle : un casseur classique ou à drapeau peut lancer une pierre. Aucun drapeau n’attribue automatiquement une statistique supérieure.
 
-Objets : caillou, pavé, brique. En V1, ils peuvent partager les mêmes valeurs de dégâts avec des sprites différents. Pas de bouteille incendiaire, explosif ou arme à feu ajouté implicitement.
+Objets : caillou, pavé, brique. En V1, ils peuvent partager les mêmes valeurs de dégâts avec des sprites différents. Pas d’explosif ni d’arme à feu ajouté implicitement. La bouteille incendiaire (Molotov) est réservée au casseur dédié de la section 10.2 et ne vise que les lieux, jamais Paul.
 
 Chaque lancer possède une préparation, une direction/zone annoncée et un délai de trajet. Paramètres de départ : préparation d’au moins 0,6 seconde ; portée 280 à 360 pixels ; trajet d’au moins 0,5 seconde sur une cible éloignée ; 5 PV perdus par impact au départ. Un intervalle individuel empêche le tir continu.
 
@@ -324,7 +324,7 @@ La progression des dégâts est plafonnée comme celle des assauts. Les soins d�
 
 ### 8.7 Armes ramassables
 
-**Confirmé (EX-25) :** des armes apparaissent au hasard dans les rues. Elles remplacent l’ancienne extension « accessoires de contact ». Aucune arme à feu, y compris humoristique, et aucun gore.
+**Confirmé (EX-25) :** des armes apparaissent au hasard dans les rues. Elles remplacent l’ancienne extension « accessoires de contact ». Aucun gore. **Modifié (v1.9) :** l’interdiction des armes à feu est levée pour le flashball de Paul et les tireurs ennemis, en style cartoon (EX-07, phase B à venir).
 
 | Règle | Valeur |
 | --- | --- |
@@ -354,7 +354,7 @@ Présentation : une arme au sol flotte, oscille et brille pour être repérée ;
 | Kamehame | Vague d’énergie de dessin animé : maintenir environ 1 seconde pour charger, Paul immobile pendant la charge ; le rayon met KO tous les casseurs sur la ligne ; 2 utilisations | Rare |
 | Bouclier | Bloque les pierres venant de face (elles tombent et deviennent récupérables) et frappe en poussant lors d’un coup ; dure environ 20 secondes | Débloqué par la progression des manches |
 
-Ton cartoon, aucune arme à feu, aucun gore. Équilibrage : les armes puissantes restent rares et sont associées à l’arrivée de casseurs plus résistants. Les rayons et coups à distance respectent la protection des groupes pacifiques et des victimes (section 8.5) : ils s’arrêtent sur leur volume sans les blesser.
+Ton cartoon, aucun gore ; armes à feu cartoon seulement dans les conditions d’EX-07. Équilibrage : les armes puissantes restent rares et sont associées à l’arrivée de casseurs plus résistants. Les rayons et coups à distance respectent la protection des groupes pacifiques et des victimes (section 8.5) : ils s’arrêtent sur leur volume sans les blesser.
 
 ## 9. Personnages, hordes et intelligence artificielle
 
@@ -402,77 +402,68 @@ Leurs pancartes et leur densité les distinguent des hordes. Ils restent neutres
 
 ## 10. Bâtiments menacés, défense et réparation
 
-### 10.1 Boucle de l’école
+### 10.1 Boucle d’un lieu attaqué
+
+**Modifié (v1.9) :** l’ancienne réserve de temps (30 s) est remplacée partout, école comprise, par un modèle de santé. La boucle vaut pour tous les lieux de casse (école, voiture, abribus, puis ceux de la section 12.2).
 
 ```mermaid
 flowchart TD
-  A[Attaque annoncée : casseurs à la façade] --> B[Compte à rebours local]
-  B -->|Paul intervient| C[Première ligne puis renforts]
-  C -->|Tous KO avant destruction| D[Restauration de défense et bonus]
-  B -->|Délai épuisé sous attaque| E[Bâtiment détruit : session continue]
-  C -->|Délai épuisé sous attaque| E
-  E --> F[Trouver et porter un kit]
-  F --> G[Sécuriser les abords et appliquer le kit]
-  G --> H[Bâtiment réparé, fonction rétablie]
-  D --> I[Étudiants et formations projetées]
-  H --> I
+  A[Attaque annoncée : Molotov et casseurs en route] --> B[Molotov : 1,5 s d’élan puis lancer]
+  A --> C[Dégradeurs à la façade]
+  B -->|KO pendant l’élan| C
+  B -->|Bouteille lancée| D[Lieu en feu]
+  D --> E[Santé qui baisse]
+  C --> E
+  E -->|Derniers casseurs de l’attaque KO| F[Feu éteint 1,5 s plus tard : lieu sauvé, bonus]
+  E -->|Santé à zéro| G[Ruine persistante : session continue]
+  G --> H[Ramasser une caisse à outils]
+  H --> I[Rester 2 s près de la ruine, abords sûrs]
+  I --> J[Lieu réparé à 60 %, plein en fin de manche]
+  F --> K[Étudiants et formations projetées]
+  J --> K
 ```
 
-### 10.2 Alerte et délai local
+### 10.2 Alerte, Molotov et santé
 
-L’école est dégradée et en feu. La première occurrence présente trois casseurs, un de chaque variante, puis huit renforts après leur défaite ; ces casseurs comptent dans l’effectif de la manche (section 12.2). Flèche, cercle rouge, icône sur la carte et compte à rebours rendent l’urgence visible même avant l’arrivée de Paul.
+Chaque lieu a une **barre de santé** : bâtiments 100 PV, mobilier urbain (voiture, abribus, kiosque) 60 PV. Elle est dessinée au-dessus du lieu sur la carte et reprise dans la carte d’incident du HUD (« École 64 % ») ; le HUD n’affiche pas de compte à rebours pour un lieu.
 
-Le délai commence quand au moins un casseur affecté à cet incident dégrade réellement un point valide de la façade. Il ne commence pas pendant son trajet ni au simple chargement de la carte. Il ne dépend plus de l’entrée initiale du joueur dans le cercle.
+Une attaque commence par un **casseur Molotov** : il marche vers le lieu, s’arrête à 96 px au plus avec une ligne dégagée, lève une bouteille allumée pendant 1,5 s (élan visible), puis la lance ; le lieu **prend feu**. Le mettre KO pendant l’élan empêche le feu. Une seconde bouteille ne relance pas un feu déjà allumé. Les autres casseurs de l’attaque se partagent entre **dégradeurs** (ils frappent la façade) et casseurs qui s’en prennent à Paul ; ce mélange est le réglage d’équilibrage.
 
-Proposition de départ : **30 secondes d’attaque effective avant destruction**, à ajuster après essai. Le directeur peut choisir un délai plus long si le trajet et la difficulté le nécessitent. Le premier incident a un délai calculé pour permettre l’apprentissage, pas une période invulnérable qui ne commencerait qu’au contact du héros.
+Le feu retire 2 PV/s ; chaque dégradeur en train de frapper retire 1,2 PV/s, quatre au plus comptés. La santé ne baisse que pendant ces dégradations effectives ; elle ne dépend pas de l’entrée de Paul dans une zone. La première école (manche 1) présente sa première ligne puis huit renforts ; ces casseurs comptent dans l’effectif de la manche (section 12.2).
 
-### 10.3 Source de vérité du compte à rebours
+### 10.3 Source de vérité de la santé
 
-Pour éviter une jauge de vie et un timer contradictoires, la V1 proposée utilise une seule réserve de temps de résistance :
+La santé du lieu, tenue par la simulation, est l’unique source de vérité : pas de second minuteur. Elle ne se réinitialise pas quand Paul quitte la zone et ne remonte pas pendant l’attaque.
 
-`tempsRestant = max(0, tempsRestant - tempsActifDeDégradation)`
-
-Elle décroît à une seconde par seconde lorsqu’au moins un casseur de cet incident est en dégradation valide. Elle se suspend si personne ne peut dégrader : casseurs interrompus, éloignés ou neutralisés. Elle ne se réinitialise pas quand Paul quitte la zone. Augmenter le nombre de casseurs ne multiplie pas silencieusement la vitesse du timer ; la pression se règle par composition ou délai initial annoncé.
-
-La dégradation valide est un état continu à portée de façade, couvrant le cycle d’animation des coups ; elle ne se limite pas à l’image où la main touche le mur.
-
-La jauge d’intégrité éventuelle est dérivée de cette réserve : `100 × tempsRestant / duréeInitiale`. Le HUD affiche donc un délai exact dans ces conditions, pas une seconde horloge indépendante. Les anciens dégâts continus de façade de 0,25 / 0,45 point par seconde ne sont plus la règle cible.
-
-À zéro sous attaque valide : bâtiment détruit. Résoudre une seule fois la perte, attribuer −3 pour l’école et retirer le bonus de sauvetage. Paul peut poursuivre la session. Les casseurs survivants changent de cible au lieu de frapper une ruine sans fin.
+À zéro : lieu détruit. La perte est résolue une seule fois (−3 pour un bâtiment, −2 pour le mobilier urbain) et le bonus de sauvetage est perdu. La ruine (brûlée, fumante) persiste d’une manche à l’autre et n’est plus attaquée tant qu’elle n’est pas réparée. Un lieu détruit ne termine jamais la session ; seul le KO de Paul y met fin. Les survivants de l’attaque se reportent sur Paul.
 
 ### 10.4 Première ligne et renforts
 
 L’entrée du cercle déclenche la confrontation, pas le début du danger. Les KO obtenus avant l’entrée sont conservés. Aucun agent ne réapparaît à cause d’une sortie/rentrée.
 
-Après la première ligne entièrement KO, une courte cinématique peut annoncer les huit renforts. Pendant cette présentation suspendue, le compte à rebours et tous les autres incidents sont également suspendus. Passer la séquence ne double pas la vague.
+Après la première ligne entièrement KO, une courte cinématique annonce les huit renforts ; elle n’existe que pour l’école de la manche 1. Pendant cette présentation suspendue, la santé du lieu et tous les autres incidents sont également suspendus. Passer la séquence (F, Espace ou toucher) ne double pas les renforts.
 
-Si le bâtiment a déjà été détruit, cette occurrence ne crée pas sa vague de défense en retard. Les survivants restent à traiter, mais la voie de résolution devient la réparation par kit.
+Si le bâtiment a déjà été détruit, cette occurrence ne crée pas ses renforts en retard. Les survivants restent à traiter, mais la voie de résolution devient la réparation par kit.
 
 ### 10.5 Sauvetage avant destruction
 
-Tous les adversaires requis KO et réserve strictement positive : restauration de défense, extinction du feu, retrait des dégradations et retour du drapeau français. Bonus d’école +8 une seule fois pour cette occurrence ; aucun kit consommé.
+Tous les casseurs de l’attaque KO avec une santé strictement positive : le feu **s’éteint seul 1,5 s plus tard** (aucune perte de santé pendant cette extinction), le lieu est sauvé. Bonus +8 pour un bâtiment, +4 pour le mobilier urbain, une seule fois par occurrence ; retour du drapeau français pour l’école ; aucun kit consommé. La santé d’un lieu sauvé revient au maximum à la fin de la manche.
 
-Séquence de présentation proposée : trois secondes, passée possible. Aucun dégât ni autre compte à rebours local ne progresse pendant elle. C’est une récompense pour l’intervention à temps.
+### 10.6 Caisses à outils après destruction
 
-### 10.6 Kits après destruction
+**Modifié (v1.9) :** la réparation se fait sans touche. Une ruine se répare avec une **caisse à outils** trouvée sur la carte. Elle est distincte des soins médicaux : caisse orange/rouge, même animation flottante que les soins, compteur « Caisse 0/1 » dans le HUD. Elle ne rend pas de santé à Paul.
 
-Un bâtiment détruit peut être réparé grâce à un **kit de réparation** trouvé sur la carte. Il est distinct des soins médicaux : icône de caisse à outils, couleur et compteur séparés. Il ne rend pas de santé à Paul.
+Stock : une caisse portée au maximum, au plus deux au sol, posées sur des emplacements libres à chaque fin de manche. Paul la ramasse en passant dessus (rayon de 20 px) ; une caisse au sol ne disparaît pas s’il en porte déjà une. Une caisse portée est conservée entre manches. Les emplacements sont accessibles sans traverser bâtiment, tronc ou groupe ; aucune caisse dans la ruine à réparer.
 
-Proposition de stock : un kit porté maximum, deux kits placés sur des emplacements libres au début de chaque manche. Un kit déjà porté peut être conservé entre manches ; la carte ne dépasse pas deux kits présents. Aucun stock supplémentaire invisible. Le premier incident détruit doit laisser un kit accessible si les réserves de cette manche n’ont pas toutes été utilisées.
+Pour réparer : rester **2 secondes** à 48 px au plus de la porte de la ruine, Paul debout, **sans casseur actif à 64 px** ; la réparation se fait toute seule (aucune touche, aucun bouton Agir). S’éloigner ou laisser un casseur approcher remet la progression à zéro. Le HUD l’explique sous Paul, à titre informatif : « Caisse à outils requise » (sans caisse), « Abords non sécurisés » (casseur trop proche), « Réparation… » (en cours).
 
-Un kit plein ne disparaît pas si Paul marche dessus alors qu’il en porte déjà un. Les emplacements sont accessibles sans traverser bâtiment, tronc ou groupe ; pas de kit bloqué dans la ruine à réparer.
-
-Pour appliquer : proximité d’un point de façade, abords immédiats sécurisés, Agir pendant environ trois secondes. Le déplacement, une attaque reçue ou le retour d’un casseur actif à proximité interrompt la pose. Durée et rayon de sécurité sont des paramètres ; proposition de rayon 64 pixels logiques.
-
-Le kit n’est consommé qu’à la validation complète. Interruption : aucun gain, aucun kit consommé, progression d’application remise à zéro. Bâtiment déjà intact : aucune consommation.
+La caisse n’est consommée qu’à la fin des 2 s. Interruption : aucun gain, aucune caisse consommée.
 
 ### 10.7 Résultat d’une réparation
 
-Le bâtiment revient à l’état restauré et sa fonction reprend. L’école peut de nouveau recevoir des étudiants. Proposition : +5 pour la réparation tardive, sans effacer la pénalité −3 déjà subie. Ne pas attribuer en plus le bonus de sauvetage +8 : sauver avant destruction reste mieux récompensé.
+Le lieu revient à **60 % de sa santé**, puis au maximum à la fin de la manche suivante ; sa fonction reprend (l’école peut de nouveau recevoir des étudiants). Points : +5 pour un bâtiment, +3 pour le mobilier urbain, sans effacer la pénalité déjà subie ni ajouter le bonus de sauvetage : sauver avant destruction reste mieux récompensé.
 
-Une réparation ne recrée ni la vague déjà perdue ni une nouvelle occurrence d’assaut. Chaque bâtiment conserve la référence de son dernier incident détruit et de sa réparation validée pour empêcher le double bonus. Une nouvelle attaque ultérieure est annoncée et identifiée séparément.
-
-Les ruines persistent entre manches jusqu’à réparation, au lieu de se reconstruire gratuitement au changement de numéro. Leur empreinte reste solide pour la navigation. Un objectif déjà détruit peut être proposé comme mission de réparation ; on ne dégrade pas une ruine avec un nouveau timer.
+Une réparation ne recrée ni l’attaque perdue ni une nouvelle occurrence d’assaut. Chaque lieu conserve la référence de son dernier incident détruit et de sa réparation pour empêcher le double bonus. Une nouvelle attaque ultérieure est annoncée et identifiée séparément.
 
 ### 10.8 Étudiants et formations
 
@@ -525,7 +516,7 @@ Les délais de frappe, la destruction d’un bâtiment attaqué, la détresse d�
 
 **Confirmé :** les manches remplacent les vagues sans fin comme structure cible. Une manche fixe un nombre de casseurs à mettre KO et un à trois objectifs. Elle se termine quand tout son effectif a été neutralisé et que ses objectifs sont résolus, réussis ou perdus. Un objectif échoué ne termine jamais la session ; seul le KO de Paul y met fin.
 
-Entre deux manches : un panneau de bilan non bloquant « Manche N terminée » (KO, objectifs réussis ou perdus, points gagnés, bonus, nouveautés) s’affiche environ 6 s, sans masquer Paul, **pendant que la manche suivante a déjà commencé** (annonce « MANCHE N+1 ! », premier casseur dans la seconde et demie) ; les stations de soin sont rechargées. Aucun temps mort : la règle du flux régulier (jamais plus d’environ 3 s sans casseur actif) vaut aussi entre deux manches. Le joueur conserve sa santé, son score, ses KO, ses formations, son stock de pierres, son kit porté, son arme tenue avec ses coups restants et son historique de soins.
+**Modifié (v1.9) — rythme d’une manche.** Une manche alterne temps forts et temps faibles : (1) **répit de 6 s** sans aucune entrée de casseur, avec le panneau non bloquant « Manche N terminée » (KO, objectifs « réussi » / « perdu », points, « Bonus +5 » s’il est gagné, « Soins rechargés », compte à rebours « Manche N+1 dans 4… »), stations de soin rechargées, santé des lieux sauvés ou réparés remise au maximum, caisses à outils reposées et une arme posée près de Paul ; la manche 1 n’a pas de répit, l’intro de 4 s en tient lieu ; (2) **annonce** par la bannière pixel « MANCHE N ! » avec la casse phare de la manche (« Voiture en feu · 18 casseurs ») ; (3) **montée** : le premier groupe file vers le lieu attaqué ; (4) **retournement** dès que la moitié de l’effectif est KO : une seconde urgence ailleurs ou une arme spéciale à aller chercher (« ARME SPÉCIALE ! », disparaît après 15 s) ; (5) **apogée** : le dernier groupe de la manche entre plus serré (0,8 s d’intervalle) ; (6) **récompense** : bonus +5 si tous les objectifs sont réussis, puis retour au répit. Le répit commence quand tout l’effectif de la manche est KO. Le joueur conserve sa santé, son score, ses KO, ses formations, son stock de pierres, son kit porté, son arme tenue avec ses coups restants et son historique de soins.
 
 Les casseurs affectés aux objectifs (première ligne, renforts, défenseurs, agresseurs de secours) font partie de l’effectif de la manche. Une réparation optionnelle d’un bâtiment déjà perdu n’empêche pas la transition. Les secours déjà déclenchés doivent être résolus ou reportés explicitement avec leur état ; ils ne disparaissent pas gratuitement au changement de manche. La boutique, détaillée en section 23, fait partie de la cible de diffusion : elle apparaît comme « commerce pillé » dès la manche 2, puis dans le mélange des manches suivantes.
 
@@ -540,35 +531,35 @@ Progression proposée (valeurs **Proposé**, à équilibrer) :
 | 5 | 26 | Deux lieux attaqués à la fois puis monument ou secours ; nouvelle arme (bouclier) | + École maternelle en feu, kiosque saccagé |
 | 6 et suivantes | +4 par manche, plafonné à 40 grâce à la file d’entrée | Deux lieux attaqués à la fois tirés dans le catalogue, puis monument ou secours ; une nouvelle arme ou un nouveau type d’ennemi toutes les deux manches (Kamehame en manche 7) | + Mairie attaquée (manche 7), bibliothèque en feu (manche 9) |
 
-**Catalogue de casse — Proposé.** Chaque élément de casse est un lieu de la carte (bâtiment existant ou mobilier urbain ajouté) avec des états visibles : intact → attaqué (feu, fumée, vitres brisées) → ruine persistante → réparé par kit. Il réutilise la mécanique de l’école : une seule réserve de temps qui ne décroît que pendant une dégradation effective, ruine qui persiste entre les manches, réparation par kit (section 10.6), apparitions comptées dans l’effectif de la manche. Un lieu en ruine n’est plus tiré au sort tant qu’il n’est pas réparé ; s’il était prévu, ses casseurs rejoignent la file de la manche.
+**Catalogue de casse — Proposé.** Chaque élément de casse est un lieu de la carte (bâtiment existant ou mobilier urbain ajouté) avec des états visibles : intact → attaqué (feu, fumée, vitres brisées) → ruine persistante → réparé par kit. Il réutilise la mécanique de l’école : santé qui ne baisse que sous le feu ou une dégradation effective (section 10.2), ruine qui persiste entre les manches, réparation par caisse à outils (section 10.6), apparitions comptées dans l’effectif de la manche. Un lieu en ruine n’est plus tiré au sort tant qu’il n’est pas réparé ; s’il était prévu, ses casseurs rejoignent la file de la manche.
 
-| Élément | Lieu | Disponible dès | Réserve | Points sauvé / perdu / réparé |
+| Élément | Lieu | Disponible dès | Santé | Points sauvé / perdu / réparé |
 | --- | --- | ---: | ---: | --- |
-| École en feu | École (nord-ouest) | Manche 1 | 30 s | +8 / −3 / +5 |
-| Commerce pillé | Boutique ; puis rideau à relever avec Agir | Manche 2 | 30 s | +4 dispersé, +5 rideau / 0 / +5 |
-| Voiture en feu | Deux emplacements de voiture garée | Manche 3 | 20 s | +4 / −2 / +3 |
-| Abribus saccagé | Abribus | Manche 3 | 20 s | +4 / −2 / +3 |
+| École en feu | École (nord-ouest) | Manche 1 | 100 PV | +8 / −3 / +5 |
+| Commerce pillé | Boutique ; puis rideau relevé en restant 2 s à la porte (automatique) | Manche 2 | 100 PV | +4 dispersé, +5 rideau / 0 / +5 |
+| Voiture en feu | Deux emplacements de voiture garée | Manche 2 (phase A) | 60 PV | +4 / −2 / +3 |
+| Abribus saccagé | Abribus | Manche 2 (phase A) | 60 PV | +4 / −2 / +3 |
 | Monument occupé | Monument (capture, section 11) | Manche 4 | — | +10 à la capture |
-| École maternelle en feu | Bâtiment sud-ouest | Manche 5 | 30 s | +8 / −3 / +5 |
-| Kiosque saccagé | Kiosque à journaux | Manche 5 | 20 s | +4 / −2 / +3 |
-| Mairie attaquée | Bâtiment nord | Manche 7 | 30 s | +8 / −3 / +5 |
-| Bibliothèque en feu | Bâtiment sud | Manche 9 | 30 s | +8 / −3 / +5 |
+| École maternelle en feu | Bâtiment sud-ouest | Manche 5 | 100 PV | +8 / −3 / +5 |
+| Kiosque saccagé | Kiosque à journaux | Manche 5 | 60 PV | +4 / −2 / +3 |
+| Mairie attaquée | Bâtiment nord | Manche 7 | 100 PV | +8 / −3 / +5 |
+| Bibliothèque en feu | Bâtiment sud | Manche 9 | 100 PV | +8 / −3 / +5 |
 
 À partir de la manche 5, deux lieux sont attaqués en même temps (nouveautés de la manche d’abord, puis tirage pondéré favorisant les lieux absents de la manche précédente), dans la limite de deux urgences simultanées (une seule en manches 1 et 2). Seule l’école principale garde la séquence première ligne + renforts ; les autres lieux ont une seule ligne de casseurs. Chaque incident déclenche l’alerte pixel de la section 14.1. Le mobilier urbain ajouté (voitures, abribus, kiosque) est solide, laisse au moins une tuile libre autour de lui, reste à l’écart du groupe pacifique, des points d’apparition et des stations, et ne coupe aucun passage.
 
-Déroulement interne proposé : les casseurs entrent un par un, à 1,5 seconde d’intervalle, avec au plus douze casseurs sur la carte à la fois ; les suivants attendent dans une file d’entrée. Une vague regroupe des entrées consécutives.
+Déroulement interne : les casseurs entrent un par un, le premier d’un groupe 2 s après sa mise en file puis à 1,5 s d’intervalle (0,8 s pour le groupe d’apogée), avec au plus douze casseurs en attente d’entrée sur la carte à la fois ; les suivants attendent dans une file d’entrée. Les casseurs des objectifs passent en tête de file. L’effectif T de la manche vaut `max(casseurs des objectifs, [10, 14, 18, 22][N−1] ou min(40, 22 + 4·(N − 4)))` ; il compte tous les casseurs de la manche (objectifs, agresseurs, retournement), seules les patrouilles de maintien du flux en sont exclues.
 
-**Numérotation et objectif des vagues.** Les vagues sont numérotées à partir de 1 dès le début de la partie ; le numéro n’affiche jamais 0 et augmente à chaque nouvelle vague. Dans la première tranche : l’assaut de l’école est la vague 1 (objectif : première ligne + renforts, soit 11 casseurs), le secours est la vague 2 (objectif : ses agresseurs, 2 à 4), puis viennent les vagues de remplissage 3, 4, … (5, 7, 9 … casseurs, plafonné à 18). Chaque vague a un objectif « K/T » : T casseurs à neutraliser, K casseurs déjà mis KO depuis le début de la vague (borné entre 0 et T). Pendant l’intro de 4 s, aucun objectif n’est encore fixé. Chaque vague est annoncée à l’écran (section 14.1).
+**Numérotation et objectif des manches.** Les manches sont numérotées à partir de 1 dès le début de la partie ; le numéro n’affiche jamais 0. Chaque manche a un objectif « K/T » : T casseurs à neutraliser, K casseurs de cette manche déjà mis KO (borné entre 0 et T). Pendant l’intro de 4 s, aucun objectif n’est encore fixé (« Manche 1 »). En phase A de la tranche 2 : manche 1 = école puis secours, manche 2 = voiture ou abribus puis secours avec arme spéciale en retournement, manche 3 et suivantes = un lieu tiré au sort parmi ceux intacts (moins souvent celui de la manche précédente) puis secours, avec une seconde urgence en retournement.
 
-**Vagues distinctes, flux régulier.** Une vague est un groupe restreint et fixe de casseurs (effectif T affiché) ; elle ne « glisse » pas sur la suivante : la vague suivante n’est annoncée que lorsque **tous** les casseurs de la vague en cours (en file d’entrée ou sur la carte, y compris les survivants d’un échec d’objectif) sont mis KO, si bien que le compteur K/T ne compte que cette vague. Pour qu’il n’y ait pas de trou, la vague suivante est annoncée dès le dernier KO et son premier casseur entre 2 s plus tard ; les casseurs d’une vague entrent un par un toutes les 1,5 s. L’école (vague 1) et le secours (vague 2) se terminent aussi lorsque leurs casseurs sont à terre ; la respiration entre les deux est de 2 s. Une fois l’intro terminée, il ne s’écoule jamais plus d’environ 3 s sans casseur actif sur la carte ; la patrouille de sécurité (3 casseurs après 25 s sans personne) reste en place. La première vague de remplissage (vague 3) ne comporte aucun lanceur.
+**Flux régulier dans une manche, répit entre deux (RC-94).** À l’intérieur d’une manche, une fois l’intro terminée, il ne s’écoule jamais plus d’environ 3 s sans casseur actif sur la carte : si personne n’est actif pendant 1,5 s, le groupe suivant entre aussitôt, sinon une patrouille hors effectif. **Exception voulue :** les 6 s de répit entre deux manches sont un temps faible délibéré, sans aucune entrée, demandé par le porteur du projet ; elles remplacent l’ancienne règle « la manche suivante démarre pendant le bilan ».
 
 Préparer au moins quatre compositions d’assaut et plusieurs points d’apparition. Aucun nouvel objectif ne doit se déclencher pendant une cinématique suspendue. Le panneau de bilan entre manches est un délai local d’affichage ; il n’impose pas un chronomètre de partie.
 
 ### 12.3 Directeur de pression
 
-Le directeur suit la manche, les vagues, les objectifs résolus, les KO, la file d’entrée et les agents actifs. La difficulté augmente avec la progression, pas uniquement avec le temps passé à attendre dans un coin.
+Le directeur suit la manche, ses groupes, les objectifs résolus, les KO, la file d’entrée et les agents actifs. La difficulté augmente avec la progression, pas uniquement avec le temps passé à attendre dans un coin.
 
-Proposition de niveau de pression : `P = min(12, 1 + floor(vague / 2) + floor(KO / 30))`, où `vague` est le nombre de vagues de remplissage lancées depuis le début de la session, moins une (école et secours exclus : 0 jusqu’à la vague 3 incluse). Elle remplace la formule de la révision 1.4 et reste un point de départ à tester. Elle rend le combat d’adversaires additionnels progressivement plus dangereux, même si le joueur retarde un objectif.
+Proposition de niveau de pression : `P = min(12, 1 + floor(manche / 2) + floor(KO / 30))`, où `manche` est le numéro de la manche en cours (v1.9). Elle remplace la formule de la révision 1.4 et reste un point de départ à tester. Elle rend le combat d’adversaires additionnels progressivement plus dangereux, même si le joueur retarde un objectif.
 
 Les paramètres augmentent par paliers avec plafonds : nombre total de renforts par épisode, variantes de comportement, rapidité de décision, résistance de certains casseurs et dégâts. La vitesse d’animation ne doit jamais supprimer la lisibilité de la préparation d’attaque.
 
@@ -751,21 +742,23 @@ Dédupliquer le score par identifiants d’événements et d’occurrences d’o
 
 ### 14.1 Interface
 
-Santé de Paul, score, manche, compteur « Casseurs neutralisés », ligne de vague « Vague N : K/T casseurs » (simplement « Vague 1 » tant qu’aucun objectif n’est fixé ; elle clignote une fois, par paliers, quand le numéro change, sans animation avec `prefers-reduced-motion`) et casseurs restant à neutraliser dans la manche, arme tenue (« Arme : <nom> (<coups>) » ou « Arme : mains nues »), stock de pierres sur trois emplacements, kit porté et action de renvoi disponible. Objectifs et soins indiqués dans la carte et éventuellement sur une mini-carte. Délais locaux des incidents urgents, jauges de capture et d’interaction, sans compte à rebours global. Chaque compte à rebours porte le nom de son événement, son emplacement et son état « en cours / interrompu / perdu ».
+Santé de Paul, score, manche, compteur « Casseurs neutralisés », ligne de manche « Manche N : K/T casseurs » (simplement « Manche 1 » tant qu’aucun objectif n’est fixé ; elle clignote une fois, par paliers, quand le numéro change, sans animation avec `prefers-reduced-motion`) et casseurs restant à neutraliser dans la manche, arme tenue (« Arme : <nom> (<coups>) » ou « Arme : mains nues »), stock de pierres sur trois emplacements, caisse à outils portée (« Caisse 0/1 » ou « Caisse 1/1 ») et action de renvoi disponible. Chaque lieu attaqué a sa carte d’incident avec une mini-barre de santé (« École 64 % », « en feu » / « attaquée »). Objectifs et soins indiqués dans la carte et éventuellement sur une mini-carte. Délais locaux des incidents urgents, jauges de capture et d’interaction, sans compte à rebours global. Chaque compte à rebours porte le nom de son événement, son emplacement et son état « en cours / interrompu / perdu ».
 
 Les groupes pacifiques ont un signe lisible de neutralité et une alerte distincte si une victime est en détresse. Une icône neutre ne doit jamais être remplacée par un marqueur d’ennemi sur une victime. La cible de contact ou de renvoi assisté ne peut pas les désigner. Les projectiles doivent se distinguer du sol, des pierres ramassables, des armes au sol, des soins et des décors.
 
 **Alertes d’incident.** À l’apparition de chaque incident, une bannière dans le style pixel du jeu (police pixel, bordures franches, ombre portée dure de 4 px, animations par paliers) s’affiche en haut au centre, sans recouvrir le panneau de santé ni le bouton Commandes, lisible jusqu’à 320 px de large : « ÉCOLE EN FEU ! » (palette orange/rouge, icône flamme, « Rejoins l’école »), « AGRESSION EN COURS ! » (« Une personne est menacée ») ou « VOL EN COURS ! » (« Une personne âgée est menacée ») en palette jaune avec icône d’alerte. Elle porte une flèche pixel orientée de Paul vers l’incident, mise à jour en continu, et la distance en mètres (une tuile = 1 m). Elle disparaît seule après environ six secondes ; une seconde alerte attend la fin de la première. Elle est annoncée aux lecteurs d’écran (`role="alert"`) et n’est pas interactive. Ensuite, chaque incident actif (école menacée, victime menacée) dont la cible est hors écran a un indicateur en bord d’écran : icône, libellé court (« ÉCOLE », « AGRESSION », « VOL »), distance et flèche, sur fond sombre (contraste ≥ 4,5:1), à l’écart du panneau, du bouton Commandes et des commandes tactiles. Toutes ces animations sont coupées avec `prefers-reduced-motion`. Le système est générique (type, libellé, position) : les futurs événements de casse le réutilisent.
 
-**Annonce des vagues.** Les bannières d’incident de l’école et du secours portent une seconde petite ligne « Vague N · T casseurs » (par exemple « Vague 1 · 11 casseurs ») ; elles tiennent lieu d’annonce des vagues 1 et 2, sans bannière de vague séparée. Chaque vague de remplissage (3, 4, …) est annoncée par la même bannière pixel (même file d’attente, même durée, `role="alert"`) : titre « VAGUE N ! », sous-titre « T casseurs à neutraliser », icône pixel de horde en palette rouge/orange, sans flèche ni distance (une vague n’a pas de position). La mise en page reste compacte et lisible entre 320 et 375 px de large.
+**Annonce des manches (v1.9).** Chaque manche est annoncée par la même bannière pixel (même file d’attente, même durée, `role="alert"`) : titre « MANCHE N ! », sous-titre « <casse phare> · T casseurs » (« École en feu », « Voiture en feu », « Abribus saccagé » ou « Agression en cours »), icône pixel de horde en palette rouge/orange, sans flèche ni distance (une manche n’a pas de position). Les bannières d’incident portent une seconde petite ligne « Manche N · T casseurs ». L’arme spéciale du retournement est annoncée par « ARME SPÉCIALE ! » / « Fonce la ramasser », avec flèche et distance vers l’arme. La mise en page reste compacte et lisible entre 320 et 375 px de large.
+
+**Panneau de manche (v1.9).** Pendant le répit, le panneau « Manche N terminée » (section 12.2) s’affiche en haut au centre, dans le même style pixel, sous la bannière s’il y en a une et sous le panneau de santé quand l’écran est trop étroit ; il ne couvre jamais Paul (centre de l’écran) ni le panneau de santé, n’est pas interactif (`role="status"`) et disparaît à la reprise.
 
 **Alertes des éléments de casse — Proposé** (même style, même file d’attente ; nouvelles icônes pixel : rideau forcé, vitre brisée, fanion neutre sans drapeau national) :
 
 | Élément | Titre | Sous-titre | Libellé du bord d’écran | Palette et icône |
 | --- | --- | --- | --- | --- |
 | Commerce pillé | « COMMERCE PILLÉ ! » | « Disperse les pilleurs » | COMMERCE | jaune, rideau forcé |
-| Voiture en feu | « VOITURE EN FEU ! » | « Chasse les casseurs » | VOITURE | orange/rouge, flamme |
-| Abribus saccagé | « ABRIBUS SACCAGÉ ! » | « Arrête la casse » | ABRIBUS | jaune, vitre brisée |
+| Voiture en feu (livré, v1.9) | « VOITURE EN FEU ! » | « Chasse les casseurs » | VOITURE | orange/rouge, flamme |
+| Abribus saccagé (livré, v1.9) | « ABRIBUS SACCAGÉ ! » | « Arrête la casse » | ABRIBUS | jaune, vitre brisée |
 | Kiosque saccagé | « KIOSQUE SACCAGÉ ! » | « Protège le kiosque » | KIOSQUE | jaune, vitre brisée |
 | Monument occupé | « MONUMENT OCCUPÉ ! » | « Reprends le drapeau » | MONUMENT | jaune, fanion |
 | École maternelle en feu | « MATERNELLE EN FEU ! » | « Rejoins l’école maternelle » | MATERNELLE | orange/rouge, flamme |
@@ -842,6 +835,8 @@ Le premier clic, toucher ou geste clavier pertinent autorise l’initialisation 
 Prévoir des groupes de volume séparés : ambiance, effets, musique éventuelle, voix. La musique est facultative ; la lisibilité du combat prime. Les sons proches sont spatialisés avec mesure et le nombre de voix simultanées plafonné.
 
 Les sons de la première tranche proviennent de Kenney (CC0). Les pas suivent le rythme de déplacement ; les impacts correspondent au contact ; les alarmes ou crépitements indiquent la présence du feu. Les répétitions de coups utilisent plusieurs variantes pour éviter un effet mécanique.
+
+Repères sonores de la tranche 2 (phase A) : alarme une fois par attaque, souffle bref à chaque lancer de Molotov, crépitement du feu qui suit le lieu le plus touché tant qu’un lieu est attaqué ou brûle, carillon bref (deux notes) quand un lieu est sauvé ou réparé et en fin de manche, son de ramassage pour la caisse à outils. Souffle et carillon sont synthétisés (WebAudio), sans nouveau fichier.
 
 Une cinématique ne doit pas déclencher une seconde copie des sons de la scène à sa reprise. Retour d’onglet et reprise de contexte audio sont gérés explicitement.
 
@@ -1123,9 +1118,9 @@ Tests de règles ; intégration avec horloge contrôlée ; navigateur avec rendu
 | RC-24 | Casseur derrière un groupe | Pas de frappe ou renvoi à travers le groupe ; contournement possible. |
 | RC-25 | École attaquée avant arrivée du joueur | Alerte, trois casseurs, cercle, feu et délai local lisible ; urgence déjà active si dégradation valide. |
 | RC-26 | Entrer/sortir/rentrer | Une occurrence, pas de résurrection ni bonus répété. |
-| RC-27 | Vague d’école | Renforts après première ligne ; réserve de destruction consommée seulement pendant une dégradation valide. |
+| RC-27 | Renforts de l’école | Renforts après première ligne (manche 1) ; santé de l’école retirée seulement par le feu ou une dégradation valide. |
 | RC-28 | Défendre l’école avec succès | Réparation visible, bonus unique et étudiants. |
-| RC-29 | Délai d’école épuisé | Ruine persistante, pénalité unique, session continuée et réparation par kit possible. |
+| RC-29 | Santé de l’école à zéro | Ruine persistante, pénalité unique, session continuée et réparation par caisse à outils possible. |
 | RC-30 | Étudiant entrant | Une formation par entrée, aucune file ou population illimitée. |
 | RC-31 | Capture avec contestation / sortie | Jauge suspendue, valeur conservée. |
 | RC-32 | Capture réussie | Conditions de temps local et défenseurs réunies, drapeau français, session poursuivie. |
@@ -1150,11 +1145,11 @@ Tests de règles ; intégration avec horloge contrôlée ; navigateur avec rendu
 | RC-51 | Marcher vers bâtiment ou tronc | Collision solide ; aucune traversée malgré liberté d’exploration. |
 | RC-52 | Casseurs en trajet vers bâtiment | Délai de destruction pas encore consommé. |
 | RC-53 | Dégradation valide puis interruption | Compte à rebours local avance puis se suspend ; jauge d’intégrité cohérente. |
-| RC-54 | Quitter/rentrer dans la zone attaquée | Même réserve de temps et même identifiant d’incident. |
+| RC-54 | Quitter/rentrer dans la zone attaquée | Même santé du lieu et même identifiant d’incident. |
 | RC-55 | Fin du délai puis changement de manche | Bâtiment toujours détruit jusqu’à application d’un kit. |
 | RC-56 | Ramasser un kit | Un objet retiré et un kit porté ; stock jamais supérieur à un. |
 | RC-57 | Stock de kit déjà plein | Objet au sol non consommé et aucun doublon. |
-| RC-58 | Poser un kit en zone sûre | Application complète, kit consommé une fois, fonction du bâtiment rétablie. |
+| RC-58 | Réparer en zone sûre | 2 s près de la ruine sans casseur proche, sans touche : caisse consommée une fois, lieu à 60 %, fonction rétablie. |
 | RC-59 | Pose interrompue par déplacement ou attaque | Aucun kit consommé ni réparation partielle gratuite. |
 | RC-60 | Kit utilisé sur bâtiment intact | Aucune consommation ou gain de points. |
 | RC-61 | Réparer après une perte | Bonus tardif unique, pénalité conservée, pas de cumul avec bonus de sauvetage. |
@@ -1180,17 +1175,21 @@ Tests de règles ; intégration avec horloge contrôlée ; navigateur avec rendu
 | RC-88 | Bouton Commandes en jeu | Un clic met la partie en pause, ouvre la modale (touches et règles) avec le focus sur Fermer ; Fermer ou Échap reprend la partie sans perte d’état. |
 | RC-89 | Visuel de la landing | Illustration originale, aucune photographie réelle ; texte lisible (contraste ≥ 4,5:1) sur ordinateur et téléphone, sans débordement horizontal. |
 | RC-90 | Visuel pixel art de la landing | L’image de fond est générée par `npm run hero` à partir des tuiles et sprites du jeu (sortie déterministe, au plus 250 Ko) ; aucun drapeau, aucune photographie ni personne réelle ; la police pixel (OFL) est créditée et pèse au plus 100 Ko. |
-| RC-91 | Apparition d’un incident (école, agression, vol) | Bannière dans le style pixel du jeu avec le bon titre, sous-titre, icône, flèche vers l’incident et distance ; disparition après environ 6 s, seconde alerte mise en file ; un indicateur en bord d’écran par incident actif hors écran, à l’écart du HUD et des commandes tactiles ; animations coupées avec `prefers-reduced-motion`. |
+| RC-91 | Apparition d’un incident (école, voiture, abribus, agression, vol) | Bannière dans le style pixel du jeu avec le bon titre, sous-titre, icône, flèche vers l’incident et distance ; disparition après environ 6 s, seconde alerte mise en file ; un indicateur en bord d’écran par incident actif hors écran, à l’écart du HUD et des commandes tactiles ; animations coupées avec `prefers-reduced-motion`. |
 | RC-92 | Bulles de la victime | « À L’AIDE ! » (rouge, rebond par paliers) pendant la menace, « MERCI ! » (vert) une fois sauvée jusqu’à son départ, aucune bulle en cas d’échec ; rendu net sous zoom entier, jamais de marqueur d’ennemi. |
-| RC-93 | Début d’une vague | Vague de remplissage annoncée par la bannière pixel « VAGUE N ! » avec « T casseurs à neutraliser », sans flèche ni distance, mise en file comme les autres alertes ; bannières de l’école et du secours avec la ligne « Vague N · T casseurs ». |
-| RC-94 | Compteur de vague | Jamais 0 : vague 1 dès le départ (école), 2 au secours, puis 3, 4, … ; HUD « Vague N : K/T casseurs » avec K borné à T ; une fois l’intro terminée, aucune période de plus de 3 s sans casseur actif ; chaque vague est annoncée sur une carte sans casseur actif (pas de chevauchement) et K ne compte que les KO de cette vague. |
+| RC-93 | Début d’une manche | Bannière pixel « MANCHE N ! » avec « <casse phare> · T casseurs », sans flèche ni distance, mise en file comme les autres alertes ; bannières d’incident avec la ligne « Manche N · T casseurs ». |
+| RC-94 | Compteur et rythme des manches | Jamais 0 : manche 1 dès le départ ; HUD « Manche N : K/T casseurs » avec K borné à T et ne comptant que les KO de la manche ; à l’intérieur d’une manche, une fois l’intro terminée, aucune période de plus de 3 s sans casseur actif ; **exception :** le répit de 6 s entre deux manches, sans aucune entrée (v1.9). |
+| RC-95 | Molotov | Élan visible de 1,5 s à 96 px au plus du lieu, ligne dégagée ; KO pendant l’élan = pas de feu ; une seconde bouteille ne relance pas un feu en cours. |
+| RC-96 | Santé d’un lieu | Barre au-dessus du lieu et carte HUD « <lieu> N % » ; feu 2 PV/s, dégradeurs 1,2 PV/s chacun (quatre au plus) ; feu éteint seul 1,5 s après le dernier KO de l’attaque ; à zéro, ruine persistante, pénalité unique, session poursuivie. |
+| RC-97 | Réparation sans touche | Caisse ramassée en passant dessus (une portée, deux au sol au plus) ; 2 s à 48 px de la ruine sans casseur à 64 px → lieu à 60 %, points de réparation ; s’éloigner ou laisser approcher un casseur remet à zéro ; messages « Caisse à outils requise », « Abords non sécurisés », « Réparation… » sans bouton Agir. |
+| RC-98 | Panneau de manche | Pendant le répit uniquement : « Manche N terminée », KO, objectifs réussi/perdu, points, « Bonus +5 » seulement s’il est gagné, « Soins rechargés », « Manche N+1 dans 4… » ; non modal, ne couvre ni Paul ni le panneau de santé, lisible à 375 × 812. |
 | RC-79 | Apparition d’armes | Emplacement libre praticable à 160–480 px de Paul, hors groupe pacifique ; première après environ 10 s, puis toutes les 15 à 25 s ; jamais plus de deux au sol. |
 | RC-80 | Ramasser une arme en tenant déjà une | Nouvelle arme tenue, ancienne remplacée ; HUD « Arme : <nom> (<coups>) ». |
 | RC-81 | Frapper avec une arme | KO en un coup à la portée de l’arme ; charge consommée seulement si au moins un casseur est touché. |
 | RC-82 | Arme à zéro coup | Arme brisée, HUD « Arme : mains nues », portée de 56 px rétablie. |
 | RC-83 | Changer de manche avec une arme | Arme et coups restants conservés. |
 | RC-84 | Objectif échoué en cours de manche | Pénalité ou bonus manqué, manche poursuivie ; seule la santé de Paul à zéro termine la session. |
-| RC-85 | Entrée des casseurs d’une manche | Un par un toutes les 1,5 s, au plus 12 sur la carte, vagues distinctes (la suivante n’est annoncée que lorsque tous les casseurs de la vague en cours sont KO ; premier casseur 2 s après l’annonce), aucun lanceur dans la première vague de remplissage. |
+| RC-85 | Entrée des casseurs d’une manche | Premier casseur d’un groupe 2 s après sa mise en file, puis un toutes les 1,5 s (0,8 s pour le groupe d’apogée), au plus 12 en attente d’entrée sur la carte ; la manche suivante ne commence qu’après le KO de tout l’effectif et le répit de 6 s. |
 
 ### 21.3 Recette visuelle
 
@@ -1247,7 +1246,7 @@ Ne pas publier huit noms pour un quartier identique en les présentant comme hui
 
 ### 23.4 Armes supplémentaires
 
-L’ancienne extension « accessoires de contact » est remplacée par les armes ramassables de la section 8.7 (Bâton, Marteau, Panneau de signalisation). Les armes débloquées par manche (Gant de boxe à ressort, Kamehame, Bouclier) y sont décrites au statut **Proposé**, pour la tranche 2. Aucune arme à feu, y compris humoristique. Toute nouvelle arme définit animations, portée, nombre de coups et rareté avant ajout ; le score d’un KO reste identique quelle que soit l’arme.
+L’ancienne extension « accessoires de contact » est remplacée par les armes ramassables de la section 8.7 (Bâton, Marteau, Panneau de signalisation). Les armes débloquées par manche (Gant de boxe à ressort, Kamehame, Bouclier) y sont décrites au statut **Proposé**, pour la tranche 2. Les armes à feu suivent EX-07 (v1.9) : flashball cartoon pour Paul, tireurs ennemis à partir de la manche 6, prévus en phase B. Toute nouvelle arme définit animations, portée, nombre de coups et rareté avant ajout ; le score d’un KO reste identique quelle que soit l’arme.
 
 ### 23.5 Diffusion et confort
 
@@ -1264,14 +1263,16 @@ Installation PWA facultative, démarrage hors connexion après cache complet, ma
 | Hordes | Trois variantes cosmétiques, rôles contact et lanceur, barème +1 égal | Casseurs renforcés, nouveaux types d’ennemis |
 | Projectiles | Lancers annoncés, récupération au sol, stock de trois, renvoi | Blocage par bouclier |
 | Armes | Bâton, Marteau, Panneau de signalisation ; apparition aléatoire, usure et bris | Gant de boxe à ressort, Kamehame, Bouclier |
-| Objectifs | École (première ligne, renforts, délai local), secours dynamique | Monument, boutique, kits de réparation |
+| Objectifs | École, voiture et abribus avec santé, Molotov, feu et ruines ; caisses à outils (réparation automatique) ; secours dynamique | Monument, boutique, maternelle, kiosque, mairie, bibliothèque |
 | Soins | Stations au contact, petits soins de terrain | — |
-| Structure | Vagues successives avec pression `P = min(12, 1 + floor(vague / 2) + floor(KO / 30))`, entrée un par un, au plus 12 sur la carte | Manches à effectif fixe, panneau « Manche N terminée » non bloquant, progression de la section 12.2 |
+| Structure | Manches à effectif fixe (10, 14, 18, 22, puis +4), répit de 6 s avec panneau « Manche N terminée », annonce, retournement et apogée (tranche 2, phase A) | Nouveautés par manche de la section 12.2 (ennemis, armes, casse) |
 | Score et bilan | Score, compteur « Casseurs neutralisés », record local, bilan | Statistiques de manche |
 | Accès | Landing sur `/`, jeu sur `/jouer/`, démarrage immédiat par `/jouer/?go` | — |
 | Validation | Tests Vitest de simulation et build de vérification | Recette sur appareils réels et endurance |
 
 Les éléments de la colonne « Reste à faire » demeurent des exigences de la cible de diffusion.
+
+**Tranche 2 « Fun » — phases B à D à venir.** La phase A (rythme des manches, santé des lieux, Molotov, feu, ruines, caisses à outils, voiture et abribus) est décrite dans ce document. Les phases suivantes suivent la [conception de la tranche 2 « Fun »](superpowers/specs/2026-10-20-slice-2-fun-design.md) : **B** nouveaux ennemis (coureur, costaud, tireur AK-47 cartoon, mini-boss « Le Caïd ») et nouvelles armes (flashball, gant de boxe à ressort, bouclier, kamehame) ; **C** nouveaux lieux de casse (boutique au rideau automatique, monument, maternelle, kiosque, mairie, bibliothèque) et deux urgences simultanées ; **D** chutes de KO comiques (dont des chutes rares « WTF » et l’effet domino), gel d’impact, secousse et onomatopées pixel. Cette conception l’emporte sur les règles plus anciennes qu’elle contredit.
 
 ## 25. Décisions restantes et sources
 
@@ -1289,9 +1290,9 @@ Les éléments de la colonne « Reste à faire » demeurent des exigences de la 
 | Récupération | Pierres ennemies tombées, ramassage automatique |
 | Stock | Trois pierres ; renvois non récupérables |
 | Groupes pacifiques | Non ciblables par Paul ; détresse ennemie seulement dans un événement annoncé |
-| Bâtiments urgents | Réserve locale de 30 secondes d’attaque effective proposée |
+| Bâtiments urgents | Santé 100 PV (bâtiments) / 60 PV (mobilier) ; feu 2 PV/s, dégradeur 1,2 PV/s |
 | Secours | Délai local de 20 à 30 secondes, deux urgences simultanées maximum |
-| Kits | Un porté, deux au sol, pose sécurisée de trois secondes |
+| Caisses à outils | Une portée, deux au sol, réparation automatique en 2 s sans casseur à 64 px |
 | Autres neutres | Anciennes pénalités conservées s’ils restent touchables ; option de protection généralisée à décider |
 | Hordes | Quarante hostiles maximum pour la référence normale |
 | Projectiles | Vingt-quatre en vol et seize récupérables au sol au maximum |
@@ -1336,6 +1337,7 @@ Une capture d’écran pixelisée, une conversion de perspective ou les anciens 
 - **1.6 — 20 octobre 2026 :** landing sobre avec visuel original en pixel art (scène composée à partir des tuiles et sprites du jeu par `npm run hero`, drapeaux exclus ; pas de photographie d’événement réel) et police pixel Press Start 2P (licence SIL OFL 1.1, créditée) ; règles et instructions affichées au lancement du jeu (carte « Comment jouer » non bloquante avec `?go`, écran de départ pour l’accès direct) ; bouton « Commandes » (modale) sur la landing et dans le jeu ; EX-27 et RC-86 à RC-90.
 - **1.7 — 21 octobre 2026 :** le secours se termine automatiquement une fois les agresseurs neutralisés (bulle « MERCI ! » environ 1,5 s, bonus +6 une fois), sans maintien de F ; bulles de victime « À L’AIDE ! » / « MERCI ! » ; alertes d’incident dans le style pixel du jeu (bannière « ÉCOLE EN FEU ! », « AGRESSION EN COURS ! », « VOL EN COURS ! » avec flèche et distance, indicateurs en bord d’écran par incident actif), génériques pour les futurs événements de casse ; ligne Agir de la section 7 réservée aux réparations et au rideau ; icône du site (favicon pixel, tête de Paul) ; EX-28, RC-62, RC-65, RC-66 ajustés, RC-91 et RC-92.
 - **1.8 — 21 octobre 2026 :** vagues numérotées à partir de 1 (école = vague 1, secours = vague 2, puis vagues de remplissage), jamais 0 ; objectif K/T par vague affiché dans le HUD (« Vague N : K/T casseurs ») ; chaque vague annoncée (bannière pixel « VAGUE N ! » sans flèche, ligne « Vague N · T casseurs » sur les bannières de l’école et du secours) ; flux régulier sans repos entre vagues (premier casseur ≤ 1,5 s après le début d’une vague, respiration école → secours de 2 s, jamais plus de 3 s sans casseur actif) ; RC-85 ajustée, RC-93 et RC-94. Entre les manches, le bilan devient un panneau non bloquant sans temps mort (la manche suivante démarre pendant son affichage). Vagues distinctes (effectif fixe, la suivante n’est annoncée qu’une fois la vague en cours entièrement neutralisée ; premier casseur 2 s après l’annonce).
+- **1.9 — 21 octobre 2026 :** tranche 2 « Fun », phase A. Les vagues deviennent des manches rythmées (répit de 6 s avec panneau non bloquant « Manche N terminée », annonce « MANCHE N ! » avec la casse phare, montée, retournement à mi-effectif, apogée, bonus +5) ; RC-94 garde la règle des 3 s à l’intérieur d’une manche avec l’exception voulue du répit. Modèle de santé pour tous les lieux à la place de la réserve de 30 s (section 10) : casseur Molotov (élan 1,5 s, KO = pas de feu), feu et dégradeurs, extinction automatique 1,5 s après le dernier KO, ruines persistantes ; voiture et abribus attaquables ; caisses à outils et réparation automatique sans F (sections 10.6 et 10.7). Levée de l’interdiction des armes à feu pour des tireurs et un flashball cartoon (EX-07, phase B à venir) ; renvoi vers la conception des phases B à D (section 24). RC-27, RC-54, RC-85, RC-91, RC-93, RC-94 ajustées ; RC-95 à RC-98.
 
 ## 26. Landing page et accès au jeu
 
@@ -1413,4 +1415,4 @@ Ces budgets sont des objectifs de projet à vérifier sur un profil de réseau e
 
 Livrer les textes, les deux points d’entrée, le lien vers le jeu, l’aperçu fidèle à la version, les commandes synchronisées avec le jeu et les crédits. Fournir les consignes de build et d’hébergement pour les deux routes. Le travail visuel de Claude devra respecter ces contrats de navigation, de chargement et d’accessibilité.
 
-La recette RC-69 à RC-78 et RC-86 à RC-94 complète la recette du jeu. Elle doit vérifier le trajet landing → jeu → bilan → landing, ainsi qu’une entrée directe sur le jeu. Le présent document décrit cette cible ; il ne constitue pas une preuve que la landing ou le nouveau jeu ont déjà été réalisés.
+La recette RC-69 à RC-78 et RC-86 à RC-98 complète la recette du jeu. Elle doit vérifier le trajet landing → jeu → bilan → landing, ainsi qu’une entrée directe sur le jeu. Le présent document décrit cette cible ; il ne constitue pas une preuve que la landing ou le nouveau jeu ont déjà été réalisés.

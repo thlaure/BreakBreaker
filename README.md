@@ -2,21 +2,23 @@
 
 A 2D top-down pixel-art arcade web game, rewritten from the old Three.js prototype (kept in the git history). The game's text is in French.
 
-Specification: [`docs/CAHIER_DES_CHARGES.md`](docs/CAHIER_DES_CHARGES.md) (v1.5, French).
+Specification: [`docs/CAHIER_DES_CHARGES.md`](docs/CAHIER_DES_CHARGES.md) (v1.9, French). Slice 2 design: [`docs/superpowers/specs/2026-10-20-slice-2-fun-design.md`](docs/superpowers/specs/2026-10-20-slice-2-fun-design.md).
 
-## First playable slice
+## Features
 
-A full session in a single district, playable with keyboard/mouse or touch:
+A full session in a single district, playable with keyboard/mouse or touch (first playable slice + slice 2 phase A):
 
-- **School defense**: a first line of rioters damages the façade; the school's countdown only runs while it is being damaged. Once the first line is down, a short "Renforts en approche !" sequence (skippable with Space or F, or a tap) announces 8 reinforcements.
+- **Rounds**: the game is split into rounds (`Manche N`), from 1 until Paul is knocked out (or the player quits); no global timer. Each round is announced (« MANCHE N ! » banner with its headline, e.g. « Voiture en feu · 18 casseurs »), the HUD shows its objective (`Manche N : K/T casseurs`), a twist fires once half the roster is down (a second urgency or a special weapon drop, « ARME SPÉCIALE ! »), and the last group comes in faster. When the whole roster is knocked out, a 6 s breather (no rioter enters) shows a non-blocking « Manche N terminée » panel (KOs, objectives réussi / perdu, points, +5 bonus when every objective succeeded) while heal stations recharge.
+- **Buildings with health**: the school, two parked cars and a bus shelter have a health bar (on the map and in the HUD card). A Molotov rioter winds up for 1.5 s (knock him out first and there is no fire), then the target burns; degraders hit it too. Knock out the attack's rioters and the fire goes out by itself (+8 school, +4 car / bus shelter). At 0 HP the place becomes a ruin (−3 / −2) that stays across rounds; the session goes on.
+- **Toolboxes**: walk over a toolbox to carry it (`Caisse 1/1`), then stand next to a ruin for 2 s with no rioter close: it is repaired automatically (60 % health, +5 / +3). No key to hold.
+- **School defense**: the round-1 school assault has a first line, then, once it is down, a short "Renforts en approche !" sequence (skippable with Space or F, or a tap) announces 8 reinforcements.
 - **Rescue**: reach a threatened victim (« À L’AIDE ! » bubble) and knock out the attackers: the rescue then ends by itself (« MERCI ! », +6), no key to press.
-- **Alerts**: each new incident pops a pixel-style banner (« ÉCOLE EN FEU ! », « AGRESSION EN COURS ! », « VOL EN COURS ! ») with an arrow and the distance, and an indicator at the screen edge points to every active incident that is off-screen.
+- **Alerts**: each new incident pops a pixel-style banner (« ÉCOLE EN FEU ! », « VOITURE EN FEU ! », « ABRIBUS SACCAGÉ ! », « AGRESSION EN COURS ! », « VOL EN COURS ! ») with an arrow and the distance, and an indicator at the screen edge points to every active incident that is off-screen.
 - **Rocks**: throwers telegraph their throws; Paul picks up fallen rocks (3 max) and throws them back.
 - **Circular strikes**: Paul's strike hits all around him (up to 3 rioters).
 - **Weapons**: a stick, a hammer or a road sign appears at random in the streets; walk over it to pick it up. Weapons knock a rioter out in one hit, reach further and wear out after a number of hits (15 / 8 / 10).
 - **Healing**: walk over a "Soins" kit to recover 25 HP (one charge per kit).
-- **Waves**: numbered from 1 (the school assault is wave 1, the rescue wave 2, then fill waves 3, 4, …) until Paul is knocked out (or the player quits). Every wave is announced on screen (« VAGUE N ! » banner) and the HUD shows its objective (`Vague N : K/T casseurs`). Each wave is a fixed group of rioters that enter one by one; the next wave is announced only once the whole current wave is knocked out, and its first rioter walks in 2 s later (no overlap, no long hole). No global timer.
-- End-of-session summary (score, local best, wave reached, stats) and Replay.
+- End-of-session summary (score, local best, round reached, perfect rounds, places saved / destroyed, repairs, stats) and Replay.
 
 The landing page (title, "Jouer", "Commandes" modal) has an original pixel-art hero: a top-down street scene (burning school, Paul, rioters, flying rocks, a heal kit, a peaceful group) composed from the game's own tiles and LPC sprites by `npm run hero`, shown full-bleed with `image-rendering: pixelated`, with the Press Start 2P pixel font (SIL OFL 1.1) for the title and buttons. Its "Jouer" link (`/jouer/?go`) starts the game right away, with a "Comment jouer" card over the running game; a "Commandes" button in the game opens the keys and rules. Opening `/jouer/` directly shows the rules screen first.
 
@@ -64,7 +66,7 @@ To test on a phone on the same Wi-Fi: `npm run dev -- --host`, then open the "Ne
 
 ## Roadmap
 
-Next slice ([plan](docs/superpowers/plans/2026-10-20-slice-2.md), spec §12.2 and §8.7): rounds with a growing number of rioters and objectives, monument capture, shop, repair kits, and new weapons unlocked by round (long-range boxing glove, kamehame, shield).
+Slice 2 « Fun » ([design](docs/superpowers/specs/2026-10-20-slice-2-fun-design.md)), after phase A (rhythm + buildings): phase B new enemies (runner, brute, cartoon AK-47 shooter, « Le Caïd » mini-boss) and weapons (flashball, spring boxing glove, shield, kamehame); phase C more places to defend (shop, monument, nursery, kiosk, town hall, library); phase D funny KO falls and hit juice.
 
 ## Credits
 

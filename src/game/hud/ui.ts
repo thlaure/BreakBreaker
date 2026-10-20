@@ -1,6 +1,6 @@
 import type { Sim, Snapshot } from '../../sim/sim';
 import type { SimEvent } from '../../sim/types';
-import { GameAudio } from '../audio';
+import { GameAudio, threatLevel } from '../audio';
 import { SITE_BASE } from '../assets';
 import { loadPrefs, loadRecord, saveRecord, savePrefs, type Prefs } from '../storage';
 import { formatSummary } from './format';
@@ -163,8 +163,7 @@ export class GameUi {
 
   private frame(s: Snapshot): void {
     this.hud.update(s, this.host.cameraView());
-    const threatened = s.school.stage === 'attack' || s.school.stage === 'reinforcements' || s.school.stage === 'cinematic';
-    this.audio.setThreat(threatened && !s.ended ? 0.35 + 0.65 * (1 - s.school.integrity / 100) : 0);
+    this.audio.setThreat(threatLevel(s));
     if (s.ended && this.phase === 'playing') {
       this.phase = 'ending';
       this.host.releaseInputs();
