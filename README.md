@@ -2,13 +2,14 @@
 
 A 2D top-down pixel-art arcade web game, rewritten from the old Three.js prototype (kept in the git history). The game's text is in French.
 
-Specification: [`docs/CAHIER_DES_CHARGES.md`](docs/CAHIER_DES_CHARGES.md) (v1.9, French). Slice 2 design: [`docs/superpowers/specs/2026-10-20-slice-2-fun-design.md`](docs/superpowers/specs/2026-10-20-slice-2-fun-design.md).
+Specification: [`docs/CAHIER_DES_CHARGES.md`](docs/CAHIER_DES_CHARGES.md) (v1.9.3, French). Slice 2 design: [`docs/superpowers/specs/2026-10-20-slice-2-fun-design.md`](docs/superpowers/specs/2026-10-20-slice-2-fun-design.md).
 
 ## Features
 
 A full session in a single district, playable with keyboard/mouse or touch (first playable slice + slice 2 phase A):
 
 - **Rounds**: the game is split into rounds (`Manche N`), from 1 until Paul is knocked out (or the player quits); no global timer. Each round is announced (« MANCHE N ! » banner with its headline, e.g. « Voiture en feu · 18 casseurs »), the HUD shows its objective (`Manche N : K/T casseurs`), a twist fires once half the roster is down (a second urgency or a special weapon drop, « ARME SPÉCIALE ! »), and the last group comes in faster. When the whole roster is knocked out, a 6 s breather (no rioter enters) shows a non-blocking « Manche N terminée » panel (KOs, objectives réussi / perdu, points, +5 bonus when every objective succeeded) while heal stations recharge.
+- **Mode furie**: from round 4 the half-roster twist drops a rare glowing lightning orb (and from round 6 about 1 in 6 street spawns); walking over it gives Paul 12 s of power (×1.35 speed, ×1.5 reach, up to 8 rioters per strike, one-hit KOs that do not wear the held weapon, half damage taken) with a yellow-white aura, and every rioter he knocks out flies off spinning.
 - **Buildings with health**: the school, two parked cars and a bus shelter have a health bar (on the map and in the HUD card). Molotov rioters wind up for 1.5 s (knock them out first and there is no bottle), then the target burns; degraders hit it too. Each attack brings several Molotov throwers, more as rounds go on (1, 2, 3, then 4; at most 2 on a car or the bus shelter); a bottle on a place already burning takes 8 HP off it at once. Knock out the attack's rioters before any fire and the place is saved (+8 school, +4 car / bus shelter); a fire never goes out by itself, only a toolbox puts it out. At 0 HP the place becomes a ruin (−3 / −2) that stays across rounds; the session goes on.
 - **Toolboxes**: walk over a toolbox to carry it (`Caisse 1/1`), go next to a ruin or a burning place with no rioter close and press F (touch: Agir): 2 s later, without holding the key, the ruin is repaired or the fire put out, restoring full health (+5 / +3). A fire never goes out by itself.
 - **School defense**: the round-1 school assault has a first line, then, once it is down, a short "Renforts en approche !" sequence (skippable with Space or F, or a tap) announces 8 reinforcements.
