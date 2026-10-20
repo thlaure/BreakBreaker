@@ -67,3 +67,64 @@ K = T with throwing Molotovs). Existing steady-flow / balance bot tests stay gre
   count in the 3-per-round fill cap.
 - Visual pass not done in a browser (the preview pane was hidden, the game auto-pauses there); render verified by
   typecheck/build only.
+
+## Task B — Retro video-game shop (« JEUX RÉTRO »), a new building to protect
+
+User request: « Un autre type de bâtiment à protéger : un magasin, une boutique, par exemple une boutique de jeux vidéo
+rétro ». Built as an ordinary destructible building like the school (no shutter, no shopkeeper NPC).
+
+| Commit | Scope |
+| --- | --- |
+| `0419c52` | sim: target `shop` on building 5, building lineup, round plan (r2 shop, r3 car/bus stop, r4+ all), scores, HUD texts; tests |
+| `17b0981` | render: storefront art; building parts kept per building (school and shop), flag mast for the school only |
+| (docs commit) | CAHIER_DES_CHARGES v1.9.4 entry extended (§10.1, §10.2, §12.2, §14.1 alerts, §23.1, §24, RC-105/RC-106), README, this report |
+
+Final checks: `npx vitest run` 371/371, `npm run typecheck` clean, `npm run build` ok, `npm run bench` per-step mean
+≈ 0.20 ms (budget 0.3 ms).
+
+### Sim (`src/sim`)
+
+- `types.ts`: `TargetId` and `CasseKind` gain `'shop'`. `config.ts`: `casse.scores.shop = [6, -2, 4]`.
+- `map/district.ts`: target `shop` (kind `shop`, prop false, 100 hp) on building 5 `R(12,15,4,4)`, attack points
+  C(12,19), C(13,19), C(15,19), door C(14,19) — exactly as specified, no tile adjustment needed (all walkable, reachable
+  from the spawn; kit sites stay >= 48 px away). Appended last in `DISTRICT.targets` so earlier target order is kept.
+- `incidents/targetAttack.ts`: buildings (school, shop) share the 4-Molotov cap and the pressure extras
+  (`min(6, 2 + floor(p / 3))`, degrader/contact alternating); the round-1 school special case is unchanged. Variants
+  still round-robin; the round-3+ firebomber marking applies to the shop like any attack.
+- `director.ts`: `TARGETS_OF` / counters get `shop`; `headlineKinds(round)`: r2 `['shop']`, r3 `['car','busStop']`,
+  r4+ all four kinds; same weighting (2, or 1 for last round's headline from r3); still one `rand()` per draw. A ruined
+  or burning shop in r2 → rescue-only round (same fallback as before). Twist second urgency picks the shop like any
+  free target.
+- Ignition, smoulder, toolbox extinguish/repair, ruin and award keys (`shop#n:saved`, `:lost`, `:extinguished`,
+  `:repaired`) all come from the existing generic code.
+
+### HUD / render (`src/game`)
+
+- `hud/alerts.ts`: `INCIDENT_ALERTS.shop` « BOUTIQUE EN FEU ! » / « Défends la boutique » / BOUTIQUE, fire tone, flame;
+  `ROUND_HEADLINES.shop` « Boutique menacée ». `hud/format.ts`: `TARGET_NAMES.shop` « Boutique » (card). Edge
+  indicator warns then turns to fire after ignition (generic `incidentLook`).
+- `render/world.ts`: `buildingParts: Map<buildingIndex, BuildingPart[]>` replaces `schoolParts`; building 5 gets
+  original pixel art: two lit shop windows with shelves of coloured game boxes, a glazed door under a scalloped
+  four-colour striped awning, a warm light ellipse on the sidewalk, and a « JEUX RÉTRO » plate with a pixel joystick on
+  the roof's front edge (a container that fades with the roof). No brand or character.
+- `render/targets.ts`: each building view gets its own parts (ruin: tile sprites tinted, texts/graphics at 45 %, the
+  window glow off); the flag mast is only created for the school. Fire, smoke, debris and HP bar as the school's.
+- Checked in the browser (dev server): storefront intact, burning (flames, bar, « Boutique · en feu » card), ruined
+  (dimmed, debris) and repaired; school sign unchanged.
+
+### Tests
+
+`tests/sim/shop.test.ts` (definition on building 5, walkable/reachable points and door, Molotov counts per round and
+lineups, scores, attack → ignite → smoulder → toolbox extinguish +4 → saved, ruin −2 → repair +4, saved +6, round 2
+headline, round 3 car/bus stop, r4+ draw includes the shop, weighting, ruined/burning shop never drawn). Updated
+`rounds.test.ts` (round 2 = shop in the sim with CasseStarted at the shop door; catalogue/weights/ruin fallbacks),
+`firebomber.test.ts` (marking covers the shop), `alerts.test.ts` and `hud.test.ts` (shop alert, headline, silent start,
+indicator, card). Steady-flow, balance and determinism tests stay green with no re-tuning.
+
+### Notes / concerns
+
+- Round 3 can no longer open with the school (spec: round 3 headline car|busStop); the school comes back in the draw
+  from round 4.
+- The CAHIER's earlier « Commerce pillé » proposal (shutter, shopkeeper, +4/+5) is marked as not delivered (§23.1) and
+  its catalogue/alert rows now describe the delivered shop.
+- Commit trailer uses `Claude Opus 5.5` (the model actually used), not the `Sonnet 5.5` named in the batch rules.
