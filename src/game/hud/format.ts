@@ -5,7 +5,7 @@ import { WEAPONS } from '../../sim/weapons';
 import { casseurs, type IncidentKind, type RoundHeadline } from './alerts';
 
 /**
- * Rescue: 'en cours' | 'interrompu' | 'sécurisé' | 'perdu' | 'sauvé'. Attacked target: 'en feu' | 'attaquée' |
+ * Rescue: 'en cours' | 'interrompu' | 'sécurisé'. Attacked target: 'en feu' | 'attaquée' |
  * 'renforts' (the school cinematic: reinforcements on their way); 'perdue' | 'sauvée' are kept for the school.
  */
 export type IncidentStatus =
@@ -13,8 +13,6 @@ export type IncidentStatus =
   | 'interrompu'
   | 'renforts'
   | 'sécurisé'
-  | 'perdu'
-  | 'sauvé'
   | 'en feu'
   | 'attaquée'
   | 'perdue'
@@ -94,7 +92,7 @@ export interface IncidentLine {
   key: string;
   kind: IncidentKind;
   name: string;
-  /** Rescue: whole seconds remaining, rounded up, e.g. "23 s"; target: health, e.g. "64 %"; empty once over. */
+  /** Rescue: whole seconds remaining, rounded up, e.g. "23 s"; target: health, e.g. "64 %". */
   time: string;
   /** Target health in percent (mini bar), null for the rescue. */
   hp: number | null;
@@ -103,8 +101,9 @@ export interface IncidentLine {
 }
 
 /**
- * One card per target under an urgent attack (health and fire), then the rescue. `rescueDrain` says whether the
- * rescue reserve went down since the previous frame (the snapshot has no status for it).
+ * One card per target under an urgent attack (health and fire), then the rescue until it is resolved (its card stays
+ * through the thanks beat, then goes like a target's). `rescueDrain` says whether the rescue reserve went down since
+ * the previous frame (the snapshot has no status for it).
  */
 export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu'): IncidentLine[] {
   const out: IncidentLine[] = [];
@@ -116,11 +115,9 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
     out.push({ key: t.id, kind: t.kind, name: TARGET_NAMES[t.kind], time: `${Math.ceil(hp - 1e-9)} %`, hp, status, target: t.door });
   }
   const r = s.rescue;
-  if (r) {
-    const status: IncidentStatus =
-      r.stage === 'completed' ? 'sauvé' : r.stage === 'failed' ? 'perdu' : r.stage === 'secured' ? 'sécurisé' : rescueDrain;
-    const over = r.stage === 'completed' || r.stage === 'failed';
-    out.push({ key: 'rescue', kind: r.kind, name: 'Secours', time: over ? '' : secs(r.remaining), hp: null, status, target: r.victimPos });
+  if (r && (r.stage === 'threat' || r.stage === 'secured')) {
+    const status: IncidentStatus = r.stage === 'secured' ? 'sécurisé' : rescueDrain;
+    out.push({ key: 'rescue', kind: r.kind, name: 'Secours', time: secs(r.remaining), hp: null, status, target: r.victimPos });
   }
   return out;
 }

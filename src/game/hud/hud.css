@@ -26,10 +26,6 @@
 .bb-card.st-interrompu .status::before { content: '‖ '; }
 .bb-card.st-sécurisé { --bar: var(--bb-ok); }
 .bb-card.st-sécurisé .status::before { content: '◆ '; }
-.bb-card.st-sauvé { --bar: var(--bb-ok); }
-.bb-card.st-sauvé .status::before { content: '✔ '; }
-.bb-card.st-perdu { --bar: var(--bb-bad); }
-.bb-card.st-perdu .status::before { content: '✖ '; }
 .bb-card.st-sauvée { --bar: var(--bb-ok); }
 .bb-card.st-sauvée .status::before { content: '✔ '; }
 .bb-card.st-perdue { --bar: var(--bb-bad); }

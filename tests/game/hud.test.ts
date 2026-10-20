@@ -200,7 +200,7 @@ describe('incidentLines', () => {
     expect(lines[1]).toMatchObject({ key: 'busStop', kind: 'busStop', name: 'Abribus', time: '25 %', hp: 25, status: 'attaquée' });
   });
 
-  test('resolved targets have no card; rescue status derives from stage and drain', () => {
+  test('resolved incidents have no card (rescue: once its thanks beat is over); rescue status derives from stage and drain', () => {
     const s = snap((x) => {
       calm(x);
       x.school.stage = 'saved';
@@ -212,7 +212,9 @@ describe('incidentLines', () => {
     s.rescue = { stage: 'secured', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
     expect(incidentLines(s, 'en cours')[0]).toMatchObject({ status: 'sécurisé' });
     s.rescue = { stage: 'failed', remaining: 0, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
-    expect(incidentLines(s, 'en cours')[0]).toMatchObject({ status: 'perdu', time: '' });
+    expect(incidentLines(s, 'en cours')).toEqual([]);
+    s.rescue = { stage: 'completed', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+    expect(incidentLines(s, 'en cours')).toEqual([]);
   });
 });
 

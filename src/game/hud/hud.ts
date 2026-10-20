@@ -372,9 +372,8 @@ export class Hud {
       c.cls(card.fill, line.hp <= 30 ? 'fill low' : 'fill');
     }
     c.text(card.status, line.status);
-    const over = line.status === 'sauvé' || line.status === 'perdu';
     const tiles = Math.round(Math.hypot(line.target.x - s.player.pos.x, line.target.y - s.player.pos.y) / TILE);
-    c.text(card.dist, over ? '' : `${tiles} m`);
+    c.text(card.dist, `${tiles} m`);
   }
 
   private makeRound(): RoundEls {
