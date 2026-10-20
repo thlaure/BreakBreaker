@@ -1302,7 +1302,7 @@ Landing et navigation sont P0. L’habillage final et un aperçu représentatif 
 | Bloc | Contenu attendu | Action |
 | --- | --- | --- |
 | Visuel plein écran | Illustration originale du jeu (ciel, fumée, silhouette parisienne, étincelles), décorative, sans texte porteur d’information | Aucune |
-| Présentation | Nom du jeu, genre (arcade, pixel art, vue du dessus) et une phrase de promesse | Bouton principal « Jouer » ; bouton secondaire « Commandes » |
+| Présentation | Nom du jeu et une phrase de promesse (le genre est dans la description du site, pas en surtitre) | Bouton principal « Jouer » ; bouton secondaire « Commandes » |
 | Commandes | Modale (sans JavaScript) avec le tableau des commandes ordinateur et téléphone, issu de la même source que le jeu | Ouverte par le bouton « Commandes », fermée par « Fermer », Échap ou clic extérieur |
 | Pied de page | Version et statut prototype/version jouable, crédits, lien vers le code source, mention de fiction satirique | Crédits, code source |
 

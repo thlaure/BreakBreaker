@@ -89,7 +89,6 @@ a:focus-visible, button:focus-visible, .table-wrap:focus-visible { outline: 3px 
   position: relative; z-index: 4; align-self: center; width: 100%; max-width: 62rem;
   padding: 4rem var(--pad) 3rem;
 }
-.eyebrow { margin: 0 0 0.75rem; color: var(--accent); font: 700 0.85rem/1.2 var(--mono); letter-spacing: 0.22em; text-transform: uppercase; }
 .title {
   margin: 0; font: 900 clamp(2.4rem, 11vw, 6.5rem)/0.95 var(--mono); letter-spacing: -0.02em; text-transform: uppercase;
   color: var(--text);
@@ -140,7 +139,6 @@ thead th { background: #14111f; }
   .spark { display: none; }
   .hero-art::after { background: linear-gradient(180deg, rgba(8, 6, 14, 0.7) 0%, rgba(8, 6, 14, 0.45) 100%); }
   .stage { padding-top: 3rem; }
-  .eyebrow { letter-spacing: 0.12em; font-size: 0.78rem; }
   .btn { flex: 1 1 10rem; }
 }
 

@@ -9,7 +9,7 @@ export const RULES: readonly string[] = [
 ];
 
 export const SATIRE_NOTICE =
-  'BreakBreaker est une fiction satirique : les personnages et les situations sont imaginaires et ne représentent aucun groupe réel.';
+  'BreakBreaker est une fiction satirique.';
 
 export interface ControlRow {
   action: string;
