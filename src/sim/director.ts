@@ -66,8 +66,19 @@ export const THROWER_SHARE = 0.2;
 /** Aggressors of every rescue from round 2 (round 1 keeps the random CONFIG.rescue.aggressors range). */
 export const RESCUE_COUNT = 3;
 const VARIANTS: Variant[] = ['classic', 'palestinian', 'antifa'];
-const CASSE_KINDS: CasseKind[] = ['school', 'car', 'busStop'];
-const TARGETS_OF: Readonly<Record<CasseKind, TargetId[]>> = { school: ['school'], car: ['car1', 'car2'], busStop: ['busStop'] };
+const CASSE_KINDS: CasseKind[] = ['school', 'car', 'busStop', 'shop'];
+const TARGETS_OF: Readonly<Record<CasseKind, TargetId[]>> = {
+  school: ['school'],
+  car: ['car1', 'car2'],
+  busStop: ['busStop'],
+  shop: ['shop'],
+};
+/** Kinds a round may open with: round 2 the shop, round 3 a car or the bus stop, then any kind. */
+function headlineKinds(round: number): CasseKind[] {
+  if (round === 2) return ['shop'];
+  if (round === 3) return ['car', 'busStop'];
+  return CASSE_KINDS;
+}
 const EPS = 1e-9;
 
 /** Rises one step every 2 rounds and every 30 session KOs, capped. */
@@ -87,8 +98,9 @@ export function urgentCap(round: number): number {
 }
 
 /**
- * The Phase A catalogue. r1: school then rescue. r2: car or bus stop (among intact ones) then rescue, weapon-drop twist.
- * r3+: one intact kind (weight 2, or 1 if it was `last` round's headline) then rescue; twist secondUrgency on odd
+ * The round catalogue. r1: school then rescue. r2: the retro video-game shop then rescue, weapon-drop twist. r3: car or
+ * bus stop; r4+: any kind (school, car, bus stop, shop). From r3 one intact kind (weight 2, or 1 if it was `last`
+ * round's headline) then rescue; twist secondUrgency on odd
  * rounds, weaponDrop on even ones (a mode furie pickup from round CONFIG.furie.dropFromRound). A casse beat with no intact target is dropped (its rioters go to the fill).
  */
 export function roundPlan(round: number, rand: () => number, targets: Targets, last: CasseKind | null = null): RoundPlan {
@@ -97,7 +109,7 @@ export function roundPlan(round: number, rand: () => number, targets: Targets, l
   let first: CasseKind | null = null;
   if (round === 1) first = intact('school') ? 'school' : null;
   else {
-    const kinds = (round === 2 ? (['car', 'busStop'] as CasseKind[]) : CASSE_KINDS).filter(intact);
+    const kinds = headlineKinds(round).filter(intact);
     const weights = kinds.map((k) => (round >= 3 && k === last ? 1 : 2));
     let r = rand() * weights.reduce((a, b) => a + b, 0);
     for (let i = 0; i < kinds.length && first === null; i++) {
@@ -199,7 +211,7 @@ export class Director {
   private readonly roster = new Set<number>();
   private scoreAtStart = 0;
   private lastHeadline: CasseKind | null = null;
-  private readonly counters: Record<BeatKind, number> = { school: 0, car: 0, busStop: 0, rescue: 0 };
+  private readonly counters: Record<BeatKind, number> = { school: 0, car: 0, busStop: 0, shop: 0, rescue: 0 };
   private variantCursor = 0;
   /** Fill firebombers handed out this round (CONFIG.firebomber.maxPerRound at most). */
   private firebombers = 0;

@@ -68,7 +68,7 @@ export const DISTRICT: District = {
     R(26, 4, 7, 5),
     R(36, 3, 8, 5),
     R(4, 14, 6, 5),
-    R(12, 15, 4, 4),
+    R(12, 15, 4, 4), // 5: retro video-game shop
     R(14, 26, 6, 5),
     R(30, 28, 7, 5),
     R(38, 16, 6, 6),
@@ -120,6 +120,16 @@ export const DISTRICT: District = {
     prop('car1', 'car', R(17, 10, 2, 1), [C(16, 10), C(19, 10), C(17, 11), C(18, 11)]),
     prop('car2', 'car', R(26, 34, 2, 1), [C(25, 34), C(28, 34), C(26, 35), C(27, 35)]),
     prop('busStop', 'busStop', R(28, 13, 2, 1), [C(27, 13), C(30, 13), C(28, 14), C(29, 14)]),
+    {
+      // the retro video-game shop (« JEUX RÉTRO ») on building 5
+      id: 'shop',
+      kind: 'shop',
+      footprint: R(12, 15, 4, 4),
+      attackPoints: [C(12, 19), C(13, 19), C(15, 19)],
+      door: C(14, 19),
+      prop: false,
+      maxHp: 100,
+    },
   ],
   kitSites: [C(18, 12), C(28, 25), C(8, 26), C(36, 44)],
 };

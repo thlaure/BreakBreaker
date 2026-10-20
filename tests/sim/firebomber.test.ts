@@ -266,7 +266,7 @@ describe('fire patches in the sim', () => {
 
 describe('who throws at Paul', () => {
   test('lineup: from round 3 the last Molotov of an attack turns firebomber after its throw; never in rounds 1–2', () => {
-    for (const kind of ['school', 'car', 'busStop'] as const)
+    for (const kind of ['school', 'car', 'busStop', 'shop'] as const)
       for (let round = 1; round <= 8; round++) {
         const c = lineup(kind, round, 4);
         const all = [...c.firstLine, ...c.reinforcements];

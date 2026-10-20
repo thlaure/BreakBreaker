@@ -37,6 +37,7 @@ export const INCIDENT_ALERTS: Readonly<Record<IncidentKind, AlertSpec>> = {
   school: { title: 'ÉCOLE EN FEU !', sub: 'Rejoins l’école', label: 'ÉCOLE', tone: 'fire', icon: 'flame' },
   car: { title: 'VOITURE EN FEU !', sub: 'Chasse les casseurs', label: 'VOITURE', tone: 'fire', icon: 'flame' },
   busStop: { title: 'ABRIBUS SACCAGÉ !', sub: 'Arrête la casse', label: 'ABRIBUS', tone: 'warn', icon: 'glass' },
+  shop: { title: 'BOUTIQUE EN FEU !', sub: 'Défends la boutique', label: 'BOUTIQUE', tone: 'fire', icon: 'flame' },
   groupHarassed: { title: 'AGRESSION EN COURS !', sub: 'Une personne est menacée', label: 'AGRESSION', tone: 'warn', icon: 'alert' },
   elderlyRobbed: { title: 'VOL EN COURS !', sub: 'Une personne âgée est menacée', label: 'VOL', tone: 'warn', icon: 'alert' },
 };
@@ -52,6 +53,7 @@ export const ROUND_HEADLINES: Readonly<Record<RoundHeadline, string>> = {
   school: 'École menacée',
   car: 'Voiture menacée',
   busStop: 'Abribus menacé',
+  shop: 'Boutique menacée',
   rescue: 'Agression en cours',
 };
 

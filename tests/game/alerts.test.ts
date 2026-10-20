@@ -22,7 +22,7 @@ import type { SimEvent } from '../../src/sim/types';
 const DOOR = DISTRICT.school.door;
 const schoolEv: SimEvent = { type: 'SchoolStarted', incidentId: 'school#1', pos: { ...DOOR }, wave: 1, total: 11 };
 /** The fire is announced when the bottle is thrown (TargetIgnited), not when the attack starts. */
-const fireEv = (kind: 'school' | 'car' | 'busStop', target: 'school' | 'car1' | 'busStop', pos: { x: number; y: number }, round = 3): SimEvent => ({
+const fireEv = (kind: 'school' | 'car' | 'busStop' | 'shop', target: 'school' | 'car1' | 'busStop' | 'shop', pos: { x: number; y: number }, round = 3): SimEvent => ({
   type: 'TargetIgnited',
   target,
   incidentId: `${kind}#3`,
@@ -64,6 +64,22 @@ describe('pure helpers', () => {
     expect(incidentAlert('car')).toMatchObject({ title: 'VOITURE EN FEU !', sub: 'Chasse les casseurs', label: 'VOITURE', tone: 'fire', icon: 'flame' });
     expect(incidentAlert('busStop')).toMatchObject({ title: 'ABRIBUS SACCAGÉ !', sub: 'Arrête la casse', label: 'ABRIBUS', tone: 'warn', icon: 'glass' });
     expect(incidentAlert('weaponDrop')).toMatchObject({ title: 'ARME SPÉCIALE !', sub: 'Fonce la ramasser', positioned: true, meta: '' });
+  });
+
+  test('the retro video-game shop: « BOUTIQUE EN FEU ! » on its fire only, « Boutique menacée » round line, warn then fire indicator', () => {
+    expect(incidentAlert('shop', 2)).toMatchObject({ title: 'BOUTIQUE EN FEU !', sub: 'Défends la boutique', label: 'BOUTIQUE', tone: 'fire', icon: 'flame', meta: 'Manche 2', positioned: true });
+    expect(incidentAlert('round', 2, 14, 'shop').sub).toBe('Boutique menacée · 14 casseurs');
+    const door = DISTRICT.targets.find((t) => t.id === 'shop')!.door;
+    // the attack start is silent; the bottle's ignition is announced at the shop door
+    expect(alertFromEvent({ type: 'CasseStarted', incidentId: 'shop#1', kind: 'shop', target: 'shop', pos: { ...door }, round: 2, total: 14 })).toBeNull();
+    expect(alertFromEvent(fireEv('shop', 'shop', { ...door }, 2))).toEqual({ id: 'shop#3', kind: 'shop', pos: door, wave: 2, total: 0, incident: 'shop' });
+    expect(incidentLook('shop', false)).toEqual({ tone: 'warn', icon: 'alert' });
+    expect(incidentLook('shop', true)).toEqual({ tone: 'fire', icon: 'flame' });
+    const s = new Sim(1).snapshot();
+    const shop = s.targets.find((t) => t.id === 'shop')!;
+    expect(activeIncidents(s).some((i) => i.id === 'shop')).toBe(false);
+    Object.assign(shop, { state: 'burning', burning: true });
+    expect(activeIncidents(s)).toContainEqual({ id: 'shop', kind: 'shop', pos: door, burning: true });
   });
 
   test('alertFromEvent maps fires, rescue starts and round starts (a round has no position); an attack start is not announced', () => {

@@ -109,7 +109,7 @@ export const CONFIG = {
     twistAt: 0.5,
     bonus: 5,
   },
-  casse: { scores: { school: [8, -3, 5], car: [4, -2, 3], busStop: [4, -2, 3] } },
+  casse: { scores: { school: [8, -3, 5], car: [4, -2, 3], busStop: [4, -2, 3], shop: [6, -2, 4] } },
   pressureMax: 12,
   rulesVersion: 'slice-0.2.0',
 } as const;

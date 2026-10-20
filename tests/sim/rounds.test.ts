@@ -40,15 +40,15 @@ describe('round catalogue', () => {
     expect(pressure(50, 500)).toBe(CONFIG.pressureMax);
   });
 
-  test('round 1 = school then rescue; round 2 = car or bus stop then rescue + weapon drop; then alternating twists', () => {
+  test('round 1 = school then rescue; round 2 = shop then rescue + weapon drop; round 3 = car or bus stop; then alternating twists', () => {
     const t = new Targets();
     expect(roundPlan(1, rng(1), t)).toEqual({ headline: 'school', beats: [['school'], ['rescue']], twist: null });
     const kinds = new Set<string>();
     for (let s = 1; s <= 30; s++) {
-      const p = roundPlan(2, rng(s), t);
+      expect(roundPlan(2, rng(s), t)).toEqual({ headline: 'shop', beats: [['shop'], ['rescue']], twist: 'weaponDrop' });
+      const p = roundPlan(3, rng(s), t, 'shop');
       expect(['car', 'busStop']).toContain(p.headline);
       expect(p.beats).toEqual([[p.headline], ['rescue']]);
-      expect(p.twist).toBe('weaponDrop');
       kinds.add(p.headline);
     }
     expect(kinds.size).toBe(2);
@@ -62,11 +62,16 @@ describe('round catalogue', () => {
 
   test('a kind used last round is drawn half as often from round 3', () => {
     const t = new Targets();
-    const n = { school: 0, car: 0, busStop: 0 } as Record<string, number>;
-    for (let s = 1; s <= 600; s++) n[roundPlan(3, rng(s), t, 'school').headline]! += 1;
-    // weights 1 / 2 / 2 → school ≈ 20 %
-    expect(n.school! / 600).toBeGreaterThan(0.12);
-    expect(n.school! / 600).toBeLessThan(0.28);
+    const n = { school: 0, car: 0, busStop: 0, shop: 0 } as Record<string, number>;
+    for (let s = 1; s <= 700; s++) n[roundPlan(4, rng(s), t, 'school').headline]! += 1;
+    // weights 1 / 2 / 2 / 2 → school ≈ 14 %
+    expect(n.school! / 700).toBeGreaterThan(0.08);
+    expect(n.school! / 700).toBeLessThan(0.2);
+    // round 3 (car or bus stop): weights 1 / 2 → car ≈ 33 %
+    const m = { car: 0, busStop: 0 } as Record<string, number>;
+    for (let s = 1; s <= 600; s++) m[roundPlan(3, rng(s), t, 'car').headline]! += 1;
+    expect(m.car! / 600).toBeGreaterThan(0.25);
+    expect(m.car! / 600).toBeLessThan(0.42);
   });
 });
 
@@ -94,13 +99,13 @@ describe('rounds in the sim', () => {
     expect(of(rest, 'RoundStarted')).toEqual([]);
   });
 
-  test('round 2 headline is car or busStop and its twist drops a weapon at half the roster', () => {
+  test('round 2 headline is the shop and its twist drops a weapon at half the roster', () => {
     const sim = new Sim(5, { invulnerable: true });
     const ev = drive(sim, roundStarted(2));
     const [rs] = of(ev, 'RoundStarted').filter((e) => e.index === 2);
-    expect(['car', 'busStop']).toContain(rs!.headline);
+    expect(rs!.headline).toBe('shop');
     const [casse] = of(ev, 'CasseStarted');
-    expect(casse).toMatchObject({ kind: rs!.headline, round: 2, total: rs!.total });
+    expect(casse).toMatchObject({ kind: 'shop', target: 'shop', pos: DISTRICT.targets.find((t) => t.id === 'shop')!.door, round: 2, total: rs!.total });
     expect(rs!.total).toBe(tableTotal(2));
     let twists: Ev<'TwistStarted'>[] = [];
     for (let i = 0; i < 60 * 300 && sim.director.round === 2 && sim.director.phase === 'play'; i++) {
@@ -368,17 +373,20 @@ describe('rounds in the sim', () => {
 
   test('a ruined target is never drawn again until repaired; its planned rioters join the fill', () => {
     const t = new Targets();
-    for (const id of ['car1', 'car2', 'busStop'] as const) t.ruin(id, `${id}#x`);
+    for (const id of ['car1', 'car2', 'busStop', 'shop'] as const) t.ruin(id, `${id}#x`);
     expect(roundPlan(2, rng(1), t)).toEqual({ headline: 'rescue', beats: [['rescue']], twist: 'weaponDrop' });
-    for (let s = 1; s <= 40; s++) expect(roundPlan(3 + (s % 5), rng(s), t).beats[0]).toEqual(['school']);
+    expect(roundPlan(3, rng(1), t).beats).toEqual([['rescue']]);
+    for (let s = 1; s <= 40; s++) expect(roundPlan(4 + (s % 5), rng(s), t).beats[0]).toEqual(['school']);
     t.ruin('school', 'school#x');
     expect(roundPlan(4, rng(1), t).beats).toEqual([['rescue']]);
     t.repair('car2');
-    expect(roundPlan(2, rng(1), t).beats[0]).toEqual(['car']);
+    expect(roundPlan(3, rng(1), t).beats[0]).toEqual(['car']);
+    t.repair('shop');
+    expect(roundPlan(2, rng(1), t).beats[0]).toEqual(['shop']);
 
     const sim = new Sim(7, { invulnerable: true });
     drive(sim, roundCompleted(1));
-    for (const id of ['car1', 'car2', 'busStop'] as const) sim.targets.ruin(id, `${id}#x`);
+    for (const id of ['car1', 'car2', 'busStop', 'shop'] as const) sim.targets.ruin(id, `${id}#x`);
     const ev = drive(sim, roundCompleted(2));
     const [rs] = of(ev, 'RoundStarted');
     expect(rs).toMatchObject({ index: 2, headline: 'rescue', total: tableTotal(2) });
@@ -570,7 +578,9 @@ describe('a burning target stays so until put out (no fire going out by itself)'
     for (let s = 1; s <= 60; s++) expect(roundPlan(3 + (s % 5), rng(s), t).headline).not.toBe('school');
     t.ignite('car1', 'car#1');
     t.ignite('car2', 'car#2');
-    for (let s = 1; s <= 30; s++) expect(roundPlan(2, rng(s), t).headline).toBe('busStop');
+    for (let s = 1; s <= 30; s++) expect(roundPlan(3, rng(s), t).headline).toBe('busStop');
+    t.ignite('shop', 'shop#1');
+    for (let s = 1; s <= 30; s++) expect(roundPlan(2, rng(s), t).headline).toBe('rescue');
     // in the sim: the smouldering school is not attacked again while it burns (rounds 2-4)
     const { sim } = smouldering();
     for (let i = 0; i < 60 * 600 && sim.director.round <= 4 && sim.targets.get('school').burning; i++) {

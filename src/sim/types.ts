@@ -22,9 +22,9 @@ export interface InputFrame {
 
 export type Variant = 'classic' | 'palestinian' | 'antifa';
 export type Role = 'contact' | 'thrower' | 'degrader' | 'aggressor' | 'molotov' | 'firebomber';
-export type TargetId = 'school' | 'car1' | 'car2' | 'busStop';
+export type TargetId = 'school' | 'car1' | 'car2' | 'busStop' | 'shop';
 /** What kind of attack a round's "casse" is (Phase C extends both unions). */
-export type CasseKind = 'school' | 'car' | 'busStop';
+export type CasseKind = 'school' | 'car' | 'busStop' | 'shop';
 
 export type SimEvent =
   | { type: 'HitConfirmed'; targetLifeId: number; damage: number; source: 'melee' | 'rock' }

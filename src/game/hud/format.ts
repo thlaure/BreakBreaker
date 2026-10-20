@@ -88,7 +88,12 @@ export function contextPrompt(s: Snapshot, touch = false): Prompt | null {
   return null;
 }
 
-export const TARGET_NAMES: Readonly<Record<CasseKind, string>> = { school: 'École', car: 'Voiture', busStop: 'Abribus' };
+export const TARGET_NAMES: Readonly<Record<CasseKind, string>> = {
+  school: 'École',
+  car: 'Voiture',
+  busStop: 'Abribus',
+  shop: 'Boutique',
+};
 const OBJECTIVE_NAMES: Readonly<Record<RoundHeadline, string>> = { ...TARGET_NAMES, rescue: 'Secours' };
 
 export interface IncidentLine {

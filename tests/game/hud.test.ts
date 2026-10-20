@@ -217,6 +217,21 @@ describe('incidentLines', () => {
     expect(lines[1]).toMatchObject({ key: 'busStop', kind: 'busStop', name: 'Abribus', time: '25 %', hp: 25, status: 'attaquée' });
   });
 
+  test('the retro video-game shop has its card « Boutique » (health of 100, attacked then on fire)', () => {
+    const s = snap((x) => {
+      calm(x);
+      attacked(x, 'shop', 41.5);
+    });
+    expect(incidentLines(s, 'en cours')).toEqual([
+      expect.objectContaining({ key: 'shop', kind: 'shop', name: 'Boutique', time: '42 %', hp: 41.5, status: 'attaquée' }),
+    ]);
+    const f = snap((x) => {
+      calm(x);
+      attacked(x, 'shop', 80, true);
+    });
+    expect(incidentLines(f, 'en cours')[0]).toMatchObject({ key: 'shop', name: 'Boutique', status: 'en feu' });
+  });
+
   test('resolved incidents have no card (rescue: once its thanks beat is over); rescue status derives from stage and drain', () => {
     const s = snap((x) => {
       calm(x);
