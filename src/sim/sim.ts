@@ -16,8 +16,8 @@ import { rng } from './rng';
 import { Toolboxes, type ToolboxMessage } from './repair';
 import { Rules, type SessionStats } from './rules';
 import { Targets } from './targets';
-import type { CasseKind, InputFrame, Role, SimEvent, TargetId, Variant, Vec } from './types';
-import { Weapons, type WeaponKind } from './weapons';
+import type { CasseKind, InputFrame, Launch, Role, SimEvent, TargetId, Variant, Vec } from './types';
+import { Weapons, type PickupKind, type WeaponKind } from './weapons';
 
 /** Damage of a weapon strike: enough to KO any rioter (spec: weapons are one-hit KO). */
 const WEAPON_DAMAGE = 99;
@@ -103,8 +103,10 @@ export interface Snapshot {
   stationMessage: StationMessage;
   /** Weapon in Paul's hands (null = bare hands) and strikes left. */
   weapon: { kind: WeaponKind; uses: number } | null;
-  /** `expiresAt` = sim time a special drop vanishes (null = never). */
-  weaponsOnGround: { id: number; kind: WeaponKind; pos: Vec; expiresAt: number | null }[];
+  /** `expiresAt` = sim time a special drop vanishes (null = never); `kind: 'furie'` = the mode furie power-up. */
+  weaponsOnGround: { id: number; kind: PickupKind; pos: Vec; expiresAt: number | null }[];
+  /** Mode furie on (seconds left), or null. */
+  furie: { secondsLeft: number } | null;
   stats: SessionStats;
 }
 
@@ -136,7 +138,8 @@ export function segmentRectEntry(a: Vec, b: Vec, r: Rect): number | null {
 /**
  * Deterministic session facade driven one fixed step at a time by the Phaser layer.
  * Step order: player move → sweep/return → hostiles → queue entries → rocks → damage → KO check → Molotovs routed to
- * the attack on their target → attacks → rescue → toolboxes → heals → weapons → director.
+ * the attack on their target → attacks → rescue → toolboxes → heals → weapons (pickups, furie timer) → director.
+ * Mode furie (CONFIG.furie) changes the player move, the strike and the damage taken; a KO ends it.
  * While the school cinematic is running, only its timer advances.
  */
 export class Sim {
@@ -162,6 +165,8 @@ export class Sim {
   readonly director = new Director();
   readonly weapons: Weapons;
   readonly rand: () => number;
+  /** Own stream for the cosmetic furie launches, so they never shift any other random sequence. */
+  private readonly launchRand: () => number;
   rescue: RescueIncident | null = null;
   now = 0;
   paused = false;
@@ -181,6 +186,7 @@ export class Sim {
     this.rand = rng(seed);
     // Separate stream so weapon spawns never shift the director's random sequence.
     this.weapons = new Weapons(this.grid, rng((seed ^ 0x9e3779b9) >>> 0));
+    this.launchRand = rng((seed ^ 0x85ebca6b) >>> 0);
     this.invulnerable = opts.invulnerable ?? false;
     this.fields = { player: new FlowField(this.grid), victim: new FlowField(this.grid) };
     for (const t of DISTRICT.targets) this.siteFields.set(t.id, new FlowField(this.grid));
@@ -218,16 +224,19 @@ export class Sim {
     const now = this.now;
     const p = this.player;
 
-    stepPlayer(p, input, dt, now, this.grid);
+    const furie = this.weapons.furie();
+    stepPlayer(p, input, dt, now, this.grid, furie ? CONFIG.furie.speedMul : 1);
     if (input.strike) {
-      // Bare hands: 1 damage (2 hits to KO). Any weapon: KO in one hit.
-      const damage = this.weapons.held ? WEAPON_DAMAGE : 1;
-      const { hits } = sweep(p, now, this.horde.views(), this.grid, this.weapons.range());
+      // Bare hands: 1 damage (2 hits to KO). Any weapon: KO in one hit. Mode furie: KO in one hit, more targets, the
+      // weapon is not used, every KO is launched.
+      const damage = furie ? CONFIG.furie.damage : this.weapons.held ? WEAPON_DAMAGE : 1;
+      const maxTargets = furie ? CONFIG.furie.maxTargets : CONFIG.melee.maxTargets;
+      const { hits } = sweep(p, now, this.horde.views(), this.grid, this.weapons.range(), maxTargets);
       for (const id of hits) {
         ev.push({ type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee' });
-        this.hit(id, damage, ev);
+        this.hit(id, damage, ev, furie);
       }
-      ev.push(...this.weapons.onSwing(hits.length));
+      if (!furie) ev.push(...this.weapons.onSwing(hits.length));
     }
     if (input.throwRock) {
       const aim = input.aim && len(input.aim) > 0 ? input.aim : p.facing;
@@ -253,7 +262,8 @@ export class Sim {
     const molotovs: Extract<SimEvent, { type: 'MolotovThrown' }>[] = [];
     for (const e of [...hordeEv, ...rockEv]) {
       if (e.type === 'PlayerDamaged') {
-        if (!this.invulnerable && damagePlayer(p, e.amount, now)) ev.push(e);
+        const amount = this.weapons.furie() ? e.amount * CONFIG.furie.damageTakenMul : e.amount;
+        if (!this.invulnerable && damagePlayer(p, amount, now)) ev.push({ ...e, amount });
         continue;
       }
       ev.push(e);
@@ -270,6 +280,7 @@ export class Sim {
     this.molotovs = this.molotovs.filter((t) => t.until > now);
 
     if (p.ko) {
+      ev.push(...this.weapons.endFurie());
       if (!this.koReported) {
         this.koReported = true;
         ev.push({ type: 'PlayerKnockedOut' });
@@ -293,7 +304,7 @@ export class Sim {
     const heal = this.stations.step({ player: p, rules: this.rules });
     ev.push(...heal.events);
     this.stationMessage = heal.message;
-    ev.push(...this.weapons.step(dt, now, p));
+    ev.push(...this.weapons.step(dt, now, p, this.director.round));
 
     ev.push(...this.director.step(dt, this));
     this.tally(ev);
@@ -377,6 +388,7 @@ export class Sim {
       stationMessage: this.stationMessage,
       weapon: this.weapons.held ? { ...this.weapons.held } : null,
       weaponsOnGround: this.weapons.ground.map((w) => ({ id: w.id, kind: w.kind, pos: v(w.pos), expiresAt: w.expiresAt })),
+      furie: this.weapons.furie() ? { secondsLeft: this.weapons.furieLeft } : null,
       stats: { ...this.rules.stats },
     };
   }
@@ -420,11 +432,32 @@ export class Sim {
     };
   }
 
-  /** Every 'ko' from applyHit scores +1 (deduped by Rules) and emits ActorKnockedOut. */
-  private hit(lifeId: number, dmg: number, ev: SimEvent[]): void {
+  /**
+   * Every 'ko' from applyHit scores +1 (deduped by Rules) and emits ActorKnockedOut; `launched` (Paul's strike in mode
+   * furie) adds the cosmetic launch payload.
+   */
+  private hit(lifeId: number, dmg: number, ev: SimEvent[], launched = false): void {
     if (this.horde.applyHit(lifeId, dmg) !== 'ko') return;
     this.rules.onKnockout(lifeId);
-    ev.push({ type: 'ActorKnockedOut', lifeId });
+    const h = launched ? this.horde.list.find((x) => x.lifeId === lifeId) : undefined;
+    ev.push(h ? { type: 'ActorKnockedOut', lifeId, launch: this.launch(h.pos) } : { type: 'ActorKnockedOut', lifeId });
+  }
+
+  /**
+   * Flight of a body knocked out at `at` in mode furie: away from Paul (his facing when on top of him) turned by a
+   * jitter, power and spin from their ranges; always 4 draws from the launch stream.
+   */
+  private launch(at: Vec): Launch {
+    const { launchPower, launchSpin, launchJitter } = CONFIG.furie;
+    const r = this.launchRand;
+    const jitter = (r() * 2 - 1) * launchJitter;
+    const power = launchPower[0] + r() * (launchPower[1] - launchPower[0]);
+    const turns = launchSpin[0] + r() * (launchSpin[1] - launchSpin[0]);
+    const sign = r() < 0.5 ? -1 : 1;
+    const away = sub(at, this.player.pos);
+    const base = len(away) > 1e-6 ? norm(away) : this.player.facing;
+    const a = Math.atan2(base.y, base.x) + jitter;
+    return { dir: { x: Math.cos(a), y: Math.sin(a) }, power, spin: sign * turns };
   }
 
   /** Hostile facing = last movement direction, else toward Paul. */

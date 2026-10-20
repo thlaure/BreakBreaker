@@ -89,7 +89,7 @@ export function urgentCap(round: number): number {
 /**
  * The Phase A catalogue. r1: school then rescue. r2: car or bus stop (among intact ones) then rescue, weapon-drop twist.
  * r3+: one intact kind (weight 2, or 1 if it was `last` round's headline) then rescue; twist secondUrgency on odd
- * rounds, weaponDrop on even ones. A casse beat with no intact target is dropped (its rioters go to the fill).
+ * rounds, weaponDrop on even ones (a mode furie pickup from round CONFIG.furie.dropFromRound). A casse beat with no intact target is dropped (its rioters go to the fill).
  */
 export function roundPlan(round: number, rand: () => number, targets: Targets, last: CasseKind | null = null): RoundPlan {
   // a burning target (fire not put out yet) is not attacked again
@@ -474,9 +474,11 @@ export class Director {
         return;
       }
     }
-    // weapon drop (also the fallback when no second urgency fits)
-    const w = host.weapons.dropSpecial(host.player.pos);
-    ev.push({ type: 'TwistStarted', kind: 'weaponDrop', pos: w ? { ...w.pos } : null });
+    // weapon drop (also the fallback when no second urgency fits); a mode furie pickup from round dropFromRound
+    const furie = this.round >= CONFIG.furie.dropFromRound;
+    const w = host.weapons.dropSpecial(host.player.pos, furie ? 'furie' : undefined);
+    const pos = w ? { ...w.pos } : null;
+    ev.push(furie ? { type: 'TwistStarted', kind: 'weaponDrop', pos, furie: true } : { type: 'TwistStarted', kind: 'weaponDrop', pos });
     if (w) ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: { ...w.pos } });
   }
 

@@ -41,6 +41,27 @@ export const CONFIG = {
   rescue: { threatSeconds: 25, aggressors: [2, 4], thanksSec: 1.5, bonus: 6 },
   heal: { amount: 25 },
   weapons: { firstSpawn: 10, spawnEvery: [15, 25] as const, maxGround: 2, pickupRadius: 20, minDist: 160, maxDist: 480, dropLifetime: 15 },
+  /**
+   * Mode furie (power-up pickup): lasts `durationSec` (a second pickup resets it). While active Paul moves `speedMul`
+   * faster, strikes `reachMul` farther at up to `maxTargets` rioters, every strike KOs (`damage`) without using the
+   * weapon, and he takes `damageTakenMul` of the damage. The twist weapon drop is a furie from `dropFromRound`; from
+   * `spawnFromRound` a timed spawn is a furie with probability `spawnShare`. Every rioter KO'd by Paul's strike is
+   * launched (cosmetic): `launchPower` px, `launchSpin` turns, direction away from Paul ± `launchJitter` rad.
+   */
+  furie: {
+    durationSec: 12,
+    speedMul: 1.35,
+    reachMul: 1.5,
+    maxTargets: 8,
+    damage: 99,
+    damageTakenMul: 0.5,
+    dropFromRound: 4,
+    spawnFromRound: 6,
+    spawnShare: 1 / 6,
+    launchPower: [220, 420] as const,
+    launchSpin: [2, 5] as const,
+    launchJitter: 0.35,
+  },
   caps: { hostiles: 40, windupsContact: [2, 4], windupsThrow: [2, 4] },
   /**
    * `fireDps` while the attack lasts; `smoulderDps` once its rioters are all KO but the fire still burns (school 100 hp
