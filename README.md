@@ -22,7 +22,7 @@ A full session in a single district, playable with keyboard/mouse or touch (firs
 - **Healing**: walk over a "Soins" kit to recover 25 HP (one charge per kit).
 - End-of-session summary (score, local best, round reached, perfect rounds, places saved / destroyed, repairs, stats) and Replay.
 
-The landing page (title, "Jouer", "Commandes" modal) has an original pixel-art hero: a top-down street scene (burning school, Paul, rioters, flying rocks, a heal kit, a peaceful group) composed from the game's own tiles and LPC sprites by `npm run hero`, shown full-bleed with `image-rendering: pixelated`, with the Press Start 2P pixel font (SIL OFL 1.1) for the title and buttons. Its "Jouer" link (`/jouer/?go`) starts the game right away, with a "Comment jouer" card over the running game; a "Commandes" button in the game opens the keys and rules. Opening `/jouer/` directly shows the rules screen first.
+The landing page (title, "Jouer", "Commandes" modal) has an original pixel-art hero: a top-down street scene (burning school, Paul, rioters, flying rocks, a heal kit, a peaceful group) composed from the game's own tiles and LPC sprites by `npm run hero`, shown full-bleed with `image-rendering: pixelated`, with the Press Start 2P pixel font (SIL OFL 1.1) for the title and buttons. Its "Jouer" link (`/jouer/?go`) starts the game right away, with a blocking "Comment jouer" card (the game waits for a key or tap); a "Commandes" button in the game opens the keys and rules. Opening `/jouer/` directly shows the rules screen first.
 
 Design choices:
 
