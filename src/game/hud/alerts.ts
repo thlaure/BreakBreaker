@@ -88,7 +88,7 @@ export function alertFromEvent(e: SimEvent): Alert | null {
 export function activeIncidents(s: Snapshot): Incident[] {
   const out: Incident[] = [];
   const st = s.school.stage;
-  if ((st === 'firstLine' || st === 'cinematic' || st === 'reinforcements') && s.school.remaining > 0)
+  if (st === 'attack' || st === 'cinematic' || st === 'reinforcements')
     out.push({ id: 'school', kind: 'school', pos: { ...DISTRICT.school.door } });
   if (s.rescue?.stage === 'threat') out.push({ id: 'rescue', kind: s.rescue.kind, pos: { ...s.rescue.victimPos } });
   return out;

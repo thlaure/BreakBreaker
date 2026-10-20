@@ -312,7 +312,7 @@ export class Hud {
     c.text(card.name, line.name);
     c.text(card.time, line.time);
     c.text(card.status, line.status);
-    const over = line.status === 'sauvé' || line.status === 'perdu';
+    const over = line.status === 'sauvé' || line.status === 'perdu' || line.status === 'sauvée' || line.status === 'perdue';
     const target = line.key === 'school' ? SCHOOL_DOOR : line.target;
     const tiles = Math.round(Math.hypot(target.x - s.player.pos.x, target.y - s.player.pos.y) / TILE);
     c.text(card.dist, over ? '' : `${tiles} m`);

@@ -1,0 +1,250 @@
+import { expect, test } from 'vitest';
+import { CONFIG } from '../../src/sim/config';
+import { ImmediateSpawner } from '../../src/sim/entry';
+import { Horde, type HordeCtx } from '../../src/sim/hostiles';
+import { SchoolIncident } from '../../src/sim/incidents/school';
+import { TargetAttack, lineup, type AttackComposition } from '../../src/sim/incidents/targetAttack';
+import { DISTRICT } from '../../src/sim/map/district';
+import { FlowField } from '../../src/sim/map/flowfield';
+import { Grid } from '../../src/sim/map/grid';
+import { createPlayer } from '../../src/sim/player';
+import { Rocks } from '../../src/sim/projectiles';
+import { Rules } from '../../src/sim/rules';
+import { Targets } from '../../src/sim/targets';
+import type { SimEvent, TargetId, Vec } from '../../src/sim/types';
+
+const DT = 1 / 60;
+const grid = new Grid(DISTRICT);
+const def = (id: TargetId) => DISTRICT.targets.find((t) => t.id === id)!;
+
+/** Horde + one attack, Molotovs routed to it; Paul stands far from the targets. */
+function world(target: TargetId, comp: AttackComposition, opts: { spawn?: Vec; school?: boolean } = {}) {
+  const horde = new Horde();
+  const rules = new Rules();
+  const targets = new Targets();
+  const spawner = new ImmediateSpawner(horde, () => [opts.spawn ?? { x: 560, y: 520 }]);
+  const spec = { id: `${target}#1`, target, comp, round: 1 };
+  const attack = opts.school ? new SchoolIncident(targets, spawner, { comp }) : new TargetAttack(spec, targets, spawner);
+  const player = createPlayer({ x: 1200, y: 1300 });
+  const fields = new Map(DISTRICT.targets.map((t) => [t.id, new FlowField(grid)]));
+  const ctx = (): HordeCtx => ({
+    player,
+    grid,
+    fields: { player: new FlowField(grid), victim: null },
+    rocks: new Rocks(grid),
+    sites: Object.fromEntries(
+      DISTRICT.targets.map((t) => [
+        t.id,
+        { points: t.attackPoints, door: t.door, standing: targets.standing(t.id), field: fields.get(t.id)! },
+      ]),
+    ),
+    victimPos: null,
+    pressure: 1,
+  });
+  let now = 0;
+  /** Full loop: horde moves, Molotovs routed, attack steps. */
+  const run = (sec: number): SimEvent[] => {
+    const ev: SimEvent[] = [];
+    for (let i = 0; i < Math.round(sec / DT); i++) {
+      now += DT;
+      for (const e of horde.step(DT, now, ctx())) {
+        ev.push(e);
+        if (e.type === 'MolotovThrown') ev.push(...attack.onMolotov(e));
+      }
+      spawner.step();
+      ev.push(...attack.step(DT, { horde, rules }));
+    }
+    return ev;
+  };
+  /** Only the attack steps (hostile states stay as the test sets them). */
+  const tick = (sec: number): SimEvent[] => {
+    const ev: SimEvent[] = [];
+    for (let i = 0; i < Math.round(sec / DT); i++) ev.push(...attack.step(DT, { horde, rules }));
+    return ev;
+  };
+  const mine = () => horde.list.filter((h) => h.incidentId === attack.id);
+  const koAll = () => mine().forEach((h) => horde.applyHit(h.lifeId, 99));
+  return { horde, rules, targets, attack, player, ctx, run, tick, mine, koAll, now: () => now };
+}
+
+const only = (role: 'molotov' | 'degrader', n = 1): AttackComposition => ({
+  firstLine: Array.from({ length: n }, () => ({ variant: 'classic' as const, role })),
+  reinforcements: [],
+});
+
+test('a molotov walks to the car, winds up 1.5 s, emits MolotovThrown at the car door, then chases Paul', () => {
+  const w = world('car1', only('molotov'));
+  expect(w.attack.start()).toBe(true);
+  expect(w.attack.stage).toBe('attack');
+  const [h] = w.mine();
+  expect(h).toMatchObject({ role: 'molotov', site: 'car1', round: 1, target: 'facade' });
+  let t0 = -1;
+  let thrown: Extract<SimEvent, { type: 'MolotovThrown' }> | null = null;
+  let ignited = false;
+  for (let i = 0; i < 600 && !thrown; i++) {
+    for (const e of w.run(DT)) {
+      if (e.type === 'MolotovThrown') thrown = e;
+      if (e.type === 'TargetIgnited') ignited = true;
+    }
+    if (t0 < 0 && h!.state === 'windup') {
+      t0 = w.now();
+      const near = Math.min(...def('car1').attackPoints.map((p) => Math.hypot(p.x - h!.pos.x, p.y - h!.pos.y)));
+      expect(near).toBeLessThanOrEqual(CONFIG.molotov.range);
+    }
+  }
+  expect(t0).toBeGreaterThan(0.1); // it had to walk first
+  expect(thrown).not.toBeNull();
+  expect(w.now() - t0).toBeCloseTo(CONFIG.molotov.windup, 1);
+  expect(thrown!.to).toEqual(def('car1').door);
+  expect(thrown!.target).toBe('car1');
+  expect(ignited).toBe(true);
+  expect(w.targets.get('car1').burning).toBe(true);
+  expect(h!.target).toBe('player');
+  const before = Math.hypot(h!.pos.x - w.player.pos.x, h!.pos.y - w.player.pos.y);
+  w.run(1);
+  expect(Math.hypot(h!.pos.x - w.player.pos.x, h!.pos.y - w.player.pos.y)).toBeLessThan(before - 50);
+});
+
+test('a molotov KO during its windup throws nothing and the car never burns', () => {
+  const w = world('car1', only('molotov'));
+  w.attack.start();
+  const [h] = w.mine();
+  for (let i = 0; i < 600 && h!.state !== 'windup'; i++) w.run(DT);
+  expect(h!.state).toBe('windup');
+  w.run(1);
+  w.horde.applyHit(h!.lifeId, 99);
+  const ev = w.run(3);
+  expect(ev.filter((e) => e.type === 'MolotovThrown' || e.type === 'TargetIgnited')).toEqual([]);
+  expect(w.targets.get('car1').burning).toBe(false);
+  expect(w.targets.get('car1').hp).toBe(def('car1').maxHp);
+});
+
+test('burning school with 3 degraders loses (2 + 3 × 1.2) hp per second; a 5th degrader adds nothing over 4', () => {
+  const w = world('school', only('degrader', 5));
+  w.attack.start();
+  expect(w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('school').door, target: 'school' })).toEqual([
+    { type: 'TargetIgnited', target: 'school' },
+  ]);
+  // a second bottle on a burning target ignites nothing
+  expect(w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('school').door, target: 'school' })).toEqual([]);
+  w.mine().slice(0, 3).forEach((h) => (h.state = 'degrade'));
+  w.tick(1);
+  expect(w.targets.get('school').hp).toBeCloseTo(100 - (CONFIG.target.fireDps + 3 * CONFIG.target.degradeDps), 6);
+  w.mine().forEach((h) => (h.state = 'degrade'));
+  const hp = w.targets.get('school').hp;
+  w.tick(1);
+  expect(hp - w.targets.get('school').hp).toBeCloseTo(CONFIG.target.fireDps + 4 * CONFIG.target.degradeDps, 6);
+});
+
+test('a degrader of a ruined site retargets Paul', () => {
+  const w = world('car1', only('degrader'));
+  w.attack.start();
+  const [h] = w.mine();
+  for (let i = 0; i < 600 && h!.state !== 'degrade'; i++) w.run(DT);
+  expect(h!.state).toBe('degrade');
+  w.targets.ruin('car1', 'other#1');
+  w.horde.step(DT, w.now() + DT, w.ctx());
+  expect(h!.target).toBe('player');
+  expect(h!.state).not.toBe('degrade');
+  // a site absent from the ctx is treated the same way
+  const g = w.horde.spawn({ variant: 'classic', role: 'degrader', pos: { x: 560, y: 520 }, site: 'busStop' })!;
+  const ctx = w.ctx();
+  delete ctx.sites.busStop;
+  w.horde.step(DT, w.now() + 2 * DT, ctx);
+  expect(g.target).toBe('player');
+});
+
+test('all attackers KO: fire out 1.5 s later, saved +8 once, TargetSaved and SchoolRestored', () => {
+  const comp = lineup('school', 2, 0);
+  expect(comp.reinforcements).toEqual([]);
+  const w = world('school', comp, { school: true });
+  w.attack.start();
+  w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('school').door, target: 'school' });
+  w.koAll();
+  w.tick(DT);
+  expect(w.attack.stage).toBe('fireOut');
+  expect(w.attack.urgent()).toBe(false);
+  const hp = w.targets.get('school').hp;
+  const ev1 = w.tick(CONFIG.target.fireOutSec - 0.1);
+  expect(ev1).toEqual([]);
+  expect(w.targets.get('school').burning).toBe(true);
+  expect(w.targets.get('school').hp).toBe(hp); // a defended fire no longer burns hp
+  const ev = w.tick(0.2);
+  expect(w.attack.stage).toBe('saved');
+  expect(w.attack.resolved()).toBe(true);
+  expect(w.targets.get('school').burning).toBe(false);
+  expect(w.rules.score).toBe(CONFIG.casse.scores.school[0]);
+  expect(ev.map((e) => e.type)).toEqual(['FireOut', 'TargetSaved', 'SchoolRestored']);
+  expect(ev).toContainEqual({ type: 'TargetSaved', incidentId: 'school#1', target: 'school' });
+  w.tick(2);
+  expect(w.rules.score).toBe(8);
+  expect((w.attack as SchoolIncident).status()).toBe('sauvée');
+});
+
+test('hp 0: destroyed, target ruined, −3 once, BuildingDestroyed carries the target; start() on a ruin returns false', () => {
+  const w = world('school', lineup('school', 1, 0), { school: true });
+  w.attack.start();
+  w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('school').door, target: 'school' });
+  w.targets.get('school').hp = 1;
+  const ev = w.tick(1);
+  expect(w.attack.stage).toBe('destroyed');
+  expect(w.targets.standing('school')).toBe(false);
+  expect(w.targets.get('school').lostIncidentId).toBe('school#1');
+  expect(w.rules.score).toBe(-3);
+  expect(ev.filter((e) => e.type === 'BuildingDestroyed')).toEqual([
+    { type: 'BuildingDestroyed', incidentId: 'school#1', target: 'school' },
+  ]);
+  expect((w.attack as SchoolIncident).status()).toBe('perdue');
+  w.koAll();
+  w.tick(3);
+  expect(w.attack.stage).toBe('destroyed');
+  expect(w.rules.score).toBe(-3);
+  const again = new TargetAttack(
+    { id: 'school#2', target: 'school', comp: lineup('school', 2, 0), round: 2 },
+    w.targets,
+    new ImmediateSpawner(w.horde, () => [{ x: 560, y: 520 }]),
+  );
+  expect(again.start()).toBe(false);
+  expect(again.stage).toBe('idle');
+  expect(w.horde.list.filter((h) => h.incidentId === 'school#2')).toEqual([]);
+});
+
+test('round-1 school: 3 first-line, cinematic, 7 reinforcements, total 10', () => {
+  const comp = lineup('school', 1, 0);
+  expect(comp.firstLine.map((r) => r.role)).toEqual(['molotov', 'degrader', 'degrader']);
+  expect(comp.reinforcements.map((r) => r.role)).toEqual([...Array(4).fill('degrader'), ...Array(3).fill('contact')]);
+  const w = world('school', comp, { school: true });
+  const school = w.attack as SchoolIncident;
+  expect(school.total()).toBe(10);
+  school.start();
+  expect(w.mine()).toHaveLength(3);
+  expect(new Set(w.mine().map((h) => h.variant)).size).toBe(3);
+  expect(w.mine().every((h) => h.site === 'school' && h.round === 1)).toBe(true);
+  expect(school.requiredActive(w.horde)).toBe(true);
+  w.koAll();
+  w.tick(DT);
+  expect(school.stage).toBe('cinematic');
+  expect(school.suspended()).toBe(true);
+  expect(school.status()).toBe('renforts');
+  w.tick(CONFIG.school.cinematicSec - 0.5);
+  expect(school.stage).toBe('cinematic');
+  school.skipCinematic();
+  school.skipCinematic();
+  w.tick(DT);
+  expect(school.stage).toBe('reinforcements');
+  expect(w.mine().filter((h) => h.state !== 'ko')).toHaveLength(7);
+  w.tick(1);
+  expect(w.mine().filter((h) => h.state !== 'ko')).toHaveLength(7);
+});
+
+test('lineup: later school and car compositions follow pressure; variants round-robin', () => {
+  const s = lineup('school', 3, 6);
+  expect(s.reinforcements).toEqual([]);
+  expect(s.firstLine.map((r) => r.role)).toEqual(['molotov', 'degrader', 'degrader', 'contact', 'degrader', 'contact', 'degrader', 'contact']);
+  expect(lineup('school', 3, 99).firstLine).toHaveLength(4 + 6);
+  expect(s.firstLine.map((r) => r.variant).slice(0, 4)).toEqual(['classic', 'palestinian', 'antifa', 'classic']);
+  expect(s.firstLine.every((r) => r.round === 3)).toBe(true);
+  expect(lineup('car', 2, 3).firstLine.map((r) => r.role)).toEqual(['molotov', 'degrader', 'degrader', 'contact']);
+  expect(lineup('busStop', 2, 8).firstLine.map((r) => r.role)).toEqual(['molotov', 'degrader', 'degrader', 'contact', 'contact', 'contact']);
+  expect(lineup('car', 2, 99).firstLine).toHaveLength(7);
+});

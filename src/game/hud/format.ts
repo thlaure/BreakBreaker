@@ -2,8 +2,21 @@ import type { Snapshot } from '../../sim/sim';
 import type { Vec } from '../../sim/types';
 import { WEAPONS } from '../../sim/weapons';
 
-/** 'renforts': the school cinematic (reinforcements on their way) — the countdown is frozen, not interrupted. */
-export type IncidentStatus = 'en cours' | 'interrompu' | 'renforts' | 'sécurisé' | 'perdu' | 'sauvé';
+/**
+ * Rescue: 'en cours' | 'interrompu' | 'sécurisé' | 'perdu' | 'sauvé'. School: 'en feu' | 'attaquée' | 'renforts' (the
+ * cinematic: reinforcements on their way) | 'perdue' | 'sauvée'.
+ */
+export type IncidentStatus =
+  | 'en cours'
+  | 'interrompu'
+  | 'renforts'
+  | 'sécurisé'
+  | 'perdu'
+  | 'sauvé'
+  | 'en feu'
+  | 'attaquée'
+  | 'perdue'
+  | 'sauvée';
 
 export function formatDuration(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
@@ -68,7 +81,7 @@ export function contextPrompt(s: Snapshot, _touch = false): Prompt | null {
 export interface IncidentLine {
   key: 'school' | 'rescue';
   name: string;
-  /** Whole seconds remaining, rounded up, e.g. "23 s"; empty once the incident is over. */
+  /** Rescue: whole seconds remaining, rounded up, e.g. "23 s"; school: health, e.g. "64 %"; empty once over. */
   time: string;
   status: IncidentStatus;
   target: Vec;
@@ -83,7 +96,7 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
   const secs = (n: number): string => `${Math.ceil(n - 1e-9)} s`;
   if (s.school.stage !== 'idle') {
     const over = s.school.stage === 'saved' || s.school.stage === 'destroyed';
-    out.push({ key: 'school', name: 'École', time: over ? '' : secs(s.school.remaining), status: s.school.status, target: schoolTarget });
+    out.push({ key: 'school', name: 'École', time: over ? '' : `${Math.ceil(s.school.integrity - 1e-9)} %`, status: s.school.status, target: schoolTarget });
   }
   const r = s.rescue;
   if (r) {

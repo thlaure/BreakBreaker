@@ -30,6 +30,10 @@
 .bb-card.st-sauvé .status::before { content: '✔ '; }
 .bb-card.st-perdu { --bar: var(--bb-bad); }
 .bb-card.st-perdu .status::before { content: '✖ '; }
+.bb-card.st-sauvée { --bar: var(--bb-ok); }
+.bb-card.st-sauvée .status::before { content: '✔ '; }
+.bb-card.st-perdue { --bar: var(--bb-bad); }
+.bb-card.st-perdue .status::before { content: '✖ '; }
 .bb-card .dist { color: #d8cfe0; }
 .bb-prompt { position: absolute; left: 50%; top: calc(50% + 44px); transform: translateX(-50%); padding: 4px 10px; background: var(--bb-panel); border: 1px solid var(--bb-accent); border-radius: 6px; font-weight: bold; white-space: nowrap; }
 

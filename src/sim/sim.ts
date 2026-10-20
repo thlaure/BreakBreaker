@@ -1,5 +1,6 @@
 import { CONFIG } from './config';
 import { Director, spawnPoints, type DirectorPhase } from './director';
+import { ImmediateSpawner } from './entry';
 import { Stations, type StationMessage } from './healing';
 import { Horde, type Hostile } from './hostiles';
 import type { RescueIncident, RescueKind, RescueStage } from './incidents/rescue';
@@ -7,11 +8,12 @@ import { SchoolIncident, type SchoolStage } from './incidents/school';
 import { DISTRICT, type Rect } from './map/district';
 import { FlowField } from './map/flowfield';
 import { Grid } from './map/grid';
-import { dist, len, norm, sub } from './math';
+import { len, norm, sub } from './math';
 import { createPlayer, damagePlayer, stepPlayer, sweep, type Player } from './player';
 import { Rocks, type RockCtx, type RockState } from './projectiles';
 import { rng } from './rng';
 import { Rules, type SessionStats } from './rules';
+import { Targets } from './targets';
 import type { InputFrame, Role, SimEvent, Variant, Vec } from './types';
 import { Weapons, type WeaponKind } from './weapons';
 
@@ -48,7 +50,8 @@ export interface Snapshot {
   telegraphs: Telegraph[];
   group: { area: Rect; members: Vec[] };
   victim: Vec | null;
-  school: { stage: SchoolStage; integrity: number; remaining: number; status: ReturnType<SchoolIncident['status']> };
+  /** `integrity` = school hp in percent. */
+  school: { stage: SchoolStage; integrity: number; status: ReturnType<SchoolIncident['status']> };
   rescue: { stage: RescueStage; remaining: number; victimPos: Vec; kind: RescueKind } | null;
   stations: { id: string; pos: Vec; charged: boolean }[];
   stationMessage: StationMessage;
@@ -94,7 +97,10 @@ export class Sim {
   readonly player: Player = createPlayer(DISTRICT.playerSpawn);
   readonly horde = new Horde();
   readonly rocks = new Rocks(this.grid);
-  readonly school = new SchoolIncident();
+  readonly targets = new Targets();
+  /** Spawns incident rioters at once on the edge points away from Paul; refused ones are retried every step. */
+  readonly spawner = new ImmediateSpawner(this.horde, () => spawnPoints(this.player.pos));
+  readonly school = new SchoolIncident(this.targets, this.spawner);
   readonly stations = new Stations(DISTRICT.stations);
   readonly director = new Director();
   readonly weapons: Weapons;
@@ -105,6 +111,7 @@ export class Sim {
 
   private readonly invulnerable: boolean;
   private readonly fields: { player: FlowField; school: FlowField; victim: FlowField };
+  private readonly schoolDef = DISTRICT.targets.find((t) => t.id === 'school')!;
   private telegraphs: Telegraph[] = [];
   private facings = new Map<number, Vec>();
   private stationMessage: StationMessage = null;
@@ -142,7 +149,7 @@ export class Sim {
     const ev: SimEvent[] = [];
     this.rules.stats.activeSeconds += dt;
     if (this.school.suspended()) {
-      ev.push(...this.school.step(dt, this.schoolCtx()));
+      ev.push(...this.school.step(dt, this.attackCtx()));
       this.tally(ev);
       return ev;
     }
@@ -171,24 +178,32 @@ export class Sim {
     const hordeEv = this.horde.step(dt, now, {
       player: p,
       grid: this.grid,
-      fields: { player: this.fields.player, school: this.fields.school, victim: victimPos ? this.fields.victim : null },
+      fields: { player: this.fields.player, victim: victimPos ? this.fields.victim : null },
       rocks: this.rocks,
-      facadePoints: DISTRICT.school.facadePoints,
+      sites: {
+        school: {
+          points: this.schoolDef.attackPoints,
+          door: this.schoolDef.door,
+          standing: this.targets.standing('school'),
+          field: this.fields.school,
+        },
+      },
       victimPos,
-      schoolStanding: this.school.stage !== 'destroyed',
       pressure: this.director.pressure(this.rules.kos),
     });
     this.updateFacings(prev);
     const rockEv = this.rocks.step(dt, now, this.rockCtx(victimPos));
 
     // damage, hits and rock bookkeeping
+    const molotovs: Extract<SimEvent, { type: 'MolotovThrown' }>[] = [];
     for (const e of [...hordeEv, ...rockEv]) {
       if (e.type === 'PlayerDamaged') {
         if (!this.invulnerable && damagePlayer(p, e.amount, now)) ev.push(e);
         continue;
       }
       ev.push(e);
-      if (e.type === 'EnemyThrowStarted') this.telegraphs.push({ from: v(e.from), to: v(e.to), until: e.until });
+      if (e.type === 'MolotovThrown') molotovs.push(e);
+      else if (e.type === 'EnemyThrowStarted') this.telegraphs.push({ from: v(e.from), to: v(e.to), until: e.until });
       else if (e.type === 'ProjectilePickedUp') this.rules.stats.rocksPicked += 1;
       else if (e.type === 'ProjectileReturned') this.rules.stats.rocksReturned += 1;
       else if (e.type === 'HitConfirmed' && e.source === 'rock') {
@@ -207,7 +222,9 @@ export class Sim {
       return ev;
     }
 
-    ev.push(...this.school.step(dt, this.schoolCtx()));
+    for (const e of molotovs) ev.push(...this.school.onMolotov(e));
+    this.spawner.step();
+    ev.push(...this.school.step(dt, this.attackCtx()));
     if (this.rescue) ev.push(...this.rescue.step(dt, { horde: this.horde, rules: this.rules, player: p }));
 
     const heal = this.stations.step({ player: p, rules: this.rules });
@@ -261,7 +278,6 @@ export class Sim {
       school: {
         stage: this.school.stage,
         integrity: this.school.integrity(),
-        remaining: this.school.remaining,
         status: this.school.status(),
       },
       rescue: r ? { stage: r.stage, remaining: r.remaining, victimPos: v(r.victimPos), kind: r.kind } : null,
@@ -273,14 +289,8 @@ export class Sim {
     };
   }
 
-  private schoolCtx() {
-    const z = DISTRICT.school.zone;
-    return {
-      horde: this.horde,
-      rules: this.rules,
-      playerInZone: dist(this.player.pos, z) <= z.r,
-      spawns: spawnPoints(this.player.pos),
-    };
+  private attackCtx() {
+    return { horde: this.horde, rules: this.rules };
   }
 
   private rockCtx(victimPos: Vec | null): RockCtx {

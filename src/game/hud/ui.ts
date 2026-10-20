@@ -163,7 +163,7 @@ export class GameUi {
 
   private frame(s: Snapshot): void {
     this.hud.update(s, this.host.cameraView());
-    const threatened = s.school.stage === 'firstLine' || s.school.stage === 'reinforcements' || s.school.stage === 'cinematic';
+    const threatened = s.school.stage === 'attack' || s.school.stage === 'reinforcements' || s.school.stage === 'cinematic';
     this.audio.setThreat(threatened && !s.ended ? 0.35 + 0.65 * (1 - s.school.integrity / 100) : 0);
     if (s.ended && this.phase === 'playing') {
       this.phase = 'ending';

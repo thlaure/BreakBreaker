@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import { FixedClock } from '../../src/sim/clock';
 import { CONFIG } from '../../src/sim/config';
-import { pressure } from '../../src/sim/director';
+import { pressure, spawnPoints } from '../../src/sim/director';
+import { lineup } from '../../src/sim/incidents/targetAttack';
 import { DISTRICT } from '../../src/sim/map/district';
 import { dist } from '../../src/sim/math';
 import { Sim } from '../../src/sim/sim';
@@ -10,6 +11,7 @@ import type { InputFrame, SimEvent } from '../../src/sim/types';
 const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false };
 const input = (o: Partial<InputFrame> = {}): InputFrame => ({ ...IDLE, ...o });
 const STRIKE_RANGE = CONFIG.melee.range + CONFIG.hostile.radius;
+const SCHOOL_R1 = lineup('school', 1, 0);
 
 /** Deterministic scripted input for frame i. */
 function scripted(i: number): InputFrame {
@@ -55,7 +57,7 @@ describe('Sim facade', () => {
     }
     expect(started).toBeGreaterThan(0);
     const s = sim.snapshot();
-    expect(s.hostiles.filter((h) => h.role === 'degrader')).toHaveLength(CONFIG.school.firstLine);
+    expect(s.hostiles.map((h) => h.role)).toEqual(SCHOOL_R1.firstLine.map((r) => r.role));
     expect(sim.director.phase).toBe('school');
     // spawned at edge points >= 320 px from Paul
     expect(s.hp).toBe(CONFIG.player.maxHp);
@@ -260,7 +262,7 @@ describe('Sim facade', () => {
     expect(after.player.pos).toEqual(before.player.pos);
     expect(after.now).toBe(before.now);
   });
-  test('skipCinematic ends the cinematic: next step spawns 8 reinforcements once; no-op otherwise', () => {
+  test('skipCinematic ends the cinematic: next step spawns the reinforcements once; no-op otherwise', () => {
     const sim = new Sim(21, { invulnerable: true });
     sim.skipCinematic(); // intro: no-op
     expect(sim.school.stage).toBe('idle');
@@ -276,10 +278,10 @@ describe('Sim facade', () => {
     sim.step(IDLE);
     expect(sim.school.stage).toBe('reinforcements');
     const count = () => sim.horde.active().filter((h) => h.incidentId === sim.school.id).length;
-    expect(count()).toBe(CONFIG.school.reinforcements);
+    expect(count()).toBe(SCHOOL_R1.reinforcements.length);
     sim.skipCinematic();
     for (let k = 0; k < 30; k++) sim.step(IDLE);
-    expect(count()).toBe(CONFIG.school.reinforcements);
+    expect(count()).toBe(SCHOOL_R1.reinforcements.length);
   });
 
   test('EnemyRockThrown is emitted once per enemy rock actually spawned, deterministically', () => {
@@ -290,7 +292,9 @@ describe('Sim facade', () => {
         for (const h of sim.horde.active()) sim.horde.applyHit(h.lifeId, 99);
         sim.step(IDLE);
       }
-      sim.skipCinematic(); // reinforcements include 2 throwers
+      sim.skipCinematic();
+      // the round-1 school brings no thrower: two join from the edge
+      for (const pos of spawnPoints(sim.player.pos).slice(0, 2)) sim.horde.spawn({ variant: 'antifa', role: 'thrower', pos });
       for (let i = 0; i < 60 * 30; i++)
         for (const e of sim.step(IDLE)) if (e.type === 'EnemyRockThrown') thrown.push(e.rockId);
       return thrown;
@@ -324,7 +328,7 @@ describe('Sim facade', () => {
         incidentId: sim.school.id,
         pos: DISTRICT.school.door,
         wave: 1,
-        total: CONFIG.school.firstLine + CONFIG.school.reinforcements,
+        total: sim.school.total(),
       },
     ]);
     const rescue = events.filter((e) => e.type === 'RescueStarted');

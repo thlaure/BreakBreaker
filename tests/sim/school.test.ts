@@ -1,61 +1,73 @@
 import { expect, test } from 'vitest';
 import { CONFIG } from '../../src/sim/config';
+import { ImmediateSpawner } from '../../src/sim/entry';
 import { Horde } from '../../src/sim/hostiles';
 import { SchoolIncident } from '../../src/sim/incidents/school';
+import { lineup } from '../../src/sim/incidents/targetAttack';
 import { DISTRICT } from '../../src/sim/map/district';
 import { Rules } from '../../src/sim/rules';
+import { Targets } from '../../src/sim/targets';
 import type { SimEvent } from '../../src/sim/types';
 
 const DT = 1 / 60;
 const spawns = DISTRICT.hostileSpawns;
+const R1 = lineup('school', 1, 0);
 
 function setup() {
   const horde = new Horde();
   const rules = new Rules();
-  const inc = new SchoolIncident();
-  inc.start(horde, spawns);
-  const run = (sec: number, playerInZone = false): SimEvent[] => {
+  const targets = new Targets();
+  const spawner = new ImmediateSpawner(horde, () => spawns);
+  const inc = new SchoolIncident(targets, spawner);
+  inc.start();
+  const run = (sec: number): SimEvent[] => {
     const ev: SimEvent[] = [];
-    for (let i = 0; i < Math.round(sec / DT); i++) ev.push(...inc.step(DT, { horde, rules, playerInZone, spawns }));
+    for (let i = 0; i < Math.round(sec / DT); i++) {
+      spawner.step();
+      ev.push(...inc.step(DT, { horde, rules }));
+    }
     return ev;
   };
+  const hp = () => targets.get('school').hp;
   const mine = () => horde.list.filter((h) => h.incidentId === inc.id);
-  const degradeAll = () => mine().forEach((h) => h.state !== 'ko' && (h.state = 'degrade'));
+  const degraders = () => mine().filter((h) => h.role === 'degrader' && h.state !== 'ko');
+  const degradeAll = () => degraders().forEach((h) => (h.state = 'degrade'));
   const koAll = () => mine().forEach((h) => horde.applyHit(h.lifeId, 9999));
-  return { horde, rules, inc, run, mine, degradeAll, koAll };
+  return { horde, rules, targets, inc, run, hp, mine, degradeAll, koAll };
 }
 
-test('reserve not consumed while rioters walk (RC-52)', () => {
-  const { inc, run } = setup();
-  expect(inc.stage).toBe('firstLine');
+test('no hp lost while rioters walk and nothing burns (RC-52)', () => {
+  const { inc, run, hp } = setup();
+  expect(inc.stage).toBe('attack');
   const ev = run(5);
-  expect(inc.remaining).toBe(CONFIG.school.threatSeconds);
-  expect(inc.status()).toBe('interrompu');
+  expect(hp()).toBe(100);
+  expect(inc.status()).toBe('attaquée');
   expect(ev).toEqual([]);
 });
 
-test('reserve decreases 1 s/s while degrading, pauses when interrupted (RC-53)', () => {
-  const { inc, run, mine, degradeAll } = setup();
-  expect(mine().length).toBe(3);
+test('hp drains while degrading and stops when they stop (RC-53)', () => {
+  const { inc, run, hp, mine, degradeAll } = setup();
+  expect(mine()).toHaveLength(3);
   degradeAll();
   const ev = run(2);
-  expect(inc.remaining).toBeCloseTo(28, 1);
-  expect(inc.status()).toBe('en cours');
+  expect(hp()).toBeCloseTo(100 - 2 * 2 * CONFIG.target.degradeDps, 6);
   expect(ev.filter((e) => e.type === 'BuildingThreatStarted')).toHaveLength(1);
   mine().forEach((h) => (h.state = 'approach'));
+  const before = hp();
   const ev2 = run(2);
-  expect(inc.remaining).toBeCloseTo(28, 1);
-  expect(ev2.filter((e) => e.type === 'BuildingThreatPaused')).toHaveLength(1);
-  expect(inc.status()).toBe('interrompu');
+  expect(hp()).toBe(before);
+  expect(ev2).toEqual([]);
 });
 
-test('integrity derives from reserve', () => {
-  const { inc } = setup();
-  inc.remaining = 15;
+test('integrity is the school hp in percent; status follows the fire', () => {
+  const { inc, targets } = setup();
+  targets.get('school').hp = 50;
   expect(inc.integrity()).toBe(50);
+  targets.ignite('school');
+  expect(inc.status()).toBe('en feu');
 });
 
-test('first line KO -> cinematic 3 s -> exactly 8 reinforcements, skipping does not double (RC-27)', () => {
+test('first line KO -> cinematic 3 s -> exactly the 7 reinforcements, skipping does not double (RC-27)', () => {
   const { inc, run, horde, koAll, mine } = setup();
   expect(new Set(mine().map((h) => h.variant)).size).toBe(3);
   koAll();
@@ -70,9 +82,9 @@ test('first line KO -> cinematic 3 s -> exactly 8 reinforcements, skipping does 
   expect(inc.suspended()).toBe(false);
   run(2);
   const active = horde.active().filter((h) => h.incidentId === inc.id);
-  expect(active).toHaveLength(8);
+  expect(active).toHaveLength(R1.reinforcements.length);
   const count = (r: string) => active.filter((h) => h.role === r).length;
-  expect([count('degrader'), count('contact'), count('thrower')]).toEqual([4, 2, 2]);
+  expect([count('degrader'), count('contact')]).toEqual([4, 3]);
 });
 
 test('spawn cap keeps reinforcements pending, never dropped', () => {
@@ -81,57 +93,49 @@ test('spawn cap keeps reinforcements pending, never dropped', () => {
   for (let i = 0; i < CONFIG.caps.hostiles - 2; i++) horde.spawn({ variant: 'classic', role: 'contact', pos: { x: 10, y: 10 } });
   run(3.5);
   expect(horde.active().filter((h) => h.incidentId === inc.id)).toHaveLength(2);
+  expect(inc.requiredActive(horde)).toBe(true);
   horde.active().filter((h) => h.incidentId === null).forEach((h) => horde.applyHit(h.lifeId, 9999));
+  // the pending ones are not KO: the school is not saved meanwhile
+  horde.active().filter((h) => h.incidentId === inc.id).forEach((h) => horde.applyHit(h.lifeId, 9999));
+  run(DT);
+  expect(inc.stage).toBe('reinforcements');
   run(1);
-  expect(horde.active().filter((h) => h.incidentId === inc.id)).toHaveLength(8);
+  expect(horde.active().filter((h) => h.incidentId === inc.id)).toHaveLength(R1.reinforcements.length - 2);
 });
 
-test('saved: +8 once, stage saved (RC-28)', () => {
+test('saved: +8 once, stage saved after the fire dies out (RC-28)', () => {
   const { inc, run, rules, koAll, mine } = setup();
   koAll();
   run(3.5);
   run(1);
-  expect(mine().filter((h) => h.state !== 'ko')).toHaveLength(8);
+  expect(mine().filter((h) => h.state !== 'ko')).toHaveLength(R1.reinforcements.length);
   koAll();
   const ev = run(2);
   expect(inc.stage).toBe('saved');
-  expect(inc.status()).toBe('sauvé');
-  expect(rules.score).toBe(8);
+  expect(inc.status()).toBe('sauvée');
+  expect(rules.score).toBe(CONFIG.casse.scores.school[0]);
   expect(ev.filter((e) => e.type === 'SchoolRestored')).toHaveLength(1);
   run(2);
   expect(rules.score).toBe(8);
 });
 
-test('destroyed: -3 once, stays destroyed, no late wave (RC-29)', () => {
-  const { inc, run, rules, horde, degradeAll, koAll } = setup();
-  inc.remaining = 1;
+test('destroyed: -3 once, stays destroyed, no late reinforcements (RC-29)', () => {
+  const { inc, run, rules, horde, targets, degradeAll, koAll } = setup();
+  targets.get('school').hp = 1;
   degradeAll();
   const ev = run(1.5);
   expect(inc.stage).toBe('destroyed');
-  expect(inc.status()).toBe('perdu');
-  expect(rules.score).toBe(-3);
+  expect(inc.status()).toBe('perdue');
+  expect(rules.score).toBe(CONFIG.casse.scores.school[1]);
   expect(ev.filter((e) => e.type === 'BuildingDestroyed')).toHaveLength(1);
   koAll();
   run(5);
   expect(inc.stage).toBe('destroyed');
   expect(rules.score).toBe(-3);
-  expect(horde.list.filter((h) => h.incidentId === inc.id)).toHaveLength(3);
+  expect(horde.list.filter((h) => h.incidentId === inc.id)).toHaveLength(R1.firstLine.length);
 });
 
-test('leaving/re-entering zone keeps same id and reserve (RC-26, RC-54)', () => {
-  const { inc, run, degradeAll } = setup();
-  degradeAll();
-  run(1, true);
-  const r = inc.remaining;
-  run(2, false);
-  const r2 = inc.remaining;
-  expect(r2).toBeCloseTo(r - 2, 1);
-  run(0, true);
-  expect(inc.id).toBe('school#1');
-  expect(inc.stage).toBe('firstLine');
-});
-
-test('status reads "renforts" during the cinematic, never "interrompu"', () => {
+test('status reads "renforts" during the cinematic', () => {
   const { inc, run, koAll } = setup();
   koAll();
   run(DT);
@@ -139,12 +143,12 @@ test('status reads "renforts" during the cinematic, never "interrompu"', () => {
   expect(inc.status()).toBe('renforts');
 });
 
-test('skipCinematic spawns the 8 reinforcements exactly once on the next step', () => {
+test('skipCinematic spawns the reinforcements exactly once on the next step', () => {
   const { inc, run, horde, koAll } = setup();
   const reinforcements = () => horde.list.filter((h) => h.incidentId === inc.id && h.state !== 'ko');
-  inc.skipCinematic(); // firstLine: no-op
+  inc.skipCinematic(); // attack: no-op
   run(DT);
-  expect(inc.stage).toBe('firstLine');
+  expect(inc.stage).toBe('attack');
   koAll();
   run(DT);
   expect(inc.stage).toBe('cinematic');
@@ -153,9 +157,9 @@ test('skipCinematic spawns the 8 reinforcements exactly once on the next step', 
   expect(inc.stage).toBe('cinematic');
   run(DT);
   expect(inc.stage).toBe('reinforcements');
-  expect(reinforcements()).toHaveLength(CONFIG.school.reinforcements);
+  expect(reinforcements()).toHaveLength(R1.reinforcements.length);
   inc.skipCinematic(); // reinforcements: no-op
   run(1);
   expect(inc.stage).toBe('reinforcements');
-  expect(reinforcements()).toHaveLength(CONFIG.school.reinforcements);
+  expect(reinforcements()).toHaveLength(R1.reinforcements.length);
 });

@@ -82,7 +82,7 @@ describe('pure helpers', () => {
   test('activeIncidents: school while threatened, rescue only in threat', () => {
     const s = new Sim(1).snapshot();
     expect(activeIncidents(s)).toEqual([]);
-    s.school.stage = 'firstLine';
+    s.school.stage = 'attack';
     s.rescue = { stage: 'threat', remaining: 9, victimPos: { x: 5, y: 6 }, kind: 'groupHarassed' };
     expect(activeIncidents(s).map((i) => i.kind)).toEqual(['school', 'groupHarassed']);
     s.school.stage = 'saved';
@@ -230,7 +230,7 @@ describe('Hud alerts and edge indicators', () => {
   test('one indicator per active incident, only when off-screen', () => {
     const hud = new Hud(document.body, null);
     const s = snap((x) => {
-      x.school.stage = 'firstLine';
+      x.school.stage = 'attack';
       x.rescue = { stage: 'threat', remaining: 20, victimPos: { x: 400, y: 300 }, kind: 'elderlyRobbed' };
       x.player.pos = { x: 400, y: 300 };
     });

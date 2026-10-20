@@ -11,14 +11,19 @@ import type { SimEvent, Vec } from '../../src/sim/types';
 const grid = new Grid(DISTRICT);
 const DT = 1 / 60;
 
+const schoolSite = (points: Vec[] = DISTRICT.school.facadePoints): NonNullable<HordeCtx['sites']['school']> => ({
+  points,
+  door: DISTRICT.school.door,
+  standing: true,
+  field: new FlowField(grid),
+});
 const mkCtx = (player: Player, over: Partial<HordeCtx> = {}): HordeCtx => ({
   player,
   grid,
-  fields: { player: new FlowField(grid), school: new FlowField(grid), victim: null },
+  fields: { player: new FlowField(grid), victim: null },
   rocks: new Rocks(grid),
-  facadePoints: DISTRICT.school.facadePoints,
+  sites: { school: schoolSite() },
   victimPos: null,
-  schoolStanding: true,
   pressure: 1,
   ...over,
 });
@@ -110,13 +115,13 @@ test('degrader reaches facade and enters degrade; switches to player when school
   const player = createPlayer({ x: 656, y: 720 });
   const ctx = mkCtx(player);
   const horde = new Horde();
-  const h = horde.spawn({ variant: 'palestinian', role: 'degrader', pos: { x: 300, y: 400 } })!;
+  const h = horde.spawn({ variant: 'palestinian', role: 'degrader', pos: { x: 300, y: 400 }, site: 'school' })!;
   expect(h.target).toBe('facade');
   let i = 0;
   for (; i < 600 && h.state !== 'degrade'; i++) horde.step(DT, i * DT, ctx);
   expect(h.state).toBe('degrade');
   expect(Math.min(...DISTRICT.school.facadePoints.map((f) => d(f, h.pos)))).toBeLessThanOrEqual(24);
-  ctx.schoolStanding = false;
+  ctx.sites.school!.standing = false;
   horde.step(DT, i * DT, ctx);
   expect(h.target).toBe('player');
   expect(h.state).not.toBe('degrade');
@@ -126,7 +131,7 @@ test('aggressor threatens the victim', () => {
   const player = createPlayer({ x: 656, y: 720 });
   const victimPos = DISTRICT.rescueSites[0]!;
   const vf = new FlowField(grid);
-  const ctx = mkCtx(player, { victimPos, fields: { player: new FlowField(grid), school: new FlowField(grid), victim: vf } });
+  const ctx = mkCtx(player, { victimPos, fields: { player: new FlowField(grid), victim: vf } });
   const horde = new Horde();
   const h = horde.spawn({ variant: 'classic', role: 'aggressor', pos: { x: victimPos.x + 100, y: victimPos.y }, incidentId: 'r1' })!;
   expect(h.target).toBe('victim');
@@ -199,9 +204,9 @@ test('degrader genuinely stuck on a trunk advances to the next facade point', ()
   const player = createPlayer({ x: 656, y: 720 });
   const A = { x: 328, y: 300 };
   const B = { x: 200, y: 320 };
-  const ctx = mkCtx(player, { facadePoints: [A, B] });
+  const ctx = mkCtx(player, { sites: { school: schoolSite([A, B]) } });
   const horde = new Horde();
-  const h = horde.spawn({ variant: 'classic', role: 'degrader', pos: { x: 328, y: 420 } })!;
+  const h = horde.spawn({ variant: 'classic', role: 'degrader', pos: { x: 328, y: 420 }, site: 'school' })!;
   let i = 0;
   let stuckSeen = false;
   for (; i < 900 && h.state !== 'degrade'; i++) {

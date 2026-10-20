@@ -117,25 +117,25 @@ describe('incidentLines', () => {
     expect(school).toMatchObject({ key: 'school', status: 'renforts' });
   });
 
-  test('school countdown rounds up; rescue hidden when absent', () => {
+  test('school card shows its health rounded up; rescue hidden when absent', () => {
     const s = snap((x) => {
-      x.school.remaining = 22.2;
-      x.school.stage = 'firstLine';
-      x.school.status = 'en cours';
+      x.school.integrity = 63.2;
+      x.school.stage = 'attack';
+      x.school.status = 'en feu';
     });
     const lines = incidentLines(s, 'interrompu');
     expect(lines).toHaveLength(1);
-    expect(lines[0]).toMatchObject({ name: 'École', time: '23 s', status: 'en cours' });
+    expect(lines[0]).toMatchObject({ name: 'École', time: '64 %', status: 'en feu' });
   });
 
   test('finished incidents have no countdown; rescue status derives from stage and drain', () => {
     const s = snap((x) => {
       x.school.stage = 'saved';
-      x.school.status = 'sauvé';
+      x.school.status = 'sauvée';
       x.rescue = { stage: 'threat', remaining: 12.1, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
     });
     const [school, rescue] = incidentLines(s, 'en cours');
-    expect(school).toMatchObject({ time: '', status: 'sauvé' });
+    expect(school).toMatchObject({ time: '', status: 'sauvée' });
     expect(rescue).toMatchObject({ name: 'Secours', time: '13 s', status: 'en cours' });
     s.rescue = { stage: 'secured', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
     expect(incidentLines(s, 'en cours')[1]).toMatchObject({ status: 'sécurisé' });

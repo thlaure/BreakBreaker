@@ -128,8 +128,8 @@ export class Director {
     switch (this.phase) {
       case 'intro':
         if (this.timer >= INTRO_SEC - 1e-9) {
-          host.school.start(host.horde, spawnPoints(host.player.pos));
-          const total = CONFIG.school.firstLine + CONFIG.school.reinforcements;
+          host.school.start();
+          const total = host.school.total();
           this.beginWave(SCHOOL_WAVE, total, host);
           events.push({
             type: 'SchoolStarted',

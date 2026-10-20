@@ -182,7 +182,7 @@ export class SchoolView {
   update(stage: SchoolStage): void {
     if (stage === this.stage) return;
     this.stage = stage;
-    const burning = stage === 'firstLine' || stage === 'cinematic' || stage === 'reinforcements';
+    const burning = stage === 'attack' || stage === 'cinematic' || stage === 'reinforcements';
     this.fire.emitting = burning;
     this.smoke.emitting = burning || stage === 'destroyed';
     if (stage === 'destroyed') {

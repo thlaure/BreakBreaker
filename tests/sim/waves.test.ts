@@ -1,11 +1,13 @@
 import { describe, expect, test } from 'vitest';
 import { CONFIG } from '../../src/sim/config';
 import { WAVE_FIRST_DELAY, waveSize } from '../../src/sim/director';
+import { lineup } from '../../src/sim/incidents/targetAttack';
 import { Sim } from '../../src/sim/sim';
 import type { InputFrame, SimEvent, Vec } from '../../src/sim/types';
 
 const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false };
-const SCHOOL_TOTAL = CONFIG.school.firstLine + CONFIG.school.reinforcements;
+const SCHOOL_R1 = lineup('school', 1, 0);
+const SCHOOL_TOTAL = SCHOOL_R1.firstLine.length + SCHOOL_R1.reinforcements.length;
 
 /** KO every active rioter through the sim's scoring path. */
 function koAll(sim: Sim): void {
@@ -26,7 +28,7 @@ describe('wave numbering and objectives', () => {
     expect(s.waveTotal).toBe(0);
   });
 
-  test('school = wave 1 (11), rescue = wave 2 (its aggressors), then fill waves 3, 4 … with waveSize totals', () => {
+  test('school = wave 1 (its lineup total), rescue = wave 2 (its aggressors), then fill waves 3, 4 … with waveSize totals', () => {
     const sim = new Sim(7, { invulnerable: true });
     const events: SimEvent[] = [];
     const seen: { phase: string; wave: number; total: number }[] = [];
