@@ -19,11 +19,11 @@ function start(): void {
       pixelArt: true,
       roundPixels: true,
       backgroundColor: '#14121c',
+      // RESIZE: canvas = container size in CSS px (no CSS stretching, resolution 1); WorldScene zooms by integers.
       scale: {
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH,
-        width: 640,
-        height: 360,
+        mode: Phaser.Scale.RESIZE,
+        width: '100%',
+        height: '100%',
       },
       scene: [BootScene, WorldScene],
     });

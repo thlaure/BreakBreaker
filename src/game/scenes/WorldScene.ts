@@ -15,6 +15,11 @@ const SHAKE_PX = 2;
 const BASE_W = 640;
 const BASE_H = 360;
 
+export function integerZoom(width: number, height: number): number {
+  const [bw, bh] = height > width ? [BASE_H, BASE_W] : [BASE_W, BASE_H];
+  return Math.max(1, Math.floor(Math.min(width / bw, height / bh)));
+}
+
 /**
  * Drives the fixed-step Sim and draws it from `sim.snapshot()` each frame.
  * Emits `hud` (Snapshot) and `sim-events` (SimEvent[]) on `this.events` every frame for HUD / audio.
@@ -88,10 +93,16 @@ export class WorldScene extends Phaser.Scene {
     this.render(snap, 0, 16);
   }
 
-  /** Integer zoom: max(1, floor(min(viewW/640, viewH/360))). */
+  /**
+   * Crisp pixels: the canvas fills the window 1:1 (Scale.RESIZE) and only the camera zooms, by an integer:
+   * landscape max(1, floor(min(w/640, h/360))), portrait max(1, floor(min(w/360, h/640))).
+   * The visible world area varies with the window; sprites never get a fractional scale.
+   */
   private applyZoom(): void {
     const { width, height } = this.scale.gameSize;
-    this.cameras.main.setZoom(Math.max(1, Math.floor(Math.min(width / BASE_W, height / BASE_H))));
+    const cam = this.cameras.main;
+    cam.setSize(width, height);
+    cam.setZoom(integerZoom(width, height));
   }
 
   update(time: number, delta: number): void {

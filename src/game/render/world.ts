@@ -32,7 +32,7 @@ export class WorldView {
     this.buildTrees();
   }
 
-  /** Fades the roof whose rect contains Paul's feet. */
+  /** Fades the roof / tree canopy whose rect contains Paul's feet. */
   update(feet: Vec): void {
     for (const r of this.roofs) {
       const a = inRect(feet, r.rect) ? ROOF_FADED : 1;
@@ -98,16 +98,27 @@ export class WorldView {
     this.roofs.push({ rect, parts });
   }
 
+  /**
+   * Trees: the trunk tile is depth-sorted at its foot y (actors north of it pass behind), the foliage sits
+   * above actors. Both fade like roofs while Paul's feet are inside the canopy rect, so Paul stays visible.
+   */
   private buildTrees(): void {
     for (const t of DISTRICT.trunks) {
       const footY = t.y + 6;
       this.scene.add.ellipse(t.x, footY, 18, 6, 0x000000, 0.25).setDepth(DEPTH.decal);
-      this.scene.add.image(t.x, footY, 'city', TILE.city.treeTrunk).setOrigin(0.5, 1).setScale(2).setDepth(DEPTH.decal + 1);
-      this.scene.add
+      const trunk = this.scene.add
+        .image(t.x, footY, 'city', TILE.city.treeTrunk)
+        .setOrigin(0.5, 1)
+        .setScale(2)
+        .setDepth(footY);
+      const foliage = this.scene.add
         .image(t.x, footY - 32, 'city', TILE.city.treeTop)
         .setOrigin(0.5, 1)
         .setScale(2)
         .setDepth(DEPTH.foliage);
+      // canopy = foliage tile + upper part of the trunk tile (feet behind the trunk base stay sorted, not faded)
+      const rect: Rect = { x: t.x - 16, y: footY - 96, w: 32, h: 96 - 8 };
+      this.roofs.push({ rect, parts: [trunk, foliage] });
     }
   }
 }
