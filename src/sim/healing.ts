@@ -23,13 +23,18 @@ export type StationMessage = 'Santé au maximum' | 'Épuisé' | null;
 /**
  * Heal stations: walking onto a charged station heals at once (no key, no hold).
  * Called after hits/damage and the KO check in Sim.step; skipped entirely when the player is KO.
- * A station is only used when Paul is below max health. Charges do not regenerate in this slice.
+ * A station is only used when Paul is below max health. Charges come back only through `recharge()` (called between rounds).
  */
 export class Stations {
   list: Station[];
 
   constructor(positions: Vec[]) {
     this.list = positions.map((pos, i) => ({ id: `station#${i}`, pos: { ...pos }, charged: true }));
+  }
+
+  /** Every station is usable again. */
+  recharge(): void {
+    for (const s of this.list) s.charged = true;
   }
 
   step(ctx: StationCtx): { events: SimEvent[]; message: StationMessage } {
