@@ -50,7 +50,7 @@ export interface DirectorHost {
   readonly stations: Stations;
   readonly toolboxes: Toolboxes;
   readonly weapons: Weapons;
-  /** Every target attack of the session still worth stepping (the director prunes resolved ones). */
+  /** Every target attack of the session still worth stepping, smouldering ones included (the director prunes resolved ones). */
   readonly attacks: TargetAttack[];
   school: SchoolIncident;
   rescue: RescueIncident | null;
@@ -92,7 +92,8 @@ export function urgentCap(round: number): number {
  * rounds, weaponDrop on even ones. A casse beat with no intact target is dropped (its rioters go to the fill).
  */
 export function roundPlan(round: number, rand: () => number, targets: Targets, last: CasseKind | null = null): RoundPlan {
-  const intact = (k: CasseKind): boolean => TARGETS_OF[k].some((id) => targets.standing(id));
+  // a burning target (fire not put out yet) is not attacked again
+  const intact = (k: CasseKind): boolean => TARGETS_OF[k].some((id) => targets.standing(id) && !targets.get(id).burning);
   let first: CasseKind | null = null;
   if (round === 1) first = intact('school') ? 'school' : null;
   else {
@@ -170,9 +171,9 @@ interface FillGroup {
 
 /**
  * Session sequencing in rounds (manches). Intro 4 s → round 1. A round: plan → RoundStarted → beat 0 at once,
- * each later beat once the previous one is resolved and the urgency cap allows; the fill comes in groups (the last
+ * each later beat once the previous one is settled and the urgency cap allows; the fill comes in groups (the last
  * one is the climax), group n+1 only once group n is down; the twist fires once at half the roster; the flow keeper
- * lets someone in after 1.5 s with nobody around (RC-94). Round over (all beats resolved, nothing of the round queued
+ * lets someone in after 1.5 s with nobody around (RC-94). Round over (all beats settled, nothing of the round queued
  * or standing) → bonus, rewards, 6 s breather with no entry, next round.
  */
 export class Director {
@@ -323,17 +324,21 @@ export class Director {
     return new TargetAttack({ id, target, comp, round: this.round }, host.targets, host.objectiveSpawner);
   }
 
-  /** Intact and not under an unresolved attack (at most one live attack per target). */
+  /** Intact, not burning and not under an unresolved attack (at most one live attack per target). */
   private free(id: TargetId, host: DirectorHost): boolean {
-    return host.targets.standing(id) && !host.attacks.some((a) => a.target === id && !a.resolved());
+    return (
+      host.targets.standing(id) &&
+      !host.targets.get(id).burning &&
+      !host.attacks.some((a) => a.target === id && !a.resolved())
+    );
   }
 
-  /** Launches every beat whose predecessor is resolved, while the urgency cap allows. */
+  /** Launches every beat whose predecessor is settled, while the urgency cap allows. */
   private launchBeats(host: DirectorHost, ev: SimEvent[]): void {
     while (this.beat < this.beats.length) {
       const items = this.beats[this.beat]!;
       if (this.beat > 0) {
-        if (!this.beats[this.beat - 1]!.every((o) => this.resolved(o))) return;
+        if (!this.beats[this.beat - 1]!.every((o) => this.settled(o))) return;
         if (this.urgent(host) + items.length > urgentCap(this.round)) return;
       }
       for (const o of items) this.launch(o, host, ev);
@@ -371,26 +376,28 @@ export class Director {
       ev.push({ type: 'CasseStarted', incidentId: a.id, kind: a.kind, target: a.target, pos: door, round: this.round, total: this.total });
   }
 
-  /** Every launched, unresolved objective is in its timed wind-down with no rioter left (and there is one). */
+  /** Every launched, unsettled objective is in its timed wind-down with no rioter left (a victim thanking Paul). */
   private windingDown(): boolean {
     let open = 0;
     for (const o of this.objectives) {
-      if (this.resolved(o)) continue;
+      if (this.settled(o)) continue;
       open++;
-      if (o.attack ? o.attack.stage !== 'fireOut' : o.rescue!.stage !== 'secured') return false;
+      if (o.attack || o.rescue!.stage !== 'secured') return false;
     }
     return open > 0;
   }
 
-  private resolved(o: Objective): boolean {
+  /** Over for this round: an attack saved, destroyed or smouldering (its fire outlives the round), a rescue resolved. */
+  private settled(o: Objective): boolean {
     if (o.dropped) return true;
-    if (o.attack) return o.attack.resolved();
+    if (o.attack) return o.attack.settled();
     const st = o.rescue!.stage;
     return st === 'completed' || st === 'failed';
   }
 
+  /** A smouldering target still stands: réussi (until it burns down). */
   private succeeded(o: Objective): boolean {
-    return o.attack ? o.attack.stage === 'saved' : o.rescue!.stage === 'completed';
+    return o.attack ? o.attack.stage === 'saved' || o.attack.stage === 'smoulder' : o.rescue!.stage === 'completed';
   }
 
   private urgent(host: DirectorHost): number {
@@ -473,10 +480,10 @@ export class Director {
     if (w) ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: { ...w.pos } });
   }
 
-  /** Every beat resolved, nothing of the round still to queue, queued or standing. */
+  /** Every beat settled, nothing of the round still to queue, queued or standing. */
   private complete(host: DirectorHost): boolean {
     if (this.beat < this.beats.length || this.nextFill < this.fill.length) return false;
-    if (!this.objectives.every((o) => this.resolved(o))) return false;
+    if (!this.objectives.every((o) => this.settled(o))) return false;
     if (host.queue.pendingForRound(this.round) > 0) return false;
     return !host.horde.list.some((h) => h.round === this.round && h.state !== 'ko');
   }

@@ -359,6 +359,26 @@ describe('Hud alerts and edge indicators', () => {
     hud.destroy();
   });
 
+  test('a target still burning after its attack (state burning) keeps its card « en feu » and a flame indicator, with no new banner', () => {
+    const hud = new Hud(document.body, null);
+    const off = { ...view, x: 5000, y: 5000 };
+    const a = hud.root.querySelector<HTMLElement>('.bb-alert')!;
+    const s = snap((x) => {
+      calm(x);
+      Object.assign(x.targets.find((t) => t.id === 'car1')!, { state: 'burning', burning: true, hp: 30 });
+    });
+    expect(activeIncidents(s)).toEqual([{ id: 'car1', kind: 'car', pos: s.targets.find((t) => t.id === 'car1')!.door, burning: true }]);
+    hud.update(s, off);
+    const edge = hud.root.querySelector<HTMLElement>('.bb-edge')!;
+    expect(edge.classList.contains('tone-fire')).toBe(true);
+    expect(edge.querySelector('.lbl')!.textContent).toBe('VOITURE');
+    const card = hud.root.querySelector<HTMLElement>('.bb-card')!;
+    expect(card.querySelector('.status')!.textContent).toBe('en feu');
+    expect(card.querySelector('.time')!.textContent).toBe('50 %');
+    expect(a.hidden).toBe(true);
+    hud.destroy();
+  });
+
   test('two attacked targets: second banner waits, both edge indicators show', () => {
     const hud = new Hud(document.body, null);
     const s = snap((x) => {

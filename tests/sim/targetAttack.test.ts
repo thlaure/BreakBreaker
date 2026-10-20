@@ -155,31 +155,72 @@ test('a degrader of a ruined site retargets Paul', () => {
   expect(g.target).toBe('player');
 });
 
-test('all attackers KO: fire out 1.5 s later, saved +8 once, TargetSaved and SchoolRestored', () => {
+test('all attackers KO, nothing burning: saved +8 at once, TargetSaved and SchoolRestored', () => {
   const comp = lineup('school', 2, 0);
   expect(comp.reinforcements).toEqual([]);
   const w = world('school', comp, { school: true });
   w.attack.start();
-  w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('school').door, target: 'school' });
   w.koAll();
-  w.tick(DT);
-  expect(w.attack.stage).toBe('fireOut');
-  expect(w.attack.urgent()).toBe(false);
-  const hp = w.targets.get('school').hp;
-  const ev1 = w.tick(CONFIG.target.fireOutSec - 0.1);
-  expect(ev1).toEqual([]);
-  expect(w.targets.get('school').burning).toBe(true);
-  expect(w.targets.get('school').hp).toBe(hp); // a defended fire no longer burns hp
-  const ev = w.tick(0.2);
+  const ev = w.tick(DT);
   expect(w.attack.stage).toBe('saved');
   expect(w.attack.resolved()).toBe(true);
-  expect(w.targets.get('school').burning).toBe(false);
+  expect(w.attack.settled()).toBe(true);
   expect(w.rules.score).toBe(CONFIG.casse.scores.school[0]);
-  expect(ev.map((e) => e.type)).toEqual(['FireOut', 'TargetSaved', 'SchoolRestored']);
+  expect(ev.map((e) => e.type)).toEqual(['TargetSaved', 'SchoolRestored']);
   expect(ev).toContainEqual({ type: 'TargetSaved', incidentId: 'school#1', target: 'school' });
   w.tick(2);
   expect(w.rules.score).toBe(8);
   expect((w.attack as SchoolIncident).status()).toBe('sauvée');
+});
+
+test('all attackers KO while burning: it smoulders (settled, not urgent, not resolved), losing 0.7 hp/s with no award, until put out', () => {
+  expect(CONFIG.target.smoulderDps).toBe(0.7);
+  const w = world('school', lineup('school', 2, 0), { school: true });
+  w.attack.start();
+  w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('school').door, target: 'school' });
+  w.koAll();
+  const ev0 = w.tick(DT);
+  expect(w.attack.stage).toBe('smoulder');
+  expect(w.attack.settled()).toBe(true);
+  expect(w.attack.resolved()).toBe(false);
+  expect(w.attack.urgent()).toBe(false);
+  // no fire out, no saved: only the first-hp-lost cue of this attack
+  expect(ev0).toEqual([{ type: 'BuildingThreatStarted', incidentId: 'school#1' }]);
+  const hp = w.targets.get('school').hp;
+  const ev = w.tick(10);
+  // the fire does not go out by itself
+  expect(ev).toEqual([]);
+  expect(w.targets.get('school').burning).toBe(true);
+  expect(w.targets.get('school').hp).toBeCloseTo(hp - 10 * CONFIG.target.smoulderDps, 6);
+  expect(w.rules.score).toBe(0);
+  expect((w.attack as SchoolIncident).status()).toBe('en feu');
+  // a toolbox puts it out: saved silently (no award here), TargetSaved / SchoolRestored for the stats
+  expect(w.targets.extinguish('school')).toBe('school#1');
+  const after = w.targets.get('school').hp;
+  const ev2 = w.tick(DT);
+  expect(w.attack.stage).toBe('saved');
+  expect(ev2.map((e) => e.type)).toEqual(['TargetSaved', 'SchoolRestored']);
+  expect(w.rules.score).toBe(0);
+  w.tick(2);
+  expect(w.targets.get('school').hp).toBe(after);
+  expect((w.attack as SchoolIncident).status()).toBe('sauvée');
+});
+
+test('a smouldering target burnt down to 0: ruined once, −3 once, BuildingDestroyed, destroyed', () => {
+  const w = world('car1', only('molotov'));
+  w.attack.start();
+  w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('car1').door, target: 'car1' });
+  w.koAll();
+  w.tick(DT);
+  expect(w.attack.stage).toBe('smoulder');
+  w.targets.get('car1').hp = 1;
+  const ev = w.tick(1 / CONFIG.target.smoulderDps + 0.1);
+  expect(w.attack.stage).toBe('destroyed');
+  expect(w.targets.get('car1')).toMatchObject({ state: 'ruined', burning: false, lostIncidentId: 'car1#1' });
+  expect(ev).toEqual([{ type: 'BuildingDestroyed', incidentId: 'car1#1', target: 'car1' }]);
+  expect(w.rules.score).toBe(CONFIG.casse.scores.car[1]);
+  expect(w.tick(3)).toEqual([]);
+  expect(w.rules.score).toBe(CONFIG.casse.scores.car[1]);
 });
 
 test('hp 0: destroyed, target ruined, −3 once, BuildingDestroyed carries the target; start() on a ruin returns false', () => {
@@ -268,13 +309,14 @@ test('a target ruined by another source while urgent: destroyed once, no second 
   expect(w.rules.score).toBe(0);
 });
 
-test('a ruin during the fire-out is not awarded as saved', () => {
+test('a ruin from another source during the smoulder is neither awarded nor penalised again', () => {
   const w = world('car1', only('degrader', 1));
   w.attack.start();
   w.tick(0.1);
+  w.attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: def('car1').door, target: 'car1' });
   w.koAll();
   w.tick(0.1);
-  expect(w.attack.stage).toBe('fireOut');
+  expect(w.attack.stage).toBe('smoulder');
   w.targets.ruin('car1', 'other#1');
   expect(w.tick(3)).toEqual([]);
   expect(w.attack.stage).toBe('destroyed');

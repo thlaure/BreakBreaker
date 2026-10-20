@@ -295,12 +295,22 @@ describe('rounds in the sim', () => {
 
   test('a failed rescue with aggressors still to spawn: they come anyway, round ends at K = T', () => {
     const sim = new Sim(3, { invulnerable: true });
-    drive(sim, () => sim.school.stage === 'fireOut');
+    // the school is saved the very step its last rioter falls, and the rescue starts at once: keep its last rioters
+    // standing (everyone else is knocked out) until they are all on the map
+    drive(sim, () => sim.school.stage === 'reinforcements');
+    const mine = () => sim.horde.active().filter((h) => h.incidentId === sim.school.id);
+    for (let i = 0; i < 60 * 30 && mine().length < SCHOOL_R1.reinforcements.length; i++) {
+      for (const h of sim.horde.active()) if (h.incidentId !== sim.school.id && sim.horde.applyHit(h.lifeId, 99) === 'ko') sim.rules.onKnockout(h.lifeId);
+      sim.step(IDLE);
+    }
+    expect(mine()).toHaveLength(SCHOOL_R1.reinforcements.length);
+    for (const h of mine()) if (sim.horde.applyHit(h.lifeId, 99) === 'ko') sim.rules.onKnockout(h.lifeId);
     // the map is full of patrols when the rescue starts: only one aggressor fits, the others stay pending
     const far = DISTRICT.hostileSpawns;
     for (let i = 0; sim.horde.active().length < CONFIG.caps.hostiles - 1; i++)
       sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { ...far[i % far.length]! } });
     for (let i = 0; i < 60 * 30 && !sim.rescue; i++) sim.step(IDLE);
+    expect(sim.school.stage).toBe('saved');
     const r = sim.rescue!;
     expect(sim.horde.list.filter((h) => h.incidentId === r.id)).toHaveLength(1);
     expect(r.total).toBeGreaterThan(1);
@@ -483,4 +493,89 @@ test('a toolbox repair in the sim: ready until Agir is pressed, then snapshot pr
   expect(of(ev, 'TargetRepaired')).toHaveLength(1);
   expect(sim.rules.stats.repairs).toBe(1);
   expect(sim.snapshot().targets.find((t) => t.id === 'busStop')).toMatchObject({ state: 'intact', hp: 36 });
+});
+
+describe('a burning target stays so until put out (no fire going out by itself)', () => {
+  /** Round 1 with the school set on fire by its Molotov, then every rioter KO: the round ends with the school smouldering. */
+  function smouldering(seed = 3) {
+    const sim = new Sim(seed, { invulnerable: true });
+    // nobody is knocked out until the bottle is thrown
+    drive(sim, (e) => e.some((x) => x.type === 'TargetIgnited'), { koAfterSec: 999 });
+    const ev = drive(sim, roundCompleted(1));
+    return { sim, ev };
+  }
+
+  test('attackers cleared while burning: smoulder, the round completes (réussi, bonus), hp keeps dropping at 0.7/s through the round end and the breather, no refill', () => {
+    const { sim, ev } = smouldering();
+    expect(sim.school.stage).toBe('smoulder');
+    expect(of(ev, 'FireOut')).toEqual([]);
+    expect(of(ev, 'SchoolRestored')).toEqual([]);
+    expect(of(ev, 'RoundCompleted')).toEqual([{ type: 'RoundCompleted', index: 1, bonus: true }]);
+    expect(sim.director.lastSummary!.objectives[0]).toEqual({ kind: 'school', result: 'réussi' });
+    const school = sim.targets.get('school');
+    expect(school.burning).toBe(true);
+    expect(school.hp).toBeLessThan(school.maxHp); // not refilled at the round end
+    expect(sim.snapshot().targets.find((t) => t.id === 'school')).toMatchObject({ state: 'burning', burning: true });
+    const hp = school.hp;
+    for (let i = 0; i < 120; i++) sim.step(IDLE);
+    expect(sim.director.phase).toBe('breather');
+    expect(school.hp).toBeCloseTo(hp - 2 * CONFIG.target.smoulderDps, 6);
+    // through the breather into round 2: still burning, still in the attacks the sim steps
+    drive(sim, roundStarted(2));
+    expect(sim.attacks).toContain(sim.school);
+    expect(school.burning).toBe(true);
+    expect(school.hp).toBeLessThan(hp - 5 * CONFIG.target.smoulderDps);
+  });
+
+  test('put out with the toolbox (press F): saved, +5 once, fire out, hp unchanged afterwards', () => {
+    const { sim } = smouldering();
+    const door = DISTRICT.school.door;
+    sim.toolboxes.carried = true;
+    sim.player.pos = { ...door };
+    sim.step(IDLE);
+    expect(sim.snapshot().toolboxes).toMatchObject({ repairTarget: 'school', canRepair: true, repairKind: 'fire', started: false });
+    const score = sim.rules.score;
+    const ev = [...sim.step({ ...IDLE, act: true })];
+    for (let i = 0; i < 60 * CONFIG.kit.repairSec; i++) ev.push(...sim.step(IDLE));
+    expect(of(ev, 'FireOut')).toEqual([{ type: 'FireOut', target: 'school' }]);
+    expect(of(ev, 'TargetRepaired')).toEqual([{ type: 'TargetRepaired', target: 'school', incidentId: 'school#1' }]);
+    expect(of(ev, 'TargetSaved')).toHaveLength(1);
+    expect(of(ev, 'SchoolRestored')).toHaveLength(1);
+    expect(sim.rules.score - score).toBe(CONFIG.casse.scores.school[2]);
+    expect(sim.school.stage).toBe('saved');
+    const hp = sim.targets.get('school').hp;
+    expect(sim.targets.get('school').burning).toBe(false);
+    for (let i = 0; i < 120; i++) sim.step(IDLE);
+    expect(sim.targets.get('school').hp).toBe(hp);
+    expect(sim.rules.score - score).toBe(CONFIG.casse.scores.school[2]);
+    expect(sim.rules.stats).toMatchObject({ repairs: 1, targetsSaved: 1, schoolsSaved: 1 });
+  });
+
+  test('a smouldering school burnt down: ruined once, −3 once, BuildingDestroyed', () => {
+    const { sim } = smouldering();
+    sim.targets.get('school').hp = 0.5;
+    const score = sim.rules.score;
+    const ev: SimEvent[] = [];
+    for (let i = 0; i < 120; i++) ev.push(...sim.step(IDLE));
+    expect(of(ev, 'BuildingDestroyed')).toEqual([{ type: 'BuildingDestroyed', incidentId: 'school#1', target: 'school' }]);
+    expect(sim.school.stage).toBe('destroyed');
+    expect(sim.targets.get('school').state).toBe('ruined');
+    expect(sim.rules.score - score).toBe(CONFIG.casse.scores.school[1]);
+    expect(sim.rules.stats).toMatchObject({ targetsLost: 1, schoolsLost: 1 });
+  });
+
+  test('a burning target is never drawn for a new attack', () => {
+    const t = new Targets();
+    t.ignite('school', 'school#1');
+    for (let s = 1; s <= 60; s++) expect(roundPlan(3 + (s % 5), rng(s), t).headline).not.toBe('school');
+    t.ignite('car1', 'car#1');
+    t.ignite('car2', 'car#2');
+    for (let s = 1; s <= 30; s++) expect(roundPlan(2, rng(s), t).headline).toBe('busStop');
+    // in the sim: the smouldering school is not attacked again while it burns (rounds 2-4)
+    const { sim } = smouldering();
+    for (let i = 0; i < 60 * 600 && sim.director.round <= 4 && sim.targets.get('school').burning; i++) {
+      sim.step(autopilot(sim));
+      expect(sim.attacks.filter((a) => a.target === 'school' && a !== sim.school && !a.resolved())).toEqual([]);
+    }
+  });
 });

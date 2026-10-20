@@ -105,7 +105,7 @@ export interface IncidentLine {
 }
 
 /**
- * One card per target under an urgent attack (health and fire), then the rescue until it is resolved (its card stays
+ * One card per target under an urgent attack or still burning after it (health and fire), then the rescue until it is resolved (its card stays
  * through the thanks beat, then goes like a target's). `rescueDrain` says whether the rescue reserve went down since
  * the previous frame (the snapshot has no status for it).
  */
@@ -113,7 +113,7 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
   const out: IncidentLine[] = [];
   const secs = (n: number): string => `${Math.ceil(n - 1e-9)} s`;
   for (const t of s.targets) {
-    if (t.state !== 'attacked') continue;
+    if (t.state !== 'attacked' && t.state !== 'burning') continue;
     const hp = Math.max(0, Math.min(100, (100 * t.hp) / t.maxHp));
     const status: IncidentStatus = t.id === 'school' && s.school.stage === 'cinematic' ? 'renforts' : t.burning ? 'en feu' : 'attaquée';
     out.push({ key: t.id, kind: t.kind, name: TARGET_NAMES[t.kind], time: `${Math.ceil(hp - 1e-9)} %`, hp, status, target: t.door });

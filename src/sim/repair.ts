@@ -22,7 +22,8 @@ const EPS = 1e-9;
 
 /**
  * Toolboxes: up to CONFIG.kit.maxGround lie on the ground, Paul carries at most one (walk over it to take it).
- * Next to a ruin with a toolbox and no hostile close, pressing Agir (F / touch Agir) starts the repair; it then
+ * Next to a ruin or a burning target with a toolbox and no hostile close, pressing Agir (F / touch Agir) starts the
+ * repair (a ruin is rebuilt to repairPct hp, a fire is put out with hp unchanged); it then
  * completes after CONFIG.kit.repairSec without holding the key. Moving away from the door, a hostile coming close or a
  * KO resets the progress and the start (a new press is needed).
  */
@@ -53,16 +54,24 @@ export class Toolboxes {
     return events;
   }
 
-  /** The ruined target whose door is within applyRange of Paul (nearest first), if any. */
+  /**
+   * The target needing the toolbox whose door is within applyRange of Paul: a ruin (nearest first), else a burning
+   * target (nearest first); null if none.
+   */
   repairTarget(player: Vec, targets: Targets): TargetId | null {
     let best: TargetId | null = null;
-    let bestD = Infinity;
+    let bestRank = Infinity;
     for (const def of DISTRICT.targets) {
-      if (targets.get(def.id).state !== 'ruined') continue;
+      const s = targets.get(def.id);
+      const ruined = s.state === 'ruined';
+      if (!ruined && !s.burning) continue;
       const d = dist(player, def.door);
-      if (d <= CONFIG.kit.applyRange && d < bestD) {
+      if (d > CONFIG.kit.applyRange) continue;
+      // ruins first: their rank stays below any burning target's
+      const rank = d + (ruined ? 0 : 1e6);
+      if (rank < bestRank) {
         best = def.id;
-        bestD = d;
+        bestRank = rank;
       }
     }
     return best;
@@ -108,14 +117,22 @@ export class Toolboxes {
     this.started = true;
     this.progress += dt;
     if (this.progress + EPS >= CONFIG.kit.repairSec) {
-      const lost = targets.repair(target);
       this.carried = false;
       const n = (this.repairCount.get(target) ?? 0) + 1;
       this.repairCount.set(target, n);
-      const key = lost !== null ? `${lost}:repaired` : `${target}:repaired#${n}`;
       const kind = DISTRICT.targets.find((d) => d.id === target)!.kind;
-      rules.award(key, CONFIG.casse.scores[kind][2]);
-      events.push({ type: 'TargetRepaired', target, incidentId: lost ?? key });
+      if (targets.get(target).state === 'ruined') {
+        const lost = targets.repair(target);
+        const key = lost !== null ? `${lost}:repaired` : `${target}:repaired#${n}`;
+        rules.award(key, CONFIG.casse.scores[kind][2]);
+        events.push({ type: 'TargetRepaired', target, incidentId: lost ?? key });
+      } else {
+        const fire = targets.extinguish(target);
+        const key = fire !== null ? `${fire}:extinguished` : `${target}:extinguished#${n}`;
+        rules.award(key, CONFIG.casse.scores[kind][2]);
+        events.push({ type: 'FireOut', target });
+        events.push({ type: 'TargetRepaired', target, incidentId: fire ?? key });
+      }
       this.reset();
     }
     return { events, message: null };

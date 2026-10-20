@@ -186,6 +186,45 @@ describe('toolboxes', () => {
     expect(kit.started).toBe(false);
   });
 
+  test('a burning target needs the toolbox too: one press puts the fire out (hp unchanged), FireOut + TargetRepaired, +5 once, toolbox used', () => {
+    const { kit, targets, player, rules, step, run, press } = setup(null);
+    targets.get('school').hp = 41;
+    targets.ignite('school', 'school#2');
+    player.pos = { ...door('school') };
+    expect(kit.repairTarget(player.pos, targets)).toBe('school');
+    expect(step(true).message).toBe('Caisse à outils requise');
+    kit.carried = true;
+    run(1);
+    expect(kit.ready).toBe(true);
+    expect(kit.progress).toBe(0);
+    const ev = press(CONFIG.kit.repairSec);
+    expect(ev).toEqual([
+      { type: 'FireOut', target: 'school' },
+      { type: 'TargetRepaired', target: 'school', incidentId: 'school#2' },
+    ]);
+    expect(targets.get('school')).toMatchObject({ burning: false, hp: 41, state: 'intact' });
+    expect(kit.carried).toBe(false);
+    expect(rules.score).toBe(CONFIG.casse.scores.school[2]);
+    // nothing left to repair there
+    kit.carried = true;
+    expect(press(3)).toEqual([]);
+    expect(rules.score).toBe(CONFIG.casse.scores.school[2]);
+    expect(kit.carried).toBe(true);
+  });
+
+  test('a burning car is put out for +3, once per fire', () => {
+    const { kit, targets, player, rules, press } = setup(null);
+    targets.ignite('car1', 'car#1');
+    kit.carried = true;
+    player.pos = { ...door('car1') };
+    press(CONFIG.kit.repairSec);
+    expect(rules.score).toBe(CONFIG.casse.scores.car[2]);
+    targets.ignite('car1', 'car#2');
+    kit.carried = true;
+    press(CONFIG.kit.repairSec);
+    expect(rules.score).toBe(2 * CONFIG.casse.scores.car[2]);
+  });
+
   test('next to an intact target nothing happens, even pressing Agir', () => {
     const { kit, player, step, run } = setup(null);
     kit.carried = true;

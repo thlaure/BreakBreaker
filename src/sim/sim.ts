@@ -67,14 +67,14 @@ export interface Snapshot {
   telegraphs: Telegraph[];
   group: { area: Rect; members: Vec[] };
   victim: Vec | null;
-  /** `attacked` = an urgent attack on it. */
+  /** `attacked` = an urgent attack on it; `burning` = on fire with no urgent attack (smouldering until put out). */
   targets: {
     id: TargetId;
     kind: CasseKind;
     hp: number;
     maxHp: number;
     burning: boolean;
-    state: 'intact' | 'attacked' | 'ruined';
+    state: 'intact' | 'attacked' | 'burning' | 'ruined';
     door: Vec;
     footprint: Rect;
     prop: boolean;
@@ -150,7 +150,10 @@ export class Sim {
   readonly queue = new EntryQueue();
   /** Objective rioters (target attacks) jump the line. */
   readonly objectiveSpawner: Spawner = { request: (reqs, o) => this.queue.request(reqs, { ...o, front: true }) };
-  /** Target attacks of the session (school included); the director prunes resolved ones at each round start. */
+  /**
+   * Target attacks of the session (school included), smouldering ones too (stepped across rounds and the breather);
+   * the director prunes resolved ones at each round start.
+   */
   readonly attacks: TargetAttack[] = [];
   /** The latest school attack (round 1's from the start; later ones replace it). */
   school: SchoolIncident = new SchoolIncident(this.targets, this.objectiveSpawner);
@@ -350,7 +353,7 @@ export class Sim {
           hp: t.hp,
           maxHp: t.maxHp,
           burning: t.burning,
-          state: t.state === 'ruined' ? 'ruined' : attacked ? 'attacked' : 'intact',
+          state: t.state === 'ruined' ? 'ruined' : attacked ? 'attacked' : t.burning ? 'burning' : 'intact',
           door: v(def.door),
           footprint: { ...def.footprint },
           prop: def.prop,
@@ -386,11 +389,11 @@ export class Sim {
     return { repairTarget: target, canRepair: target !== null && kit.ready, repairKind, started: kit.started };
   }
 
-  /** Horde sites: every target under a live (started, unresolved) attack; other targets cost no flow field. */
+  /** Horde sites: every target under a live (started, unsettled) attack; other targets cost no flow field. */
   private sites(): HordeCtx['sites'] {
     const out: HordeCtx['sites'] = {};
     for (const a of this.attacks) {
-      if (a.stage === 'idle' || a.resolved()) continue;
+      if (a.stage === 'idle' || a.settled()) continue;
       const def = DISTRICT.targets.find((t) => t.id === a.target)!;
       out[a.target] = {
         points: def.attackPoints,

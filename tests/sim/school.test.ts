@@ -63,7 +63,7 @@ test('integrity is the school hp in percent; status follows the fire', () => {
   const { inc, targets } = setup();
   targets.get('school').hp = 50;
   expect(inc.integrity()).toBe(50);
-  targets.ignite('school');
+  targets.ignite('school', inc.id);
   expect(inc.status()).toBe('en feu');
 });
 
@@ -103,7 +103,7 @@ test('spawn cap keeps reinforcements pending, never dropped', () => {
   expect(horde.active().filter((h) => h.incidentId === inc.id)).toHaveLength(R1.reinforcements.length - 2);
 });
 
-test('saved: +8 once, stage saved after the fire dies out (RC-28)', () => {
+test('saved: +8 once, stage saved at once when no fire burns (RC-28)', () => {
   const { inc, run, rules, koAll, mine } = setup();
   koAll();
   run(3.5);

@@ -6,7 +6,11 @@ import type { Rules } from '../rules';
 import type { Targets } from '../targets';
 import type { CasseKind, Role, SimEvent, TargetId, Variant } from '../types';
 
-export type AttackStage = 'idle' | 'attack' | 'cinematic' | 'reinforcements' | 'fireOut' | 'saved' | 'destroyed';
+/**
+ * `smoulder`: every rioter KO but the target still burns; the attack is settled for the round, the fire keeps eating hp
+ * (CONFIG.target.smoulderDps) until a toolbox puts it out (→ saved) or the target falls (→ destroyed).
+ */
+export type AttackStage = 'idle' | 'attack' | 'cinematic' | 'reinforcements' | 'smoulder' | 'saved' | 'destroyed';
 
 /** Rioters of one attack: the first line at start, the reinforcements after the cinematic (round-1 school only). */
 export interface AttackComposition {
@@ -54,8 +58,10 @@ function kindOf(target: TargetId): CasseKind {
 
 /**
  * An attack on one target. Its Molotov sets the target on fire (`onMolotov`); fire and its degraders drain the
- * target's hp each step. hp 0 → destroyed (ruin, loss points). Every rioter of the attack KO'd → the fire dies
- * out `fireOutSec` later → saved (bonus). With reinforcements, the first line's fall opens a cinematic first.
+ * target's hp each step. hp 0 → destroyed (ruin, loss points). Every rioter of the attack KO'd → saved (bonus) when
+ * nothing burns; otherwise it smoulders: the fire never goes out by itself, it keeps eating hp until a toolbox puts it
+ * out (saved, no bonus here: the toolbox scores) or the target falls (destroyed). With reinforcements, the first line's
+ * fall opens a cinematic first.
  */
 export class TargetAttack {
   readonly id: string;
@@ -99,7 +105,7 @@ export class TargetAttack {
   /** A bottle landed on a target: sets this attack's target on fire while it is being attacked. */
   onMolotov(e: Extract<SimEvent, { type: 'MolotovThrown' }>): SimEvent[] {
     if (e.target !== this.target || !this.urgent()) return [];
-    if (!this.targets.ignite(this.target)) return [];
+    if (!this.targets.ignite(this.target, this.id)) return [];
     const door = DISTRICT.targets.find((t) => t.id === this.target)!.door;
     return [{ type: 'TargetIgnited', target: this.target, incidentId: this.id, kind: this.kind, pos: { ...door }, round: this.round }];
   }
@@ -124,20 +130,19 @@ export class TargetAttack {
       return ev;
     }
 
-    if (this.stage === 'fireOut') {
-      // the defence is over: the dying fire no longer costs hp
-      this.timer -= dt;
-      if (this.timer > 1e-9) return ev;
-      this.targets.extinguish(this.target);
-      this.stage = 'saved';
-      ev.push({ type: 'FireOut', target: this.target });
-      ctx.rules.award(`${this.id}:saved`, CONFIG.casse.scores[this.kind][0]);
-      ev.push({ type: 'TargetSaved', incidentId: this.id, target: this.target });
-      ev.push(...this.onSaved());
+    const st = this.targets.get(this.target);
+    if (this.stage === 'smoulder') {
+      if (!st.burning) {
+        // put out by a toolbox (which scored it): saved, for the stats only
+        this.stage = 'saved';
+        ev.push({ type: 'TargetSaved', incidentId: this.id, target: this.target });
+        ev.push(...this.onSaved());
+        return ev;
+      }
+      if (this.targets.damage(this.target, CONFIG.target.smoulderDps * dt)) this.destroy(ctx, ev);
       return ev;
     }
 
-    const st = this.targets.get(this.target);
     const degraders = ctx.horde.list.filter((h) => h.incidentId === this.id && h.state === 'degrade').length;
     const dps =
       (st.burning ? CONFIG.target.fireDps : 0) + Math.min(CONFIG.target.maxDegraders, degraders) * CONFIG.target.degradeDps;
@@ -147,10 +152,7 @@ export class TargetAttack {
       ev.push({ type: 'BuildingThreatStarted', incidentId: this.id });
     }
     if (dps > 0 && this.targets.damage(this.target, dps * dt)) {
-      this.targets.ruin(this.target, this.id);
-      this.lose();
-      ctx.rules.award(`${this.id}:lost`, CONFIG.casse.scores[this.kind][1]);
-      ev.push({ type: 'BuildingDestroyed', incidentId: this.id, target: this.target });
+      this.destroy(ctx, ev);
       return ev;
     }
 
@@ -158,20 +160,37 @@ export class TargetAttack {
       if (this.stage === 'attack' && this.comp.reinforcements.length > 0) {
         this.stage = 'cinematic';
         this.timer = CONFIG.school.cinematicSec;
-      } else {
-        this.stage = 'fireOut';
-        this.timer = CONFIG.target.fireOutSec;
+      } else if (st.burning) this.stage = 'smoulder';
+      else {
+        this.stage = 'saved';
+        ctx.rules.award(`${this.id}:saved`, CONFIG.casse.scores[this.kind][0]);
+        ev.push({ type: 'TargetSaved', incidentId: this.id, target: this.target });
+        ev.push(...this.onSaved());
       }
     }
     return ev;
+  }
+
+  /** hp 0: ruin, loss points once. */
+  private destroy(ctx: AttackCtx, ev: SimEvent[]): void {
+    this.targets.ruin(this.target, this.id);
+    this.lose();
+    ctx.rules.award(`${this.id}:lost`, CONFIG.casse.scores[this.kind][1]);
+    ev.push({ type: 'BuildingDestroyed', incidentId: this.id, target: this.target });
   }
 
   urgent(): boolean {
     return this.stage === 'attack' || this.stage === 'cinematic' || this.stage === 'reinforcements';
   }
 
+  /** Over for good: saved or destroyed. */
   resolved(): boolean {
     return this.stage === 'saved' || this.stage === 'destroyed';
+  }
+
+  /** Over for its round: resolved, or smouldering (its rioters are all KO, its fire still burns). */
+  settled(): boolean {
+    return this.resolved() || this.stage === 'smoulder';
   }
 
   /** True while a rioter of this attack is still to enter or standing (pruned KO bodies count as KO). */

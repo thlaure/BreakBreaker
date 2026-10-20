@@ -142,13 +142,14 @@ export function alertFromEvent(e: SimEvent): Alert | null {
 }
 
 /**
- * Incidents that still need Paul: every target under an urgent attack (at its door), the rescue while threatened, and
+ * Incidents that still need Paul: every target under an urgent attack or still burning (at its door: a fire stays until
+ * put out with a toolbox), the rescue while threatened, and
  * every special drop (a weapon with an expiry) until it is picked up or vanishes.
  */
 export function activeIncidents(s: Snapshot): Incident[] {
   const out: Incident[] = [];
   for (const t of s.targets)
-    if (t.state === 'attacked') out.push({ id: t.id, kind: t.kind, pos: { ...t.door }, burning: t.burning });
+    if (t.state === 'attacked' || t.state === 'burning') out.push({ id: t.id, kind: t.kind, pos: { ...t.door }, burning: t.burning });
   if (s.rescue?.stage === 'threat') out.push({ id: 'rescue', kind: s.rescue.kind, pos: { ...s.rescue.victimPos } });
   for (const w of s.weaponsOnGround) if (w.expiresAt !== null) out.push({ id: dropId(w.pos), kind: 'weaponDrop', pos: { ...w.pos } });
   return out;
