@@ -1,5 +1,4 @@
 import { defineConfig, type Plugin } from 'vite';
-import { writeFileSync } from 'node:fs';
 import { CONTROLS, RULES, SATIRE_NOTICE } from './src/content/controls';
 import { CONFIG } from './src/sim/config';
 
@@ -29,38 +28,8 @@ function landingContent(): Plugin {
   };
 }
 
-/** Dev-only: lets the gameplay page save a canvas capture as the landing preview image. */
-function savePreview(): Plugin {
-  return {
-    name: 'save-preview',
-    apply: 'serve',
-    configureServer(server) {
-      server.middlewares.use('/__save-preview', (req, res) => {
-        if (req.method !== 'POST') {
-          res.statusCode = 405;
-          res.end();
-          return;
-        }
-        let body = '';
-        req.on('data', (d) => (body += d));
-        req.on('end', () => {
-          const m = body.match(/^data:image\/webp;base64,(.+)$/);
-          if (!m) {
-            res.statusCode = 400;
-            res.end('expected image/webp data URL');
-            return;
-          }
-          const buf = Buffer.from(m[1] ?? "", 'base64');
-          writeFileSync('public/preview.webp', buf);
-          res.end(String(buf.length));
-        });
-      });
-    },
-  };
-}
-
 export default defineConfig({
-  plugins: [landingContent(), savePreview()],
+  plugins: [landingContent()],
   build: {
     rollupOptions: {
       input: { main: 'index.html', jouer: 'jouer/index.html' },
