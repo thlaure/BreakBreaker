@@ -1,8 +1,8 @@
 # BreakBreaker — Cahier des charges fonctionnel et technique
 
-**Version :** 1.4 — 19 octobre 2026  
-**Périmètre :** jeu web 2D en pixel art, vue du dessus non isométrique, mode arcade sans limite, Paris, Pierre comme héros unique, ordinateur et téléphone  
-**Statut :** spécification de référence proposée, fondée sur les demandes exprimées ; les recommandations de conception sont identifiées. Ce document ne constitue pas une validation de production ni une attestation que toutes les exigences sont déjà implémentées.  
+**Version :** 1.5 — 20 octobre 2026  
+**Périmètre :** jeu web 2D en pixel art, vue du dessus non isométrique, mode arcade par manches sans limite de durée, Paris, Paul (commerçant fictif) comme héros unique, ordinateur et téléphone  
+**Statut :** spécification de référence ; les décisions confirmées par le porteur du projet et les recommandations de conception sont identifiées. Une première tranche jouable existe (section 24) ; ce document ne constitue pas une validation de production ni une attestation que toutes les exigences sont déjà implémentées.  
 **Langue de lancement :** français  
 **Projet :** BreakBreaker
 
@@ -13,14 +13,15 @@
 3. [Périmètre et priorités](#3-périmètre-et-priorités)
 4. [Parcours du joueur](#4-parcours-du-joueur)
 5. [Carte, exploration et objectifs](#5-carte-exploration-et-objectifs)
-6. [Pierre, déplacement et caméra](#6-pierre-déplacement-et-caméra)
+6. [Paul, déplacement et caméra](#6-paul-déplacement-et-caméra)
 7. [Commandes](#7-commandes)
 8. [Combat, projectiles et groupes protégés](#8-combat-projectiles-et-groupes-protégés)
+   - [8.7 Armes ramassables](#87-armes-ramassables)
 9. [Personnages, hordes et intelligence artificielle](#9-personnages-hordes-et-intelligence-artificielle)
 10. [Bâtiments menacés, défense et réparation](#10-bâtiments-menacés-défense-et-réparation)
 11. [Objectif monument](#11-objectif-monument)
-12. [Mode arcade, événements, progression et soins](#12-mode-arcade-événements-progression-et-soins)
-13. [Score, compteur OQTF et bilan](#13-score-compteur-oqtf-et-bilan)
+12. [Mode arcade, manches, événements, progression et soins](#12-mode-arcade-manches-événements-progression-et-soins)
+13. [Score, compteur de casseurs neutralisés et bilan](#13-score-compteur-de-casseurs-neutralisés-et-bilan)
 14. [Interface et accessibilité](#14-interface-et-accessibilité)
 15. [Direction artistique et ressources pixel art](#15-direction-artistique-et-ressources-pixel-art)
 16. [Son](#16-son)
@@ -39,17 +40,17 @@
 
 ### 1.1 Concept
 
-Jeu web d’action arcade en **2D pixel art, vu du dessus, sans isométrie**, proche d’un hack-and-slash rétro. Le joueur incarne Pierre, le commerçant du Micromania de Nice désigné par le porteur du projet, représenté avec des cheveux longs et une tenue noire.
+Jeu web d’action arcade en **2D pixel art, vu du dessus, sans isométrie**, proche d’un hack-and-slash rétro. Le joueur incarne Paul, un commerçant de quartier fictif, représenté avec des cheveux longs, une tenue noire et une écharpe blanche qui le distingue des casseurs.
 
-Il se déplace librement dans une carte parisienne fictive : places, école, monument et commerces. Des hordes de casseurs arrivent par plusieurs accès. Le joueur les combat au contact, évite leurs projectiles, peut récupérer certaines pierres tombées puis les renvoyer, défend l’école et reprend des drapeaux.
+Il se déplace librement dans une carte parisienne fictive : places, école, monument et commerces. Des hordes de casseurs arrivent par plusieurs accès. Le joueur les combat au contact, à mains nues ou avec des armes ramassées dans les rues, évite leurs projectiles, peut récupérer certaines pierres tombées puis les renvoyer, défend l’école et reprend des drapeaux.
 
-Des groupes de manifestants pacifiques occupent des parties de la carte. Ils ne sont pas des cibles pour Pierre et doivent être contournés. Certains peuvent être menacés par des casseurs lors d’événements de secours. D’autres rencontres mettent en scène une personne ou un couple âgé victime de vol ou d’intimidation, à aider rapidement.
+Des groupes de manifestants pacifiques occupent des parties de la carte. Ils ne sont pas des cibles pour Paul et doivent être contournés. Certains peuvent être menacés par des casseurs lors d’événements de secours. D’autres rencontres mettent en scène une personne ou un couple âgé victime de vol ou d’intimidation, à aider rapidement.
 
-La santé, les petits soins, la survie jusqu’au KO et le renouvellement des manches restent conservés. Aucun compte à rebours global et aucune victoire terminant automatiquement la session. Des comptes à rebours locaux indiquent en revanche le délai pour sauver un bâtiment ou intervenir auprès de personnes menacées. Un bâtiment détruit peut être restauré avec un kit trouvé sur la carte.
+La session est découpée en manches : chaque manche fixe un nombre de casseurs à neutraliser et un à trois objectifs. La santé, les petits soins et la survie jusqu’au KO restent conservés. Aucun compte à rebours global et aucune victoire terminant automatiquement la session. Des comptes à rebours locaux indiquent en revanche le délai pour sauver un bâtiment ou intervenir auprès de personnes menacées. Un bâtiment détruit peut être restauré avec un kit trouvé sur la carte.
 
 ### 1.2 Promesse
 
-« Se déplacer, repousser les hordes, renvoyer leurs pavés et tenir le quartier aussi longtemps que possible. »
+« Se déplacer, repousser les hordes, ramasser des armes, renvoyer leurs pavés et tenir le quartier manche après manche, aussi longtemps que possible. »
 
 Le plaisir repose sur le mouvement, la lecture des groupes, les coups, l’esquive par déplacement, le renvoi de projectiles, la défense des lieux et la gestion de la santé. La récupération d’objets est limitée et compréhensible ; aucun inventaire complexe.
 
@@ -63,13 +64,11 @@ La référence GTA / The Division n’est plus une cible de rendu. La crédibili
 
 Navigateur sur ordinateur et téléphone, sans compte ni installation obligatoire. Caméra automatique, commandes simples et version tactile. Le pixel art réduit certains besoins graphiques, mais ne dispense pas de limiter les hordes, les collisions et les effets ni de tester sur téléphone réel.
 
-### 1.5 Pierre, protagoniste unique
+### 1.5 Paul, protagoniste unique
 
-Le porteur du projet désigne désormais explicitement Pierre, du Micromania de Nice. Le cahier conserve comme repères visuels : cheveux longs, vêtements noirs, silhouette identifiable à la taille réelle du sprite. Aucun choix de sexe, de teint ou d’un autre héros.
+**Confirmé (révision 1.5) :** le héros est Paul, un commerçant de quartier entièrement fictif. Repères visuels : cheveux longs, vêtements noirs et un accent clair (écharpe ou bavoir blanc) qui le distingue des casseurs vêtus de sombre ; silhouette identifiable à la taille réelle du sprite. Aucun choix de sexe, de teint ou d’un autre héros.
 
-L’identification provient des échanges utilisateur et des articles retrouvés précédemment. Les missions parisiennes, les dialogues et les positions exprimées dans le jeu sont une fiction, pas une biographie ou une participation réelle attribuée à cette personne.
-
-Les recherches antérieures ont retrouvé des articles parlant d’un commerçant ou vendeur prénommé Pierre : [La Dépêche](https://www.ladepeche.fr/2026/10/19/violences-du-17-octobre-je-me-suis-mis-devant-pour-les-empecher-de-rentrer-cest-tout-la-video-du-vendeur-de-micromania-a-nice-seul-face-aux-pilleurs-a-13609491.php), [Le Parisien](https://www.leparisien.fr/alpes-maritimes-06/mobilisation-du-17-octobre-merci-beaucoup-pierre-le-gerant-dun-micromania-violemment-attaque-par-derriere-a-nice-donne-de-ses-nouvelles-19-10-2026-HS7E2SXTYFAN7IKYSOQGCALZDA.php). Aucun nom de famille ni autre élément personnel n’est nécessaire au gameplay.
+Paul ne représente aucune personne réelle. Les missions parisiennes, les dialogues et les positions exprimées dans le jeu relèvent de la fiction. Aucun nom de famille, élément biographique ou référence de presse n’est associé au personnage.
 
 ## 2. Exigences validées et décisions proposées
 
@@ -82,6 +81,8 @@ Les recherches antérieures ont retrouvé des articles parlant d’un commerçan
 
 La présente révision remplace la cible 3D. Les dernières demandes annulent la vue derrière l’épaule, la personnalisation et le chronomètre global. L’idée de murs ou de ruelles imposés a été retirée par l’utilisateur ; elle ne doit pas devenir une fonctionnalité à développer.
 
+La révision 1.5 intègre des décisions **confirmées** : héros fictif Paul, barème égal pour tous les casseurs, compteur neutre « Casseurs neutralisés », frappe circulaire, soins appliqués au contact, armes ramassables, manches à effectif fixe et lancement direct depuis la landing. Les valeurs chiffrées associées restent des paramètres initiaux sauf mention contraire.
+
 ### 2.2 Exigences confirmées
 
 | ID | Exigence |
@@ -89,20 +90,20 @@ La présente révision remplace la cible 3D. Les dernières demandes annulent la
 | EX-01 | Jeu web, un joueur, ordinateur et téléphone, sans compte. |
 | EX-02 | 2D pixel art, vue du dessus, non isométrique, action de type hack-and-slash rétro. |
 | EX-03 | Déplacement libre sur la carte ; Paris pour la première version. |
-| EX-04 | Pierre du Micromania de Nice, héros unique ; aucun écran de sélection d’apparence. |
-| EX-05 | Trois variantes de casseurs : classique, drapeau palestinien, drapeau Antifa. |
+| EX-04 | Paul, commerçant fictif, héros unique ; aucun écran de sélection d’apparence ; aucune référence à une personne réelle. |
+| EX-05 | Trois variantes de casseurs : classique, drapeau palestinien, drapeau Antifa. Le drapeau est purement cosmétique : même barème (+1 au KO), mêmes rôles possibles. |
 | EX-06 | Arrivée de hordes ; casseurs hostiles jusqu’au KO, sans reddition ni interpellation. |
-| EX-07 | Combat au contact ; aucune arme à feu, aucun tir d’arme à feu, aucun gore. |
+| EX-07 | Combat au contact, à mains nues ou avec des armes ramassées ; aucune arme à feu, aucun tir d’arme à feu, aucun gore. |
 | EX-08 | Projectiles ennemis de type caillou, pavé ou brique. |
 | EX-09 | Possibilité de récupérer des projectiles et de les renvoyer contre les casseurs. |
-| EX-10 | Groupes de manifestants pacifiques à éviter et non ciblables par Pierre ; certains peuvent subir une menace ennemie et être secourus. |
+| EX-10 | Groupes de manifestants pacifiques à éviter et non ciblables par Paul ; certains peuvent subir une menace ennemie et être secourus. |
 | EX-11 | Étudiants, professeurs, policiers, pompiers, soignants et commerçants restent non ennemis. |
 | EX-12 | Santé et petits soins conservés. |
-| EX-13 | Session arcade sans durée limite, poursuivie jusqu’au KO du joueur. |
+| EX-13 | Session arcade sans durée limite, découpée en manches, poursuivie jusqu’au KO du joueur. |
 | EX-14 | École à défendre : première ligne, vague, réparation, retour des étudiants et formations projetées. |
 | EX-15 | Captures de drapeau sur des monuments, avec zone contestée et changement de drapeau. |
 | EX-16 | Flèche et zone au sol pour les objectifs. |
-| EX-17 | Chaque casseur KO ajoute une unité au compteur OQTF, sans doublon. |
+| EX-17 | Chaque casseur KO ajoute une unité au compteur neutre « Casseurs neutralisés », sans doublon. |
 | EX-18 | Score, record local, pause, arrêt volontaire et son après geste utilisateur. |
 | EX-19 | Assez de contenu et de renouvellement pour plusieurs manches. |
 | EX-20 | Délai local avant destruction d’un bâtiment attaqué, pour créer une urgence de défense. |
@@ -110,36 +111,39 @@ La présente révision remplace la cible 3D. Les dernières demandes annulent la
 | EX-22 | Événements dynamiques de secours : manifestants agressés, personne ou couple âgé menacé ou dépouillé ; délai local d’intervention. |
 | EX-23 | Déplacement libre, mais impossibilité de traverser les bâtiments, les troncs d’arbre et les obstacles solides. |
 | EX-24 | Landing page publique simple donnant accès au jeu ; contenu et fonctionnement définis ici, direction visuelle traitée séparément avec Claude. |
+| EX-25 | Armes ramassables apparaissant aléatoirement dans les rues ; chacune met un casseur KO en un coup, avec portée et nombre de coups propres ; aucune arme à feu (section 8.7). |
+| EX-26 | Manches à effectif fixe : un nombre de casseurs à neutraliser et un à trois objectifs par manche, écran « Manche N terminée » et courte respiration entre deux manches (section 12.2). |
 
 ### 2.3 Propositions de départ
 
 | Sujet | Proposition |
 | --- | --- |
-| Carte | Quartier unique dessiné à la main, environ 96 × 96 tuiles de 16 pixels |
-| Vue | Caméra qui suit Pierre, orientation fixe et zoom discret |
+| Carte | Quartier unique, 48 × 48 tuiles de 32 pixels (1 536 × 1 536 pixels logiques) |
+| Vue | Caméra qui suit Paul, orientation fixe et zoom entier |
 | Déplacement | Huit directions, diagonales normalisées ; quatre orientations dessinées au minimum |
-| Contact | Balayage court, jusqu’à trois casseurs par attaque, chacun touché une seule fois |
+| Contact | **Confirmé :** frappe circulaire à 360° autour de Paul, les plus proches d’abord, jusqu’à trois casseurs, chacun touché une seule fois ; Paul se tourne vers le plus proche |
+| Armes | **Confirmé :** armes ramassées en passant dessus, une tenue à la fois, KO en un coup, usure par coup utile (section 8.7) |
 | Pierres | Ramassage automatique des pierres ennemies déjà tombées, stock maximal de trois |
 | Renvoi | Action distincte, direction choisie ; pas de capture parfaite de projectile en vol en V1 |
-| Manifestants | Non ciblables par Pierre ; menace ennemie représentée par un état de détresse pendant un événement de secours |
+| Manifestants | Non ciblables par Paul ; menace ennemie représentée par un état de détresse pendant un événement de secours |
 | Objectifs | École, monument, boutique proposée pour varier les manches |
-| Manches | Effectifs et compositions progressifs, avec plafond de simulation |
-| Soins | Stations limitées et petits soins de terrain, sans régénération passive |
+| Manches | **Confirmé :** manches à effectif fixe et un à trois objectifs ; progression des effectifs proposée en section 12.2, avec plafond de simulation |
+| Soins | **Confirmé :** stations limitées appliquées au contact (+25) ; petits soins de terrain, sans régénération passive |
 | Réparation après perte | Kit distinct des soins, un porté au maximum, interaction interrompable |
 | Urgences | Un compte à rebours par incident, pas de fin de partie à son expiration |
-| Technique | Phaser 4 stable, TypeScript et Vite ; validation sur appareils réels |
+| Technique | Retenu : Phaser 4.2.1, TypeScript, Vite et Vitest ; simulation pure séparée du rendu ; validation sur appareils réels |
 
-Les seuils précis sont proposés, pas déjà validés par l’utilisateur. La récupération au sol est une première interprétation de « récupérer pour renvoyer », plus accessible que l’interception en vol.
+Les seuils précis sont proposés, pas déjà validés par l’utilisateur, sauf mention « Confirmé ». La récupération au sol est une première interprétation de « récupérer pour renvoyer », plus accessible que l’interception en vol.
 
 ## 3. Périmètre et priorités
 
 | Priorité | Contenu |
 | --- | --- |
-| P0 | Vue du dessus non isométrique, Pierre unique, déplacement libre, hordes et trois variantes, contact, projectiles récupérables et renvoi, groupes pacifiques protégés, santé, soins, kits de réparation, urgences locales et secours, arcade sans limite, école et capture, score, OQTF, pause. |
-| P1 | Pixel art abouti, boutique, diversité d’assauts, repérage, accessibilité, optimisation et longue session sur téléphone réel. |
-| P2 | Autres cartes/villes, dialogues complets, accessoires humoristiques de contact, récupération de projectile en vol si utile, PWA. |
+| P0 | Vue du dessus non isométrique, Paul unique, déplacement libre, hordes et trois variantes, frappe circulaire, armes ramassables, projectiles récupérables et renvoi, groupes pacifiques protégés, santé, soins, kits de réparation, urgences locales et secours, arcade par manches sans limite, école et capture, score, compteur de casseurs neutralisés, pause. |
+| P1 | Pixel art abouti, boutique, nouvelles armes débloquées par manche (section 8.7), diversité d’assauts, repérage, accessibilité, optimisation et longue session sur téléphone réel. |
+| P2 | Autres cartes/villes, dialogues complets, récupération de projectile en vol si utile, PWA. |
 
-La cible de diffusion inclut P0 et P1. Contenu minimal proposé : un quartier, trois objectifs récurrents, trois variantes visuelles hostiles et deux comportements de combat (contact/lanceur), trois groupes pacifiques, deux points de soin et au moins quatre compositions d’assaut.
+La cible de diffusion inclut P0 et P1. Contenu minimal proposé : un quartier, trois objectifs récurrents, trois variantes visuelles hostiles et deux comportements de combat (contact/lanceur), trois groupes pacifiques, deux points de soin, trois armes de contact et au moins quatre compositions d’assaut.
 
 La carte doit pouvoir être parcourue librement, y compris entre deux objectifs. Les objectifs peuvent être activés progressivement pour l’apprentissage ; le joueur n’est pas enfermé dans une succession d’arènes fermées. La caméra ne doit pas tirer le joueur de force vers une mission.
 
@@ -151,19 +155,19 @@ Cible de variété : plusieurs situations différentes dans les dix premières m
 
 ### 4.1 Accueil
 
-Le site s’ouvre sur une landing page légère, distincte du jeu : présentation, aperçu, règles essentielles, commandes et lien « Jouer ». Son contenu détaillé est défini en section 26. Aucun choix de sexe ou teint ; aucune limite globale de durée annoncée. Les délais locaux des objectifs sont expliqués.
+Le site s’ouvre sur une landing page légère, distincte du jeu : présentation, aperçu, règles essentielles, commandes et lien « Jouer », qui lance directement la partie. Son contenu détaillé est défini en section 26. Aucun choix de sexe ou teint ; aucune limite globale de durée annoncée. Les délais locaux des objectifs sont expliqués.
 
 ### 4.2 Entrée
 
-Après « Jouer », ouvrir la page du jeu et afficher sa progression de chargement. Charger moteur, sprites, tuiles, collisions, sons utiles et premiers adversaires. Une action explicite « Commencer » lance la session lorsque les ressources sont prêtes et permet d’activer le son. Une brève présentation de carte peut être passée. Caméra du dessus dès la prise de contrôle, pas de cinématique derrière l’épaule ni de modèle 3D.
+**Confirmé :** « Jouer » ouvre `/jouer/?go`. La page du jeu affiche sa progression de chargement (moteur, sprites, tuiles, collisions, sons utiles et premiers adversaires), puis la partie démarre dès que les ressources indispensables sont prêtes, sans écran de départ. Le son se déverrouille à la première touche, au premier clic ou au premier toucher. Une visite directe sur `/jouer/` (sans `?go`) affiche l’écran des règles avec l’action « Commencer ». Caméra du dessus dès la prise de contrôle, pas de cinématique derrière l’épaule ni de modèle 3D.
 
-La première école est indiquée, ainsi qu’un groupe pacifique et un soin proche. Les premières secondes permettent de se déplacer avant d’être pressé par une horde. Le premier compte à rebours de destruction est annoncé et tient compte du temps de trajet depuis le point de départ ; il n’attend pas obligatoirement que Pierre entre dans le cercle. Le premier lanceur est introduit seul ou en petit nombre pour enseigner la récupération.
+La première école est indiquée, ainsi qu’un groupe pacifique et un soin proche. Les premières secondes permettent de se déplacer avant d’être pressé par une horde. Le premier compte à rebours de destruction est annoncé et tient compte du temps de trajet depuis le point de départ ; il n’attend pas obligatoirement que Paul entre dans le cercle. Le premier lanceur est introduit seul ou en petit nombre pour enseigner la récupération.
 
 ### 4.3 Boucle
 
-Explorer → repérer un objectif / un soin → combattre ou contourner → esquiver et récupérer des pierres → les renvoyer → résoudre l’objectif → retrouver une carte transformée → nouvelle manche.
+Explorer → repérer un objectif / un soin / une arme → combattre ou contourner → esquiver et récupérer des pierres → les renvoyer → résoudre les objectifs et neutraliser l’effectif de la manche → écran « Manche N terminée » et respiration → nouvelle manche.
 
-La réussite des objectifs n’arrête pas la session. Santé, score, KO, soins utilisés et stock porté persistent entre objectifs et manches, sous les règles de réapprovisionnement.
+La réussite des objectifs n’arrête pas la session. Santé, score, KO, soins utilisés, stock porté et arme tenue persistent entre objectifs et manches, sous les règles de réapprovisionnement.
 
 ### 4.4 Fin
 
@@ -173,13 +177,13 @@ Santé à zéro : KO, bilan et Rejouer. Un arrêt volontaire reste accessible de
 
 ### 5.1 Carte
 
-Paris fictif en tuiles orthogonales : sol, places, rues ouvertes, bâtiments, école, monument, boutique, soins et emplacements de groupes pacifiques. Gabarit de travail : 96 × 96 tuiles de 16 pixels, soit 1 536 × 1 536 pixels logiques, à ajuster aux essais.
+Paris fictif en tuiles orthogonales : sol, places, rues ouvertes, bâtiments, école, monument, boutique, soins et emplacements de groupes pacifiques. Gabarit retenu pour la première tranche : 48 × 48 tuiles de 32 pixels, soit 1 536 × 1 536 pixels logiques, à ajuster aux essais.
 
 La taille doit produire de vrais choix de trajet sans longues traversées vides. Deux objectifs proches peuvent être visibles dans des directions différentes. La première destination reste atteignable rapidement depuis le départ.
 
 ### 5.2 Déplacement libre
 
-Pas de murs ajoutés comme mécanique, pas de labyrinthes de ruelles imposés. Les empreintes de bâtiments, les troncs d’arbre et les objets solides restent des obstacles cohérents. Pierre ne peut pas les traverser ; le feuillage dessiné peut être au-dessus du personnage sans agrandir artificiellement la collision du tronc. Les limites de carte sont lisibles et les accès ne forment pas de pièges involontaires.
+Pas de murs ajoutés comme mécanique, pas de labyrinthes de ruelles imposés. Les empreintes de bâtiments, les troncs d’arbre et les objets solides restent des obstacles cohérents. Paul ne peut pas les traverser ; le feuillage dessiné peut être au-dessus du personnage sans agrandir artificiellement la collision du tronc. Les limites de carte sont lisibles et les accès ne forment pas de pièges involontaires.
 
 Aucun objectif ne doit avoir un seul passage pouvant être entièrement condamné par un groupe pacifique. Les points de soin, kits et zones de secours ont des accès praticables. La distance de parcours réelle est utilisée pour planifier un événement urgent, pas seulement la distance à vol d’oiseau. Les groupes laissent plusieurs possibilités de contournement ; ils ne constituent pas des refuges fermés invulnérables.
 
@@ -187,35 +191,35 @@ Aucun objectif ne doit avoir un seul passage pouvant être entièrement condamn�
 
 Sol ; détails de sol ; empreintes solides ; objets ; personnages ; parties hautes des bâtiments ; effets ; marqueurs d’objectifs ; HUD. Ordre de profondeur lié à la position des pieds pour les éléments qui se chevauchent.
 
-Les toits ou parties hautes qui masquent Pierre deviennent transparents ou disparaissent localement. La collision d’un bâtiment suit son empreinte, pas toute la hauteur dessinée du sprite.
+Les toits ou parties hautes qui masquent Paul deviennent transparents ou disparaissent localement. La collision d’un bâtiment suit son empreinte, pas toute la hauteur dessinée du sprite.
 
 ### 5.4 États
 
-École dégradée/en feu, reconstruction, ouverte, perdue puis éventuellement reconquise. Monument occupé, contesté, capturé, réoccupé. Boutique bloquée, dégagée, ouverte. Soins chargés/épuisés ; groupes pacifiques toujours reconnaissables.
+École dégradée/en feu, reconstruction, ouverte, perdue puis éventuellement reconquise. Monument occupé, contesté, capturé, réoccupé. Boutique bloquée, dégagée, ouverte. Soins chargés/épuisés ; armes au sol ; groupes pacifiques toujours reconnaissables.
 
 Chaque nouvel assaut est annoncé et identifié ; les bonus ne sont pas rejoués par un changement purement graphique. Un bâtiment détruit reste en ruine tant qu’aucun kit n’a été appliqué ; une transition de manche ne le répare pas gratuitement.
 
-## 6. Pierre, déplacement et caméra
+## 6. Paul, déplacement et caméra
 
 ### 6.1 Héros
 
-Sprite de Pierre aux cheveux longs et vêtements noirs, lisible dans quatre orientations au minimum. Silhouette, animation et contour doivent permettre de le distinguer des casseurs classiques également vêtus de couleurs sombres.
+Sprite de Paul aux cheveux longs et vêtements noirs, avec un accent clair (écharpe ou bavoir blanc), lisible dans quatre orientations au minimum. Accent clair, silhouette, animation et contour doivent permettre de le distinguer des casseurs classiques également vêtus de couleurs sombres.
 
-Sprite de travail proposé : 24 × 32 pixels, avec variantes d’animation et accessoires séparés. Ce gabarit sera validé avant de dessiner toute la série. Les pieds définissent l’ancrage et la petite zone de collision au sol.
+Sprite retenu : personnage composé à partir des spritesheets Universal LPC, cellules de 64 × 64 pixels pour une silhouette visible d’environ 32 × 48, avec variantes d’animation et accessoires séparés. Les pieds définissent l’ancrage et la petite zone de collision au sol.
 
 ### 6.2 Déplacement
 
 Huit directions libres. Gauche déplace à gauche de la carte, haut vers le haut, indépendamment de l’orientation précédente. Le schéma 3D « gauche fait tourner le nez » est remplacé. Les diagonales sont normalisées pour ne pas accélérer.
 
-Valeurs initiales proposées : 90 pixels logiques/seconde en déplacement, 125 en course. La vitesse exacte dépend du gabarit de carte et de sprites. Arrêt rapide et léger lissage, sans inertie qui empêche d’esquiver un caillou.
+Valeurs initiales proposées, adaptées aux tuiles de 32 pixels : 180 pixels logiques/seconde en déplacement, 250 en course. La vitesse exacte reste à équilibrer. Arrêt rapide et léger lissage, sans inertie qui empêche d’esquiver un caillou.
 
 Pas de saut, de roulade ou de barre d’endurance indispensable en V1. L’esquive demandée repose d’abord sur le déplacement. Une roulade éventuelle est une extension, pas une condition implicite de la jouabilité.
 
 ### 6.3 Caméra
 
-Caméra du dessus à orientation fixe, centrée avec une petite zone morte. Aucun contrôle de rotation et aucune perspective isométrique. Le suivi est fluide mais arrondi au pixel au rendu pour préserver la netteté.
+Caméra du dessus à orientation fixe, centrée avec une petite zone morte. Aucun contrôle de rotation et aucune perspective isométrique. Le suivi est fluide mais arrondi au pixel au rendu pour préserver la netteté ; le zoom de caméra est toujours entier.
 
-La visibilité autour du héros doit laisser le temps de lire une préparation de lancer. Un indicateur de menace peut annoncer un lanceur hors écran ; un projectile ne doit pas atteindre Pierre sans signal ou délai suffisant.
+La visibilité autour du héros doit laisser le temps de lire une préparation de lancer. Un indicateur de menace peut annoncer un lanceur hors écran ; un projectile ne doit pas atteindre Paul sans signal ou délai suffisant.
 
 Adaptation paysage/portrait par cadrage et zones de HUD, sans étirer les sprites. Le changement d’orientation ne fait pas apparaître d’ennemis à portée immédiate et ne modifie pas leur vitesse.
 
@@ -225,16 +229,18 @@ Adaptation paysage/portrait par cadrage et zones de HUD, sans étirer les sprite
 | --- | --- | --- | --- |
 | Déplacer | ZQSD, WASD ou flèches | Joystick gauche | Stick gauche |
 | Viser / orienter | Souris ; repli vers dernière direction de mouvement | Direction du mouvement, ou glisser depuis Renvoyer pour viser | Stick droit, repli vers déplacement |
-| Frapper | Espace ou clic principal, remappable | Bouton Frapper | Bouton principal |
+| Frapper (frappe circulaire autour de Paul) | Espace ou clic principal, remappable | Bouton Frapper | Bouton principal |
 | Renvoyer une pierre portée | E ou clic secondaire, remappable | Bouton Renvoyer ; relâcher après visée si mode glisser | Bouton secondaire |
 | Ramasser une pierre au sol | Automatique à portée si stock disponible | Automatique | Automatique |
-| Agir / soin / réparer / aider / rideau | F | Bouton contextuel nommé | Bouton d’action |
+| Ramasser une arme | Automatique en passant dessus ; remplace l’arme tenue | Automatique | Automatique |
+| Se soigner à une station | Automatique en passant sur une station chargée | Automatique | Automatique |
+| Agir : aider une victime / réparer / rideau | F | Bouton contextuel nommé | Bouton d’action |
 | Courir | Maj, maintien ou bascule | Bouton ou seuil du joystick selon essai | Bouton ou pression stick |
 | Pause / arrêter | Échap / menu | Bouton Pause | Menu |
 
-Le clic secondaire n’est pas obligatoire : une touche doit permettre de renvoyer sans dépendre d’un menu contextuel. Sur téléphone, une pression simple renvoie vers la dernière direction de visée ; le glissement permet une direction plus précise. Aucune frappe sur un groupe pacifique ne peut être déclenchée par une aide au ciblage.
+Le clic secondaire n’est pas obligatoire : une touche doit permettre de renvoyer sans dépendre d’un menu contextuel. Sur téléphone, une pression simple renvoie vers la dernière direction de visée ; le glissement permet une direction plus précise. La visée ne concerne que le renvoi : la frappe est circulaire. Aucune frappe sur un groupe pacifique ne peut être déclenchée par une aide au ciblage. Agir ne sert plus à se soigner (section 12.6).
 
-Options : remappage, sensibilité de visée, maintien/bascule pour frapper et courir, désactivation du glissement de visée si gênant. L’option d’assistance de renvoi ne sélectionne que des casseurs actifs visibles et ne traverse pas un groupe ou un obstacle.
+Options : remappage, sensibilité de visée, maintien/bascule pour frapper, courir et Agir, désactivation du glissement de visée si gênant. L’option d’assistance de renvoi ne sélectionne que des casseurs actifs visibles et ne traverse pas un groupe ou un obstacle.
 
 Les pointeurs tactiles du joystick et des actions sont indépendants. Une annulation, un menu ou une perte de focus relâche tous les boutons. Les commandes ne déclenchent ni zoom de page, ni défilement, ni sélection de texte.
 
@@ -242,9 +248,9 @@ Les pointeurs tactiles du joystick et des actions sont indépendants. Une annula
 
 ### 8.1 Contact
 
-Hack-and-slash de proximité : animation de coup et petit balayage devant Pierre. Valeurs proposées : un coup toutes les 0,4 à 0,5 seconde, portée de 26 à 30 pixels logiques, arc d’environ 90°, au plus trois casseurs touchés par attaque. Chaque cible ne reçoit qu’un contact par identifiant de coup.
+Hack-and-slash de proximité. **Confirmé : frappe circulaire.** Chaque coup touche tout autour de Paul (360°) les casseurs actifs à portée, les plus proches d’abord, au plus trois par attaque ; Paul se tourne vers le plus proche des casseurs touchés. Portée à mains nues : 56 pixels logiques (tuiles de 32 pixels). Cadence proposée : un coup toutes les 0,45 seconde. Chaque cible ne reçoit qu’un contact par identifiant de coup. Une arme tenue remplace la portée et met KO en un coup (section 8.7).
 
-Le balayage est une proposition pour rendre les hordes praticables. La résistance commence à deux coups, puis certains ennemis renforcés clairement signalés peuvent demander jusqu’à quatre points de dégâts. Le premier coup ne provoque jamais de reddition.
+À mains nues, la résistance commence à deux coups, puis certains ennemis renforcés clairement signalés peuvent demander jusqu’à quatre points de dégâts. Le premier coup ne provoque jamais de reddition.
 
 Les contacts sont synchronisés aux images utiles de l’animation. Recul court, réaction et flash d’impact lisible sans sang. Les corps KO ne sont plus ciblables, ne bloquent pas le passage et ne rapportent plus de points.
 
@@ -254,7 +260,7 @@ Le rôle « lanceur » est indépendant de la variante visuelle : un casseur cla
 
 Objets : caillou, pavé, brique. En V1, ils peuvent partager les mêmes valeurs de dégâts avec des sprites différents. Pas de bouteille incendiaire, explosif ou arme à feu ajouté implicitement.
 
-Chaque lancer possède une préparation, une direction/zone annoncée et un délai de trajet. Paramètres de départ : préparation d’au moins 0,6 seconde ; portée 140 à 180 pixels ; trajet d’au moins 0,5 seconde sur une cible éloignée ; 5 PV perdus par impact au départ. Un intervalle individuel empêche le tir continu.
+Chaque lancer possède une préparation, une direction/zone annoncée et un délai de trajet. Paramètres de départ : préparation d’au moins 0,6 seconde ; portée 280 à 360 pixels ; trajet d’au moins 0,5 seconde sur une cible éloignée ; 5 PV perdus par impact au départ. Un intervalle individuel empêche le tir continu.
 
 Un petit arc visuel et une ombre peuvent représenter la trajectoire, mais la collision est calculée dans le plan 2D. Le point d’impact ou la trajectoire est visible avant les dégâts. Les lancers hors écran nécessitent un avertissement et ne sont pas autorisés à très courte distance sans préparation.
 
@@ -263,50 +269,50 @@ Un petit arc visuel et une ombre peuvent représenter la trajectoire, mais la co
 ```mermaid
 flowchart LR
   A[Lancer ennemi] --> B[Projectile en vol]
-  B -->|Pierre évite le projectile| C[Chute au sol]
-  B -->|Contact avec Pierre| D[Dégâts puis chute]
+  B -->|Paul évite le projectile| C[Chute au sol]
+  B -->|Contact avec Paul| D[Dégâts puis chute]
   B -->|Obstacle ou groupe neutre hors événement| E[Arrêt sans dommage aux neutres]
   C --> F[Pierre récupérable]
   D --> F
   E -->|Zone de chute valide| F
-  F -->|À portée et stock libre| G[Stock de Pierre]
+  F -->|À portée et stock libre| G[Stock de Paul]
   G -->|Action Renvoyer| H[Projectile du joueur]
   H --> I[Impact ou fin de portée]
   I --> J[Objet inerte retiré : pas de récupération infinie]
 ```
 
-Proposition V1 : récupération des **projectiles ennemis au sol**, pas interception en vol. Ramassage automatique dans un rayon d’environ 14 pixels, seulement s’il reste une place. Un projectile en vol ne peut pas être ramassé.
+Proposition V1 : récupération des **projectiles ennemis au sol**, pas interception en vol. Ramassage automatique dans un rayon d’environ 28 pixels, seulement s’il reste une place. Un projectile en vol ne peut pas être ramassé.
 
 Stock maximal : trois objets. Stock plein : l’objet reste au sol. Le nombre porté est visible. Aucun achat, fabrication ou inventaire à ouvrir.
 
-Renvoyer consomme un objet porté, crée un projectile appartenant au joueur et suit la direction choisie au lancement. Aucun guidage automatique une fois en vol. Paramètres initiaux : un point de dégât, portée d’environ 180 pixels et intervalle de 0,5 seconde. Un seul casseur touché, pas de ricochet en chaîne en V1.
+Renvoyer consomme un objet porté, crée un projectile appartenant au joueur et suit la direction choisie au lancement. Aucun guidage automatique une fois en vol. Paramètres initiaux : un point de dégât, portée d’environ 360 pixels et intervalle de 0,5 seconde. Un seul casseur touché, pas de ricochet en chaîne en V1.
 
-Après un renvoi, l’objet devient inerte à son prochain contact ou en fin de course et est retiré ; il n’alimente pas une boucle de ramassage infinie. Seules les nouvelles pierres ennemies produisent des objets récupérables. La collision avec Pierre du projectile qu’il vient de renvoyer est désactivée.
+Après un renvoi, l’objet devient inerte à son prochain contact ou en fin de course et est retiré ; il n’alimente pas une boucle de ramassage infinie. Seules les nouvelles pierres ennemies produisent des objets récupérables. La collision avec Paul du projectile qu’il vient de renvoyer est désactivée.
 
 ### 8.4 Règles d’impact
 
 | Source | Cible | Effet |
 | --- | --- | --- |
-| Contact du joueur | Casseur actif | Dégâts et éventuellement KO |
-| Pierre ennemie en vol | Pierre | Dégâts, puis chute récupérable en zone valide |
+| Contact du joueur | Casseur actif | Dégâts et éventuellement KO ; KO immédiat avec une arme |
+| Pierre ennemie en vol | Paul | Dégâts, puis chute récupérable en zone valide |
 | Pierre renvoyée | Casseur actif | Dégâts ; score seulement si KO |
-| Coup / pierre de Pierre | Groupe pacifique ou victime à secourir | Aucun dégât, aucun KO, aucune unité OQTF |
+| Coup / pierre de Paul | Groupe pacifique ou victime à secourir | Aucun dégât, aucun KO, aucune unité au compteur de casseurs neutralisés |
 | Attaque d’un agresseur affecté à un secours | Victime de cet événement | Réduit le délai / la jauge de détresse de cet événement, sans gore |
 | Attaque ennemie ordinaire hors secours | Groupe pacifique | Pas de dégâts de foule non scénarisés ni d’événement silencieux |
 | Pierre en vol | Obstacle solide | Arrêt ; chute ou retrait selon espace disponible |
 | Pierre renvoyée | Corps KO | Pas de nouveau score ; ne sert pas de cible active |
 
-Le KO a le même barème quelle que soit l’origine des dégâts de Pierre : contact ou renvoi. Aucun bonus OQTF supplémentaire pour un projectile.
+Le KO a le même barème quelle que soit l’origine des dégâts de Paul : mains nues, arme ou renvoi. Aucun bonus supplémentaire pour un projectile ou une arme.
 
 ### 8.5 Groupes pacifiques protégés
 
-Les manifestants sont regroupés, avec pancartes et animation calme. Le ciblage, le balayage et le renvoi de Pierre les excluent. Ils ne possèdent pas de transition de KO infligée par le joueur. Pendant un secours identifié, un sous-ensemble du groupe ou une victime désignée peut passer en détresse sous la menace des agresseurs affectés à cet événement.
+Les manifestants sont regroupés, avec pancartes et animation calme. Le ciblage, la frappe circulaire et le renvoi de Paul les excluent : un manifestant dans le rayon de frappe n’est ni touché ni compté parmi les trois cibles. Ils ne possèdent pas de transition de KO infligée par le joueur. Pendant un secours identifié, un sous-ensemble du groupe ou une victime désignée peut passer en détresse sous la menace des agresseurs affectés à cet événement.
 
 Les groupes occupent un espace identifiable à contourner. Leurs positions ne peuvent pas bloquer entièrement un objectif, une sortie ou un soin. Le joueur ne peut pas les déplacer ou les disperser à coups. Les ennemis doivent également pouvoir les contourner.
 
-Un projectile de Pierre qui rencontre le volume protégé du groupe est arrêté sans blessure. Un projectile ennemi ordinaire suit aussi cette protection ; seule une attaque explicitement affectée à un secours peut faire avancer sa menace. Une chute récupérable exige une position libre hors du groupe ; sinon l’objet est retiré. Les pierres renvoyées arrêtées deviennent inertes. Les sprites neutres ne servent pas à masquer un casseur intouchable : ordre d’affichage, navigation et trajectoires doivent être vérifiés.
+Un projectile de Paul qui rencontre le volume protégé du groupe est arrêté sans blessure. Un projectile ennemi ordinaire suit aussi cette protection ; seule une attaque explicitement affectée à un secours peut faire avancer sa menace. Une chute récupérable exige une position libre hors du groupe ; sinon l’objet est retiré. Les pierres renvoyées arrêtées deviennent inertes. Les sprites neutres ne servent pas à masquer un casseur intouchable : ordre d’affichage, navigation et trajectoires doivent être vérifiés.
 
-L’intérêt d’éviter les groupes vient du déplacement et des lignes de renvoi, pas de dégâts infligés par Pierre aux manifestants. Il faut distinguer cette protection permanente contre le joueur de la détresse provoquée par des ennemis dans un secours annoncé. Aucun score positif ou négatif de « frappe sur manifestant » n’est déclenché, puisque ces contacts sont exclus. Les pénalités héritées restent applicables aux autres personnes protégées si elles sont touchables ; une extension d’invulnérabilité à tous les neutres reste possible, à décider explicitement.
+L’intérêt d’éviter les groupes vient du déplacement et des lignes de renvoi, pas de dégâts infligés par Paul aux manifestants. Il faut distinguer cette protection permanente contre le joueur de la détresse provoquée par des ennemis dans un secours annoncé. Aucun score positif ou négatif de « frappe sur manifestant » n’est déclenché, puisque ces contacts sont exclus. Les pénalités héritées restent applicables aux autres personnes protégées si elles sont touchables ; une extension d’invulnérabilité à tous les neutres reste possible, à décider explicitement.
 
 ### 8.6 Santé
 
@@ -314,33 +320,67 @@ L’intérêt d’éviter les groupes vient du déplacement et des lignes de ren
 
 La progression des dégâts est plafonnée comme celle des assauts. Les soins décrits en section 12 sont conservés. Le KO du héros reste la seule défaite globale.
 
+### 8.7 Armes ramassables
+
+**Confirmé (EX-25) :** des armes apparaissent au hasard dans les rues. Elles remplacent l’ancienne extension « accessoires de contact ». Aucune arme à feu, y compris humoristique, et aucun gore.
+
+| Règle | Valeur |
+| --- | --- |
+| Emplacement d’apparition | Point libre et praticable, à 160–480 pixels logiques de Paul, hors groupe pacifique et hors obstacle |
+| Rythme | Première arme après environ 10 secondes, puis une toutes les 15 à 25 secondes |
+| Plafond au sol | Deux armes au maximum ; au-delà, aucune apparition ni réserve invisible |
+| Ramassage | Automatique en passant dessus ; la nouvelle arme remplace l’arme tenue, qui disparaît |
+| Effet | Toute arme met un casseur KO en un coup, y compris un casseur renforcé ; portée propre à chaque arme ; frappe toujours circulaire, trois cibles au maximum |
+| Usure | Seul un coup touchant au moins un casseur consomme une charge ; à zéro, l’arme se brise et Paul revient à mains nues (56 pixels) |
+| Manches | L’arme tenue et ses coups restants sont conservés d’une manche à la suivante |
+
+Armes de contact actuelles (**Confirmé**, valeurs en paramètre initial) :
+
+| Arme | Portée | Coups |
+| --- | ---: | ---: |
+| Bâton | 72 pixels | 15 |
+| Marteau | 64 pixels | 8 |
+| Panneau de signalisation | 96 pixels | 10 |
+
+Présentation : une arme au sol flotte, oscille et brille pour être repérée ; l’arme tenue tourne sur elle-même à chaque coup. Le HUD affiche « Arme : <nom> (<coups>) » ou « Arme : mains nues ». Le score d’un KO à l’arme est identique à celui d’un KO à mains nues ou par renvoi.
+
+**Nouvelles armes débloquées par manche — Proposé, tranche 2 :**
+
+| Arme | Comportement proposé | Disponibilité |
+| --- | --- | --- |
+| Gant de boxe à ressort | Coup de poing à distance en ligne droite ; KO et repoussement du premier casseur touché ; environ 6 tirs | Débloqué par la progression des manches |
+| Kamehame | Vague d’énergie de dessin animé : maintenir environ 1 seconde pour charger, Paul immobile pendant la charge ; le rayon met KO tous les casseurs sur la ligne ; 2 utilisations | Rare |
+| Bouclier | Bloque les pierres venant de face (elles tombent et deviennent récupérables) et frappe en poussant lors d’un coup ; dure environ 20 secondes | Débloqué par la progression des manches |
+
+Ton cartoon, aucune arme à feu, aucun gore. Équilibrage : les armes puissantes restent rares et sont associées à l’arrivée de casseurs plus résistants. Les rayons et coups à distance respectent la protection des groupes pacifiques et des victimes (section 8.5) : ils s’arrêtent sur leur volume sans les blesser.
+
 ## 9. Personnages, hordes et intelligence artificielle
 
 ### 9.1 Catégories visuelles
 
-| Catégorie | Fonction | Compteur OQTF |
+| Catégorie | Fonction | Score et compteur « Casseurs neutralisés » |
 | --- | --- | --- |
-| Casseur classique | Contact, dégradation ou lancer selon rôle | +1 au KO |
-| Casseur avec drapeau palestinien | Même familles de rôles, drapeau distinct | +1 au KO |
-| Casseur avec drapeau Antifa | Même familles de rôles, drapeau distinct | +1 au KO |
+| Casseur classique | Contact, dégradation ou lancer selon rôle | +1 point et +1 au compteur au KO |
+| Casseur avec drapeau palestinien | Même familles de rôles, drapeau distinct | +1 point et +1 au compteur au KO |
+| Casseur avec drapeau Antifa | Même familles de rôles, drapeau distinct | +1 point et +1 au compteur au KO |
 | Groupe de manifestants pacifiques | Groupe neutre à contourner et protéger ; secours possible si menacé | Jamais |
 | Victime individuelle ou couple âgé | Vol/intimidation pendant un événement de secours, jamais adversaire | Jamais |
 | Étudiants / professeurs | Présence pacifique et retour à l’école | Jamais |
 | Police / pompiers / soignants / commerçants | Présence et fonctions protégées | Jamais |
 
-Les teints des PNJ varient dans toutes les catégories. La tenue, la pancarte ou le drapeau ne remplace pas la logique d’entité et son comportement hostile ou neutre.
+Les teints des PNJ varient dans toutes les catégories. La tenue, la pancarte ou le drapeau ne remplace pas la logique d’entité et son comportement hostile ou neutre. **Confirmé :** le drapeau est purement cosmétique ; il ne modifie ni le score, ni le compteur, ni les statistiques.
 
 ### 9.2 Rôles d’ennemis
 
-- Contact : rejoint Pierre, prépare puis frappe à portée.
+- Contact : rejoint Paul, prépare puis frappe à portée.
 - Dégradeur : rejoint une façade tant que l’objectif est actif, puis change de cible si elle est perdue.
 - Lanceur : cherche une distance de lancer et une ligne lisible, prépare puis projette ; revient au contact si nécessaire.
 
-La première rencontre enseigne le contact avant d’ajouter plusieurs lanceurs. Une horde mélange ensuite les rôles. Aucun état de reddition, de fuite comptée comme victoire ou de disparition donnant gratuitement un KO.
+La première manche enseigne le contact seul ; les lanceurs apparaissent à partir de la manche 2 (section 12.2). Une horde mélange ensuite les rôles. Aucun état de reddition, de fuite comptée comme victoire ou de disparition donnant gratuitement un KO.
 
 ### 9.3 Hordes et pression
 
-Les hordes sont plus nombreuses que dans la version 3D prévue. Proposition de plafond normal : quarante hostiles actifs, à valider par les budgets mobile. Ce plafond reste une règle commune aux qualités graphiques, pas un nombre réduit automatiquement sur les appareils lents.
+Les hordes sont plus nombreuses que dans la version 3D prévue. Dans une manche, les casseurs entrent un par un (1,5 seconde d’écart) avec au plus douze casseurs de manche sur la carte à la fois ; les suivants attendent dans une file d’entrée. Le plafond technique reste de quarante hostiles actifs, agresseurs d’événements compris, à valider par les budgets mobile. Ce plafond reste une règle commune aux qualités graphiques, pas un nombre réduit automatiquement sur les appareils lents.
 
 Le directeur limite les préparations d’attaques simultanées : au départ deux frappes de contact et deux lancers ; augmentation progressive plafonnée à quatre contacts et quatre lancers en préparation. Les autres ennemis approchent, se repositionnent ou dégradent. Le total de projectiles en vol est plafonné séparément.
 
@@ -350,13 +390,13 @@ Grille orthogonale, empreintes de bâtiments et volumes de groupes pacifiques. �
 
 Partition spatiale pour voisinage, contacts et projectiles. Aucun parcours quadratique de toute la foule à chaque image comme solution de production. Les apparitions sont hors du champ proche, dans un emplacement libre, jamais au milieu d’un groupe pacifique.
 
-Une horde ne doit pas bloquer définitivement son propre trajet. Un agent coincé recalcule ou rejoint une autre cible valide ; pas de téléportation visible près de Pierre.
+Une horde ne doit pas bloquer définitivement son propre trajet. Un agent coincé recalcule ou rejoint une autre cible valide ; pas de téléportation visible près de Paul.
 
 ### 9.5 Groupes pacifiques
 
 Trois groupes proposés sur la carte, de six à huit sprites chacun, sur des emplacements non obligatoires. Déplacements lents de groupe possibles après validation, sans couper brutalement la seule voie d’esquive.
 
-Leurs pancartes et leur densité les distinguent des hordes. Ils restent neutres même quand Pierre passe près ou se fait poursuivre. Un événement peut les faire appeler à l’aide ou se replier ; ils ne deviennent pas hostiles et ne sont pas exposés à des dégâts libres de Pierre. Ils ne nourrissent pas les systèmes de butin, de soins ou de score de KO.
+Leurs pancartes et leur densité les distinguent des hordes. Ils restent neutres même quand Paul passe près ou se fait poursuivre. Un événement peut les faire appeler à l’aide ou se replier ; ils ne deviennent pas hostiles et ne sont pas exposés à des dégâts libres de Paul. Ils ne nourrissent pas les systèmes de butin, de soins ou de score de KO.
 
 ## 10. Bâtiments menacés, défense et réparation
 
@@ -365,7 +405,7 @@ Leurs pancartes et leur densité les distinguent des hordes. Ils restent neutres
 ```mermaid
 flowchart TD
   A[Attaque annoncée : casseurs à la façade] --> B[Compte à rebours local]
-  B -->|Pierre intervient| C[Première ligne puis renforts]
+  B -->|Paul intervient| C[Première ligne puis renforts]
   C -->|Tous KO avant destruction| D[Restauration de défense et bonus]
   B -->|Délai épuisé sous attaque| E[Bâtiment détruit : session continue]
   C -->|Délai épuisé sous attaque| E
@@ -378,7 +418,7 @@ flowchart TD
 
 ### 10.2 Alerte et délai local
 
-L’école est dégradée et en feu. La première occurrence présente trois casseurs, un de chaque variante, puis huit renforts après leur défaite. Flèche, cercle rouge, icône sur la carte et compte à rebours rendent l’urgence visible même avant l’arrivée de Pierre.
+L’école est dégradée et en feu. La première occurrence présente trois casseurs, un de chaque variante, puis huit renforts après leur défaite ; ces casseurs comptent dans l’effectif de la manche (section 12.2). Flèche, cercle rouge, icône sur la carte et compte à rebours rendent l’urgence visible même avant l’arrivée de Paul.
 
 Le délai commence quand au moins un casseur affecté à cet incident dégrade réellement un point valide de la façade. Il ne commence pas pendant son trajet ni au simple chargement de la carte. Il ne dépend plus de l’entrée initiale du joueur dans le cercle.
 
@@ -390,13 +430,13 @@ Pour éviter une jauge de vie et un timer contradictoires, la V1 proposée utili
 
 `tempsRestant = max(0, tempsRestant - tempsActifDeDégradation)`
 
-Elle décroît à une seconde par seconde lorsqu’au moins un casseur de cet incident est en dégradation valide. Elle se suspend si personne ne peut dégrader : casseurs interrompus, éloignés ou neutralisés. Elle ne se réinitialise pas quand Pierre quitte la zone. Augmenter le nombre de casseurs ne multiplie pas silencieusement la vitesse du timer ; la pression se règle par composition ou délai initial annoncé.
+Elle décroît à une seconde par seconde lorsqu’au moins un casseur de cet incident est en dégradation valide. Elle se suspend si personne ne peut dégrader : casseurs interrompus, éloignés ou neutralisés. Elle ne se réinitialise pas quand Paul quitte la zone. Augmenter le nombre de casseurs ne multiplie pas silencieusement la vitesse du timer ; la pression se règle par composition ou délai initial annoncé.
 
 La dégradation valide est un état continu à portée de façade, couvrant le cycle d’animation des coups ; elle ne se limite pas à l’image où la main touche le mur.
 
 La jauge d’intégrité éventuelle est dérivée de cette réserve : `100 × tempsRestant / duréeInitiale`. Le HUD affiche donc un délai exact dans ces conditions, pas une seconde horloge indépendante. Les anciens dégâts continus de façade de 0,25 / 0,45 point par seconde ne sont plus la règle cible.
 
-À zéro sous attaque valide : bâtiment détruit. Résoudre une seule fois la perte, attribuer −3 pour l’école et retirer le bonus de sauvetage. Pierre peut poursuivre la session. Les casseurs survivants changent de cible au lieu de frapper une ruine sans fin.
+À zéro sous attaque valide : bâtiment détruit. Résoudre une seule fois la perte, attribuer −3 pour l’école et retirer le bonus de sauvetage. Paul peut poursuivre la session. Les casseurs survivants changent de cible au lieu de frapper une ruine sans fin.
 
 ### 10.4 Première ligne et renforts
 
@@ -414,11 +454,11 @@ Séquence de présentation proposée : trois secondes, passée possible. Aucun d
 
 ### 10.6 Kits après destruction
 
-Un bâtiment détruit peut être réparé grâce à un **kit de réparation** trouvé sur la carte. Il est distinct des soins médicaux : icône de caisse à outils, couleur et compteur séparés. Il ne rend pas de santé à Pierre.
+Un bâtiment détruit peut être réparé grâce à un **kit de réparation** trouvé sur la carte. Il est distinct des soins médicaux : icône de caisse à outils, couleur et compteur séparés. Il ne rend pas de santé à Paul.
 
 Proposition de stock : un kit porté maximum, deux kits placés sur des emplacements libres au début de chaque manche. Un kit déjà porté peut être conservé entre manches ; la carte ne dépasse pas deux kits présents. Aucun stock supplémentaire invisible. Le premier incident détruit doit laisser un kit accessible si les réserves de cette manche n’ont pas toutes été utilisées.
 
-Un kit plein ne disparaît pas si Pierre marche dessus alors qu’il en porte déjà un. Les emplacements sont accessibles sans traverser bâtiment, tronc ou groupe ; pas de kit bloqué dans la ruine à réparer.
+Un kit plein ne disparaît pas si Paul marche dessus alors qu’il en porte déjà un. Les emplacements sont accessibles sans traverser bâtiment, tronc ou groupe ; pas de kit bloqué dans la ruine à réparer.
 
 Pour appliquer : proximité d’un point de façade, abords immédiats sécurisés, Agir pendant environ trois secondes. Le déplacement, une attaque reçue ou le retour d’un casseur actif à proximité interrompt la pose. Durée et rayon de sécurité sont des paramètres ; proposition de rayon 64 pixels logiques.
 
@@ -444,7 +484,7 @@ Les arrivées se suspendent si l’école est attaquée ou détruite. Les compte
 
 Monument en pixel art inspiré de Victor Hugo, avec silhouette reconnaissable, socle, plaque et mât. Quartier et implantation fictifs. Le premier état porte un drapeau palestinien.
 
-Lors du premier circuit, l’épisode école doit être résolu avant l’activation du monument, qu’il soit réussi ou perdu. Une perte de l’école ne bloque donc pas la session à vie. Lors des manches suivantes, le directeur peut varier l’ordre des objectifs.
+Le monument entre dans la progression à la manche 4 proposée (section 12.2). Lors de sa première apparition, l’épisode école de la manche doit être résolu avant son activation, qu’il soit réussi ou perdu. Une perte de l’école ne bloque donc pas la session à vie. Lors des manches suivantes, le directeur peut varier l’ordre des objectifs.
 
 ### 11.2 Déclenchement
 
@@ -471,52 +511,57 @@ Remplacement visible du drapeau palestinien par le français, son de confirmatio
 
 Le monument reste acquis jusqu’à une nouvelle réoccupation annoncée dans une manche ultérieure. Cette nouvelle occurrence a son propre identifiant, ses défenseurs et sa jauge. Pas de changement de drapeau arbitraire hors événement de gameplay. Un retrait du joueur avant la fin ne crée ni défaite globale ni réapparition gratuite des défenseurs.
 
-## 12. Mode arcade, événements, progression et soins
+## 12. Mode arcade, manches, événements, progression et soins
 
 ### 12.1 Règle centrale
 
-**Aucune durée limite de session. Aucun compte à rebours global. La session se poursuit jusqu’au KO du héros.** Réussir l’école, le monument ou une manche augmente le score et renouvelle le contenu, sans réinitialiser la santé et sans afficher une victoire finale.
+**Aucune durée limite de session. Aucun compte à rebours global. La session se poursuit jusqu’au KO du héros.** La session est découpée en manches (section 12.2). Réussir l’école, le monument ou une manche augmente le score et renouvelle le contenu, sans réinitialiser la santé et sans afficher une victoire finale. Un objectif échoué ne termine jamais la session : seul le KO de Paul y met fin.
 
 Les délais de frappe, la destruction d’un bâtiment attaqué, la détresse d’un secours, les cinématiques, la capture et les interactions ont des durées locales. Une mesure de durée de survie peut apparaître au bilan, en temps écoulé, sans pression de compte à rebours.
 
 ### 12.2 Structure des manches
 
-Premier circuit proposé : école (première ligne puis renforts), monument, boutique. La boutique, détaillée en section 23, fait partie de la cible de diffusion arcade afin de proposer un troisième type d’action.
+**Confirmé :** les manches remplacent les vagues sans fin comme structure cible. Une manche fixe un nombre de casseurs à mettre KO et un à trois objectifs. Elle se termine quand tout son effectif a été neutralisé et que ses objectifs sont résolus, réussis ou perdus. Un objectif échoué ne termine jamais la session ; seul le KO de Paul y met fin.
 
-Une manche se termine quand ses objectifs principaux sont résolus et ses renforts requis traités. Une réparation optionnelle d’un bâtiment déjà perdu n’empêche pas cette transition. Les secours déjà déclenchés doivent être résolus ou reportés explicitement avec leur état ; ils ne disparaissent pas gratuitement au changement de manche. Elle peut comporter des objectifs réussis et perdus. Le numéro de manche augmente, les états nécessaires sont préparés et un nouveau circuit commence. Le joueur conserve sa santé, son score, ses KO, ses formations, son stock de pierres et son historique de soins.
+Entre deux manches : écran de bilan « Manche N terminée » (KO, objectifs réussis ou perdus, points gagnés), recharge des stations de soin, courte respiration sans nouvel assaut, puis annonce de la manche suivante. Le joueur conserve sa santé, son score, ses KO, ses formations, son stock de pierres, son kit porté, son arme tenue avec ses coups restants et son historique de soins.
 
-Les événements suivants sont des paramètres de départ, pas un scénario identique répété :
+Les casseurs affectés aux objectifs (première ligne, renforts, défenseurs, agresseurs de secours) font partie de l’effectif de la manche. Une réparation optionnelle d’un bâtiment déjà perdu n’empêche pas la transition. Les secours déjà déclenchés doivent être résolus ou reportés explicitement avec leur état ; ils ne disparaissent pas gratuitement au changement de manche. La boutique, détaillée en section 23, fait partie de la cible de diffusion et s’insère dans le mélange des manches suivantes.
 
-| Occurrence | Variation proposée |
-| --- | --- |
-| Premier circuit | École, monument, boutique ; apprentissage progressif |
-| Deuxième | Accès de renforts inversés et compositions différentes |
-| Troisième | Deux attaques de bâtiment à arbitrer, sans dépasser les limites d’agents |
-| Suivantes | Réoccupation de monument, école à reconquérir, boutique sous pression, combinaisons pondérées |
+Progression proposée (valeurs **Proposé**, à équilibrer) :
 
-Préparer au moins quatre compositions d’assaut et plusieurs points d’apparition. Aucun nouvel objectif ne doit se déclencher pendant une cinématique suspendue. Une courte respiration entre événements est possible ; ce délai local n’impose pas un chronomètre de partie.
+| Manche | Casseurs à neutraliser | Objectifs et nouveautés |
+| --- | ---: | --- |
+| 1 | 10 | École ; casseurs au contact uniquement |
+| 2 | 14 | École et secours ; apparition des lanceurs |
+| 3 | 18 | Deux urgences simultanées ; nouvelle arme |
+| 4 | 22 | Ajout du monument ; casseurs renforcés |
+| 5 et suivantes | +4 par manche, plafonné vers 40 grâce à la file d’entrée | Mélange aléatoire pondéré des objectifs ; une nouvelle arme ou un nouveau type d’ennemi toutes les deux manches |
+
+Déroulement interne proposé : les casseurs entrent un par un, à 1,5 seconde d’intervalle, avec au plus douze casseurs sur la carte à la fois ; les suivants attendent dans une file d’entrée. Une vague regroupe des entrées consécutives et six secondes de repos séparent deux vagues. La première vague ne comporte aucun lanceur.
+
+Préparer au moins quatre compositions d’assaut et plusieurs points d’apparition. Aucun nouvel objectif ne doit se déclencher pendant une cinématique suspendue. Les respirations entre vagues et entre manches sont des délais locaux ; elles n’imposent pas un chronomètre de partie.
 
 ### 12.3 Directeur de pression
 
-Le directeur suit la manche, les objectifs résolus, les KO et les agents actifs. La difficulté augmente avec la progression, pas uniquement avec le temps passé à attendre dans un coin.
+Le directeur suit la manche, les vagues, les objectifs résolus, les KO, la file d’entrée et les agents actifs. La difficulté augmente avec la progression, pas uniquement avec le temps passé à attendre dans un coin.
 
-Proposition de niveau de pression : `P = min(12, 1 + manche - 1 + floor(KO / 12))`. Cette formule est un point de départ à tester. Elle rend le combat d’adversaires additionnels progressivement plus dangereux, même si le joueur retarde un objectif.
+Proposition de niveau de pression : `P = min(12, 1 + floor(vague / 2) + floor(KO / 30))`, où `vague` est le nombre de vagues lancées depuis le début de la session. Elle remplace la formule de la révision 1.4 et reste un point de départ à tester. Elle rend le combat d’adversaires additionnels progressivement plus dangereux, même si le joueur retarde un objectif.
 
 Les paramètres augmentent par paliers avec plafonds : nombre total de renforts par épisode, variantes de comportement, rapidité de décision, résistance de certains casseurs et dégâts. La vitesse d’animation ne doit jamais supprimer la lisibilité de la préparation d’attaque.
 
 | Paramètre | Départ normal proposé | Plafond proposé |
 | --- | --- | --- |
 | Santé joueur | 100 | 100, sans hausse automatique par manche |
-| Coups nécessaires par casseur | 2 | 4 pour les adversaires renforcés clairement signalés |
+| Coups nécessaires par casseur | 2 à mains nues ; 1 avec une arme | 4 à mains nues pour les adversaires renforcés clairement signalés ; toujours 1 avec une arme |
 | Préparations simultanées contre le héros | 2 contacts + 2 lancers | 4 contacts + 4 lancers, avec fenêtres lisibles |
 | Dégâts par attaque ennemie | 5 | 12 |
 | Intervalle individuel d’attaque | 1,8 s | Pas moins de 1,2 s ; préparation toujours visible |
-| Adversaires hostiles actifs | 3 puis 8 pour l’introduction, davantage dans les hordes | Au plus 40 en normal de référence |
+| Casseurs de manche sur la carte | Entrée un par un toutes les 1,5 s | 12 à la fois ; plafond technique de 40 hostiles actifs, agresseurs compris |
 | Étudiants en déplacement | Jusqu’à 5 | 5 |
 
 Les augmentations de dégâts ou de résistance sont annoncées par l’apparence, le statut ou la jauge, sans bonus aléatoire incompréhensible. Les statistiques des rôles renforcés sont une variation de difficulté séparée. Les rôles de lanceur ou de dégradeur sont indépendants de la variante visuelle.
 
-Un plafond d’agents est un plafond de calcul, pas une fin d’assaut : le directeur garde des renforts en attente et les fait entrer après libération d’une place. Les agents survivants d’un objectif perdu occupent ces places. Aucun adversaire actif ne doit être supprimé silencieusement pour résoudre le problème.
+Un plafond d’agents est un plafond de calcul, pas une fin d’assaut : le directeur garde des renforts en file d’entrée et les fait entrer après libération d’une place. Les agents survivants d’un objectif perdu occupent ces places. Aucun adversaire actif ne doit être supprimé silencieusement pour résoudre le problème.
 
 ### 12.4 Anti-stagnation
 
@@ -532,17 +577,19 @@ Deux points de soin sont proposés dans le quartier : trousse près d’un poste
 
 | Ressource proposée | Effet | Stock / obtention |
 | --- | --- | --- |
-| Point de soin | +25 PV, sans dépasser 100 | Une charge par point et par manche, deux points au départ |
+| Point de soin | +25 PV appliqués au contact, sans dépasser 100 | Une charge par point et par manche, deux points au départ |
 | Petit soin de terrain | +10 PV | Un soin après chaque tranche de 8 KO éligibles ; au plus deux au sol |
-| Réapprovisionnement de manche | Restaure les charges des deux points de soin | Une fois à la validation de la manche, pas au simple retour au point |
+| Réapprovisionnement de manche | Restaure les charges des deux points de soin | Une fois à la fin de la manche, pas au simple retour au point |
 
 Les quantités sont à équilibrer. Les deux points ne donnent pas un soin complet ; la santé n’est pas remise à 100 après un objectif ou une manche.
 
-### 12.6 Interaction de soin
+### 12.6 Soin au contact
 
-Approcher un point chargé et appuyer sur Agir. Durée locale proposée : 1,5 seconde ; maintien ou bascule selon l’option d’accessibilité. Le joueur peut annuler ; une attaque reçue interrompt. La charge et le gain de santé sont appliqués ensemble à la fin, une seule fois. Si l’action est interrompue avant la fin, aucun soin et aucune charge consommée.
+**Confirmé :** marcher sur un point de soin chargé applique immédiatement +25 PV, plafonnés à 100, et consomme sa charge de la manche. Aucune touche, aucun maintien, aucune interruption possible. La charge et le gain de santé sont appliqués ensemble, une seule fois, par identifiant de charge.
 
-À pleine santé, aucune charge n’est consommée et l’interface indique « Santé au maximum ». Sans charge : « Épuisé jusqu’à la prochaine manche ». Une station ne remet pas les ennemis à zéro et ne suspend pas le combat.
+À pleine santé, aucune charge n’est consommée et l’interface indique « Santé au maximum ». Station utilisée : « Épuisé » jusqu’à la manche suivante. Une station ne remet pas les ennemis à zéro et ne suspend pas le combat.
+
+Une trousse chargée flotte et pulse doucement (petite animation) pour être repérée de loin ; une station épuisée reste immobile.
 
 Le petit soin de terrain se ramasse en passant à portée courte. Il ne disparaît pas à pleine santé ; il reste jusqu’à consommation, nettoyage entre manches ou expiration de ressource documentée. Proposition simple : pas d’expiration temporelle, retrait à la transition de manche après annonce.
 
@@ -560,7 +607,7 @@ Le mode découverte peut augmenter les soins ou réduire les dégâts, avec reco
 - **Présentation suspendue** : menus, aide, cinématiques et préparation obligatoire de ressources ; aucune santé perdue.
 - **Durée de survie** : mesure monotone facultative du temps actif, affichée au bilan si retenue.
 
-Une baisse de fréquence de rendu ne doit pas modifier les trajectoires et contacts de projectiles, ni faire progresser une capture ou un soin différemment à durée active égale. Le passage en arrière-plan suspend la simulation et relâche les commandes ; la reprise est explicite.
+Une baisse de fréquence de rendu ne doit pas modifier les trajectoires et contacts de projectiles, ni faire progresser une capture ou une pose de kit différemment à durée active égale. Le passage en arrière-plan suspend la simulation et relâche les commandes ; la reprise est explicite.
 
 ### 12.9 Fins de session
 
@@ -568,7 +615,7 @@ Une baisse de fréquence de rendu ne doit pas modifier les trajectoires et conta
 | --- | --- |
 | Santé du héros à zéro | Défaite arcade et bilan définitif |
 | Objectif perdu | Pénalité ou bonus manqué ; session poursuivie |
-| Circuit / manche terminé | Nouvelle manche ; santé et score conservés |
+| Manche terminée | Écran « Manche N terminée », stations rechargées, respiration, nouvelle manche ; santé, score et arme conservés |
 | Pause | Session suspendue, aucun résultat validé |
 | Arrêt volontaire | Bilan marqué « Session interrompue volontairement » |
 | Problème technique irrécupérable | Sortie technique signalée, pas de fausse défaite enregistrée |
@@ -592,7 +639,7 @@ Ces rencontres sont fictives. Les anecdotes citées par l’utilisateur servent 
 
 ### 12.11 Déclenchement et équité
 
-Le directeur choisit un emplacement atteignable, hors obstacle et hors groupe encombrant un passage obligatoire. L’événement n’apparaît pas sous les pieds de Pierre. Alerte visuelle, direction, distance et délai sont disponibles dès le début, y compris hors écran.
+Le directeur choisit un emplacement atteignable, hors obstacle et hors groupe encombrant un passage obligatoire. L’événement n’apparaît pas sous les pieds de Paul. Alerte visuelle, direction, distance et délai sont disponibles dès le début, y compris hors écran.
 
 Délais proposés : de vingt à trente secondes de menace effective pour un secours. Le délai minimal doit couvrir le trajet praticable, une confrontation raisonnable et une marge de réaction. Calculer ce trajet sur la navigation, pas à travers les bâtiments.
 
@@ -604,15 +651,15 @@ Une fenêtre de repos entre rencontres et une sélection pondérée suffisent en
 
 ### 12.12 Détresse, secours et échec local
 
-La protection contre Pierre est permanente : ses coups et ses pierres ne blessent jamais ces victimes. En revanche, les agresseurs désignés peuvent faire avancer une **jauge de détresse / un compte à rebours de secours**, uniquement dans l’événement concerné. Les autres passants ne deviennent pas subitement vulnérables à toute la foule.
+La protection contre Paul est permanente : ses coups et ses pierres ne blessent jamais ces victimes. En revanche, les agresseurs désignés peuvent faire avancer une **jauge de détresse / un compte à rebours de secours**, uniquement dans l’événement concerné. Les autres passants ne deviennent pas subitement vulnérables à toute la foule.
 
 La menace à portée est un état continu pendant l’intimidation ou le cycle d’agression, pas seulement l’image d’impact. La jauge et le délai affiché représentent une seule réserve autoritaire, sans seconde santé cachée pour la victime.
 
 Le délai décroît tant qu’au moins un agresseur de cet événement exécute une menace valide à portée de la victime ; il se suspend si cette menace est interrompue. Ne pas retirer une seconde barre de vie indépendante au même rythme : une source de vérité par incident.
 
-Tous les agresseurs affectés KO avant zéro : menace arrêtée et délai figé. Pierre peut ensuite utiliser Agir, environ une seconde, pour aider ou rassurer. Le geste final ne doit pas échouer parce que le timer continuerait alors que tous les agresseurs sont neutralisés. Un seul bonus de secours, proposé à +6 par événement, indépendamment du nombre de victimes.
+Tous les agresseurs affectés KO avant zéro : menace arrêtée et délai figé. Paul peut ensuite utiliser Agir, environ une seconde, pour aider ou rassurer. Le geste final ne doit pas échouer parce que le timer continuerait alors que tous les agresseurs sont neutralisés. Un seul bonus de secours, proposé à +6 par événement, indépendamment du nombre de victimes.
 
-À zéro avant sécurisation : secours manqué, bonus perdu, session continuée. La victime passe dans un état de repli ou de prise en charge par les secours ; pas de mort graphique ni de nudité. Les agresseurs restants redeviennent des hostiles ordinaires. L’échec ne crée pas d’OQTF pour la victime et ne remet pas la santé de Pierre à zéro.
+À zéro avant sécurisation : secours manqué, bonus perdu, session continuée. La victime passe dans un état de repli ou de prise en charge par les secours ; pas de mort graphique ni de nudité. Les agresseurs restants redeviennent des hostiles ordinaires. L’échec n’incrémente pas le compteur de casseurs neutralisés et ne remet pas la santé de Paul à zéro.
 
 Un secours ne réapparaît pas par entrée/sortie de zone. Une personne déjà secourue n’est pas choisie de nouveau immédiatement. Les KO des agresseurs sont comptés une seule fois, avec le barème ordinaire ; le bonus d’événement est distinct.
 
@@ -622,15 +669,13 @@ Les délais de bâtiment, détresse, capture et interaction n’imposent aucune 
 
 La réduction de qualité graphique ne modifie pas ces délais. Un mode découverte peut les allonger explicitement avec record séparé. Le HUD réserve les nombres d’urgence aux incidents actifs, sans remettre une case globale « Temps restant ».
 
-## 13. Score, compteur OQTF et bilan
+## 13. Score, compteur de casseurs neutralisés et bilan
 
 ### 13.1 Barème de référence
 
 | Événement | Points | Statut |
 | --- | ---: | --- |
-| KO casseur classique | +1 | Demande initiale |
-| KO casseur avec drapeau palestinien | +2 | Demande initiale |
-| KO casseur avec drapeau Antifa | +2 | Demande initiale |
+| KO de casseur, quelle que soit sa variante ou son drapeau | +1 | Confirmé (révision 1.5) |
 | Coup valide sur policier | −3 | Demande initiale |
 | Coup valide sur autre personne protégée hors groupe pacifique | −2 | Héritage conservé si ces PNJ sont touchables |
 | Tentative de coup ou renvoi vers groupe pacifique | 0 ; aucun contact de dégâts accepté | Protection confirmée dans la révision 1.2 |
@@ -647,27 +692,25 @@ La réduction de qualité graphique ne modifie pas ces délais. Un mode découve
 
 Aucun bonus ne dépend d’un temps restant. Il n’existe pas de score maximal fini pour toute la session arcade. La référence précédente de 51 points et le compteur limité à 17 casseurs sont supprimés.
 
-Le premier circuit proposé comporte 3 + 8 + 6 + 4 = 21 casseurs planifiés, hors patrouilles additionnelles. Les effectifs ultérieurs dépendent du directeur. Le bonus de manche exige de réussir ses objectifs ; il ne se déclenche pas au seul passage de numéro après un objectif perdu. Les hordes additionnelles et les lanceurs empêchent de déduire une limite de score ou de KO de ce seul circuit d’introduction.
+L’effectif de chaque manche suit la progression proposée en section 12.2 (10, 14, 18, 22, puis +4 par manche), hors patrouilles additionnelles. Le bonus de manche exige de réussir ses objectifs ; il ne se déclenche pas au seul passage de numéro après un objectif perdu. L’enchaînement sans fin des manches empêche de déduire une limite de score ou de KO.
 
-### 13.2 Compteur OQTF
+### 13.2 Compteur « Casseurs neutralisés »
 
-`OQTF = nombre d’identifiants uniques de casseurs passés de actif à KO depuis le lancement de la session.`
+`Casseurs neutralisés = nombre d’identifiants uniques de casseurs passés de actif à KO depuis le lancement de la session.`
 
-Chaque variante ajoute 1, indépendamment de ses points. Un corps déjà KO, un groupe pacifique, une victime, un soin, un kit, une réparation, un secours, une capture, un ramassage ou une formation ne l’incrémente jamais. Contact et renvoi partagent le même événement de KO, donc jamais deux unités pour une même victime. Le compteur ne se réinitialise pas à chaque manche.
+Chaque variante ajoute 1, comme au score. Un corps déjà KO, un groupe pacifique, une victime, un soin, un kit, une réparation, un secours, une capture, un ramassage ou une formation ne l’incrémente jamais. Mains nues, arme et renvoi partagent le même événement de KO, donc jamais deux unités pour un même casseur. Le compteur ne se réinitialise pas à chaque manche.
 
-Le registre appartient à la fiction satirique ; aucune nationalité ou situation administrative réelle n’est déduite. Une mention discrète dans les règles et le bilan suffit.
+**Confirmé (révision 1.5) :** le compteur est neutre ; il ne mentionne ni nationalité, ni situation administrative, ni sanction.
 
 ### 13.3 Bilan
 
-Score, record compatible, cause de fin, manche atteinte, bâtiments sauvés/détruits/réparés, secours réussis/manqués, objectifs réussis/perdus, KO, erreurs de ciblage, formations, soins et kits utilisés. Durée de survie écoulée facultative, sans compte à rebours en mission.
+Score, record compatible, cause de fin, manche atteinte, casseurs neutralisés, armes ramassées et brisées, bâtiments sauvés/détruits/réparés, secours réussis/manqués, objectifs réussis/perdus, KO, erreurs de ciblage, formations, soins et kits utilisés. Durée de survie écoulée facultative, sans compte à rebours en mission.
 
-Conserver le bloc demandé initialement :
+Le bilan affiche une ligne neutre :
 
-> X personnes sous OQTF  
-> X personnes déchues de la nationalité française  
-> X personnes expulsées du territoire
+> X casseurs neutralisés
 
-Les trois X sont égaux aux casseurs KO de la session. Aucune destination d’expulsion. Le bloc est explicitement dans le registre fictif du bilan.
+X est égal au compteur de la section 13.2. Les anciennes lignes satiriques du bilan sont supprimées (révision 1.5).
 
 Un arrêt volontaire produit un bilan partiel identifié. Une proposition de record définitif de survie n’est validée qu’au KO ; un meilleur score provisoire d’une session arrêtée peut être conservé séparément, sans se confondre avec une session terminée par défaite.
 
@@ -683,11 +726,11 @@ Dédupliquer le score par identifiants d’événements et d’occurrences d’o
 
 ### 14.1 Interface
 
-Santé de Pierre, score, manche, OQTF, stock de pierres sur trois emplacements, kit porté et action de renvoi disponible. Objectifs et soins indiqués dans la carte et éventuellement sur une mini-carte. Délais locaux des incidents urgents, jauges de capture et d’interaction, sans compte à rebours global. Chaque compte à rebours porte le nom de son événement, son emplacement et son état « en cours / interrompu / perdu ».
+Santé de Paul, score, manche, compteur « Casseurs neutralisés » et casseurs restant à neutraliser dans la manche, arme tenue (« Arme : <nom> (<coups>) » ou « Arme : mains nues »), stock de pierres sur trois emplacements, kit porté et action de renvoi disponible. Objectifs et soins indiqués dans la carte et éventuellement sur une mini-carte. Délais locaux des incidents urgents, jauges de capture et d’interaction, sans compte à rebours global. Chaque compte à rebours porte le nom de son événement, son emplacement et son état « en cours / interrompu / perdu ».
 
-Les groupes pacifiques ont un signe lisible de neutralité et une alerte distincte si une victime est en détresse. Une icône neutre ne doit jamais être remplacée par un marqueur d’ennemi sur une victime. La cible de contact ou de renvoi assisté ne peut pas les désigner. Les projectiles doivent se distinguer du sol, des pierres ramassables, des soins et des décors.
+Les groupes pacifiques ont un signe lisible de neutralité et une alerte distincte si une victime est en détresse. Une icône neutre ne doit jamais être remplacée par un marqueur d’ennemi sur une victime. La cible de contact ou de renvoi assisté ne peut pas les désigner. Les projectiles doivent se distinguer du sol, des pierres ramassables, des armes au sol, des soins et des décors.
 
-Afficher les états : préparation ennemie, pierre en vol, pierre récupérable, stock plein, soin épuisé, cercle contesté, objectif résolu. Les annonces ne doivent pas masquer une zone d’impact ou une échappatoire. Au plus deux alertes urgentes sont détaillées ; une sélection affiche le trajet ou la direction vers l’incident choisi.
+Afficher les états : préparation ennemie, pierre en vol, pierre récupérable, stock plein, arme au sol, arme brisée, soin chargé ou épuisé, santé au maximum, cercle contesté, objectif résolu, fin de manche. Les annonces ne doivent pas masquer une zone d’impact ou une échappatoire. Au plus deux alertes urgentes sont détaillées ; une sélection affiche le trajet ou la direction vers l’incident choisi.
 
 ### 14.2 Accessibilité
 
@@ -709,33 +752,36 @@ La qualité visuelle ne change jamais la taille des hitboxes, la vitesse des pie
 
 ### 15.1 Style
 
-Pixel art dessiné, palette cohérente et sprites de même échelle. Vue du dessus orthogonale, sans isométrie. Pierre conserve cheveux longs et tenue noire ; un contour ou détail contrasté le distingue du sol et de la foule.
+Pixel art dessiné, palette cohérente et sprites de même échelle. Vue du dessus orthogonale, sans isométrie. Paul conserve cheveux longs et tenue noire ; l’écharpe ou le bavoir blanc et un contour contrasté le distinguent du sol et de la foule.
 
 Paris est évoqué par les pavés, panneaux, façades, devantures, école et monument. Les silhouettes et panneaux doivent rester compréhensibles à la taille de jeu. Les drapeaux sont lisibles sans agrandir tous les adversaires.
 
-### 15.2 Gabarits proposés
+### 15.2 Gabarits retenus
 
-| Élément | Gabarit de travail |
+| Élément | Gabarit |
 | --- | --- |
-| Tuile de sol | 16 × 16 pixels logiques |
-| Pierre et personnages courants | Environ 24 × 32, ancrage aux pieds |
+| Tuile de sol | 32 × 32 pixels logiques (tuiles Kenney / LPC CC0) |
+| Paul et personnages courants | Cellules de 64 × 64 des spritesheets Universal LPC, silhouette visible d’environ 32 × 48, ancrage aux pieds |
 | Grandes animations de contact | Cellule plus large si nécessaire, hitbox séparée |
 | Drapeau | Accessoire séparé, lisible et non retourné avec du texte inversé |
-| Pierre / brique | Environ 4 à 8 pixels, contour visible |
-| Vue interne paysage | Base de 480 × 270 pixels logiques, à valider |
-| Vue interne portrait | Base adaptée autour de 270 × 480, sans étirement |
+| Caillou / pavé / brique | Environ 8 à 16 pixels, contour visible |
+| Arme au sol | Sprite lisible avec halo, flottement et oscillation |
+| Vue interne paysage | Base de 640 × 360 pixels logiques |
+| Vue interne portrait | Base de 360 × 640 pixels logiques, sans étirement |
 
-Ces gabarits sont des propositions à valider dans une scène de référence. Le filtre conserve des pixels nets ; le zoom privilégie les rapports entiers quand l’écran le permet, avec marges acceptées plutôt qu’une déformation.
+Mise à l’échelle retenue : mode RESIZE de Phaser (le canevas occupe la fenêtre) et zoom de caméra entier, calculé à partir de la base paysage ou portrait, minimum 1. Les pixels restent nets ; des marges ou un champ visible plus large sont acceptés plutôt qu’une déformation.
 
 ### 15.3 Ressources
 
-Un jeu de sprites de Pierre ; victimes individuelles et couple âgé ; caisse à outils et kit porté ; objets personnels de secours ; trois variantes de casseurs avec rôles contact/lanceur ; manifestants en groupe avec pancartes ; étudiants et secours ; tuiles de sol et bâtiment ; école à plusieurs états ; monument et drapeaux ; boutique ; stations de soin ; pierres en vol et au sol ; icônes.
+Un jeu de sprites de Paul ; armes au sol et tenues (bâton, marteau, panneau de signalisation) ; victimes individuelles et couple âgé ; caisse à outils et kit porté ; objets personnels de secours ; trois variantes de casseurs avec rôles contact/lanceur ; manifestants en groupe avec pancartes ; étudiants et secours ; tuiles de sol et bâtiment ; école à plusieurs états ; monument et drapeaux ; boutique ; stations de soin ; pierres en vol et au sol ; icônes.
 
 Les groupes pacifiques doivent se lire comme un ensemble calme. Éviter de donner aux sprites neutres les mêmes animations de charge ou de lancer que les hostiles.
 
+Sources retenues pour la première tranche : personnages Universal LPC, tuiles Kenney et LPC sous CC0, sons Kenney sous CC0. Chaque auteur et licence est listé dans `public/CREDITS.md`, accessible depuis la landing et le menu Pause.
+
 ### 15.4 Animations
 
-Au minimum : repos, déplacement, contact, réaction, KO, ramassage bref ou indication de ramassage, renvoi, soin, lancer ennemi, dégradation, port de drapeau, manifestation calme, appel à l’aide, recul de victime, aide/rassurance, pose de kit, marche des étudiants, feu, ruine, réparation et changement de drapeau. Aucune animation de nudité ou de brûlure graphique n’est nécessaire.
+Au minimum : repos, déplacement, frappe circulaire, rotation de l’arme tenue à chaque coup, flottement et halo des armes au sol, flottement et pulsation des trousses chargées, réaction, KO, ramassage bref ou indication de ramassage, renvoi, soin, lancer ennemi, dégradation, port de drapeau, manifestation calme, appel à l’aide, recul de victime, aide/rassurance, pose de kit, marche des étudiants, feu, ruine, réparation et changement de drapeau. Aucune animation de nudité ou de brûlure graphique n’est nécessaire.
 
 Quatre directions dessinées au minimum ; huit directions de déplacement logique. Le choix de huit directions dessinées est une amélioration, pas un prérequis au premier prototype. Les effets de contact ne remplacent pas une animation lisible du héros.
 
@@ -743,7 +789,7 @@ Quatre directions dessinées au minimum ; huit directions de déplacement logiqu
 
 Sources éditables de sprites et carte ; exports PNG avec transparence ; atlas de textures et données d’animation ; carte en JSON de tuiles et objets ; validation des ancrages, collisions et cadres. Pas de pipeline de modèles GLB ou de squelette 3D dans cette version.
 
-Registre des auteurs, licences, attributions, sources et modifications. Les ressources du prototype ne doivent pas être de simples carrés colorés présentés comme une direction pixel art finale. Une création ou adaptation artistique reste nécessaire.
+Registre des auteurs, licences, attributions, sources et modifications (`public/CREDITS.md`). Les ressources du prototype ne doivent pas être de simples carrés colorés présentés comme une direction pixel art finale. Une création ou adaptation artistique reste nécessaire.
 
 ## 16. Son
 
@@ -751,34 +797,35 @@ Le premier clic, toucher ou geste clavier pertinent autorise l’initialisation 
 
 Prévoir des groupes de volume séparés : ambiance, effets, musique éventuelle, voix. La musique est facultative ; la lisibilité du combat prime. Les sons proches sont spatialisés avec mesure et le nombre de voix simultanées plafonné.
 
-Les pas suivent le rythme de déplacement ; les impacts correspondent au contact ; les alarmes ou crépitements indiquent la présence du feu. Les répétitions de coups utilisent plusieurs variantes pour éviter un effet mécanique.
+Les sons de la première tranche proviennent de Kenney (CC0). Les pas suivent le rythme de déplacement ; les impacts correspondent au contact ; les alarmes ou crépitements indiquent la présence du feu. Les répétitions de coups utilisent plusieurs variantes pour éviter un effet mécanique.
 
 Une cinématique ne doit pas déclencher une seconde copie des sons de la scène à sa reprise. Retour d’onglet et reprise de contexte audio sont gérés explicitement.
 
 ## 17. Choix techniques
 
-### 17.1 Stack proposée
+### 17.1 Stack retenue
 
 | Domaine | Choix | Motif |
 | --- | --- | --- |
 | Langage | TypeScript compilé en JavaScript | États, objets, collisions et tests typés |
-| Build | Vite stable verrouillé | Développement local et build statique |
-| Moteur 2D | Phaser 4 stable, version exacte verrouillée après prototype | Sprites, animations, caméra, entrées et scènes |
-| Version de référence consultée | Phaser 4.2.1 affiché par le site officiel le 19 octobre 2026 | Point de départ, pas dépendance déjà installée |
-| Rendu | WebGL, pixelArt activé, filtrage net et positions de rendu arrondies | Netteté et regroupement des sprites |
-| Physique | Arcade Physics, sans gravité globale | Rectangles/cercles, contacts et top-down |
+| Build | Vite, version verrouillée | Développement local et build statique |
+| Moteur 2D | Phaser 4.2.1, version verrouillée | Rendu des sprites, animations, caméra, entrées, son et scènes |
+| Simulation | Module TypeScript pur et déterministe à pas fixe (60 Hz), sans dépendance à Phaser, séparé du rendu | Règles testables et reproductibles |
+| Rendu | WebGL, pixelArt activé, mode d’échelle RESIZE, zoom de caméra entier, base 640 × 360 / 360 × 640 | Netteté sans étirement |
+| Collisions | Cercles et rectangles 2D calculés par la simulation ; grille de tuiles de 32 pixels | Contacts, projectiles et top-down sans dépendre du moteur de rendu |
 | Projectiles | Trajectoires 2D et arc visuel séparé | Contrôle et coût prévisible |
 | Carte | Tuiles orthogonales et objets JSON | Sol, collisions, objectifs, groupes et apparitions |
 | Animation | Spritesheets/atlas | Pas de squelette 3D requis |
 | IA | États, directeur de hordes, grille et voisinage spatial | Beaucoup d’agents simples, logique testable |
 | Interface | HUD de jeu et menus HTML/CSS accessibles | Séparer commandes de jeu et navigation de menus |
 | Son | Système audio Phaser / Web Audio | Mixage et reprise après interruption |
-| Tests | Règles Node/Vitest et parcours navigateur | Projeter, ramasser, renvoyer, protéger les groupes |
+| Tests | Vitest pour la simulation et les règles ; parcours navigateur | Projeter, ramasser, renvoyer, protéger les groupes, frapper, armes |
+| Ressources | Universal LPC, Kenney / LPC CC0, sons Kenney CC0 | Crédits dans `public/CREDITS.md` |
 | Livraison | Fichiers statiques sur HTTPS | Sans compte, API payante ou serveur applicatif |
 
 ### 17.2 Changement par rapport à Three.js
 
-La direction visuelle a changé : la conservation du moteur 3D n’est plus un objectif. Phaser est proposé pour utiliser un cadre 2D de jeu plutôt que reconstituer sprites, scènes et collisions autour d’un moteur 3D.
+La direction visuelle a changé : la conservation du moteur 3D n’est plus un objectif. Phaser a été retenu pour utiliser un cadre 2D de jeu plutôt que reconstituer sprites, scènes et collisions autour d’un moteur 3D.
 
 Les règles pures de score, capture, santé et objectifs peuvent être réutilisées après adaptation. Le rendu, la caméra, les entrées directionnelles et les ressources doivent être refaits. Aucun portage automatique des modèles et animations procédurales du prototype ne donnera un résultat pixel art final.
 
@@ -786,7 +833,7 @@ Three.js, Rapier 3D, KTX2, GLB et le choix WebGPU ne font plus partie de la cibl
 
 ### 17.3 Références et limites
 
-Le [téléchargement officiel](https://phaser.io/download) et les [archives de versions](https://phaser.io/download/archive) indiquent les versions disponibles. La documentation [Arcade Physics](https://docs.phaser.io/phaser/concepts/physics/arcade) décrit une physique légère adaptée aux jeux du dessus, avec rectangles et cercles ; elle n’est pas une simulation balistique ou de corps articulés.
+Le [téléchargement officiel](https://phaser.io/download) et les [archives de versions](https://phaser.io/download/archive) indiquent les versions disponibles. La documentation [Arcade Physics](https://docs.phaser.io/phaser/concepts/physics/arcade) reste une référence ; la première tranche calcule toutefois ses collisions dans la simulation pure.
 
 Le [Scale Manager](https://docs.phaser.io/phaser/concepts/scale-manager) et les [caméras](https://docs.phaser.io/phaser/concepts/cameras) servent à adapter l’affichage. Les options [pixel art](https://docs.phaser.io/api-documentation/typedef/types-core) permettent de préserver des pixels nets.
 
@@ -794,7 +841,7 @@ Le Canvas de Phaser 4 est annoncé comme déprécié dans la [présentation offi
 
 ### 17.4 Première validation technique
 
-Avant de figer la version : faire fonctionner Pierre, quarante adversaires, trois groupes pacifiques, les collisions et des projectiles sur les téléphones cibles. Vérifier le poids réel du moteur et des atlas, pas seulement la facilité du démarrage sur ordinateur.
+Avant de figer la version : faire fonctionner Paul, quarante adversaires, trois groupes pacifiques, les collisions et des projectiles sur les téléphones cibles. Vérifier le poids réel du moteur et des atlas, pas seulement la facilité du démarrage sur ordinateur.
 
 Pas de backend, IA générative à l’exécution, dépendance réseau à chaque manche, physique de débris complète ou effet WebGPU obligatoire.
 
@@ -807,27 +854,30 @@ src/
   site/         landing HTML/CSS, contenu, aperçu et lien vers le jeu
   app/          démarrage, menus, chargement et erreurs
   scenes/       accueil, quartier, HUD, pause et bilan
+  sim/          simulation pure et déterministe, sans Phaser : entités, règles, manches, armes
   core/         états, horloges, identifiants, événements
   input/        clavier, souris, tactile, manette
-  player/       Pierre, déplacement, visée, contact, santé
+  player/       Paul, déplacement, visée, frappe circulaire, santé
+  weapons/      armes au sol, apparition, ramassage, usure et bris
   projectiles/  lancers, trajectoires, impacts, ramassage, stock, renvoi
   crowds/       groupes pacifiques et volumes protégés
   ai/           hordes, rôles, pression, navigation et voisinage
   objectives/   école, monument, boutique, résistance locale et occurrences
   incidents/    directeur, urgences de bâtiment et secours de victimes
   repairs/      kits, stock, pose, interruption et restauration
-  healing/      stations, petits soins, charges et interruption
-  rules/        dégâts, KO, score, OQTF et bilan
+  healing/      stations au contact, petits soins et charges
+  rules/        dégâts, KO, score, casseurs neutralisés et bilan
   rendering/    atlas, animations, profondeur, effets et qualité
   audio/        groupes de sons et interruptions
   storage/      préférences et records versionnés
   data/         carte, atlas, manches, compositions et paramètres
 public/assets/  sprites, tuiles, atlas, sons et cartes exportés
+public/CREDITS.md  auteurs et licences des ressources
 assets-source/  sources artistiques et fichiers de carte
 tests/          règles, intégration, navigateur et endurance
 ```
 
-Cette arborescence est une cible. La logique de mission ne doit pas dépendre d’un sprite visible ou du nom d’une image. Une séparation entre entités de jeu et objets de rendu facilite les tests et le recyclage.
+Cette arborescence est une cible ; la première tranche regroupe la simulation dans `src/sim/` et le rendu, les entrées et l’interface dans `src/game/`. La logique de mission ne doit pas dépendre d’un sprite visible ou du nom d’une image. Une séparation entre entités de jeu et objets de rendu facilite les tests et le recyclage.
 
 ### 18.2 États de projectile
 
@@ -839,21 +889,26 @@ Seul `LandedRecoverable` peut entrer dans le stock. `PlayerFlying` ne redevient 
 
 ### 18.3 Événements
 
-`SessionStarted`, `RoundStarted`, `ObjectiveActivated`, `AttackStarted`, `HitConfirmed`, `EnemyThrowStarted`, `ProjectileLanded`, `ProjectilePickedUp`, `ProjectileReturned`, `ProtectedGroupBlockedImpact`, `ActorKnockedOut`, `BuildingThreatStarted`, `BuildingThreatPaused`, `BuildingDestroyed`, `RepairKitPickedUp`, `RepairStarted`, `RepairCancelled`, `BuildingRepaired`, `RescueStarted`, `RescueSecured`, `RescueCompleted`, `RescueFailed`, `ObjectiveLost`, `SchoolRestored`, `StudentEnteredSchool`, `MonumentCaptured`, `HealCompleted`, `RoundCompleted`, `PlayerKnockedOut`, `SessionEnded`.
+`SessionStarted`, `RoundStarted`, `ObjectiveActivated`, `AttackStarted`, `HitConfirmed`, `EnemyThrowStarted`, `ProjectileLanded`, `ProjectilePickedUp`, `ProjectileReturned`, `ProtectedGroupBlockedImpact`, `ActorKnockedOut`, `BuildingThreatStarted`, `BuildingThreatPaused`, `BuildingDestroyed`, `RepairKitPickedUp`, `RepairStarted`, `RepairCancelled`, `BuildingRepaired`, `RescueStarted`, `RescueSecured`, `RescueCompleted`, `RescueFailed`, `ObjectiveLost`, `SchoolRestored`, `StudentEnteredSchool`, `MonumentCaptured`, `HealCompleted`, `WeaponSpawned`, `WeaponPickedUp`, `WeaponBroken`, `WaveStarted`, `RoundCompleted`, `PlayerKnockedOut`, `SessionEnded`.
 
-Le système de règles est seul auteur du score et du compteur OQTF. Les KO, consommations de soins, ramassages et bonus d’objectif sont dédupliqués. Les groupes pacifiques et victimes ne peuvent jamais émettre un KO valide. Les délais d’incident, consommation de kit, réparation et bonus de secours sont dédupliqués par identifiant propre. Une ancienne perte encore réparable garde seulement son état minimal ; elle n’oblige pas à conserver tout le journal historique.
+Le système de règles est seul auteur du score et du compteur de casseurs neutralisés. Les KO, consommations de soins, ramassages et bonus d’objectif sont dédupliqués. Les groupes pacifiques et victimes ne peuvent jamais émettre un KO valide. Les délais d’incident, consommation de kit, réparation et bonus de secours sont dédupliqués par identifiant propre. Une ancienne perte encore réparable garde seulement son état minimal ; elle n’oblige pas à conserver tout le journal historique.
 
 ### 18.4 Configuration cible
 
 ```json
 {
-  "rulesVersion": "1.4.0",
+  "rulesVersion": "1.5.0",
   "sessionMode": "arcade",
   "view": "top-down-orthogonal",
   "artStyle": "pixel-art",
   "districtId": "paris-sciences",
-  "playerCharacterId": "pierre",
+  "playerCharacterId": "paul",
   "characterCustomization": false,
+  "tileSize": 32,
+  "flagAffectsScore": false,
+  "playerStrikeArcDegrees": 360,
+  "playerStrikeRange": 56,
+  "maxStrikeTargets": 3,
   "sessionTimeLimitSeconds": null,
   "endOnPlayerKnockout": true,
   "endOnObjectiveLoss": false,
@@ -883,6 +938,17 @@ Le système de règles est seul auteur du score et du compteur OQTF. Les KO, con
   "maxActiveStudents": 5,
   "maxGroundHeals": 2,
   "stationHealAmount": 25,
+  "stationHealOnContact": true,
+  "firstWeaponSpawnSeconds": 10,
+  "weaponSpawnIntervalSeconds": [15, 25],
+  "weaponSpawnDistance": [160, 480],
+  "maxGroundWeapons": 2,
+  "roundEnemyCounts": [10, 14, 18, 22],
+  "roundEnemyIncrement": 4,
+  "maxRoundEnemies": 40,
+  "maxRoundEnemiesOnMap": 12,
+  "enemyEntryIntervalSeconds": 1.5,
+  "waveRestSeconds": 6,
   "smallHealAmount": 10
 }
 ```
@@ -895,11 +961,11 @@ Simulation fixe cible 60 Hz, rendu séparé. Coordonnées logiques flottantes ; 
 
 Les projectiles rapides utilisent une vérification du segment parcouru ou des sous-pas bornés pour éviter de traverser une petite hitbox entre deux images. Les groupes protégés et obstacles doivent être considérés avant une cible derrière eux.
 
-Pause : destruction de bâtiment, détresse, capture, soin, pose de kit, IA, projectiles, particules utiles et dégâts suspendus. Perte de focus : commandes relâchées et reprise explicite. Ne pas rejouer toute une trajectoire en accéléré au retour d’onglet.
+Pause : destruction de bâtiment, détresse, capture, pose de kit, apparition d’armes, entrée des casseurs, IA, projectiles, particules utiles et dégâts suspendus. Perte de focus : commandes relâchées et reprise explicite. Ne pas rejouer toute une trajectoire en accéléré au retour d’onglet.
 
 ### 18.6 Ressources bornées
 
-Pool de sprites, corps, pierres, soins, kits, victimes et effets. Le directeur de secours utilise les mêmes plafonds d’agents hostiles ; ses agresseurs ne sont pas une population supplémentaire hors budget. Plafonds distincts pour projectiles en vol et pierres au sol. Après le plafond au sol, remplacer la plus ancienne pierre récupérable par une nouvelle chute ou retirer la nouvelle selon une règle unique documentée ; proposition : recycler la plus ancienne hors de proximité immédiate du joueur.
+Pool de sprites, corps, pierres, armes, soins, kits, victimes et effets. Le directeur de secours utilise les mêmes plafonds d’agents hostiles ; ses agresseurs ne sont pas une population supplémentaire hors budget. Plafonds distincts pour projectiles en vol et pierres au sol. Après le plafond au sol, remplacer la plus ancienne pierre récupérable par une nouvelle chute ou retirer la nouvelle selon une règle unique documentée ; proposition : recycler la plus ancienne hors de proximité immédiate du joueur.
 
 Les projectiles en attente de lancement ne créent pas une réserve infinie : le directeur retarde la préparation quand le budget de vol est atteint. Les corps et pierres sont nettoyés entre manches ou hors vue selon les règles annoncées. Aucun retrait d’un projectile en vol dangereux sans résolution explicite.
 
@@ -919,12 +985,13 @@ Budgets proposés à mesurer sur un vrai prototype 2D. Le pixel art n’est pas 
 | Quartier complet | Au plus 20 Mo de ressources, audio compris |
 | Mobile modeste de référence | Cible nominale 30 images/s, 95 % des images actives ≤ 40 ms |
 | Ordinateur de référence | Cible nominale 60 images/s, 95 % des images actives ≤ 20 ms |
-| Hostiles actifs | 40 au maximum |
+| Hostiles actifs | 40 au maximum ; 12 casseurs de manche sur la carte à la fois |
 | Groupes pacifiques | 3 groupes de 6 à 8 sprites dans la carte de référence |
 | Étudiants actifs | 5 au maximum |
 | Projectiles en vol | 24 au maximum |
 | Pierres récupérables au sol | 16 au maximum |
 | Petits soins au sol | 2 au maximum |
+| Armes au sol | 2 au maximum |
 | Kits de réparation au sol / portés | 2 au sol et 1 porté au maximum |
 | Incidents urgents simultanés | 1 pendant l’introduction, puis 2 au maximum |
 | Corps visibles / persistants | Budget borné, proposé à 16 avant recyclage hors vue |
@@ -966,7 +1033,7 @@ Un stockage indisponible n’empêche pas de jouer. Le record d’une session in
 
 La landing et le jeu ont des points d’entrée séparés. La landing ne télécharge ni moteur ni atlas ni sons du jeu ; le chargement de ces ressources commence à l’ouverture de la page du jeu. Les exigences détaillées de navigation et de poids sont en section 26.
 
-Moteur, atlas de Pierre et ennemis, carte, collisions, pierres, soins et alertes indispensables chargés avant le contrôle. Autres sons et détails possibles ensuite. Les hordes suivantes ne redescendent pas le même atlas à chaque manche.
+Moteur, atlas de Paul et ennemis, armes, carte, collisions, pierres, soins et alertes indispensables chargés avant le contrôle. Autres sons et détails possibles ensuite. Les hordes suivantes ne redescendent pas le même atlas à chaque manche.
 
 Les sprites réutilisent des textures partagées mais conservent leur état d’animation indépendant. Aucun chargement synchrone au premier coup ou à la première pierre renvoyée.
 
@@ -986,15 +1053,15 @@ Tests de règles ; intégration avec horloge contrôlée ; navigateur avec rendu
 
 | ID | Scénario | Résultat attendu |
 | --- | --- | --- |
-| RC-01 | Lancer | Accueil sans compte, héros Pierre unique, aucune personnalisation. |
+| RC-01 | Lancer | Accueil sans compte, héros Paul unique, aucune personnalisation. |
 | RC-02 | Observer le jeu | Vue du dessus orthogonale, pixels nets, aucune isométrie. |
 | RC-03 | Déplacer dans huit directions | Traduction directe sur la carte, diagonales sans vitesse supérieure. |
 | RC-04 | Explorer hors objectif | Déplacement libre et retour possible, aucune caméra imposant une arène. |
-| RC-05 | Passer derrière un bâtiment | Pierre reste visible ; collision sur l’empreinte uniquement. |
-| RC-06 | Contact sur casseurs | Balayage court, contacts plafonnés, un dégât par cible et attaque. |
+| RC-05 | Passer derrière un bâtiment | Paul reste visible ; collision sur l’empreinte uniquement. |
+| RC-06 | Frappe circulaire | Casseurs touchés à 360° dans un rayon de 56 px à mains nues, les plus proches d’abord, trois au maximum, un dégât par cible et attaque ; Paul se tourne vers le plus proche. |
 | RC-07 | Premier coup | Réaction, aucune reddition. |
-| RC-08 | KO et corps frappé ensuite | Un gain de score et une unité OQTF, aucun doublon. |
-| RC-09 | Voir une horde | Trois variantes lisibles, rôles contact/lanceur possibles indépendamment. |
+| RC-08 | KO et corps frappé ensuite | Un gain de score et une unité au compteur « Casseurs neutralisés », aucun doublon. |
+| RC-09 | Voir une horde | Trois variantes lisibles, rôles contact/lanceur possibles indépendamment ; KO d’un casseur à drapeau : +1 comme un casseur classique. |
 | RC-10 | Préparation de lancer | Animation et trajectoire/zone annoncées avant dégâts. |
 | RC-11 | Éviter une pierre | Pierre au sol récupérable, dégâts évités. |
 | RC-12 | Recevoir une pierre | Dégâts une seule fois, santé cohérente, pas de rafale multi-contact. |
@@ -1006,8 +1073,8 @@ Tests de règles ; intégration avec horloge contrôlée ; navigateur avec rendu
 | RC-18 | Toucher un casseur par renvoi | Dégâts puis éventuel KO avec le même barème que le contact. |
 | RC-19 | Pierre renvoyée en fin de trajectoire | Inerte/retirée, pas de recyclage infini en stock. |
 | RC-20 | Plusieurs tentatives simultanées de ramassage | Une seule acquisition par objet. |
-| RC-21 | Groupe pacifique devant Pierre | Aucune sélection automatique, aucun dégât de contact. |
-| RC-22 | Projectile de Pierre vers un groupe pacifique | Arrêt sans blessure ni KO ; aucun point ou OQTF pour les manifestants. |
+| RC-21 | Groupe pacifique autour de Paul | Aucune sélection par la frappe circulaire, aucun dégât de contact. |
+| RC-22 | Projectile de Paul vers un groupe pacifique | Arrêt sans blessure ni KO ; aucun point ni casseur neutralisé compté pour les manifestants. |
 | RC-23 | Contourner un groupe | Plusieurs passages praticables, objectif et soin non bloqués définitivement. |
 | RC-24 | Casseur derrière un groupe | Pas de frappe ou renvoi à travers le groupe ; contournement possible. |
 | RC-25 | École attaquée avant arrivée du joueur | Alerte, trois casseurs, cercle, feu et délai local lisible ; urgence déjà active si dégradation valide. |
@@ -1019,22 +1086,22 @@ Tests de règles ; intégration avec horloge contrôlée ; navigateur avec rendu
 | RC-31 | Capture avec contestation / sortie | Jauge suspendue, valeur conservée. |
 | RC-32 | Capture réussie | Conditions de temps local et défenseurs réunies, drapeau français, session poursuivie. |
 | RC-33 | Boutique rouverte | Gains uniques, pas de soin complet implicite. |
-| RC-34 | Passer une manche | Nouveaux événements, score/santé/stock portés conservés. |
+| RC-34 | Passer une manche | Effectif neutralisé et objectifs résolus : écran « Manche N terminée », stations rechargées, respiration ; score, santé, stock et arme conservés. |
 | RC-35 | Reprendre un objectif | Nouvelle occurrence explicite et nouveaux gains possibles, pas un doublon. |
-| RC-36 | Point de soin chargé | Petit gain plafonné à 100, charge consommée une seule fois. |
-| RC-37 | Soin interrompu | Aucun gain ni consommation avant validation. |
-| RC-38 | Soin à pleine santé | Pas de charge consommée. |
+| RC-36 | Marcher sur un point de soin chargé | +25 immédiat plafonné à 100, sans touche ni maintien ; charge consommée une seule fois. |
+| RC-37 | Repasser sur une station utilisée | « Épuisé », aucun gain jusqu’à la manche suivante. |
+| RC-38 | Marcher sur une station à pleine santé | Pas de charge consommée ; « Santé au maximum ». |
 | RC-39 | Stations épuisées | Pas de réapprovisionnement par attente ou menu ; recharge selon manche. |
-| RC-40 | Perte de focus / pause | Pierre, ennemis, trajectoires, captures et soins suspendus ; commandes relâchées. |
-| RC-41 | Santé de Pierre à zéro | Défaite et bilan, pas de soin tardif annulant le KO. |
-| RC-42 | Session prolongée | Aucune fin à l’ancienne limite ; aucune victoire finale après un circuit. |
+| RC-40 | Perte de focus / pause | Paul, ennemis, trajectoires, captures et soins suspendus ; commandes relâchées. |
+| RC-41 | Santé de Paul à zéro | Défaite et bilan, pas de soin tardif annulant le KO. |
+| RC-42 | Session prolongée | Aucune fin à l’ancienne limite ; aucune victoire finale après une manche. |
 | RC-43 | Stockage indisponible | Jeu possible, pas de plantage. |
 | RC-44 | Rotation / redimensionnement | Carte et HUD adaptés, pixels non étirés, actions accessibles. |
 | RC-45 | Profil Économie | Projectiles et alertes lisibles ; règles inchangées. |
 | RC-46 | Plafonds d’agents et projectiles | Pas de réserve invisible infinie ni suppressions dangereuses incohérentes. |
 | RC-47 | Réutiliser un pool | Nouveaux identifiants, propriétaire/stock/hitbox correctement remis à zéro. |
 | RC-48 | Session de trente minutes | Ressources stables, commandes et soins toujours fonctionnels. |
-| RC-49 | Bilan | Compteurs de session cohérents, trois lignes satiriques au même nombre de KO. |
+| RC-49 | Bilan | Compteurs de session cohérents ; ligne « X casseurs neutralisés » égale au nombre de KO. |
 | RC-50 | Cent manches en simulation | Progression bornée, aucune croissance sans limite, fin au KO toujours possible. |
 | RC-51 | Marcher vers bâtiment ou tronc | Collision solide ; aucune traversée malgré liberté d’exploration. |
 | RC-52 | Casseurs en trajet vers bâtiment | Délai de destruction pas encore consommé. |
@@ -1048,15 +1115,15 @@ Tests de règles ; intégration avec horloge contrôlée ; navigateur avec rendu
 | RC-60 | Kit utilisé sur bâtiment intact | Aucune consommation ou gain de points. |
 | RC-61 | Réparer après une perte | Bonus tardif unique, pénalité conservée, pas de cumul avec bonus de sauvetage. |
 | RC-62 | Déclencher un secours | Victime, agresseurs, délai, direction et accès valides ; pas plus de deux urgences. |
-| RC-63 | Pierre frappe ou renvoie vers la victime | Aucun dégât ; aucune sélection comme ennemi, aucun KO/OQTF. |
+| RC-63 | Paul frappe ou renvoie vers la victime | Aucun dégât ; aucune sélection comme ennemi, aucun KO ni casseur neutralisé compté. |
 | RC-64 | Agresseur affecté menace la victime | Détresse de cet événement seulement ; protection des autres groupes inchangée. |
 | RC-65 | Neutraliser tous les agresseurs avant zéro | Délai figé, puis Agir valide une seule aide et un seul bonus. |
 | RC-66 | Délai de secours épuisé | Secours manqué, repli/prise en charge, session continuée sans violence graphique. |
 | RC-67 | Pause pendant destruction, détresse ou pose de kit | Tous les délais et interactions suspendus sans consommation de ressource. |
 | RC-68 | Transition de manche avec incident ou ruine | Pas de disparition, guérison ou réparation gratuite ; état reporté ou résolu explicitement. |
 | RC-69 | Ouvrir la racine du site | Présentation, statut et lien Jouer visibles ; aucune session démarrée. |
-| RC-70 | Activer Jouer | Navigation dans le même onglet vers le jeu, chargement lisible puis Commencer explicite. |
-| RC-71 | Ouvrir directement `/jouer/` | Jeu accessible sans passage préalable par la landing, y compris après rechargement. |
+| RC-70 | Activer Jouer | Navigation dans le même onglet vers `/jouer/?go`, chargement lisible puis démarrage immédiat sans écran de départ ; audio déverrouillé à la première touche, au premier clic ou au premier toucher. |
+| RC-71 | Ouvrir directement `/jouer/` | Jeu accessible sans passage préalable par la landing, y compris après rechargement ; écran des règles avec Commencer. |
 | RC-72 | Inspecter le réseau avant Jouer | Aucun moteur, atlas ou son du jeu téléchargé par la landing. |
 | RC-73 | Naviguer au clavier et sur téléphone | Liens utilisables, focus visible, texte lisible, aucun débordement horizontal. |
 | RC-74 | Consulter aperçu et règles | Aperçu fidèle à la version livrée ; absence de promesse 3D, de durée globale ou de fonctionnalité absente. |
@@ -1064,10 +1131,17 @@ Tests de règles ; intégration avec horloge contrôlée ; navigateur avec rendu
 | RC-76 | Revenir au site depuis Pause ou Bilan | Navigation fonctionnelle ; abandon d’une session active explicitement confirmé dans le jeu. |
 | RC-77 | Aperçu indisponible ou JavaScript désactivé sur la landing | Présentation et vrai lien vers le jeu restent accessibles ; aucun bloc vide bloquant. |
 | RC-78 | Charger landing et jeu sur hébergement statique | Deux routes servies correctement, ressources versionnées, budgets mesurés séparément. |
+| RC-79 | Apparition d’armes | Emplacement libre praticable à 160–480 px de Paul, hors groupe pacifique ; première après environ 10 s, puis toutes les 15 à 25 s ; jamais plus de deux au sol. |
+| RC-80 | Ramasser une arme en tenant déjà une | Nouvelle arme tenue, ancienne remplacée ; HUD « Arme : <nom> (<coups>) ». |
+| RC-81 | Frapper avec une arme | KO en un coup à la portée de l’arme ; charge consommée seulement si au moins un casseur est touché. |
+| RC-82 | Arme à zéro coup | Arme brisée, HUD « Arme : mains nues », portée de 56 px rétablie. |
+| RC-83 | Changer de manche avec une arme | Arme et coups restants conservés. |
+| RC-84 | Objectif échoué en cours de manche | Pénalité ou bonus manqué, manche poursuivie ; seule la santé de Paul à zéro termine la session. |
+| RC-85 | Entrée des casseurs d’une manche | Un par un toutes les 1,5 s, au plus 12 sur la carte, 6 s de repos entre vagues, aucun lanceur dans la première vague. |
 
 ### 21.3 Recette visuelle
 
-Évaluer la taille réelle à l’écran : Pierre identifiable, groupes pacifiques distincts, drapeaux lisibles, pierres en vol/au sol différentes, soins et kits distincts, victime identifiable, alerte de délai local lisible, frappe et renvoi compréhensibles. Vérifier profondeur des pieds et bâtiments, pixel art net, aucune caméra isométrique.
+Évaluer la taille réelle à l’écran : Paul identifiable grâce à son accent clair, armes au sol repérables, groupes pacifiques distincts, drapeaux lisibles, pierres en vol/au sol différentes, soins et kits distincts, victime identifiable, alerte de délai local lisible, frappe et renvoi compréhensibles. Vérifier profondeur des pieds et bâtiments, pixel art net, aucune caméra isométrique.
 
 ### 21.4 Joueurs et performance
 
@@ -1079,12 +1153,12 @@ La première minute doit enseigner le mouvement et un lancer récupérable. Un p
 
 | Lot | Livrable | Condition de passage |
 | --- | --- | --- |
-| L0 | Référence de pixel art, Pierre, carte et règles | Vue orthogonale et gabarits validés à taille réelle |
-| L1 | Scène 2D avec déplacement, contact et trois variantes | Contrôle précis au clavier et au tactile |
-| L2 | Groupes protégés, lanceur, pierres, stock et renvoi | Aucun dommage de Pierre aux groupes ; cycle de projectile cohérent |
+| L0 | Référence de pixel art, Paul, carte et règles | Vue orthogonale et gabarits validés à taille réelle |
+| L1 | Scène 2D avec déplacement, frappe circulaire, armes ramassables et trois variantes | Contrôle précis au clavier et au tactile |
+| L2 | Groupes protégés, lanceur, pierres, stock et renvoi | Aucun dommage de Paul aux groupes ; cycle de projectile cohérent |
 | L3 | École et capture | Objectifs lisibles dans la vue du dessus |
-| L4 | Soins, kits, délais de bâtiment et secours dynamiques | Urgences lisibles, ruines réparables, protection des victimes contre Pierre |
-| L4b | Boutique, manches et hordes | Session arcade renouvelée jusqu’au KO |
+| L4 | Soins, kits, délais de bâtiment et secours dynamiques | Urgences lisibles, ruines réparables, protection des victimes contre Paul |
+| L4b | Boutique, manches à effectif fixe, nouvelles armes et hordes | Session arcade renouvelée jusqu’au KO |
 | L5 | Habillage, sons, menus, accessibilité et records | Parcours complet sans outils de développement |
 | L5b | Landing et accès au jeu | Présentation, règles, commandes, navigation directe et chargement séparé validés |
 | L6 | Profilage et endurance | Quarante hostiles, groupes et projectiles sur appareils réels |
@@ -1118,9 +1192,9 @@ Lille, Limoges, Bordeaux, Lyon, Grenoble, Marseille et Nice, en complément de P
 
 Ne pas publier huit noms pour un quartier identique en les présentant comme huit environnements distincts. Une réutilisation de kit est possible, mais chaque destination doit apporter une implantation ou un habillage identifiable.
 
-### 23.4 Contact humoristique
+### 23.4 Armes supplémentaires
 
-Bâton de saucisson ou autres accessoires de contact, après validation du combat de base. Aucune arme à feu, y compris humoristique. Définir animations, portée et score avant ajout ; ne pas accorder un avantage caché lié à un accessoire cosmétique.
+L’ancienne extension « accessoires de contact » est remplacée par les armes ramassables de la section 8.7 (Bâton, Marteau, Panneau de signalisation). Les armes débloquées par manche (Gant de boxe à ressort, Kamehame, Bouclier) y sont décrites au statut **Proposé**, pour la tranche 2. Aucune arme à feu, y compris humoristique. Toute nouvelle arme définit animations, portée, nombre de coups et rareté avant ajout ; le score d’un KO reste identique quelle que soit l’arme.
 
 ### 23.5 Diffusion et confort
 
@@ -1128,29 +1202,23 @@ Installation PWA facultative, démarrage hors connexion après cache complet, ma
 
 ## 24. Écart avec le prototype actuel
 
-**La révision 1.4 modifie le cahier des charges ; le programme 3D existant n’a pas été converti.** Le prototype 02 conserve Three.js, la personnalisation et son ancienne limite de durée. Ses tests ne valident pas le jeu 2D demandé. La landing séparée décrite ici reste à réaliser.
+**Le prototype Three.js est remplacé.** Le prototype 02 (Three.js, personnalisation, limite de 120 secondes) est abandonné et reste consultable dans l’historique ; ses tests ne valident pas le jeu 2D. Une première tranche jouable 2D est disponible sur la branche principale (`main`) : Phaser 4.2.1, Vite, TypeScript, Vitest, simulation pure séparée du rendu.
 
-| Sujet | Ancien prototype | Cible 1.4 |
+| Sujet | Première tranche livrée (`main`) | Reste à faire (tranche 2) |
 | --- | --- | --- |
-| Vue | 3D derrière l’épaule | 2D pixel art du dessus, non isométrique |
-| Héros | Homme/femme et teints au choix | Pierre unique, cheveux longs et noir |
-| Moteur | Three.js | Phaser 4 proposé |
-| Mouvement | Orientation/avancée | Huit directions directes, exploration libre |
-| Caméra | Suivi 3D à tourner | Suivi 2D automatique, orientation fixe |
-| Foule | Petit nombre d’agents | Hordes avec rôles de lanceur et contact |
-| Projectiles | Absents | Lancers ennemis, récupération au sol, stock limité, renvoi |
-| Manifestants | PNJ individuels | Groupes protégés contre Pierre, victimes possibles d’événements de secours |
-| Destruction | Résistance de prototype, fin sur école perdue | Délais locaux, échec non terminal et ruines persistantes |
-| Réparation | Automatique après vague | Sauvetage avant destruction ou kit après destruction |
-| Secours dynamiques | Absents | Rencontres aléatoires contrôlées et détresse temporisée |
-| Durée | Limite de 120 secondes | Aucune limite ; partie jusqu’au KO |
-| Soins | Absents | Petits soins et stations limitées |
-| Objectifs | École/monument une fois | Objectifs récurrents, boutique proposée et manches |
-| Rendu | Formes procédurales 3D | Sprites/atlas/tuiles, pixel art cohérent |
-| Validation | Onze tests de l’ancienne boucle | Nouveaux cas projectile/groupe/horde/endurance et appareils réels |
-| Accès | Accueil intégré au prototype | Landing légère sur `/`, jeu sur `/jouer/` |
+| Vue et rendu | 2D du dessus non isométrique, tuiles de 32 px, sprites Universal LPC, zoom de caméra entier en mode RESIZE | Habillage abouti, optimisation |
+| Héros | Paul unique, déplacement en huit directions, frappe circulaire | — |
+| Hordes | Trois variantes cosmétiques, rôles contact et lanceur, barème +1 égal | Casseurs renforcés, nouveaux types d’ennemis |
+| Projectiles | Lancers annoncés, récupération au sol, stock de trois, renvoi | Blocage par bouclier |
+| Armes | Bâton, Marteau, Panneau de signalisation ; apparition aléatoire, usure et bris | Gant de boxe à ressort, Kamehame, Bouclier |
+| Objectifs | École (première ligne, renforts, délai local), secours dynamique | Monument, boutique, kits de réparation |
+| Soins | Stations au contact, petits soins de terrain | — |
+| Structure | Vagues successives avec pression `P = min(12, 1 + floor(vague / 2) + floor(KO / 30))`, entrée un par un, au plus 12 sur la carte | Manches à effectif fixe, écran « Manche N terminée », progression de la section 12.2 |
+| Score et bilan | Score, compteur « Casseurs neutralisés », record local, bilan | Statistiques de manche |
+| Accès | Landing sur `/`, jeu sur `/jouer/`, démarrage immédiat par `/jouer/?go` | — |
+| Validation | Tests Vitest de simulation et build de vérification | Recette sur appareils réels et endurance |
 
-Les règles de score et capture peuvent servir de base après adaptation ; les graphismes, contrôles et collisions ne sont pas une simple conversion automatique. Les lignes satiriques manquantes du bilan restent à intégrer.
+Les éléments de la colonne « Reste à faire » demeurent des exigences de la cible de diffusion.
 
 ## 25. Décisions restantes et sources
 
@@ -1159,28 +1227,30 @@ Les règles de score et capture peuvent servir de base après adaptation ; les g
 | Sujet | Proposition de travail |
 | --- | --- |
 | Direction | Pixel art orthogonal du dessus, pas d’isométrie |
-| Héros | Pierre, cheveux longs, tenue noire, sprite unique |
-| Gabarits | Tuile 16 × 16 ; personnage environ 24 × 32 |
+| Héros | Paul (fictif), cheveux longs, tenue noire, accent clair, sprite unique |
+| Gabarits | Tuile 32 × 32 ; cellules LPC 64 × 64, silhouette environ 32 × 48 |
 | Déplacement | Huit directions, diagonales normalisées |
-| Contact | Balayage court, trois cibles maximum |
+| Contact | Frappe circulaire de 56 px à mains nues, trois cibles maximum (confirmé) |
+| Armes | Portées, coups et rythme d’apparition de la section 8.7 |
+| Manches | Effectifs 10, 14, 18, 22 puis +4 ; 12 casseurs sur la carte au plus |
 | Récupération | Pierres ennemies tombées, ramassage automatique |
 | Stock | Trois pierres ; renvois non récupérables |
-| Groupes pacifiques | Non ciblables par Pierre ; détresse ennemie seulement dans un événement annoncé |
+| Groupes pacifiques | Non ciblables par Paul ; détresse ennemie seulement dans un événement annoncé |
 | Bâtiments urgents | Réserve locale de 30 secondes d’attaque effective proposée |
 | Secours | Délai local de 20 à 30 secondes, deux urgences simultanées maximum |
 | Kits | Un porté, deux au sol, pose sécurisée de trois secondes |
 | Autres neutres | Anciennes pénalités conservées s’ils restent touchables ; option de protection généralisée à décider |
 | Hordes | Quarante hostiles maximum pour la référence normale |
 | Projectiles | Vingt-quatre en vol et seize récupérables au sol au maximum |
-| Moteur | Phaser 4 stable, version exacte et compatibilité à confirmer par essai |
-| Durée | Arcade sans limite, santé et soins conservés |
-| Ressources et diffusion | Ressources à sélectionner ; aucune nouvelle publication autorisée par cette spécification |
+| Moteur | Phaser 4.2.1 retenu ; compatibilité à confirmer sur appareils réels |
+| Durée | Arcade par manches sans limite, santé et soins conservés |
+| Ressources et diffusion | Universal LPC, Kenney / LPC CC0 retenus ; aucune nouvelle publication autorisée par cette spécification |
 
-Ces paramètres permettent de construire une version de travail sans attendre chaque détail artistique. Le document ne prétend pas que le prototype 2D existe déjà.
+Ces paramètres permettent de construire une version de travail sans attendre chaque détail artistique. La première tranche 2D existe (section 24) ; elle ne valide pas encore ces paramètres sur appareils réels.
 
 ### 25.2 Sources techniques
 
-Consultation le 19 octobre 2026. Les budgets et règles sont des choix de projet, pas des garanties fournies par les sources.
+Consultation le 19 octobre 2026, mise à jour le 20 octobre 2026. Les budgets et règles sont des choix de projet, pas des garanties fournies par les sources.
 
 - [Phaser — téléchargement officiel](https://phaser.io/download).
 - [Phaser — archives et versions](https://phaser.io/download/archive).
@@ -1191,12 +1261,14 @@ Consultation le 19 octobre 2026. Les budgets et règles sont des choix de projet
 - [Phaser — état du moteur de rendu et Canvas](https://phaser.io/news/2026/04/phaser-4-renderer-faster-cleaner-and-built-for-modern-games).
 - [Vite](https://vite.dev/guide/).
 - [Game Accessibility Guidelines](https://gameaccessibilityguidelines.com/basic/).
+- [Universal LPC Spritesheet Character Generator](https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator).
+- [Kenney — ressources CC0](https://kenney.nl/assets).
 
-Les références de presse sur Pierre sont en section 1.5. Les articles retrouvés ne servent pas à attribuer à la personne réelle les actions ou dialogues inventés pour le jeu.
+Le héros Paul est un personnage fictif ; aucune source ne le rattache à une personne réelle.
 
 ### 25.3 Définition de « terminé »
 
-Landing accessible et jeu accessible directement ; chargement séparé ; Pierre jouable dans une carte du dessus non isométrique ; pixel art de référence atteint ; mouvement libre ; hordes lisibles ; contact et projectiles cohérents ; récupération/stock/renvoi sans duplication ; groupes protégés contre Pierre et secourables ; santé/soins ; délais locaux équitables ; ruines persistantes et kits ; école/capture et manches récurrentes ; fin au KO ; performances et longue session validées sur appareils réels.
+Landing accessible et jeu accessible directement ; chargement séparé ; Paul jouable dans une carte du dessus non isométrique ; pixel art de référence atteint ; mouvement libre ; hordes lisibles ; frappe circulaire, armes et projectiles cohérents ; récupération/stock/renvoi sans duplication ; groupes protégés contre Paul et secourables ; santé/soins ; délais locaux équitables ; ruines persistantes et kits ; école/capture et manches à effectif fixe ; fin au KO ; performances et longue session validées sur appareils réels.
 
 Une capture d’écran pixelisée, une conversion de perspective ou les anciens tests 3D ne suffisent pas.
 
@@ -1204,9 +1276,10 @@ Une capture d’écran pixelisée, une conversion de perspective ou les anciens 
 
 - **1.0 — 19 octobre 2026 :** mission Paris 3D chronométrée et personnage personnalisable.
 - **1.1 — 19 octobre 2026 :** protagoniste unique, arcade sans limite, soins, manches et échecs d’objectifs non terminaux.
-- **1.2 — 19 octobre 2026 :** 2D pixel art du dessus non isométrique, Pierre nommé, exploration libre, hordes, groupes pacifiques protégés, pierres récupérables et renvoi ; nouvelle stack 2D proposée.
-- **1.3 — 19 octobre 2026 :** collisions bâtiments/arbres précisées, délais locaux de destruction, kits pour ruines persistantes, événements de secours et distinction entre protection contre Pierre et détresse ennemie.
+- **1.2 — 19 octobre 2026 :** 2D pixel art du dessus non isométrique, héros nommé, exploration libre, hordes, groupes pacifiques protégés, pierres récupérables et renvoi ; nouvelle stack 2D proposée.
+- **1.3 — 19 octobre 2026 :** collisions bâtiments/arbres précisées, délais locaux de destruction, kits pour ruines persistantes, événements de secours et distinction entre protection contre le héros et détresse ennemie.
 - **1.4 — 19 octobre 2026 :** landing page, contenu de présentation, routes distinctes, chargement différé du jeu et recette du parcours site → jeu.
+- **1.5 — 20 octobre 2026 :** héros renommé Paul, commerçant fictif, sans référence à une personne réelle ; barème égal (+1 par KO, drapeaux cosmétiques) ; compteur neutre « Casseurs neutralisés » à la place de l’ancien compteur et suppression des lignes satiriques du bilan ; frappe circulaire à 360° (56 px, trois cibles) ; soins appliqués au contact ; armes ramassables (section 8.7, EX-25) et nouvelles armes proposées pour la tranche 2 ; manches à effectif fixe remplaçant les vagues sans fin (EX-26) et nouvelle formule de pression ; choix techniques effectifs (Phaser 4.2.1, Vite, TypeScript, Vitest, simulation pure, tuiles 32 px, LPC/Kenney) ; lancement direct par `/jouer/?go` ; section 24 décrivant la première tranche ; recette RC-79 à RC-85.
 
 ## 26. Landing page et accès au jeu
 
@@ -1223,13 +1296,13 @@ Landing et navigation sont P0. L’habillage final et un aperçu représentatif 
 | Bloc | Contenu attendu | Action |
 | --- | --- | --- |
 | En-tête | Nom du jeu ; navigation minimale vers Présentation et Commandes | Lien Jouer |
-| Présentation principale | Une phrase de promesse, genre et contexte : arcade pixel art, vue du dessus, Paris, Pierre | Bouton/lien principal « Jouer » ; lien secondaire « Comment jouer » |
+| Présentation principale | Une phrase de promesse, genre et contexte : arcade pixel art, vue du dessus, Paris, Paul | Bouton/lien principal « Jouer » ; lien secondaire « Comment jouer » |
 | Aperçu | Une capture réelle de gameplay 2D, éventuellement une courte vidéo à lancement volontaire | Comprendre immédiatement la perspective et la lisibilité du jeu |
 | Ce que l’on fait | Quatre idées courtes : combattre et renvoyer les projectiles ; défendre et réparer ; secourir ; survivre et se soigner | Aucun écran supplémentaire nécessaire |
 | Règles et commandes | Survie jusqu’au KO, urgences locales, groupes pacifiques non ciblables ; commandes ordinateur et téléphone | Ancre Commandes ; second lien Jouer en bas si la page est longue |
 | Pied de page | Version et statut prototype/version jouable, crédits, mention de fiction satirique, informations de contact et mentions nécessaires selon diffusion | Crédits et retour en haut si utile |
 
-Exemple de texte de présentation, proposé : **« Défends le quartier. Tiens aussi longtemps que possible. »** Puis : « Un jeu d’action arcade en pixel art, vu du dessus. Incarne Pierre dans un quartier parisien, défends les bâtiments, aide les passants et retourne les projectiles contre les casseurs. »
+Exemple de texte de présentation, proposé : **« Défends le quartier. Tiens aussi longtemps que possible. »** Puis : « Un jeu d’action arcade en pixel art, vu du dessus. Incarne Paul dans un quartier parisien, défends les bâtiments, aide les passants et retourne les projectiles contre les casseurs. »
 
 Sous le lien Jouer : **« Solo · Ordinateur et téléphone · Sans compte »**. Afficher seulement les compatibilités réellement vérifiées. La mention « gratuit » ne sera ajoutée que si ce modèle de diffusion est confirmé.
 
@@ -1239,19 +1312,20 @@ Les quatre actions doivent rester des descriptions courtes, pas une reproduction
 
 - La session n’a pas de limite globale de temps : elle se termine au KO ou par arrêt volontaire.
 - Certains bâtiments et secours ont un délai local. Manquer une intervention n’arrête pas la partie ; des kits permettent de réparer les ruines.
-- Les groupes pacifiques et les victimes sont à protéger et à contourner. Le ciblage de Pierre les exclut.
-- Les projectiles ennemis tombés peuvent être récupérés puis renvoyés ; la santé et les soins sont limités.
+- Les groupes pacifiques et les victimes sont à protéger et à contourner. La frappe de Paul les exclut.
+- Les projectiles ennemis tombés peuvent être récupérés puis renvoyés ; des armes apparaissent dans les rues ; la santé et les soins sont limités, une station soigne quand on passe dessus.
+- La partie avance par manches : neutraliser l’effectif de la manche et traiter ses objectifs pour passer à la suivante.
 - Les commandes affichées reprennent les affectations réellement livrées de la section 7 ; ne pas maintenir une seconde liste divergente. Présenter le clavier et le tactile sans laisser croire qu’une souris est obligatoire sur téléphone.
 
-Le statut satirique du jeu est indiqué en une phrase lisible. Le site ne présente ni les scènes fictives comme une reconstitution, ni la personne réelle comme ayant approuvé le jeu. Les marqueurs de gameplay et compteurs sont expliqués dans les règles et le bilan, sans leur attribuer une valeur documentaire.
+Le statut satirique du jeu est indiqué en une phrase lisible. Le site ne présente pas les scènes fictives comme une reconstitution ; Paul est un personnage fictif. Les marqueurs de gameplay et compteurs sont expliqués dans les règles et le bilan, sans leur attribuer une valeur documentaire.
 
 ### 26.4 Navigation et lancement
 
 Routes proposées : **`/` pour la landing**, **`/jouer/` pour le jeu**. Elles peuvent être servies comme deux entrées statiques dans le même dépôt, sans framework de site supplémentaire. Les deux routes et leurs ressources doivent fonctionner après navigation directe et rechargement sur l’hébergement retenu.
 
-« Jouer » est un vrai lien vers `/jouer/`, dans le même onglet. Le jeu ne commence pas à se charger au survol, au défilement ou à l’ouverture de la landing. Aucun préchargement automatique du moteur ou des atlas. La page de jeu affiche l’avancement, les erreurs et une action Réessayer en cas d’échec. Les combats ne démarrent qu’après ressources indispensables prêtes et action « Commencer ».
+**Confirmé :** « Jouer » est un vrai lien vers `/jouer/?go`, dans le même onglet. Le jeu ne commence pas à se charger au survol, au défilement ou à l’ouverture de la landing. Aucun préchargement automatique du moteur ou des atlas. La page de jeu affiche l’avancement, les erreurs et une action Réessayer en cas d’échec. Avec `?go`, la partie démarre dès que les ressources indispensables sont prêtes, sans écran de départ ; l’audio se déverrouille à la première touche, au premier clic ou au premier toucher.
 
-L’accès direct au jeu est autorisé : la landing n’est pas une étape obligatoire. Une visite directe retrouve les règles essentielles et les commandes dans l’écran de départ ou l’aide. L’activation audio se fait sur un geste dans la page du jeu ; le clic effectué sur une autre page ne doit pas être supposé suffisant.
+L’accès direct au jeu est autorisé : la landing n’est pas une étape obligatoire. Une visite directe sur `/jouer/` affiche l’écran des règles essentielles et des commandes avec l’action « Commencer ». L’activation audio se fait sur un geste dans la page du jeu ; le clic effectué sur une autre page ne doit pas être supposé suffisant.
 
 Pause et bilan proposent « Retour au site ». Depuis une session en cours, une confirmation intégrée précise qu’elle sera abandonnée, avec « Continuer la partie » et « Quitter la partie ». Depuis le bilan, retour direct. Le rechargement ou la fermeture ne garantissent pas la reprise : aucune sauvegarde de session n’est prévue en V1. Le record et les préférences déjà enregistrés restent locaux au navigateur et à la même origine.
 

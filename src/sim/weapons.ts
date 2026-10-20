@@ -8,9 +8,9 @@ export type WeaponKind = 'baton' | 'marteau' | 'panneau';
 
 /** Melee weapons found in the street. Every one KOs a rioter in one hit; reach and strikes differ. */
 export const WEAPONS: Readonly<Record<WeaponKind, { label: string; range: number; uses: number }>> = {
-  baton: { label: 'Bâton', range: 72, uses: 8 },
-  marteau: { label: 'Marteau', range: 64, uses: 4 },
-  panneau: { label: 'Panneau', range: 96, uses: 5 },
+  baton: { label: 'Bâton', range: 72, uses: 15 },
+  marteau: { label: 'Marteau', range: 64, uses: 8 },
+  panneau: { label: 'Panneau', range: 96, uses: 10 },
 };
 const KINDS = Object.keys(WEAPONS) as WeaponKind[];
 

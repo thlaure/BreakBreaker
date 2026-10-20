@@ -98,3 +98,9 @@ describe('weapons in the Sim', () => {
     expect(sim.snapshot().weaponsOnGround).toEqual([{ id: 9, kind: 'marteau', pos: { x: 100, y: 100 } }]);
   });
 });
+
+test('weapons last: stick 15, sign 10, hammer 8 strikes that hit', () => {
+  expect(WEAPONS.baton.uses).toBe(15);
+  expect(WEAPONS.panneau.uses).toBe(10);
+  expect(WEAPONS.marteau.uses).toBe(8);
+});

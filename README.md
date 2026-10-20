@@ -1,47 +1,70 @@
 # BreakBreaker
 
-Jeu web 2D en vue de dessus, en pixel art, réécrit depuis l'ancien prototype Three.js (conservé dans l'historique git).
+A 2D top-down pixel-art arcade web game, rewritten from the old Three.js prototype (kept in the git history). The game's text is in French.
 
-## Tranche jouable (first playable slice)
+Specification: [`docs/CAHIER_DES_CHARGES.md`](docs/CAHIER_DES_CHARGES.md) (v1.5, French).
 
-Une session complète, jouable au clavier/souris ou au tactile, dans un quartier unique :
+## First playable slice
 
-- **Défense de l'école** : une première ligne de casseurs dégrade la façade ; la réserve de l'école ne baisse que pendant la dégradation. Une fois la première ligne neutralisée, une courte séquence « Renforts en approche ! » (passable avec Agir / Espace ou un appui) annonce 8 renforts.
-- **Secours** : une victime menacée à rejoindre et sécuriser, puis à aider (Agir).
-- **Pierres** : les lanceurs annoncent leur tir ; Paul ramasse les pierres tombées (3 max) et les renvoie.
-- **Soins** : bornes de soin rechargeables, à activer à l'arrêt (Agir).
-- **Vagues sans fin** : après l'intro, l'école et le secours, les vagues s'enchaînent avec une pression croissante jusqu'au KO (ou à l'arrêt volontaire). Pas de compte à rebours global.
-- Récapitulatif de fin de session (score, record local, vague atteinte, statistiques) et Rejouer.
+A full session in a single district, playable with keyboard/mouse or touch:
 
-Choix :
+- **School defense**: a first line of rioters damages the façade; the school's countdown only runs while it is being damaged. Once the first line is down, a short "Renforts en approche !" sequence (skippable with Act / Space or a tap) announces 8 reinforcements.
+- **Rescue**: reach a threatened victim, knock out the attackers, then help (hold Act).
+- **Rocks**: throwers telegraph their throws; Paul picks up fallen rocks (3 max) and throws them back.
+- **Circular strikes**: Paul's strike hits all around him (up to 3 rioters).
+- **Weapons**: a stick, a hammer or a road sign appears at random in the streets; walk over it to pick it up. Weapons knock a rioter out in one hit, reach further and wear out after a number of hits (15 / 8 / 10).
+- **Healing**: walk over a "Soins" kit to recover 25 HP (one charge per kit).
+- **Waves**: after the intro, the school and the rescue, waves follow until Paul is knocked out (or the player quits). Rioters enter one by one, with a rest between waves. No global timer.
+- End-of-session summary (score, local best, wave reached, stats) and Replay.
 
-- Le héros est **Paul**, personnage fictif ; aucun personnage ne représente une personne réelle.
-- Chaque casseur mis KO rapporte **+1** au score ; le compteur affiché est un compteur neutre **« Casseurs neutralisés »**.
-- Tuiles de **32 px**, sprites LPC en frames de **64×64**.
-- Mise à l'échelle : `Scale.RESIZE` (le canevas occupe toute la fenêtre, 1 px CSS = 1 px de canevas) et **zoom de caméra entier** (paysage : `floor(min(l/640, h/360))`, portrait : `floor(min(l/360, h/640))`, minimum 1). Pixel art net, jamais étiré.
+The landing page's "Jouer" link (`/jouer/?go`) starts the game right away; opening `/jouer/` directly shows the rules screen first.
+
+Design choices:
+
+- The hero is **Paul**, a fictional character; no character represents a real person.
+- Every rioter knocked out scores **+1**; the HUD shows a neutral **"Casseurs neutralisés"** counter.
+- **32 px** tiles, LPC sprites in **64×64** frames.
+- Scaling: `Scale.RESIZE` (the canvas fills the window, 1 CSS px = 1 canvas px) with an **integer camera zoom** (landscape: `floor(min(w/640, h/360))`, portrait: `floor(min(w/360, h/640))`, minimum 1). Crisp pixel art, never stretched.
+
+## Controls
+
+| Action | Keyboard / mouse | Touch |
+| --- | --- | --- |
+| Move | ZQSD, WASD or arrows | Joystick (left half of the screen) |
+| Strike | Space or left click | Frapper button |
+| Throw a rock back | E or right click (aim with the mouse) | Renvoyer button (tap = last aim, drag = aim) |
+| Act (help a victim) | F (hold) | Agir button (hold) |
+| Run | Shift | Push the joystick all the way |
+| Pause | Esc | Pause button |
 
 ## Stack
 
-Vite, TypeScript (strict), Phaser 4.2.1, Vitest. Simulation déterministe à pas fixe (60 Hz) dans `src/sim/` (sans Phaser), rendu et interface dans `src/game/`.
+Vite, TypeScript (strict), Phaser 4.2.1, Vitest. Deterministic fixed-step simulation (60 Hz) in `src/sim/` (no Phaser), rendering and UI in `src/game/`.
 
-Deux points d'entrée :
+Two entry points:
 
-- `/` : page d'accueil statique (règles, commandes, aperçu), sans code de jeu.
-- `/jouer/` : le jeu Phaser.
+- `/`: static landing page (rules, controls, preview), no game code.
+- `/jouer/`: the Phaser game.
 
 ## Scripts
 
 ```bash
 npm install
-npm run dev        # serveur de dev Vite
-npm run build      # build de production dans dist/
-npm run preview    # prévisualiser le build
-npm test           # vitest run (inclut un build de production de vérification, dans un dossier temporaire)
+npm run dev        # Vite dev server
+npm run build      # production build into dist/
+npm run preview    # preview the build
+npm test           # vitest run (includes a production build check, in a temp folder)
 npm run typecheck  # tsc --noEmit
-npm run assets     # télécharge et assemble les ressources (sprites LPC, tuiles, sons) et régénère public/CREDITS.md
-npm run bench      # coût d'un pas de simulation sous charge (40 casseurs, 24 pierres en vol)
+npm run assets     # download and assemble assets (LPC sprites, tiles, sounds) and regenerate public/CREDITS.md
+npm run bench      # cost of one simulation step under load (40 rioters, 24 rocks in flight)
 ```
 
-## Crédits
+To test on a phone on the same Wi-Fi: `npm run dev -- --host`, then open the "Network" address.
 
-Les sprites, tuiles et sons sont des ressources libres (notamment LPC, CC-BY-SA 3.0 / GPL 3.0 / OGA-BY 3.0). Chaque auteur et licence est listé dans [`public/CREDITS.md`](public/CREDITS.md), généré par `npm run assets` à partir de `scripts/credits-template.md` et accessible depuis le pied de la page d'accueil et le menu pause du jeu.
+## Roadmap
+
+Next slice ([plan](docs/superpowers/plans/2026-10-20-slice-2.md), spec §12.2 and §8.7): rounds with a growing number of rioters and objectives, monument capture, shop, repair kits, and new weapons unlocked by round (long-range boxing glove, kamehame, shield).
+
+## Credits
+
+Sprites, tiles and sounds are free assets (notably LPC, CC-BY-SA 3.0 / GPL 3.0 / OGA-BY 3.0, and Kenney, CC0). Every author and license is listed in [`public/CREDITS.md`](public/CREDITS.md), generated by `npm run assets` from `scripts/credits-template.md`, and linked from the landing page footer and the in-game pause menu.
