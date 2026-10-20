@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   ALERT_MS,
   AlertBanner,
+  FURIE_ALERT_MS,
+  incidentLook,
   activeIncidents,
   alertFromEvent,
   arrowFor,
@@ -575,5 +577,90 @@ describe('Hud alerts and edge indicators', () => {
     const hud = new Hud(document.body, null);
     hud.update(snap((x) => { x.school.stage = 'cinematic'; }), view);
     expect(hud.root.querySelector('.bb-banner .hint')!.textContent).toBe('Espace ou F pour passer');
+  });
+});
+
+describe('mode furie alerts', () => {
+  const view: CameraView = { x: 0, y: 0, zoom: 1, width: 800, height: 600 };
+  const calm = (x: Snapshot): void => {
+    for (const t of x.targets) t.state = 'intact';
+    x.rescue = null;
+  };
+  const snap = (patch: (s: Snapshot) => void): Snapshot => {
+    const s = new Sim(1).snapshot();
+    patch(s);
+    return s;
+  };
+
+  test('specs: the drop banner, its « FURIE » indicator and the short position-less pickup banner', () => {
+    expect(incidentAlert('furieDrop')).toMatchObject({
+      title: 'MODE FURIE DISPONIBLE !',
+      sub: 'Fonce le ramasser',
+      label: 'FURIE',
+      tone: 'furie',
+      icon: 'bolt',
+      positioned: true,
+    });
+    expect(incidentAlert('furie')).toMatchObject({ title: 'MODE FURIE !', positioned: false, tone: 'furie', ms: FURIE_ALERT_MS });
+    expect(FURIE_ALERT_MS).toBeLessThan(ALERT_MS);
+    expect(incidentLook('furieDrop')).toEqual({ tone: 'furie', icon: 'bolt' });
+    expect(pixelSvg('bolt')).toContain('<svg');
+  });
+
+  test('event mapping: a furie twist drop, the pickup', () => {
+    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 }, furie: true })).toEqual({
+      id: 'drop@7,8',
+      kind: 'furieDrop',
+      pos: { x: 7, y: 8 },
+      wave: 0,
+      total: 0,
+      incident: 'drop@7,8',
+    });
+    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: null, furie: true })).toBeNull();
+    expect(alertFromEvent({ type: 'FurieStarted', secondsLeft: 12 })).toEqual({ id: 'furie', kind: 'furie', pos: null, wave: 0, total: 0 });
+    expect(alertFromEvent({ type: 'FurieEnded' })).toBeNull();
+  });
+
+  test('activeIncidents: a furie drop is a « furieDrop », a timed furie spawn is none', () => {
+    const s = snap((x) => {
+      calm(x);
+      x.weaponsOnGround = [
+        { id: 1, kind: 'furie', pos: { x: 10, y: 20 }, expiresAt: null },
+        { id: 2, kind: 'furie', pos: { x: 30, y: 40 }, expiresAt: 99 },
+      ];
+    });
+    expect(activeIncidents(s)).toEqual([{ id: 'drop@30,40', kind: 'furieDrop', pos: { x: 30, y: 40 } }]);
+  });
+
+  test('Hud: « FURIE » edge indicator with its own tone; the pickup banner has no arrow and goes quickly', () => {
+    const hud = new Hud(document.body, null);
+    const off = { ...view, x: 5000, y: 5000 };
+    hud.update(snap((x) => { calm(x); x.weaponsOnGround = [{ id: 3, kind: 'furie', pos: { x: 100, y: 100 }, expiresAt: 40 }]; }), off);
+    const edges = [...hud.root.querySelectorAll<HTMLElement>('.bb-edge')];
+    expect(edges).toHaveLength(1);
+    expect(edges[0]!.querySelector('.lbl')!.textContent).toBe('FURIE');
+    expect(edges[0]!.classList.contains('tone-furie')).toBe(true);
+    hud.onEvents([{ type: 'FurieStarted', secondsLeft: 12 }]);
+    const a = hud.root.querySelector<HTMLElement>('.bb-alert')!;
+    expect(a.hidden).toBe(false);
+    expect(a.querySelector('.title')!.textContent).toBe('MODE FURIE !');
+    expect(a.querySelector<HTMLElement>('.dir')!.hidden).toBe(true);
+    // the pickup banner survives prunes (it is tied to no incident) and hides after FURIE_ALERT_MS
+    hud.update(snap(calm), view);
+    expect(a.hidden).toBe(false);
+    vi.advanceTimersByTime(FURIE_ALERT_MS + 10);
+    expect(a.hidden).toBe(true);
+    hud.destroy();
+  });
+
+  test('Hud weapon line turns gold while the mode is on', () => {
+    const hud = new Hud(document.body, null);
+    const line = () => [...hud.root.querySelectorAll<HTMLElement>('.stat')].find((e) => e.textContent!.startsWith('Arme'))!;
+    hud.update(snap((x) => { calm(x); x.furie = { secondsLeft: 5 }; }), view);
+    expect(line().textContent).toBe('Arme : mains nues · Mode furie 5 s');
+    expect(line().classList.contains('furie')).toBe(true);
+    hud.update(snap(calm), view);
+    expect(line().classList.contains('furie')).toBe(false);
+    hud.destroy();
   });
 });

@@ -247,9 +247,11 @@ describe('renderMarkdown', () => {
 });
 
 describe('content', () => {
-  test('4-5 rules and a controls table', () => {
+  test('4-6 rules (the mode furie one included) and a controls table', () => {
     expect(RULES.length).toBeGreaterThanOrEqual(4);
-    expect(RULES.length).toBeLessThanOrEqual(5);
+    expect(RULES.length).toBeLessThanOrEqual(6);
+    expect(RULES).toContain('Un éclair jaune rare apparaît quand ça chauffe : passe dessus pour déclencher le mode furie.');
+    for (const r of RULES) expect(r).not.toMatch(/saiyan/i);
     expect(CONTROLS.some((c) => c.action === 'Pause' && c.keyboard === 'Échap')).toBe(true);
   });
 
@@ -373,5 +375,46 @@ describe('weaponLine', () => {
   test('bare hands, then weapon name and strikes left', () => {
     expect(weaponLine(snap())).toBe('Arme : mains nues');
     expect(weaponLine(snap((x) => { x.weapon = { kind: 'panneau', uses: 3 }; }))).toBe('Arme : Panneau (3)');
+  });
+});
+
+describe('mode furie HUD and audio', () => {
+  test('weapon line: the held weapon stays, the furie seconds (rounded up) follow', () => {
+    expect(weaponLine(snap((x) => { x.weapon = { kind: 'baton', uses: 12 }; x.furie = { secondsLeft: 8.2 }; }))).toBe(
+      'Arme : Bâton (12) · Mode furie 9 s',
+    );
+    expect(weaponLine(snap((x) => { x.weapon = null; x.furie = { secondsLeft: 12 }; }))).toBe('Arme : mains nues · Mode furie 12 s');
+    expect(weaponLine(snap((x) => { x.weapon = null; x.furie = { secondsLeft: 0.01 }; }))).toBe('Arme : mains nues · Mode furie 1 s');
+    expect(weaponLine(snap((x) => { x.weapon = null; x.furie = null; }))).toBe('Arme : mains nues');
+  });
+
+  test('a furie picked up in the sim shows in the snapshot and the weapon line', () => {
+    const sim = new Sim(4);
+    sim.weapons.held = { kind: 'panneau', uses: 3 };
+    sim.weapons.ground.push({ id: 77, kind: 'furie', pos: { ...sim.player.pos }, expiresAt: null });
+    sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false });
+    const s = sim.snapshot();
+    expect(s.furie).toEqual({ secondsLeft: 12 });
+    expect(weaponLine(s)).toBe('Arme : Panneau (3) · Mode furie 12 s');
+  });
+
+  test('power-up sweep and hum on FurieStarted, hum stopped and power-down on FurieEnded; reset stops the hum', async () => {
+    const { GameAudio } = await import('../../src/game/audio');
+    const a = new GameAudio();
+    const up = vi.spyOn(a, 'powerUp').mockImplementation(() => undefined);
+    const down = vi.spyOn(a, 'powerDown').mockImplementation(() => undefined);
+    const priv = a as unknown as { startHum: () => void; stopHum: () => void };
+    const start = vi.spyOn(priv, 'startHum');
+    const stop = vi.spyOn(priv, 'stopHum');
+    a.onEvents([{ type: 'FurieStarted', secondsLeft: 12 }]);
+    expect(up).toHaveBeenCalledTimes(1);
+    expect(start).toHaveBeenCalledTimes(1);
+    a.onEvents([{ type: 'FurieEnded' }]);
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(down).toHaveBeenCalledTimes(1);
+    a.reset();
+    expect(stop).toHaveBeenCalledTimes(2);
+    // no AudioContext (not unlocked): everything stays silent and never throws
+    a.onEvents([{ type: 'FurieStarted', secondsLeft: 12 }, { type: 'FurieEnded' }]);
   });
 });

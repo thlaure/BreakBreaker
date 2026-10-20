@@ -276,6 +276,7 @@ export class Hud {
       this.lastWave = s.round;
     }
     c.text(this.weapon, weaponLine(s));
+    c.cls(this.weapon, s.furie ? 'stat furie' : 'stat');
     c.text(this.kit, toolboxLine(s));
     c.cls(this.kit, s.toolboxes.carried ? 'stat kit full' : 'stat kit');
     this.slots.forEach((slot, i) => {

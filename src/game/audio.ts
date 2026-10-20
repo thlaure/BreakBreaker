@@ -16,6 +16,8 @@ const MAX_VOICES = 8;
 const SFX_GAIN = 0.7;
 const AMBIENCE_GAIN = 0.5;
 const FIRE_MAX = 0.6;
+/** Level of the mode furie hum on the sfx bus. */
+const HUM_GAIN = 0.12;
 
 /**
  * Fire loop level for a frame: 0 when no target is attacked or burning, else 0.35..1 following the lowest health among
@@ -43,6 +45,8 @@ export class GameAudio {
   private threat = 0;
   private alarmed = new Set<string>();
   private unlocking: Promise<void> | null = null;
+  /** Mode furie hum while on (one voice of the cap); null when off. */
+  private hum: { osc: OscillatorNode; lfo: OscillatorNode; gain: GainNode } | null = null;
 
   constructor(muted = false) {
     this.muted = muted;
@@ -118,6 +122,7 @@ export class GameAudio {
   reset(): void {
     this.alarmed.clear();
     this.setThreat(0);
+    this.stopHum();
   }
 
   setMuted(muted: boolean): void {
@@ -197,6 +202,102 @@ export class GameAudio {
     });
   }
 
+  /** Mode furie on: a 0.5 s square sweep rising 196 → 1046 Hz with a bright tail (power-up). */
+  powerUp(): void {
+    this.voice((ctx, out, t) => {
+      const osc = ctx.createOscillator();
+      const lp = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(196, t);
+      osc.frequency.exponentialRampToValueAtTime(1046, t + 0.45);
+      lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(1200, t);
+      lp.frequency.exponentialRampToValueAtTime(4000, t + 0.45);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.3, t + 0.04);
+      g.gain.setValueAtTime(0.3, t + 0.4);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+      osc.connect(lp).connect(g).connect(out);
+      osc.start(t);
+      osc.stop(t + 0.56);
+      return osc;
+    });
+  }
+
+  /** Mode furie over: a 0.4 s triangle falling 660 → 140 Hz. */
+  powerDown(): void {
+    this.voice((ctx, out, t) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(660, t);
+      osc.frequency.exponentialRampToValueAtTime(140, t + 0.38);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+      osc.connect(g).connect(out);
+      osc.start(t);
+      osc.stop(t + 0.41);
+      return osc;
+    });
+  }
+
+  /**
+   * Low sustained hum while the mode furie is on (sawtooth 55 Hz through a low-pass, slow tremolo): takes one voice
+   * of MAX_VOICES (skipped when none is free), goes through the master gain (mute), pauses with the context.
+   */
+  private startHum(): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.sfxBus || this.hum || this.voices >= MAX_VOICES) return;
+    try {
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.value = 55;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 220;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(HUM_GAIN, t + 0.3);
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 5;
+      const depth = ctx.createGain();
+      depth.gain.value = HUM_GAIN * 0.4;
+      lfo.connect(depth).connect(gain.gain);
+      osc.connect(lp).connect(gain).connect(this.sfxBus);
+      this.voices += 1;
+      osc.onended = (): void => {
+        this.voices -= 1;
+        osc.disconnect();
+        lfo.disconnect();
+        gain.disconnect();
+      };
+      osc.start(t);
+      lfo.start(t);
+      this.hum = { osc, lfo, gain };
+    } catch {
+      /* silent */
+    }
+  }
+
+  private stopHum(): void {
+    const h = this.hum;
+    const ctx = this.ctx;
+    this.hum = null;
+    if (!h || !ctx) return;
+    try {
+      const t = ctx.currentTime;
+      h.gain.gain.cancelScheduledValues(t);
+      h.gain.gain.setTargetAtTime(0.0001, t, 0.05);
+      h.osc.stop(t + 0.25);
+      h.lfo.stop(t + 0.25);
+    } catch {
+      /* silent */
+    }
+  }
+
   /** Thrown Molotov: a 0.35 s noise burst through a band-pass sweeping down (whoosh). */
   whoosh(): void {
     this.voice((ctx, out, t) => {
@@ -245,6 +346,14 @@ export class GameAudio {
           break;
         case 'MolotovThrown':
           this.whoosh();
+          break;
+        case 'FurieStarted':
+          this.powerUp();
+          this.startHum();
+          break;
+        case 'FurieEnded':
+          this.stopHum();
+          this.powerDown();
           break;
         case 'TargetSaved':
         case 'TargetRepaired':

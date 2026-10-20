@@ -165,8 +165,12 @@ export function toolboxLine(s: Snapshot): string {
   return `Caisse ${s.toolboxes.carried ? 1 : 0}/1`;
 }
 
-/** HUD weapon line: weapon name and strikes left, or bare hands. */
+/**
+ * HUD weapon line: weapon name and strikes left, or bare hands; while the mode furie is on, its whole seconds left
+ * (rounded up) follow: « Arme : Bâton (12) · Mode furie 9 s ».
+ */
 export function weaponLine(s: Snapshot): string {
-  return s.weapon ? `Arme : ${WEAPONS[s.weapon.kind].label} (${s.weapon.uses})` : 'Arme : mains nues';
+  const arme = s.weapon ? `Arme : ${WEAPONS[s.weapon.kind].label} (${s.weapon.uses})` : 'Arme : mains nues';
+  return s.furie ? `${arme} · Mode furie ${Math.max(1, Math.ceil(s.furie.secondsLeft - 1e-9))} s` : arme;
 }
 

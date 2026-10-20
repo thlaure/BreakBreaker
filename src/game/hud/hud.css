@@ -58,6 +58,7 @@
 .bb-alert.tone-warn { --edge: var(--bb-accent); --flash: #fff7e0; --tint: #2a2210; }
 .bb-alert.tone-round { --edge: #ff5a3c; --flash: #ffd166; --tint: #2c1012; }
 .bb-alert.tone-drop { --edge: #7be0ff; --flash: #ffd166; --tint: #0f2230; }
+.bb-alert.tone-furie { --edge: #ffe066; --flash: #fff7e0; --tint: #2e2608; }
 .bb-alert .ico { display: inline-flex; flex: none; }
 .bb-alert .txt { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .bb-alert .title { font-size: 16px; line-height: 1.25; font-weight: 400; color: var(--edge); text-shadow: 2px 2px 0 #000; }
@@ -78,6 +79,8 @@
 }
 @media (max-width: 560px) { .bb-alert { gap: 8px; padding: 8px; } .bb-alert .title { font-size: 11px; } .bb-alert .sub { font-size: 8px; } }
 @media (max-width: 400px) { .bb-alert { gap: 6px; padding: 6px; } .bb-alert .txt { gap: 4px; } .bb-alert .title { font-size: 10px; } .bb-alert .sub, .bb-alert .meta { font-size: 7px; } .bb-alert .ico svg { width: 20px; height: auto; } .bb-alert .dir { padding-left: 6px; } }
+/* HUD weapon line while the mode furie is on */
+.bb-line .stat.furie { color: #ffe066; }
 /* HUD wave line: one stepped pulse when the wave number changes */
 .bb-line .stat.pulse { animation: bb-wave-pulse 0.9s steps(1, end) 1; }
 @keyframes bb-wave-pulse { 0%, 66% { color: var(--bb-accent); } 33% { color: #fff; } }
@@ -90,6 +93,7 @@
 .bb-edge.tone-fire { --edge: var(--bb-fire); }
 .bb-edge.tone-warn { --edge: var(--bb-accent); }
 .bb-edge.tone-drop { --edge: #7be0ff; }
+.bb-edge.tone-furie { --edge: #ffe066; }
 .bb-edge .arrow { display: inline-flex; width: 16px; height: 16px; align-items: center; justify-content: center; color: var(--edge); }
 .bb-edge .ico { display: inline-flex; }
 .bb-edge .txt { display: flex; flex-direction: column; }
