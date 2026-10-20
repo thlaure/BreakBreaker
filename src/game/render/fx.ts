@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { CONFIG } from '../../sim/config';
 import { MOLOTOV_FLIGHT_SEC, type Snapshot, type Telegraph } from '../../sim/sim';
 import type { Vec } from '../../sim/types';
 import { DEPTH } from './depth';
@@ -55,8 +56,8 @@ export class RockLayer {
 
 /**
  * Thrower telegraphs: red dashed line from→to and a ground ring at `to`, plus a red arrow at the screen edge
- * pointing at windups whose thrower is off screen. A telegraph whose thrower is already KO is hidden
- * (matched by position, the sim keeps it until `until`).
+ * pointing at windups whose thrower is off screen. A firebomber's telegraph rings the whole fire patch it will leave.
+ * A telegraph whose thrower is already KO is hidden (matched by position, the sim keeps it until `until`).
  */
 export class TelegraphLayer {
   private readonly ring: Phaser.GameObjects.Graphics;
@@ -75,10 +76,14 @@ export class TelegraphLayer {
     this.edge.clear();
     const live = visibleTelegraphs(snap);
     const pulse = 0.6 + 0.4 * Math.abs(Math.sin(timeMs / 90));
+    const bombers = snap.hostiles.filter((h) => h.role === 'firebomber' && h.state === 'windup');
     for (const t of live) {
-      dashed(this.line, t.from, t.to, 0xff3b30, pulse);
-      this.ring.lineStyle(2, 0xff3b30, pulse).strokeEllipse(t.to.x, t.to.y, 26, 13);
-      this.ring.fillStyle(0xff3b30, 0.18 * pulse).fillEllipse(t.to.x, t.to.y, 26, 13);
+      const fire = bombers.some((h) => Math.abs(h.pos.x - t.from.x) < 2 && Math.abs(h.pos.y - t.from.y) < 2);
+      const w = fire ? CONFIG.firePatch.radius * 2 : 26;
+      const color = fire ? 0xff7a1a : 0xff3b30;
+      dashed(this.line, t.from, t.to, color, pulse);
+      this.ring.lineStyle(2, color, pulse).strokeEllipse(t.to.x, t.to.y, w, w / 2);
+      this.ring.fillStyle(color, 0.18 * pulse).fillEllipse(t.to.x, t.to.y, w, w / 2);
       if (!view.contains(t.from.x, t.from.y)) this.arrow(t.from, view);
     }
   }
@@ -132,8 +137,8 @@ interface Flight {
 }
 
 /**
- * Molotov bottles in flight (`snapshot.molotovs`): spinning lit bottle on an arc from → to over the flight, ground
- * shadow, then a flame burst where it lands. Bottle sprites are pooled.
+ * Molotov bottles in flight (`snapshot.molotovs`, or the firebombs with their own `flightSec`): spinning lit bottle on
+ * an arc from → to over the flight, ground shadow, then a flame burst where it lands. Bottle sprites are pooled.
  */
 export class MolotovFx {
   private readonly flights: Flight[] = [];
@@ -142,7 +147,10 @@ export class MolotovFx {
   private readonly puff: Phaser.GameObjects.Particles.ParticleEmitter;
   private frame = 0;
 
-  constructor(private readonly scene: Phaser.Scene) {
+  constructor(
+    private readonly scene: Phaser.Scene,
+    private readonly flightSec: number = MOLOTOV_FLIGHT_SEC,
+  ) {
     this.burst = scene.add
       .particles(0, 0, 'px', {
         lifespan: { min: 300, max: 650 },
@@ -170,7 +178,7 @@ export class MolotovFx {
   }
 
   /** `now` = sim time (s), `timeMs` = render clock. */
-  update(list: Snapshot['molotovs'], now: number, timeMs: number): void {
+  update(list: readonly Telegraph[], now: number, timeMs: number): void {
     const frame = ++this.frame;
     for (const m of list) {
       let f = this.flights.find((x) => x.until === m.until && x.to.x === m.to.x && x.to.y === m.to.y);
@@ -222,7 +230,7 @@ export class MolotovFx {
   }
 
   private place(f: Flight, now: number, timeMs: number): void {
-    const t = Math.min(1, Math.max(0, 1 - (f.until - now) / MOLOTOV_FLIGHT_SEC));
+    const t = Math.min(1, Math.max(0, 1 - (f.until - now) / this.flightSec));
     const x = f.from.x + (f.to.x - f.from.x) * t;
     const y = f.from.y + (f.to.y - f.from.y) * t;
     const peak = Math.min(48, 20 + 0.15 * Math.hypot(f.to.x - f.from.x, f.to.y - f.from.y));
@@ -233,5 +241,106 @@ export class MolotovFx {
       .setPosition(Math.round(x), Math.round(y - h) - 6)
       .setFlipX(Math.floor(timeMs / 70) % 2 === 0);
     f.shadow.setPosition(Math.round(x), Math.round(y)).setScale(1 - h / 120);
+  }
+}
+
+/** Seconds over which a fire patch fades before it goes out. */
+const PATCH_FADE_SEC = 0.5;
+const PATCH_FLAMES = 4;
+
+interface PatchView {
+  id: number;
+  seen: number;
+  glow: Phaser.GameObjects.Ellipse;
+  flames: Phaser.GameObjects.Image[];
+}
+
+/**
+ * Ground fire left by firebombs (`snapshot.firePatches`): a warm additive glow, a faint danger ring at the patch
+ * radius, a few flickering flames and rising sparks; fades over its last 0.5 s. Views are pooled.
+ */
+export class FirePatchLayer {
+  private readonly views: PatchView[] = [];
+  private readonly pool: PatchView[] = [];
+  private readonly ring: Phaser.GameObjects.Graphics;
+  private readonly sparks: Phaser.GameObjects.Particles.ParticleEmitter;
+  private frame = 0;
+
+  constructor(private readonly scene: Phaser.Scene) {
+    this.ring = scene.add.graphics().setDepth(DEPTH.decal + 2);
+    this.sparks = scene.add
+      .particles(0, 0, 'px', {
+        lifespan: { min: 350, max: 700 },
+        speedY: { min: -70, max: -30 },
+        speedX: { min: -12, max: 12 },
+        scale: { start: 2.5, end: 0.3 },
+        tint: [0xfff6d0, 0xffe066, 0xff9a2e, 0xff5a1f],
+        alpha: { start: 0.9, end: 0 },
+        blendMode: Phaser.BlendModes.ADD,
+        emitting: false,
+      })
+      .setDepth(DEPTH.foliage);
+  }
+
+  update(list: Snapshot['firePatches'], timeMs: number): void {
+    const frame = ++this.frame;
+    this.ring.clear();
+    for (const p of list) {
+      let v = this.views.find((x) => x.id === p.id);
+      if (!v) {
+        v = this.acquire(p.id);
+        this.views.push(v);
+      }
+      v.seen = frame;
+      const fade = Math.min(1, p.secondsLeft / PATCH_FADE_SEC);
+      const flicker = 0.85 + 0.15 * Math.sin(timeMs / 60 + p.id);
+      const x = Math.round(p.pos.x);
+      const y = Math.round(p.pos.y);
+      v.glow.setPosition(x, y).setAlpha(0.45 * fade * flicker);
+      this.ring.lineStyle(1, 0xff3b30, 0.45 * fade).strokeEllipse(x, y, p.r * 2, p.r);
+      const tick = Math.floor(timeMs / 70);
+      v.flames.forEach((f, k) => {
+        const a = (k / PATCH_FLAMES) * Math.PI * 2 + p.id;
+        const fx = x + Math.round(Math.cos(a) * p.r * 0.5);
+        const fy = y + Math.round(Math.sin(a) * p.r * 0.25);
+        f.setPosition(fx, fy)
+          .setScale(1.6, (tick + k) % 3 === 0 ? 2.2 : 1.8)
+          .setFlipX((tick + k) % 2 === 0)
+          .setAlpha(fade)
+          .setDepth(fy);
+      });
+      // a few sparks per frame, anywhere on the patch (cosmetic: Math.random is fine here)
+      if (fade > 0.2 && Math.random() < 0.5) {
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.random() * p.r;
+        this.sparks.emitParticleAt(x + Math.cos(a) * r, y + Math.sin(a) * r * 0.5 - 4, 1);
+      }
+    }
+    for (let i = this.views.length - 1; i >= 0; i--) {
+      const v = this.views[i]!;
+      if (v.seen === frame) continue;
+      v.glow.setVisible(false);
+      for (const f of v.flames) f.setVisible(false);
+      this.views.splice(i, 1);
+      this.pool.push(v);
+    }
+  }
+
+  private acquire(id: number): PatchView {
+    const v = this.pool.pop();
+    if (v) {
+      v.id = id;
+      v.glow.setVisible(true);
+      for (const f of v.flames) f.setVisible(true);
+      return v;
+    }
+    return {
+      id,
+      seen: 0,
+      glow: this.scene.add.ellipse(0, 0, CONFIG.firePatch.radius * 2, CONFIG.firePatch.radius, 0xff7a1a, 0.45).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.decal + 1),
+      flames: Array.from({ length: PATCH_FLAMES }, () =>
+        this.scene.add.image(0, 0, 'flame').setOrigin(0.5, 1).setBlendMode(Phaser.BlendModes.ADD),
+      ),
+    };
   }
 }

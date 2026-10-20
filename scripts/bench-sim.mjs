@@ -1,4 +1,4 @@
-// Sim step cost in Node: 40 hostiles (30 % throwers) + 24 rocks in flight, 10 simulated minutes.
+// Sim step cost in Node: 40 hostiles (30 % throwers, 10 % firebombers) + 24 rocks in flight, 10 simulated minutes.
 // Usage: npm run bench   (loads TS sources through Vite's SSR loader)
 import { createServer } from 'vite';
 

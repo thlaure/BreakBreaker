@@ -10,9 +10,12 @@ import type { CameraView } from '../hud/hud';
 import { createKeyboard } from '../input/keyboard';
 import { guardLifecycle, merge, type InputSource } from '../input/merge';
 import { createTouch } from '../input/touch';
+import { Grid } from '../../sim/map/grid';
 import { HostileLayer, PaulView } from '../render/actors';
+import { FurieAura, PowBubbles, makeFurieTextures } from '../render/furie';
 import { GroupView, VictimView } from '../render/crowd';
-import { MolotovFx, RockLayer, TelegraphLayer } from '../render/fx';
+import { FirePatchLayer, MolotovFx, RockLayer, TelegraphLayer } from '../render/fx';
+import { MonumentView, makeMonumentTextures } from '../render/monument';
 import { TargetsLayer, makeTargetTextures } from '../render/targets';
 import { StationsView, ToolboxView, WorldView, makeRockTextures, makeTextures } from '../render/world';
 import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapons';
@@ -20,6 +23,9 @@ import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapo
 const HIT_STOP_MS = 60;
 const SHAKE_MS = 120;
 const SHAKE_PX = 2;
+/** Tiny shake on a strike that hits in mode furie (none under prefers-reduced-motion). */
+const FURIE_SHAKE_MS = 90;
+const FURIE_SHAKE_PX = 1.5;
 const BASE_W = 640;
 const BASE_H = 360;
 const PAN_IN_MS = 700;
@@ -47,8 +53,12 @@ export class WorldScene extends Phaser.Scene {
 
   private world!: WorldView;
   private targetViews!: TargetsLayer;
+  private monument!: MonumentView;
   private toolboxes!: ToolboxView;
   private molotovFx!: MolotovFx;
+  /** Firebombers' bottles flying at where Paul stood, and the fire they leave. */
+  private firebombFx!: MolotovFx;
+  private firePatches!: FirePatchLayer;
   private stations!: StationsView;
   private group!: GroupView;
   private victim!: VictimView;
@@ -58,6 +68,9 @@ export class WorldScene extends Phaser.Scene {
   private weaponsOnGround!: WeaponLayer;
   private heldWeapon!: HeldWeaponView;
   private telegraphs!: TelegraphLayer;
+  private furieAura!: FurieAura;
+  private pows!: PowBubbles;
+  private reducedMotion = false;
 
   private hitStopUntil = 0;
   private struck = false;
@@ -150,19 +163,32 @@ export class WorldScene extends Phaser.Scene {
     makeRockTextures(this);
     makeWeaponTextures(this);
     makeTargetTextures(this);
+    makeFurieTextures(this);
+    makeMonumentTextures(this);
+    this.reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.world = new WorldView(this);
-    this.targetViews = new TargetsLayer(this, this.world.schoolParts);
+    this.targetViews = new TargetsLayer(this, this.world.buildingParts);
+    this.monument = new MonumentView(this);
     this.stations = new StationsView(this);
     this.group = new GroupView(this);
     this.victim = new VictimView(this);
-    this.hostiles = new HostileLayer(this);
+    // static map data only (no sim state): where a launched body may land
+    const grid = new Grid(DISTRICT);
+    this.hostiles = new HostileLayer(this, {
+      world: { width: this.world.width, height: this.world.height },
+      blocked: (p) => grid.circleBlocked(p, 6) || grid.isGroup(p),
+    });
     this.rocks = new RockLayer(this);
     this.weaponsOnGround = new WeaponLayer(this);
     this.telegraphs = new TelegraphLayer(this);
     this.molotovFx = new MolotovFx(this);
+    this.firePatches = new FirePatchLayer(this);
+    this.firebombFx = new MolotovFx(this, CONFIG.firebomber.flightSec);
     const snap = this.sim.snapshot();
     this.playerPos = { ...snap.player.pos };
+    this.furieAura = new FurieAura(this);
     this.paul = new PaulView(this, snap.player.pos);
+    this.pows = new PowBubbles(this);
     this.heldWeapon = new HeldWeaponView(this);
     this.toolboxes = new ToolboxView(this);
 
@@ -205,7 +231,7 @@ export class WorldScene extends Phaser.Scene {
     const snap = this.sim.snapshot();
     this.cinematicCamera(snap);
     this.playerPos = snap.player.pos;
-    this.react(events, time);
+    this.react(events, time, snap);
     if (time >= this.hitStopUntil) {
       this.render(snap, time, time - this.lastVisual);
       this.lastVisual = time;
@@ -243,25 +269,42 @@ export class WorldScene extends Phaser.Scene {
     return f;
   }
 
-  private react(events: SimEvent[], time: number): void {
+  private react(events: SimEvent[], time: number, snap: Snapshot): void {
+    let furieHit = false;
     for (const e of events) {
       if (e.type === 'HitConfirmed') {
         this.hostiles.flash(e.targetLifeId, time);
         this.hitStopUntil = Math.max(this.hitStopUntil, time + HIT_STOP_MS);
+        if (snap.furie && e.source === 'melee') {
+          furieHit = true;
+          const h = snap.hostiles.find((x) => x.lifeId === e.targetLifeId);
+          if (h) this.pows.spawn(h.pos.x, h.pos.y, time);
+        }
+      } else if (e.type === 'ActorKnockedOut' && e.launch) {
+        const h = snap.hostiles.find((x) => x.lifeId === e.lifeId);
+        if (h) this.hostiles.launch(e.lifeId, h.pos, e.launch, time);
       } else if (e.type === 'PlayerDamaged') {
         const cam = this.cameras.main;
         cam.shake(SHAKE_MS, new Phaser.Math.Vector2(SHAKE_PX / cam.width, SHAKE_PX / cam.height), true);
       } else if (e.type === 'ToolboxPickedUp') {
         this.toolboxes.picked(time);
+      } else if (e.type === 'FlagCaptured') {
+        this.monument.onEvent(e);
       } else if (e.type === 'FireOut' || e.type === 'BuildingDestroyed' || e.type === 'TargetRepaired') {
         this.targetViews.onEvent(e, time);
       }
+    }
+    if (furieHit && !this.reducedMotion) {
+      const cam = this.cameras.main;
+      cam.shake(FURIE_SHAKE_MS, new Phaser.Math.Vector2(FURIE_SHAKE_PX / cam.width, FURIE_SHAKE_PX / cam.height), false);
     }
   }
 
   private render(snap: Snapshot, time: number, dtMs: number): void {
     const flying = new Map(this.sim.rocks.flying().map((r) => [r.id, r.t]));
-    this.paul.update(snap.player, this.struck, time, dtMs);
+    this.paul.update(snap.player, this.struck, time, dtMs, snap.furie !== null);
+    this.furieAura.update(snap.ended ? null : snap.furie, this.paul.sprite, time);
+    this.pows.update(time);
     this.heldWeapon.update(snap.weapon, snap.player, this.struck, time);
     this.struck = false;
     this.weaponsOnGround.update(snap.weaponsOnGround, time, snap.now);
@@ -271,7 +314,10 @@ export class WorldScene extends Phaser.Scene {
     this.group.update(time);
     this.victim.update(snap.rescue, time);
     this.targetViews.update(snap, time, dtMs);
+    this.monument.update(snap.monument, time);
     this.molotovFx.update(snap.molotovs, snap.now, time);
+    this.firePatches.update(snap.firePatches, time);
+    this.firebombFx.update(snap.firebombs, snap.now, time);
     this.toolboxes.update(snap.toolboxes, snap.player, time);
     this.stations.update(snap.stations, time);
     this.world.update(snap.player.pos);

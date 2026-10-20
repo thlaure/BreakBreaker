@@ -63,11 +63,11 @@ test('integrity is the school hp in percent; status follows the fire', () => {
   const { inc, targets } = setup();
   targets.get('school').hp = 50;
   expect(inc.integrity()).toBe(50);
-  targets.ignite('school');
+  targets.ignite('school', inc.id);
   expect(inc.status()).toBe('en feu');
 });
 
-test('first line KO -> cinematic 3 s -> exactly the 7 reinforcements, skipping does not double (RC-27)', () => {
+test('first line KO -> cinematic 3 s -> exactly the 8 reinforcements (second Molotov included), skipping does not double (RC-27)', () => {
   const { inc, run, horde, koAll, mine } = setup();
   expect(new Set(mine().map((h) => h.variant)).size).toBe(3);
   koAll();
@@ -84,7 +84,7 @@ test('first line KO -> cinematic 3 s -> exactly the 7 reinforcements, skipping d
   const active = horde.active().filter((h) => h.incidentId === inc.id);
   expect(active).toHaveLength(R1.reinforcements.length);
   const count = (r: string) => active.filter((h) => h.role === r).length;
-  expect([count('degrader'), count('contact')]).toEqual([4, 3]);
+  expect([count('molotov'), count('degrader'), count('contact')]).toEqual([1, 4, 3]);
 });
 
 test('spawn cap keeps reinforcements pending, never dropped', () => {
@@ -103,7 +103,7 @@ test('spawn cap keeps reinforcements pending, never dropped', () => {
   expect(horde.active().filter((h) => h.incidentId === inc.id)).toHaveLength(R1.reinforcements.length - 2);
 });
 
-test('saved: +8 once, stage saved after the fire dies out (RC-28)', () => {
+test('saved: +8 once, stage saved at once when no fire burns (RC-28)', () => {
   const { inc, run, rules, koAll, mine } = setup();
   koAll();
   run(3.5);

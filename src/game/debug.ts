@@ -2,7 +2,7 @@ import { topUp, type StressState } from '../sim/stress';
 import type { Sim } from '../sim/sim';
 
 /**
- * Dev-only stress mode: `/jouer/?stress=40` keeps N hostiles (mixed contact/thrower, all variants) and a full
+ * Dev-only stress mode: `/jouer/?stress=40` keeps N hostiles (mixed contact/thrower/firebomber, all variants) and a full
  * flying-rock budget alive, Paul invulnerable. Every call site is guarded by `import.meta.env.DEV`, so none of
  * this is reachable in production (tree-shaken).
  */

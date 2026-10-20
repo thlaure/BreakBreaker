@@ -55,6 +55,13 @@
     "material": "cloth",
     "palette": "white",
     "clipY": 43
+   },
+   {
+    "path": "facial/glasses/nerd/adult",
+    "z": 125,
+    "color": "black",
+    "material": "cloth",
+    "palette": "white"
    }
   ]
  },

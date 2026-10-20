@@ -125,7 +125,8 @@ for (const [name, recipe] of Object.entries(recipes)) {
     const map = recolorMap(layer.material, layer.palette, layer.map);
     for (const anim of ANIMS) {
       const file = `${anim.name}.png`;
-      const abs = path.join(sheets, layer.path, file);
+      // most layers are one sheet per animation; glasses & co. ship one sheet per colour: <path>/<anim>/<color>.png
+      const abs = layer.color ? path.join(sheets, layer.path, anim.name, `${layer.color}.png`) : path.join(sheets, layer.path, file);
       if (!fs.existsSync(abs)) throw new Error(`${name}: missing layer file ${layer.path}/${file}`);
       useCredit(layer.path, file);
       const src = readPng(abs);

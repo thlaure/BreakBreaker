@@ -10,8 +10,8 @@ export interface StressState {
 }
 
 /**
- * Stress driver (debug / bench only): keeps `target` active hostiles alive (mixed contact/thrower, all variants,
- * ~30 % throwers) and keeps the flying-rock budget full. Call once per step before `sim.step`.
+ * Stress driver (debug / bench only): keeps `target` active hostiles alive (mixed contact/thrower/firebomber, all
+ * variants, ~30 % rock throwers, ~10 % firebombers whose fire patches burn on the map) and keeps the flying-rock budget full. Call once per step before `sim.step`.
  * Ground rocks (cap 16) accumulate naturally as flying ones land.
  */
 export function topUp(sim: Sim, target: number, st: StressState): void {
@@ -20,7 +20,7 @@ export function topUp(sim: Sim, target: number, st: StressState): void {
   let active = sim.horde.active().length;
   while (active < want) {
     const i = st.n++;
-    const role: Role = i % 10 < 3 ? 'thrower' : 'contact';
+    const role: Role = i % 10 < 3 ? 'thrower' : i % 10 === 3 ? 'firebomber' : 'contact';
     const pos = spawns[i % spawns.length]!;
     if (!sim.horde.spawn({ variant: VARIANTS[i % 3]!, role, pos })) break;
     active += 1;

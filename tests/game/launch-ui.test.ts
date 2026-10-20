@@ -61,8 +61,19 @@ describe('HUD Commandes button', () => {
 });
 
 describe('launch card', () => {
+  // every Hud keeps its capture listeners on window until destroyed: never leak one into the next test
+  const huds: Hud[] = [];
+  const mk = (): Hud => {
+    const h = new Hud(document.body, null);
+    huds.push(h);
+    return h;
+  };
+  afterEach(() => {
+    for (const h of huds.splice(0)) h.destroy();
+  });
+
   test('shows the goal and the main keys (keyboard)', () => {
-    const hud = new Hud(document.body, null);
+    const hud = mk();
     hud.showIntro(false);
     const card = hud.root.querySelector('.bb-intro')!;
     expect(card.textContent).toContain(INTRO_GOAL);
@@ -74,29 +85,53 @@ describe('launch card', () => {
   });
 
   test('shows the touch controls on touch devices', () => {
-    const hud = new Hud(document.body, null);
+    const hud = mk();
     hud.showIntro(true);
     const row = CONTROLS.find((c) => c.action === 'Frapper')!;
     expect(hud.root.querySelector('.bb-intro')!.textContent).toContain(row.touch);
   });
 
-  test('closes with its button, on a timer, and never stacks', () => {
-    const hud = new Hud(document.body, null);
-    hud.showIntro(false);
-    hud.showIntro(false);
+  test('blocks until a key: no timer, a lone modifier does not count, the key is swallowed, never stacks', () => {
+    const hud = mk();
+    const onDismiss = vi.fn();
+    hud.showIntro(false, onDismiss);
+    hud.showIntro(false, onDismiss);
     expect(hud.root.querySelectorAll('.bb-intro')).toHaveLength(1);
-    hud.root.querySelector<HTMLButtonElement>('.bb-intro .close')!.click();
+    expect(hud.root.querySelector('.bb-intro')!.textContent).toContain('Appuie sur une touche pour commencer');
+    vi.advanceTimersByTime(120_000);
+    expect(hud.root.querySelector('.bb-intro')).not.toBeNull();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift', code: 'ShiftLeft', bubbles: true }));
+    expect(onDismiss).not.toHaveBeenCalled();
+    const reached = vi.fn();
+    window.addEventListener('keydown', reached);
+    const ev = new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', bubbles: true, cancelable: true });
+    window.dispatchEvent(ev);
+    window.removeEventListener('keydown', reached);
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(reached).not.toHaveBeenCalled();
+    expect(ev.defaultPrevented).toBe(true);
     expect(hud.root.querySelector('.bb-intro')).toBeNull();
-    hud.showIntro(false);
-    vi.advanceTimersByTime(26_000);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x', code: 'KeyX', bubbles: true }));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  test('a tap anywhere starts the game too, and the touch wording is shown', () => {
+    const hud = mk();
+    const onDismiss = vi.fn();
+    hud.showIntro(true, onDismiss);
+    expect(hud.root.querySelector('.bb-intro')!.textContent).toContain('Touche l’écran pour commencer');
+    window.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
     expect(hud.root.querySelector('.bb-intro')).toBeNull();
   });
 
-  test('destroy removes the card and its timer', () => {
-    const hud = new Hud(document.body, null);
-    hud.showIntro(false);
+  test('destroy removes the card and its key listener', () => {
+    const hud = mk();
+    const onDismiss = vi.fn();
+    hud.showIntro(false, onDismiss);
     hud.destroy();
     expect(document.querySelector('.bb-intro')).toBeNull();
-    expect(vi.getTimerCount()).toBe(0);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', bubbles: true }));
+    expect(onDismiss).not.toHaveBeenCalled();
   });
 });

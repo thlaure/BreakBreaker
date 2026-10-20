@@ -16,7 +16,9 @@ export type IncidentStatus =
   | 'en feu'
   | 'attaquée'
   | 'perdue'
-  | 'sauvée';
+  | 'sauvée'
+  | 'zone contestée'
+  | 'à reprendre';
 
 export function formatDuration(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
@@ -72,36 +74,45 @@ export interface Prompt {
 export const DEFAULT_ACT_LABEL = 'Agir';
 
 /**
- * Contextual prompt under Paul. Every prompt of this slice is informational (no key, no touch Agir button): heal
- * stations, the toolbox messages near a ruin and the repair in progress all complete by themselves. `touch` is kept for
- * a future actionable prompt that will drop the keyboard hint on touch screens.
+ * Contextual prompt under Paul. With a toolbox next to a ruin or a burning target and no hostile close, an actionable
+ * prompt: « F — Réparer » / « F — Éteindre le feu » (touch: no key, the Agir button takes the label). Informational
+ * ones (no button): the repair in progress, the toolbox messages, the heal stations.
  */
-export function contextPrompt(s: Snapshot, _touch = false): Prompt | null {
+export function contextPrompt(s: Snapshot, touch = false): Prompt | null {
   const kit = s.toolboxes;
-  if (kit.repairTarget && kit.progress > 0) return { text: 'Réparation…', label: null };
+  if (kit.repairTarget && kit.started) return { text: 'Réparation…', label: null };
   if (kit.message) return { text: kit.message, label: null };
+  if (kit.repairTarget && kit.canRepair) {
+    const [text, label] = kit.repairKind === 'fire' ? ['Éteindre le feu', 'Éteindre'] : ['Réparer', 'Réparer'];
+    return { text: touch ? text : `F — ${text}`, label };
+  }
   if (s.stationMessage) return { text: s.stationMessage, label: null };
   return null;
 }
 
-export const TARGET_NAMES: Readonly<Record<CasseKind, string>> = { school: 'École', car: 'Voiture', busStop: 'Abribus' };
-const OBJECTIVE_NAMES: Readonly<Record<RoundHeadline, string>> = { ...TARGET_NAMES, rescue: 'Secours' };
+export const TARGET_NAMES: Readonly<Record<CasseKind, string>> = {
+  school: 'École',
+  car: 'Voiture',
+  busStop: 'Abribus',
+  shop: 'Boutique',
+};
+const OBJECTIVE_NAMES: Readonly<Record<RoundHeadline, string>> = { ...TARGET_NAMES, rescue: 'Secours', monument: 'Monument' };
 
 export interface IncidentLine {
   /** Target id, or 'rescue'. */
   key: string;
   kind: IncidentKind;
   name: string;
-  /** Rescue: whole seconds remaining, rounded up, e.g. "23 s"; target: health, e.g. "64 %". */
+  /** Rescue: whole seconds remaining, rounded up, e.g. "23 s"; target: health, e.g. "64 %"; flag: « capture 5/8 s ». */
   time: string;
-  /** Target health in percent (mini bar), null for the rescue. */
+  /** Target health (or the flag's capture) in percent (mini bar), null for the rescue. */
   hp: number | null;
   status: IncidentStatus;
   target: Vec;
 }
 
 /**
- * One card per target under an urgent attack (health and fire), then the rescue until it is resolved (its card stays
+ * One card per target under an urgent attack or still burning after it (health and fire), then the rescue until it is resolved (its card stays
  * through the thanks beat, then goes like a target's). `rescueDrain` says whether the rescue reserve went down since
  * the previous frame (the snapshot has no status for it).
  */
@@ -109,7 +120,7 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
   const out: IncidentLine[] = [];
   const secs = (n: number): string => `${Math.ceil(n - 1e-9)} s`;
   for (const t of s.targets) {
-    if (t.state !== 'attacked') continue;
+    if (t.state !== 'attacked' && t.state !== 'burning') continue;
     const hp = Math.max(0, Math.min(100, (100 * t.hp) / t.maxHp));
     const status: IncidentStatus = t.id === 'school' && s.school.stage === 'cinematic' ? 'renforts' : t.burning ? 'en feu' : 'attaquée';
     out.push({ key: t.id, kind: t.kind, name: TARGET_NAMES[t.kind], time: `${Math.ceil(hp - 1e-9)} %`, hp, status, target: t.door });
@@ -118,6 +129,14 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
   if (r && (r.stage === 'threat' || r.stage === 'secured')) {
     const status: IncidentStatus = r.stage === 'secured' ? 'sécurisé' : rescueDrain;
     out.push({ key: 'rescue', kind: r.kind, name: 'Secours', time: secs(r.remaining), hp: null, status, target: r.victimPos });
+  }
+  const m = s.monument;
+  if (m.flag === 'palestinian') {
+    // capture the flag: whole seconds held, a mini bar, paused while a hostile is inside the zone
+    const status: IncidentStatus = m.contested ? 'zone contestée' : m.inZone ? 'en cours' : 'à reprendre';
+    const held = Math.min(m.captureSec, Math.floor(m.capture + 1e-9));
+    const hp = Math.max(0, Math.min(100, (100 * m.capture) / m.captureSec));
+    out.push({ key: 'monument', kind: 'flag', name: 'Drapeau', time: `capture ${held}/${m.captureSec} s`, hp, status, target: m.mast });
   }
   return out;
 }
@@ -161,8 +180,12 @@ export function toolboxLine(s: Snapshot): string {
   return `Caisse ${s.toolboxes.carried ? 1 : 0}/1`;
 }
 
-/** HUD weapon line: weapon name and strikes left, or bare hands. */
+/**
+ * HUD weapon line: weapon name and strikes left, or bare hands; while the mode furie is on, its whole seconds left
+ * (rounded up) follow: « Arme : Bâton (12) · Mode furie 9 s ».
+ */
 export function weaponLine(s: Snapshot): string {
-  return s.weapon ? `Arme : ${WEAPONS[s.weapon.kind].label} (${s.weapon.uses})` : 'Arme : mains nues';
+  const arme = s.weapon ? `Arme : ${WEAPONS[s.weapon.kind].label} (${s.weapon.uses})` : 'Arme : mains nues';
+  return s.furie ? `${arme} · Mode furie ${Math.max(1, Math.ceil(s.furie.secondsLeft - 1e-9))} s` : arme;
 }
 

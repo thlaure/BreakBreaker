@@ -14,24 +14,25 @@ describe('Targets', () => {
     expect(t.standing('car1')).toBe(false);
     expect(t.intact()).not.toContain('car1');
   });
-  test('ignite twice returns false the second time; a ruin cannot ignite', () => {
+  test('ignite twice returns false the second time; a ruin cannot ignite; extinguish returns the fire’s incident once', () => {
     const t = new Targets();
-    expect(t.ignite('car2')).toBe(true);
-    expect(t.ignite('car2')).toBe(false);
-    t.extinguish('car2');
+    expect(t.ignite('car2', 'car#1')).toBe(true);
+    expect(t.ignite('car2', 'car#2')).toBe(false);
+    expect(t.extinguish('car2')).toBe('car#1');
     expect(t.get('car2').burning).toBe(false);
+    expect(t.extinguish('car2')).toBeNull();
     t.ruin('busStop', 'i2');
-    expect(t.ignite('busStop')).toBe(false);
+    expect(t.ignite('busStop', 'busStop#1')).toBe(false);
   });
-  test('repair returns the lost incident id once and restores 60 % of max hp (60 for school, 36 for a car)', () => {
+  test('repair returns the lost incident id once and restores full health (100 for the school, 60 for a car)', () => {
     const t = new Targets();
     t.ruin('school', 'sch');
     t.ruin('car1', 'c1');
     expect(t.repair('school')).toBe('sch');
     expect(t.repair('school')).toBeNull();
-    expect(t.get('school').hp).toBe(60);
+    expect(t.get('school').hp).toBe(100);
     expect(t.repair('car1')).toBe('c1');
-    expect(t.get('car1').hp).toBe(36);
+    expect(t.get('car1').hp).toBe(60);
     expect(t.standing('car1')).toBe(true);
   });
   test('refill brings intact targets back to max, leaves ruins at 0', () => {
@@ -42,5 +43,14 @@ describe('Targets', () => {
     expect(t.get('school').hp).toBe(100);
     expect(t.get('car2').hp).toBe(0);
     expect(t.get('car2').state).toBe('ruined');
+  });
+  test('refill never touches a burning target: a fire stays until put out', () => {
+    const t = new Targets();
+    t.damage('car1', 20);
+    t.ignite('car1', 'car#1');
+    t.damage('school', 30);
+    t.refill();
+    expect(t.get('car1')).toMatchObject({ hp: 40, burning: true });
+    expect(t.get('school').hp).toBe(100);
   });
 });

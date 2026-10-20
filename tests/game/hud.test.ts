@@ -114,7 +114,7 @@ describe('contextPrompt', () => {
 
   test('no "Aider" prompt next to a secured victim: the rescue completes by itself', () => {
     const s = snap((x) => {
-      x.rescue = { stage: 'secured', remaining: 10, victimPos: { x: 100, y: 100 }, kind: 'groupHarassed' };
+      x.rescue = { id: 'rescue#1', stage: 'secured', remaining: 10, victimPos: { x: 100, y: 100 }, kind: 'groupHarassed' };
       x.player.pos = { x: 110, y: 100 };
     });
     expect(contextPrompt(s)).toBeNull();
@@ -123,12 +123,29 @@ describe('contextPrompt', () => {
 });
 
 describe('contextPrompt: toolboxes', () => {
+  const ready = (kind: 'ruin' | 'fire') => (x: Snapshot): void => {
+    x.toolboxes.carried = true;
+    x.toolboxes.repairTarget = 'busStop';
+    x.toolboxes.canRepair = true;
+    x.toolboxes.repairKind = kind;
+  };
+
+  test('with a toolbox next to a ruin or a fire, safe: an actionable F prompt (touch: no key, Agir labelled)', () => {
+    expect(contextPrompt(snap(ready('ruin')))).toEqual({ text: 'F — Réparer', label: 'Réparer' });
+    expect(contextPrompt(snap(ready('ruin')), true)).toEqual({ text: 'Réparer', label: 'Réparer' });
+    expect(contextPrompt(snap(ready('fire')))).toEqual({ text: 'F — Éteindre le feu', label: 'Éteindre' });
+    expect(contextPrompt(snap(ready('fire')), true)).toEqual({ text: 'Éteindre le feu', label: 'Éteindre' });
+    // started: progress shown, no button
+    expect(contextPrompt(snap((x) => { ready('ruin')(x); x.toolboxes.started = true; x.toolboxes.progress = 0.3; }))).toEqual({ text: 'Réparation…', label: null });
+  });
+
   test('toolbox messages and the repair in progress are informational (no Agir label)', () => {
     expect(contextPrompt(snap((x) => { x.toolboxes.message = 'Caisse à outils requise'; }))).toEqual({ text: 'Caisse à outils requise', label: null });
     expect(contextPrompt(snap((x) => { x.toolboxes.message = 'Abords non sécurisés'; }), true)).toEqual({ text: 'Abords non sécurisés', label: null });
     const repairing = snap((x) => {
       x.toolboxes.carried = true;
       x.toolboxes.progress = 1.2;
+      x.toolboxes.started = true;
       x.toolboxes.repairTarget = 'busStop';
       x.stationMessage = 'Santé au maximum';
     });
@@ -200,20 +217,35 @@ describe('incidentLines', () => {
     expect(lines[1]).toMatchObject({ key: 'busStop', kind: 'busStop', name: 'Abribus', time: '25 %', hp: 25, status: 'attaquée' });
   });
 
+  test('the retro video-game shop has its card « Boutique » (health of 100, attacked then on fire)', () => {
+    const s = snap((x) => {
+      calm(x);
+      attacked(x, 'shop', 41.5);
+    });
+    expect(incidentLines(s, 'en cours')).toEqual([
+      expect.objectContaining({ key: 'shop', kind: 'shop', name: 'Boutique', time: '42 %', hp: 41.5, status: 'attaquée' }),
+    ]);
+    const f = snap((x) => {
+      calm(x);
+      attacked(x, 'shop', 80, true);
+    });
+    expect(incidentLines(f, 'en cours')[0]).toMatchObject({ key: 'shop', name: 'Boutique', status: 'en feu' });
+  });
+
   test('resolved incidents have no card (rescue: once its thanks beat is over); rescue status derives from stage and drain', () => {
     const s = snap((x) => {
       calm(x);
       x.school.stage = 'saved';
-      x.rescue = { stage: 'threat', remaining: 12.1, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+      x.rescue = { id: 'rescue#1', stage: 'threat', remaining: 12.1, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
     });
     const [rescue, none] = incidentLines(s, 'en cours');
     expect(none).toBeUndefined();
     expect(rescue).toMatchObject({ name: 'Secours', time: '13 s', status: 'en cours' });
-    s.rescue = { stage: 'secured', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+    s.rescue = { id: 'rescue#1', stage: 'secured', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
     expect(incidentLines(s, 'en cours')[0]).toMatchObject({ status: 'sécurisé' });
-    s.rescue = { stage: 'failed', remaining: 0, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+    s.rescue = { id: 'rescue#1', stage: 'failed', remaining: 0, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
     expect(incidentLines(s, 'en cours')).toEqual([]);
-    s.rescue = { stage: 'completed', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+    s.rescue = { id: 'rescue#1', stage: 'completed', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
     expect(incidentLines(s, 'en cours')).toEqual([]);
   });
 });
@@ -230,15 +262,19 @@ describe('renderMarkdown', () => {
 });
 
 describe('content', () => {
-  test('4-5 rules and a controls table', () => {
+  test('4-6 rules (the mode furie one included) and a controls table', () => {
     expect(RULES.length).toBeGreaterThanOrEqual(4);
-    expect(RULES.length).toBeLessThanOrEqual(5);
+    expect(RULES.length).toBeLessThanOrEqual(6);
+    expect(RULES).toContain('Un éclair jaune rare apparaît quand ça chauffe : passe dessus pour déclencher le mode furie.');
+    for (const r of RULES) expect(r).not.toMatch(/saiyan/i);
     expect(CONTROLS.some((c) => c.action === 'Pause' && c.keyboard === 'Échap')).toBe(true);
   });
 
-  test('no Agir row: rescuing needs no key, F only skips the school sequence in this slice', () => {
-    expect(CONTROLS.some((c) => /Agir|aider/i.test(c.action) || /maintenir/.test(c.keyboard))).toBe(false);
-    for (const r of RULES) expect(r).not.toMatch(/maintenir|\bF\b/);
+  test('F / Agir repairs or puts out a fire with a toolbox (a press, never held); rescuing needs no key', () => {
+    expect(CONTROLS).toContainEqual({ action: 'Réparer / éteindre (caisse à outils)', keyboard: 'F', touch: 'Bouton Agir (près d’un lieu à réparer)' });
+    expect(CONTROLS.some((c) => /aider/i.test(c.action) || /maintenir/.test(c.keyboard))).toBe(false);
+    for (const r of RULES) expect(r).not.toMatch(/maintenir|reste à côté/);
+    expect(RULES.some((r) => r.includes('passe sur une caisse à outils, va près du lieu en ruine ou en feu et appuie sur F'))).toBe(true);
   });
 });
 
@@ -247,7 +283,7 @@ describe('GameAudio.reset', () => {
     const { GameAudio } = await import('../../src/game/audio');
     const a = new GameAudio();
     const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
-    const ev = [{ type: 'BuildingThreatStarted', incidentId: 'school#1' }] as const;
+    const ev = [{ type: 'TargetIgnited', incidentId: 'school#1', kind: 'school', target: 'school', pos: { x: 0, y: 0 }, round: 1 }] as const;
     a.onEvents([...ev]);
     a.onEvents([...ev]);
     expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(1);
@@ -294,13 +330,16 @@ describe('GameAudio.onEvents', () => {
     expect(chime).toHaveBeenCalledTimes(4);
   });
 
-  test('casse alarm once per incident, whoosh on a Molotov, pickup sound on a toolbox', async () => {
+  test('fire alarm once per incident (on the fire, not the attack start), whoosh on a Molotov, pickup sound on a toolbox', async () => {
     const { GameAudio } = await import('../../src/game/audio');
     const a = new GameAudio();
     const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
     const whoosh = vi.spyOn(a, 'whoosh').mockImplementation(() => undefined);
     const casse = { type: 'CasseStarted', incidentId: 'car#2', kind: 'car', target: 'car1', pos: { x: 0, y: 0 }, round: 2, total: 14 } as const;
-    a.onEvents([casse, casse]);
+    a.onEvents([casse, { type: 'BuildingThreatStarted', incidentId: 'car#2' }]);
+    expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(0);
+    const fire = { type: 'TargetIgnited', incidentId: 'car#2', kind: 'car', target: 'car1', pos: { x: 0, y: 0 }, round: 2 } as const;
+    a.onEvents([fire, fire]);
     expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(1);
     a.onEvents([{ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: { x: 9, y: 9 }, target: 'car1' }]);
     expect(whoosh).toHaveBeenCalledTimes(1);
@@ -337,6 +376,17 @@ describe('GameAudio.onEvents', () => {
     a.onEvents([{ type: 'EnemyRockThrown', rockId: 3 }]);
     expect(play).toHaveBeenCalledWith('throw');
   });
+
+  test('a firebomb whooshes like a Molotov when thrown; its fire patch raises no alarm', async () => {
+    const { GameAudio } = await import('../../src/game/audio');
+    const a = new GameAudio();
+    const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
+    const whoosh = vi.spyOn(a, 'whoosh').mockImplementation(() => undefined);
+    a.onEvents([{ type: 'FirebombThrown', from: { x: 0, y: 0 }, to: { x: 9, y: 9 }, until: 2 }]);
+    expect(whoosh).toHaveBeenCalledTimes(1);
+    a.onEvents([{ type: 'FirePatchStarted', id: 1, pos: { x: 9, y: 9 } }]);
+    expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(0);
+  });
 });
 
 describe('waveLine', () => {
@@ -351,5 +401,46 @@ describe('weaponLine', () => {
   test('bare hands, then weapon name and strikes left', () => {
     expect(weaponLine(snap())).toBe('Arme : mains nues');
     expect(weaponLine(snap((x) => { x.weapon = { kind: 'panneau', uses: 3 }; }))).toBe('Arme : Panneau (3)');
+  });
+});
+
+describe('mode furie HUD and audio', () => {
+  test('weapon line: the held weapon stays, the furie seconds (rounded up) follow', () => {
+    expect(weaponLine(snap((x) => { x.weapon = { kind: 'baton', uses: 12 }; x.furie = { secondsLeft: 8.2 }; }))).toBe(
+      'Arme : Bâton (12) · Mode furie 9 s',
+    );
+    expect(weaponLine(snap((x) => { x.weapon = null; x.furie = { secondsLeft: 12 }; }))).toBe('Arme : mains nues · Mode furie 12 s');
+    expect(weaponLine(snap((x) => { x.weapon = null; x.furie = { secondsLeft: 0.01 }; }))).toBe('Arme : mains nues · Mode furie 1 s');
+    expect(weaponLine(snap((x) => { x.weapon = null; x.furie = null; }))).toBe('Arme : mains nues');
+  });
+
+  test('a furie picked up in the sim shows in the snapshot and the weapon line', () => {
+    const sim = new Sim(4);
+    sim.weapons.held = { kind: 'panneau', uses: 3 };
+    sim.weapons.ground.push({ id: 77, kind: 'furie', pos: { ...sim.player.pos }, expiresAt: null });
+    sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false });
+    const s = sim.snapshot();
+    expect(s.furie).toEqual({ secondsLeft: 12 });
+    expect(weaponLine(s)).toBe('Arme : Panneau (3) · Mode furie 12 s');
+  });
+
+  test('power-up sweep and hum on FurieStarted, hum stopped and power-down on FurieEnded; reset stops the hum', async () => {
+    const { GameAudio } = await import('../../src/game/audio');
+    const a = new GameAudio();
+    const up = vi.spyOn(a, 'powerUp').mockImplementation(() => undefined);
+    const down = vi.spyOn(a, 'powerDown').mockImplementation(() => undefined);
+    const priv = a as unknown as { startHum: () => void; stopHum: () => void };
+    const start = vi.spyOn(priv, 'startHum');
+    const stop = vi.spyOn(priv, 'stopHum');
+    a.onEvents([{ type: 'FurieStarted', secondsLeft: 12 }]);
+    expect(up).toHaveBeenCalledTimes(1);
+    expect(start).toHaveBeenCalledTimes(1);
+    a.onEvents([{ type: 'FurieEnded' }]);
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(down).toHaveBeenCalledTimes(1);
+    a.reset();
+    expect(stop).toHaveBeenCalledTimes(2);
+    // no AudioContext (not unlocked): everything stays silent and never throws
+    a.onEvents([{ type: 'FurieStarted', secondsLeft: 12 }, { type: 'FurieEnded' }]);
   });
 });

@@ -1,13 +1,15 @@
 import { CONFIG } from './config';
 import type { Horde, Hostile } from './hostiles';
-import type { Role, TargetId, Variant, Vec } from './types';
+import type { Role, SiteId, Variant, Vec } from './types';
 
 export interface SpawnRequest {
   variant: Variant;
   role: Role;
   incidentId?: string;
-  site?: TargetId;
+  site?: SiteId;
   round?: number;
+  /** A Molotov turning into this role after its throw at its site (the attack's last one, from round 3). */
+  afterThrow?: 'firebomber';
 }
 
 /** `front` jumps the line; `interval` paces the batch; `firstDelay` overrides the wait before its first rioter. */
@@ -39,7 +41,7 @@ interface Batch {
 const EPS = 1e-9;
 
 function spawnAt(horde: Horde, r: SpawnRequest, pos: Vec): Hostile | null {
-  return horde.spawn({ variant: r.variant, role: r.role, pos, incidentId: r.incidentId, site: r.site, round: r.round });
+  return horde.spawn({ variant: r.variant, role: r.role, pos, incidentId: r.incidentId, site: r.site, round: r.round, afterThrow: r.afterThrow });
 }
 
 /**

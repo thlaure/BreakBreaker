@@ -7,6 +7,7 @@ import { SchoolIncident } from './incidents/school';
 import { TargetAttack, lineup } from './incidents/targetAttack';
 import { DISTRICT } from './map/district';
 import { FlowField } from './map/flowfield';
+import { MonumentIncident, occupierCount, type Monument } from './monument';
 import type { Grid } from './map/grid';
 import { dist } from './math';
 import type { Player } from './player';
@@ -17,7 +18,7 @@ import type { CasseKind, Role, SimEvent, TargetId, Variant, Vec } from './types'
 import type { Weapons } from './weapons';
 
 export type RoundPhase = 'intro' | 'play' | 'breather';
-export type BeatKind = CasseKind | 'rescue';
+export type BeatKind = CasseKind | 'rescue' | 'monument';
 export type Twist = 'weaponDrop' | 'secondUrgency';
 
 /** What a round brings: its headline, its beats (each beat = incidents started together) and its twist. */
@@ -50,10 +51,14 @@ export interface DirectorHost {
   readonly stations: Stations;
   readonly toolboxes: Toolboxes;
   readonly weapons: Weapons;
-  /** Every target attack of the session still worth stepping (the director prunes resolved ones). */
+  /** Every target attack of the session still worth stepping, smouldering ones included (the director prunes resolved ones). */
   readonly attacks: TargetAttack[];
   school: SchoolIncident;
   rescue: RescueIncident | null;
+  /** The equestrian monument's flag and capture (lasting state). */
+  readonly monument: Monument;
+  /** Monument occupations of the session still worth stepping (the director prunes finished ones at round start). */
+  readonly occupations: MonumentIncident[];
 }
 
 export const SPAWN_MIN_DIST = 320;
@@ -66,8 +71,13 @@ export const THROWER_SHARE = 0.2;
 /** Aggressors of every rescue from round 2 (round 1 keeps the random CONFIG.rescue.aggressors range). */
 export const RESCUE_COUNT = 3;
 const VARIANTS: Variant[] = ['classic', 'palestinian', 'antifa'];
-const CASSE_KINDS: CasseKind[] = ['school', 'car', 'busStop'];
-const TARGETS_OF: Readonly<Record<CasseKind, TargetId[]>> = { school: ['school'], car: ['car1', 'car2'], busStop: ['busStop'] };
+const CASSE_KINDS: CasseKind[] = ['school', 'car', 'busStop', 'shop'];
+const TARGETS_OF: Readonly<Record<CasseKind, TargetId[]>> = {
+  school: ['school'],
+  car: ['car1', 'car2'],
+  busStop: ['busStop'],
+  shop: ['shop'],
+};
 const EPS = 1e-9;
 
 /** Rises one step every 2 rounds and every 30 session KOs, capped. */
@@ -86,18 +96,36 @@ export function urgentCap(round: number): number {
   return round < 3 ? 1 : 2;
 }
 
+/** What the monument allows when a round is planned: its flag, and whether last round's second beat was the monument. */
+export interface MonumentPlan {
+  french: boolean;
+  lastWasMonument: boolean;
+}
+
 /**
- * The Phase A catalogue. r1: school then rescue. r2: car or bus stop (among intact ones) then rescue, weapon-drop twist.
- * r3+: one intact kind (weight 2, or 1 if it was `last` round's headline) then rescue; twist secondUrgency on odd
- * rounds, weaponDrop on even ones. A casse beat with no intact target is dropped (its rioters go to the fill).
+ * The round catalogue. r1: the school (tutorial: first Molotov, cinematic, reinforcements) then rescue. From r2 the
+ * headline casse is a seeded random draw among every kind with a free target (standing, not burning): school, shop,
+ * car, bus stop, weight 2, or 1 if it was `last` round's headline (it may repeat, rarely; nothing is forced). Second
+ * beat: the rescue; from round CONFIG.monument.fromRound the monument occupation instead when the flag is French and
+ * last round's second beat was not the monument (they alternate; never while the flag is Palestinian). Twist
+ * secondUrgency on odd rounds from r3, weaponDrop on the others (a mode furie pickup from round
+ * CONFIG.furie.dropFromRound). No free target → the second beat alone (its kind is the headline).
  */
-export function roundPlan(round: number, rand: () => number, targets: Targets, last: CasseKind | null = null): RoundPlan {
-  const intact = (k: CasseKind): boolean => TARGETS_OF[k].some((id) => targets.standing(id));
+export function roundPlan(
+  round: number,
+  rand: () => number,
+  targets: Targets,
+  last: CasseKind | null = null,
+  monument: MonumentPlan | null = null,
+  isFree: (id: TargetId) => boolean = (id) => targets.standing(id) && !targets.get(id).burning,
+): RoundPlan {
+  // a kind is drawn only with a free target (the director's free(): standing, not burning, no unresolved attack)
+  const intact = (k: CasseKind): boolean => TARGETS_OF[k].some(isFree);
   let first: CasseKind | null = null;
   if (round === 1) first = intact('school') ? 'school' : null;
   else {
-    const kinds = (round === 2 ? (['car', 'busStop'] as CasseKind[]) : CASSE_KINDS).filter(intact);
-    const weights = kinds.map((k) => (round >= 3 && k === last ? 1 : 2));
+    const kinds = CASSE_KINDS.filter(intact);
+    const weights = kinds.map((k) => (k === last ? 1 : 2));
     let r = rand() * weights.reduce((a, b) => a + b, 0);
     for (let i = 0; i < kinds.length && first === null; i++) {
       r -= weights[i]!;
@@ -105,13 +133,26 @@ export function roundPlan(round: number, rand: () => number, targets: Targets, l
     }
   }
   const twist: Twist | null = round === 1 ? null : round >= 3 && round % 2 === 1 ? 'secondUrgency' : 'weaponDrop';
-  return { headline: first ?? 'rescue', beats: first ? [[first], ['rescue']] : [['rescue']], twist };
+  const second: BeatKind =
+    monument && round >= CONFIG.monument.fromRound && monument.french && !monument.lastWasMonument ? 'monument' : 'rescue';
+  return { headline: first ?? second, beats: first ? [[first], [second]] : [[second]], twist };
 }
 
-/** Edge spawn points >= 320 px from Paul; if none qualifies, the farthest one. */
+/** Newcomers enter by the nearest this many eligible edge points (so they arrive closer to Paul). */
+export const SPAWN_NEAREST = 3;
+
+/**
+ * Edge spawn points >= 320 px from Paul, nearest first, at most the 3 nearest (the entry line cycles over them);
+ * if none qualifies, the farthest one.
+ */
 export function spawnPoints(playerPos: Vec): Vec[] {
   const all = DISTRICT.hostileSpawns;
-  const far = all.filter((p) => dist(p, playerPos) >= SPAWN_MIN_DIST);
+  const far = all
+    .map((p) => ({ p, d: dist(p, playerPos) }))
+    .filter((x) => x.d >= SPAWN_MIN_DIST)
+    .sort((a, b) => a.d - b.d)
+    .slice(0, SPAWN_NEAREST)
+    .map((x) => x.p);
   if (far.length > 0) return far;
   let best = all[0]!;
   for (const p of all) if (dist(p, playerPos) > dist(best, playerPos)) best = p;
@@ -142,6 +183,7 @@ interface Objective {
   kind: BeatKind;
   attack: TargetAttack | null;
   rescue: RescueIncident | null;
+  occupation?: MonumentIncident | null;
   /** Rioters it brings. */
   count: number;
   launched: boolean;
@@ -159,9 +201,9 @@ interface FillGroup {
 
 /**
  * Session sequencing in rounds (manches). Intro 4 s → round 1. A round: plan → RoundStarted → beat 0 at once,
- * each later beat once the previous one is resolved and the urgency cap allows; the fill comes in groups (the last
+ * each later beat once the previous one is settled and the urgency cap allows; the fill comes in groups (the last
  * one is the climax), group n+1 only once group n is down; the twist fires once at half the roster; the flow keeper
- * lets someone in after 1.5 s with nobody around (RC-94). Round over (all beats resolved, nothing of the round queued
+ * lets someone in after 1.5 s with nobody around (RC-94). Round over (all beats settled, nothing of the round queued
  * or standing) → bonus, rewards, 6 s breather with no entry, next round.
  */
 export class Director {
@@ -187,8 +229,12 @@ export class Director {
   private readonly roster = new Set<number>();
   private scoreAtStart = 0;
   private lastHeadline: CasseKind | null = null;
-  private readonly counters: Record<BeatKind, number> = { school: 0, car: 0, busStop: 0, rescue: 0 };
+  /** Last round's plan had the monument occupation (the monument and the rescue alternate). */
+  private lastMonument = false;
+  private readonly counters: Record<BeatKind, number> = { school: 0, car: 0, busStop: 0, shop: 0, rescue: 0, monument: 0 };
   private variantCursor = 0;
+  /** Fill firebombers handed out this round (CONFIG.firebomber.maxPerRound at most). */
+  private firebombers = 0;
 
   /** Pressure for the current round and session KOs. */
   pressure(kos: number): number {
@@ -234,13 +280,26 @@ export class Director {
     this.objectives = [];
     this.twistDone = false;
     this.roster.clear();
+    this.firebombers = 0;
     this.scoreAtStart = host.rules.score;
     const keep = host.attacks.filter((a) => !a.resolved());
     host.attacks.splice(0, host.attacks.length, ...keep);
+    const occ = host.occupations.filter((o) => o.live(host.horde));
+    host.occupations.splice(0, host.occupations.length, ...occ);
+    // toolboxes at round start as well as at round end (round 1 has some too)
+    ev.push(...host.toolboxes.place(DISTRICT.kitSites, host.player.pos));
 
-    const plan = roundPlan(this.round, host.rand, host.targets, this.lastHeadline);
+    const plan = roundPlan(
+      this.round,
+      host.rand,
+      host.targets,
+      this.lastHeadline,
+      { french: host.monument.flag === 'french', lastWasMonument: this.lastMonument },
+      (id) => this.free(id, host),
+    );
     this.plan = plan;
-    this.lastHeadline = plan.headline === 'rescue' ? null : plan.headline;
+    this.lastHeadline = plan.headline === 'rescue' || plan.headline === 'monument' ? null : plan.headline;
+    this.lastMonument = plan.beats.some((b) => b.includes('monument'));
     const p = this.pressure(host.rules.kos);
     const reserved = new Set<TargetId>();
     this.beats = plan.beats.map((kinds) =>
@@ -292,6 +351,11 @@ export class Director {
       const rescue = new RescueIncident(`rescue#${++this.counters.rescue}`);
       return { kind, attack: null, rescue, count, launched: false, dropped: false };
     }
+    if (kind === 'monument') {
+      const n = ++this.counters.monument;
+      const occupation = new MonumentIncident(`monument#${n}`, this.round, occupierCount(n, this.round), host.objectiveSpawner);
+      return { kind, attack: null, rescue: null, occupation, count: occupation.total(), launched: false, dropped: false };
+    }
     const target = TARGETS_OF[kind].find((id) => this.free(id, host) && !reserved.has(id));
     if (!target) return null;
     reserved.add(target);
@@ -310,17 +374,21 @@ export class Director {
     return new TargetAttack({ id, target, comp, round: this.round }, host.targets, host.objectiveSpawner);
   }
 
-  /** Intact and not under an unresolved attack (at most one live attack per target). */
+  /** Intact, not burning and not under an unresolved attack (at most one live attack per target). */
   private free(id: TargetId, host: DirectorHost): boolean {
-    return host.targets.standing(id) && !host.attacks.some((a) => a.target === id && !a.resolved());
+    return (
+      host.targets.standing(id) &&
+      !host.targets.get(id).burning &&
+      !host.attacks.some((a) => a.target === id && !a.resolved())
+    );
   }
 
-  /** Launches every beat whose predecessor is resolved, while the urgency cap allows. */
+  /** Launches every beat whose predecessor is settled, while the urgency cap allows. */
   private launchBeats(host: DirectorHost, ev: SimEvent[]): void {
     while (this.beat < this.beats.length) {
       const items = this.beats[this.beat]!;
       if (this.beat > 0) {
-        if (!this.beats[this.beat - 1]!.every((o) => this.resolved(o))) return;
+        if (!this.beats[this.beat - 1]!.every((o) => this.settled(o))) return;
         if (this.urgent(host) + items.length > urgentCap(this.round)) return;
       }
       for (const o of items) this.launch(o, host, ev);
@@ -330,6 +398,20 @@ export class Director {
 
   private launch(o: Objective, host: DirectorHost, ev: SimEvent[]): void {
     o.launched = true;
+    if (o.occupation) {
+      const m = o.occupation;
+      if (!m.start(host.monument)) {
+        // the flag was swapped meanwhile: the planned occupiers come as fill instead
+        o.dropped = true;
+        this.fill.push(...this.fillGroups(o.count, `round#${this.round}:${m.id}`));
+        return;
+      }
+      host.occupations.push(m);
+      this.objectives.push(o);
+      const pos = { ...DISTRICT.monument.mast };
+      ev.push({ type: 'MonumentAttacked', incidentId: m.id, pos, round: this.round, total: this.total });
+      return;
+    }
     if (o.rescue) {
       const r = o.rescue;
       const site = chooseRescueSite(host.grid, host.player.pos, host.rand);
@@ -358,35 +440,45 @@ export class Director {
       ev.push({ type: 'CasseStarted', incidentId: a.id, kind: a.kind, target: a.target, pos: door, round: this.round, total: this.total });
   }
 
-  /** Every launched, unresolved objective is in its timed wind-down with no rioter left (and there is one). */
+  /** Every launched, unsettled objective is in its timed wind-down with no rioter left (a victim thanking Paul). */
   private windingDown(): boolean {
     let open = 0;
     for (const o of this.objectives) {
-      if (this.resolved(o)) continue;
+      if (this.settled(o)) continue;
       open++;
-      if (o.attack ? o.attack.stage !== 'fireOut' : o.rescue!.stage !== 'secured') return false;
+      if (o.attack || o.occupation || o.rescue!.stage !== 'secured') return false;
     }
     return open > 0;
   }
 
-  private resolved(o: Objective): boolean {
+  /** Over for this round: an attack saved, destroyed or smouldering (its fire outlives the round), a rescue resolved. */
+  private settled(o: Objective): boolean {
     if (o.dropped) return true;
-    if (o.attack) return o.attack.resolved();
+    if (o.attack) return o.attack.settled();
+    if (o.occupation) return o.occupation.settled();
     const st = o.rescue!.stage;
     return st === 'completed' || st === 'failed';
   }
 
+  /** A smouldering target still stands: réussi (until it burns down). */
   private succeeded(o: Objective): boolean {
-    return o.attack ? o.attack.stage === 'saved' : o.rescue!.stage === 'completed';
+    if (o.occupation) return o.occupation.stage === 'defended';
+    return o.attack ? o.attack.stage === 'saved' || o.attack.stage === 'smoulder' : o.rescue!.stage === 'completed';
   }
 
   private urgent(host: DirectorHost): number {
     let n = host.rescue?.stage === 'threat' ? 1 : 0;
     for (const a of host.attacks) if (a.urgent()) n++;
+    for (const m of host.occupations) if (m.urgent()) n++;
     return n;
   }
 
-  /** Splits `n` fill rioters into groups of about groupSize (bigger ones last: the last group is the climax). */
+  /**
+   * Splits `n` fill rioters into groups of about groupSize (bigger ones last: the last group is the climax). Roles:
+   * rock throwers (THROWER_SHARE, from round 2), and from CONFIG.firebomber.fromRound firebombers: the round's fill
+   * slot 4, 12, 20… (1 in `fillEvery`, rounded: at least 1 once the fill has 4) unless that slot throws rocks, then the
+   * next contact slot; at most `maxPerRound` per round.
+   */
   private fillGroups(n: number, prefix = `round#${this.round}:fill`): FillGroup[] {
     if (n <= 0) return [];
     const groups = Math.ceil(n / CONFIG.round.groupSize);
@@ -395,13 +487,23 @@ export class Director {
     const share = this.round >= 2 ? THROWER_SHARE : 0;
     const first = this.fill.reduce((m, g) => m + g.reqs.length, 0);
     const out: FillGroup[] = [];
+    const fb = CONFIG.firebomber;
+    const fbWanted =
+      this.round >= fb.fromRound ? Math.min(fb.maxPerRound, Math.floor((first + n + fb.fillEvery / 2) / fb.fillEvery)) : 0;
+    let owed = 0;
     let i = first;
     for (let g = 0; g < groups; g++) {
       const size = base + (g >= groups - extra ? 1 : 0);
       const reqs: SpawnRequest[] = [];
       for (let k = 0; k < size; k++, i++) {
         // floor((i+1)·s) > floor(i·s) marks exactly floor(n·s) throwers, spread through the fill
-        const role: Role = Math.floor((i + 1) * share) > Math.floor(i * share) ? 'thrower' : 'contact';
+        let role: Role = Math.floor((i + 1) * share) > Math.floor(i * share) ? 'thrower' : 'contact';
+        if (fbWanted > 0 && i % fb.fillEvery === fb.fillEvery / 2 - 1) owed++;
+        if (role === 'contact' && owed > 0 && this.firebombers < fbWanted) {
+          role = 'firebomber';
+          owed--;
+          this.firebombers++;
+        }
         reqs.push({ variant: this.variant(), role, round: this.round, incidentId: `${prefix}#${this.fill.length + g + 1}` });
       }
       out.push({ id: reqs[0]!.incidentId!, reqs, climax: false, seen: new Set() });
@@ -454,16 +556,18 @@ export class Director {
         return;
       }
     }
-    // weapon drop (also the fallback when no second urgency fits)
-    const w = host.weapons.dropSpecial(host.player.pos);
-    ev.push({ type: 'TwistStarted', kind: 'weaponDrop', pos: w ? { ...w.pos } : null });
+    // weapon drop (also the fallback when no second urgency fits); a mode furie pickup from round dropFromRound
+    const furie = this.round >= CONFIG.furie.dropFromRound;
+    const w = host.weapons.dropSpecial(host.player.pos, furie ? 'furie' : undefined);
+    const pos = w ? { ...w.pos } : null;
+    ev.push(furie ? { type: 'TwistStarted', kind: 'weaponDrop', pos, furie: true } : { type: 'TwistStarted', kind: 'weaponDrop', pos });
     if (w) ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: { ...w.pos } });
   }
 
-  /** Every beat resolved, nothing of the round still to queue, queued or standing. */
+  /** Every beat settled, nothing of the round still to queue, queued or standing. */
   private complete(host: DirectorHost): boolean {
     if (this.beat < this.beats.length || this.nextFill < this.fill.length) return false;
-    if (!this.objectives.every((o) => this.resolved(o))) return false;
+    if (!this.objectives.every((o) => this.settled(o))) return false;
     if (host.queue.pendingForRound(this.round) > 0) return false;
     return !host.horde.list.some((h) => h.round === this.round && h.state !== 'ko');
   }

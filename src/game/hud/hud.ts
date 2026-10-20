@@ -10,6 +10,7 @@ import {
   edgePosition,
   formatMeters,
   incidentAlert,
+  incidentLook,
   pixelSvg,
   setArrow,
   type AlertIcon,
@@ -27,9 +28,6 @@ import {
   type IncidentLine,
   type RoundPanel,
 } from './format';
-
-/** How long the launch card stays on screen if the player does not close it. */
-const INTRO_MS = 25_000;
 
 export interface CameraView {
   /** World coordinates of the top-left corner of the visible area. */
@@ -153,7 +151,7 @@ export class Hud {
 
   private readonly tools = el('div', 'bb-tools');
   private intro: HTMLElement | null = null;
-  private introTimer: ReturnType<typeof setTimeout> | null = null;
+  private introCleanup: (() => void) | null = null;
 
   constructor(
     parent: HTMLElement,
@@ -215,13 +213,14 @@ export class Hud {
   }
 
   /**
-   * Non-blocking card shown when the game launches (the game is already running): goal + the main keys.
-   * Closes with its button, on its own after INTRO_MS, or when `hideIntro` is called.
+   * Blocking card shown when the game launches: goal + the main keys, over a dimmed screen. The game waits (the caller
+   * pauses the sim); any key, click or tap anywhere calls `onDismiss` (once) and closes it. `hideIntro` closes it silently.
    */
-  showIntro(touch: boolean): void {
+  showIntro(touch: boolean, onDismiss: () => void = () => undefined): void {
     this.hideIntro();
     const card = el('div', 'bb-intro');
-    card.setAttribute('role', 'status');
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-label', 'Comment jouer');
     card.append(el('b', 'title', 'Comment jouer'), el('p', 'goal', INTRO_GOAL));
     const list = el('dl', 'keys');
     for (const name of INTRO_ACTIONS) {
@@ -229,18 +228,36 @@ export class Hud {
       if (!row) continue;
       list.append(el('dt', '', name), el('dd', '', touch ? row.touch : row.keyboard));
     }
-    const close = el('button', 'close', 'Compris');
-    close.type = 'button';
-    close.addEventListener('click', () => this.hideIntro());
-    card.append(list, close);
-    this.intro = card;
-    this.root.append(card);
-    this.introTimer = setTimeout(() => this.hideIntro(), INTRO_MS);
+    const go = el('p', 'go', touch ? 'Touche l’écran pour commencer' : 'Appuie sur une touche pour commencer');
+    card.append(list, go);
+    const veil = el('div', 'bb-intro-veil');
+    veil.append(card);
+    let done = false;
+    const dismiss = (e: Event): void => {
+      if (done) return;
+      // a lone modifier (Maj, Ctrl…) is not "a key": wait for a real one
+      if (e instanceof KeyboardEvent && ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(e.key)) return;
+      done = true;
+      // the key that starts the game must not also act in it
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      this.hideIntro();
+      onDismiss();
+    };
+    // capture on window: the key or tap never reaches the game controls underneath
+    window.addEventListener('keydown', dismiss, true);
+    window.addEventListener('pointerdown', dismiss, true);
+    this.introCleanup = () => {
+      window.removeEventListener('keydown', dismiss, true);
+      window.removeEventListener('pointerdown', dismiss, true);
+    };
+    this.intro = veil;
+    this.root.append(veil);
   }
 
   hideIntro(): void {
-    if (this.introTimer) clearTimeout(this.introTimer);
-    this.introTimer = null;
+    this.introCleanup?.();
+    this.introCleanup = null;
     this.intro?.remove();
     this.intro = null;
   }
@@ -275,6 +292,7 @@ export class Hud {
       this.lastWave = s.round;
     }
     c.text(this.weapon, weaponLine(s));
+    c.cls(this.weapon, s.furie ? 'stat furie' : 'stat');
     c.text(this.kit, toolboxLine(s));
     c.cls(this.kit, s.toolboxes.carried ? 'stat kit full' : 'stat kit');
     this.slots.forEach((slot, i) => {
@@ -294,7 +312,7 @@ export class Hud {
     this.prompt.hidden = !p;
     c.text(this.prompt, p?.text ?? '');
     if (this.actBtn) {
-      // Only an actionable prompt shows the touch Agir button (none in this slice: repairs are automatic).
+      // Only an actionable prompt (repair / put out a fire) shows the touch Agir button, labelled with the action.
       c.style(this.actBtn, p?.label ? '' : 'display:none');
       c.text(this.actBtn, p?.label ?? DEFAULT_ACT_LABEL);
     }
@@ -359,7 +377,8 @@ export class Hud {
     const c = this.c;
     const slug = line.status.replace(/\s/g, '-');
     c.cls(card.root, `bb-card k-${line.kind} st-${slug}`);
-    const icon: AlertIcon = incidentAlert(line.kind).icon;
+    const target = line.hp !== null && line.kind !== 'flag';
+    const icon: AlertIcon = incidentLook(line.kind, target ? line.status === 'en feu' : undefined).icon;
     if (card.ico.dataset.icon !== icon) {
       card.ico.dataset.icon = icon;
       card.ico.innerHTML = pixelSvg(icon, 1);
@@ -369,7 +388,8 @@ export class Hud {
     card.bar.hidden = line.hp === null;
     if (line.hp !== null) {
       c.style(card.fill, `width:${line.hp.toFixed(0)}%`);
-      c.cls(card.fill, line.hp <= 30 ? 'fill low' : 'fill');
+      // a target's health turns red when low; the flag's capture bar fills up (no alarm colour)
+      c.cls(card.fill, line.kind === 'flag' ? 'fill capture' : line.hp <= 30 ? 'fill low' : 'fill');
     }
     c.text(card.status, line.status);
     const tiles = Math.round(Math.hypot(line.target.x - s.player.pos.x, line.target.y - s.player.pos.y) / TILE);
@@ -496,17 +516,19 @@ export class Hud {
   private edge(inc: Incident): Edge {
     const key = inc.id;
     const spec = incidentAlert(inc.kind);
+    const look = incidentLook(inc.kind, inc.burning);
     let e = this.edgeEls.get(key);
-    if (e && e.root.dataset.kind !== inc.kind) {
+    if (e && (e.root.dataset.kind !== inc.kind || e.root.dataset.tone !== look.tone)) {
       e.root.remove();
       e = undefined;
     }
     if (e) return e;
-    const root = el('div', `bb-edge tone-${spec.tone}`);
+    const root = el('div', `bb-edge tone-${look.tone}`);
     root.dataset.kind = inc.kind;
+    root.dataset.tone = look.tone;
     const arrow = el('span', 'arrow');
     const ico = el('span', 'ico');
-    ico.innerHTML = pixelSvg(spec.icon, 2);
+    ico.innerHTML = pixelSvg(look.icon, 2);
     const txt = el('span', 'txt');
     const dist = el('span', 'dist');
     txt.append(el('b', 'lbl', spec.label), dist);

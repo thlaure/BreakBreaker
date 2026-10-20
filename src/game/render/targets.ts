@@ -1,13 +1,13 @@
 import Phaser from 'phaser';
 import { DISTRICT, type Rect, type TargetDef } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
-import type { SimEvent, TargetId } from '../../sim/types';
+import type { SimEvent, TargetId, Vec } from '../../sim/types';
 import { FLAG } from '../assets';
 import { DEPTH } from './depth';
-import { FACADE_H, type WorldView } from './world';
+import { FACADE_H, buildingIndex, type BuildingPart, type WorldView } from './world';
 
 type TargetSnap = Snapshot['targets'][number];
-type SchoolParts = WorldView['schoolParts'];
+type BuildingParts = WorldView['buildingParts'];
 
 const OUTLINE = 0x14121c;
 /** Props are drawn from 1-px logical textures scaled ×2, like the city tiles. */
@@ -15,6 +15,8 @@ const PX = 2;
 /** World px a prop texture rises above its footprint (it is anchored on the footprint's bottom edge). */
 const PROP_RISE: Record<'car' | 'busStop', number> = { car: 10, busStop: 16 };
 const FLASH_MS = 120;
+/** Extra flare of a target already burning hit by another bottle. */
+const FLARE_MS = 350;
 /** Hp bar: white flash on a hp drop, at most once per this many ms (fire and degraders drain every step). */
 const BAR_FLASH_MS = 90;
 const BAR_FLASH_EVERY_MS = 450;
@@ -277,7 +279,8 @@ const BAR_COLORS: [number, number][] = [
 
 /**
  * One destructible target: hp bar, fire + smoke while `burning`, ruin (scorched, debris, smoke wisps) while ruined,
- * back to normal once repaired. The school tints its building parts and raises the French flag once saved; props
+ * back to normal once repaired. A building (school, retro video-game shop) dims its own parts when ruined, and the
+ * school raises the French flag once saved; props
  * (cars, bus shelter) are drawn on their solid footprint and swap to a wreck texture.
  */
 class TargetView {
@@ -298,12 +301,14 @@ class TargetView {
   }
   private ruined = false;
   private flashUntil = 0;
+  /** Render time until which an extra bottle's flare brightens the glow (0 = none). */
+  private flareUntil = 0;
   readonly zone: Phaser.Geom.Rectangle;
 
   constructor(
     scene: Phaser.Scene,
     readonly def: TargetDef,
-    private readonly parts: SchoolParts,
+    private readonly parts: readonly BuildingPart[],
   ) {
     const f = def.footprint;
     const bottom = f.y + f.h;
@@ -368,7 +373,7 @@ class TargetView {
       .setDepth(big ? bottom + 0.5 : DEPTH.decal + 1)
       .setVisible(false);
     this.drawDebris(f);
-    if (big) {
+    if (def.kind === 'school') {
       // mast on the front edge of the roof, so it reads from the street in front of the school
       const mx = cx + 48;
       const my = bottom - FACADE_H - 2;
@@ -376,7 +381,7 @@ class TargetView {
       const flag = scene.add.image(1, -34, 'flags', FLAG.fr).setOrigin(0, 0).setScale(1.5);
       this.mast = scene.add.container(mx, my, [pole, flag]).setDepth(DEPTH.roof + 3).setVisible(false);
     }
-    // the school's bar sits on the front of its roof, just above the flames, so it shows from the door
+    // a building's bar sits on the front of its roof, just above the flames, so it shows from the door
     const barTop = big ? bottom - FACADE_H - 56 : f.y - PROP_RISE[def.kind === 'busStop' ? 'busStop' : 'car'] - 12;
     this.bar = big ? new HpBar(scene, cx, barTop, 64, 10) : new HpBar(scene, cx, barTop, 36, 8);
   }
@@ -393,13 +398,26 @@ class TargetView {
     this.smoke.emitting = burning || ruined;
     this.smoke.frequency = burning ? this.smokeFreq.burning : this.smokeFreq.wisps;
     this.glow.setVisible(burning);
-    if (burning) this.glow.setAlpha(0.18 + 0.12 * Math.abs(Math.sin(nowMs / 70) * Math.sin(nowMs / 113)));
+    if (burning) {
+      const flare = this.flareUntil > nowMs ? (0.5 * (this.flareUntil - nowMs)) / FLARE_MS : 0;
+      this.glow.setAlpha(Math.min(1, 0.18 + 0.12 * Math.abs(Math.sin(nowMs / 70) * Math.sin(nowMs / 113)) + flare));
+    }
     this.mast?.setVisible(schoolSaved && !ruined);
     if (this.sprite && this.flashUntil > 0 && nowMs >= this.flashUntil) {
       this.flashUntil = 0;
       this.sprite.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
     }
     this.bar.update(t.hp / t.maxHp, !ruined && (t.hp < t.maxHp || t.state === 'attacked'), nowMs, dtMs);
+  }
+
+  /**
+   * A further bottle landed on a target already in flames: a burst of extra flames and a bright glow for FLARE_MS,
+   * on top of the running fire (which keeps going).
+   */
+  flare(nowMs: number): void {
+    if (!this.burning) return;
+    this.fire.emitParticle(this.def.prop ? 24 : 40);
+    this.flareUntil = nowMs + FLARE_MS;
   }
 
   /** Short white flash of the prop (repair). */
@@ -418,11 +436,12 @@ class TargetView {
       if (p instanceof Phaser.GameObjects.TileSprite) {
         if (ruined) p.setTint(0x3a3438);
         else p.clearTint();
-      } else if (p instanceof Phaser.GameObjects.Text) p.setAlpha(ruined ? 0.45 : 1);
+      } else if (p.name === 'glow') p.setVisible(!ruined);
+      else if (p instanceof Phaser.GameObjects.Text || p instanceof Phaser.GameObjects.Graphics) p.setAlpha(ruined ? 0.45 : 1);
     }
   }
 
-  /** Static ruin decals: rubble in front of the school, soot + glass / metal bits around a prop. */
+  /** Static ruin decals: rubble in front of a building, soot + glass / metal bits around a prop. */
   private drawDebris(f: Rect): void {
     const g = this.debris;
     let seed = 7 + f.x + f.y;
@@ -452,12 +471,17 @@ class TargetView {
 /** Every target's view plus the one-shot bursts of their events (fire out, collapse, repair). */
 export class TargetsLayer {
   private readonly views = new Map<TargetId, TargetView>();
+  /** Bottles seen in flight, by key, with where they land. */
+  private readonly inFlight = new Map<string, Vec>();
   private readonly sparkle: Phaser.GameObjects.Particles.ParticleEmitter;
   private readonly dust: Phaser.GameObjects.Particles.ParticleEmitter;
   private readonly steam: Phaser.GameObjects.Particles.ParticleEmitter;
 
-  constructor(scene: Phaser.Scene, schoolParts: SchoolParts) {
-    for (const def of DISTRICT.targets) this.views.set(def.id, new TargetView(scene, def, def.prop ? [] : schoolParts));
+  constructor(scene: Phaser.Scene, buildingParts: BuildingParts) {
+    for (const def of DISTRICT.targets) {
+      const parts = def.prop ? [] : (buildingParts.get(buildingIndex(def.footprint)) ?? []);
+      this.views.set(def.id, new TargetView(scene, def, parts));
+    }
     this.sparkle = scene.add
       .particles(0, 0, 'px', {
         lifespan: { min: 500, max: 800 },
@@ -494,6 +518,15 @@ export class TargetsLayer {
   }
 
   update(snap: Snapshot, nowMs: number, dtMs: number): void {
+    // a bottle that just landed on a target already shown burning flares it (the sim took its burst damage)
+    const flying = new Set<string>();
+    for (const m of snap.molotovs) flying.add(`${m.until}@${m.to.x},${m.to.y}`);
+    for (const [key, to] of this.inFlight) {
+      if (flying.has(key)) continue;
+      this.inFlight.delete(key);
+      for (const v of this.views.values()) if (v.def.door.x === to.x && v.def.door.y === to.y && v.isBurning) v.flare(nowMs);
+    }
+    for (const m of snap.molotovs) this.inFlight.set(`${m.until}@${m.to.x},${m.to.y}`, m.to);
     const saved = snap.school.stage === 'saved';
     for (const t of snap.targets) {
       const v = this.views.get(t.id);

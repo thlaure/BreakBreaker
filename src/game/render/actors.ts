@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import type { CharLayout, CharSheet, Dir } from '../assets';
 import type { Snapshot } from '../../sim/sim';
-import type { Vec } from '../../sim/types';
+import type { Launch, Vec } from '../../sim/types';
 import { DEPTH } from './depth';
+import { landingDistance, launchPose } from './furieMath';
 
 type HostileSnap = Snapshot['hostiles'][number];
 
@@ -151,10 +152,19 @@ const OUTLINE_OFFSETS: [number, number][] = [
   [0, 1],
 ];
 
-/** Paul: CharView + a cheap 1-px light outline (four white-filled copies offset under the sprite). */
+/** Warm multiply tint of Paul and gold outline while the mode furie is on. */
+const FURIE_TINT = 0xffe2a0;
+const FURIE_OUTLINE = 0xffe066;
+const OUTLINE = 0xf4f1e8;
+
+/**
+ * Paul: CharView + a cheap 1-px light outline (four white-filled copies offset under the sprite); in mode furie the
+ * sprite is tinted warm and the outline turns gold.
+ */
 export class PaulView {
   readonly view: CharView;
   private readonly outline: Phaser.GameObjects.Sprite[];
+  private warm = false;
 
   constructor(scene: Phaser.Scene, pos: Vec) {
     this.view = new CharView(scene, 'paul', pos);
@@ -162,7 +172,7 @@ export class PaulView {
       scene.add
         .sprite(pos.x, pos.y, 'paul', 0)
         .setOrigin(0.5, FEET_ORIGIN_Y)
-        .setTint(0xf4f1e8)
+        .setTint(OUTLINE)
         .setTintMode(Phaser.TintModes.FILL)
         .setAlpha(0.85),
     );
@@ -172,9 +182,16 @@ export class PaulView {
     return this.view.sprite;
   }
 
-  /** `dtMs` = time since the previous visual update (for the walk/run speed estimate). */
-  update(p: Snapshot['player'], strike: boolean, nowMs: number, dtMs: number): void {
+  /** `dtMs` = time since the previous visual update (for the walk/run speed estimate); `furie` = mode furie on. */
+  update(p: Snapshot['player'], strike: boolean, nowMs: number, dtMs: number, furie = false): void {
     const v = this.view;
+    const warm = furie && !p.ko;
+    if (warm !== this.warm) {
+      this.warm = warm;
+      if (warm) v.sprite.setTint(FURIE_TINT).setTintMode(Phaser.TintModes.MULTIPLY);
+      else v.sprite.clearTint();
+      for (const o of this.outline) o.setTint(warm ? FURIE_OUTLINE : OUTLINE);
+    }
     const speed = (v.place(p.pos) / Math.max(1, dtMs)) * 1000; // px/s
     const dir = dirOf(p.facing);
     if (p.ko) v.still(koFrame('paul'));
@@ -195,8 +212,9 @@ export class PaulView {
 }
 
 /**
- * Molotov rioter's bottle: held at his side, raised and lit (flickering flame + "!" over his head) during the windup,
- * gone once thrown (a windup that ends without a KO is the throw).
+ * Molotov rioter's bottle: held at his side, raised and lit (flickering flame + "!" over his head) while he holds a
+ * bottle up (`bottleUp`), gone once thrown (a bottle windup that ends without a KO is the throw). A firebomber always
+ * has a fresh one in hand (a Molotov that turned firebomber after its site throw picks one up again).
  */
 class BottleProp {
   private readonly bottle: Phaser.GameObjects.Image;
@@ -213,10 +231,11 @@ class BottleProp {
 
   update(h: HostileSnap, depth: number, nowMs: number): void {
     const ko = h.state === 'ko';
-    if (this.wasWindup && !h.windup && !ko) this.held = false;
-    this.wasWindup = h.windup;
+    if (h.role === 'firebomber') this.held = true;
+    else if (this.wasWindup && !h.bottleUp && !ko) this.held = false;
+    this.wasWindup = h.bottleUp;
     const held = this.held && !ko;
-    const lit = held && h.windup;
+    const lit = held && h.bottleUp;
     this.bottle.setVisible(held);
     this.flame.setVisible(lit);
     this.bang.setVisible(lit);
@@ -250,12 +269,37 @@ class BottleProp {
   }
 }
 
-/** Rioter: sheet by variant (_a/_b by lifeId parity), optional flag prop above the shoulder, Molotov bottle. */
+/** A body knocked out in mode furie: where it was hit, its launch, how far it travels, when it took off. */
+interface Flight {
+  from: Vec;
+  launch: Launch;
+  dist: number;
+  start: number;
+  landed: boolean;
+}
+
+/** Sprite origin (y) while airborne: the body spins around its middle, not its feet. */
+const SPIN_ORIGIN_Y = 0.6;
+const SPIN_LIFT = Math.round((FEET_ORIGIN_Y - SPIN_ORIGIN_Y) * 64);
+
+/** What a HostileView needs for a launched body: the shared trail emitter and the landing check. */
+export interface LaunchCtx {
+  trail: Phaser.GameObjects.Particles.ParticleEmitter;
+  world: { width: number; height: number };
+  blocked: (p: Vec) => boolean;
+}
+
+/**
+ * Rioter: sheet by variant (_a/_b by lifeId parity), optional flag prop above the shoulder, Molotov bottle. A body
+ * launched in mode furie flies off spinning (ease-out travel, arc, squash, star/dust trail) above everything, then
+ * lies where it landed (inside the world, never in a wall) like any KO body.
+ */
 class HostileView {
   readonly view: CharView;
   private readonly flag: Phaser.GameObjects.Image | null;
   private readonly pole: Phaser.GameObjects.Rectangle | null;
   private readonly bottle: BottleProp | null;
+  private flight: Flight | null = null;
 
   constructor(scene: Phaser.Scene, h: HostileSnap) {
     const sheet = `rioter_${h.variant}_${h.lifeId % 2 === 0 ? 'a' : 'b'}`;
@@ -263,15 +307,23 @@ class HostileView {
     const flagFrame = h.variant === 'palestinian' ? 1 : h.variant === 'antifa' ? 2 : -1;
     this.flag = flagFrame >= 0 ? scene.add.image(0, 0, 'flags', flagFrame).setOrigin(0, 1) : null;
     this.pole = flagFrame >= 0 ? scene.add.rectangle(0, 0, 1, 22, 0x5a4632).setOrigin(0.5, 1) : null;
-    this.bottle = h.role === 'molotov' ? new BottleProp(scene) : null;
+    this.bottle = h.role === 'molotov' || h.role === 'firebomber' ? new BottleProp(scene) : null;
   }
 
-  update(h: HostileSnap, nowMs: number): void {
+  launch(from: Vec, launch: Launch, nowMs: number, ctx: LaunchCtx): void {
+    const dist = landingDistance(from, launch, ctx.world, ctx.blocked);
+    this.flight = { from: { ...from }, launch, dist, start: nowMs, landed: false };
+  }
+
+  update(h: HostileSnap, nowMs: number, ctx: LaunchCtx): void {
     const v = this.view;
     const moved = v.place(h.pos);
     const dir = dirOf(h.facing);
     const s = v.sprite;
-    if (h.state === 'ko') {
+    if (h.state === 'ko' && this.flight) {
+      v.still(koFrame(v.sheet));
+      this.fly(this.flight, nowMs, ctx);
+    } else if (h.state === 'ko') {
       v.still(koFrame(v.sheet));
       s.setAlpha(0.6).setDepth(h.pos.y - 8);
     } else {
@@ -296,6 +348,27 @@ class HostileView {
     this.bottle?.update(h, s.depth, nowMs);
   }
 
+  private fly(f: Flight, nowMs: number, ctx: LaunchCtx): void {
+    const s = this.view.sprite;
+    const pose = launchPose(f.from, f.launch, f.dist, nowMs - f.start);
+    if (pose.t < 1) {
+      const y = Math.round(pose.y - pose.lift - SPIN_LIFT);
+      s.setOrigin(0.5, SPIN_ORIGIN_Y)
+        .setPosition(Math.round(pose.x), y)
+        .setAngle(pose.angle)
+        .setScale(pose.scaleX, pose.scaleY)
+        .setAlpha(1)
+        .setDepth(DEPTH.foliage + 2);
+      if (Math.floor(nowMs / 32) % 2 === 0) ctx.trail.emitParticleAt(pose.x, y, 1);
+      return;
+    }
+    if (!f.landed) {
+      f.landed = true;
+      ctx.trail.emitParticleAt(pose.x, pose.y - 4, 6);
+    }
+    s.setOrigin(0.5, FEET_ORIGIN_Y).setAngle(0).setScale(1).setPosition(Math.round(pose.x), Math.round(pose.y)).setAlpha(0.6).setDepth(pose.y - 8);
+  }
+
   destroy(): void {
     this.view.destroy();
     this.flag?.destroy();
@@ -304,11 +377,35 @@ class HostileView {
   }
 }
 
-/** Keeps one HostileView per lifeId in the snapshot. */
+/** Keeps one HostileView per lifeId in the snapshot; `launch` sends a KO body flying (mode furie). */
 export class HostileLayer {
   private readonly views = new Map<number, HostileView>();
+  private readonly ctx: LaunchCtx;
 
-  constructor(private readonly scene: Phaser.Scene) {}
+  constructor(
+    private readonly scene: Phaser.Scene,
+    opts: { world: { width: number; height: number }; blocked: (p: Vec) => boolean } = {
+      world: { width: Infinity, height: Infinity },
+      blocked: () => false,
+    },
+  ) {
+    const trail = scene.add
+      .particles(0, 0, 'px', {
+        lifespan: { min: 260, max: 520 },
+        speed: { min: 6, max: 30 },
+        scale: { start: 1.5, end: 0 },
+        tint: [0xffffff, 0xfff3a0, 0xffd23a, 0xcfc6b4],
+        alpha: { start: 1, end: 0 },
+        emitting: false,
+      })
+      .setDepth(DEPTH.foliage + 1.5);
+    this.ctx = { trail, world: opts.world, blocked: opts.blocked };
+  }
+
+  /** The body of `lifeId` (knocked out at `from`) flies along the launch for furieMath.LAUNCH_MS. */
+  launch(lifeId: number, from: Vec, launch: Launch, nowMs: number): void {
+    this.views.get(lifeId)?.launch(from, launch, nowMs, this.ctx);
+  }
 
   update(list: Snapshot['hostiles'], nowMs: number): void {
     const seen = new Set<number>();
@@ -319,7 +416,7 @@ export class HostileLayer {
         view = new HostileView(this.scene, h);
         this.views.set(h.lifeId, view);
       }
-      view.update(h, nowMs);
+      view.update(h, nowMs, this.ctx);
     }
     for (const [id, view] of this.views) {
       if (seen.has(id)) continue;

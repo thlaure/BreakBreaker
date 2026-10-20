@@ -10,7 +10,7 @@ const circleHitsRect = (p: Vec, rad: number, r: Rect): boolean => {
 const circleHitsCircle = (p: Vec, rad: number, c: Circle): boolean =>
   (p.x - c.x) ** 2 + (p.y - c.y) ** 2 < (rad + c.r) ** 2;
 
-/** Tile grid over the district. Buildings, props, trunks and the peaceful group are solid. */
+/** Tile grid over the district. Buildings, props, the monument plinth, trunks and the peaceful group are solid. */
 export class Grid {
   readonly tiles: number;
   readonly tile: number;
@@ -19,7 +19,8 @@ export class Grid {
   private readonly props: Rect[];
 
   constructor(private readonly d: District, tile = 32) {
-    this.props = d.targets.filter((t) => t.prop).map((t) => t.footprint);
+    // the monument plinth is solid like a prop
+    this.props = [...d.targets.filter((t) => t.prop).map((t) => t.footprint), d.monument.plinth];
     this.tiles = d.tiles;
     this.tile = tile;
     this.size = d.tiles * tile;

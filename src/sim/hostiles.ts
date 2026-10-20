@@ -6,7 +6,7 @@ import { dist, norm, sub } from './math';
 import type { HostileView, Player } from './player';
 import type { Rocks } from './projectiles';
 import { SpatialHash } from './spatial';
-import type { Role, SimEvent, TargetId, Variant, Vec } from './types';
+import type { Role, SimEvent, SiteId, TargetId, Variant, Vec } from './types';
 
 export interface Hostile {
   lifeId: number;
@@ -22,7 +22,7 @@ export interface Hostile {
   /** 'facade' = its site (degraders hit it, Molotovs throw at it). */
   target: 'player' | 'facade' | 'victim';
   /** Target a degrader or Molotov goes for (kept after it turns on Paul). */
-  site: TargetId | null;
+  site: SiteId | null;
   /** Round this rioter belongs to (null = outside any round's roster). */
   round: number | null;
 }
@@ -40,14 +40,17 @@ export interface HordeCtx {
   grid: Grid;
   fields: { player: FlowField; victim: FlowField | null };
   rocks: Rocks;
-  sites: Partial<Record<TargetId, HordeSite>>;
+  sites: Partial<Record<SiteId, HordeSite>>;
   victimPos: Vec | null;
   pressure: number;
 }
 
 /** Per-hostile AI bookkeeping kept out of the public Hostile shape. */
 interface Aux {
-  windKind: 'contact' | 'throw' | 'molotov' | null;
+  /** 'bottle' = a firebomber's Molotov aimed at Paul (counts in the throw windup cap like a rock). */
+  windKind: 'contact' | 'throw' | 'molotov' | 'bottle' | null;
+  /** A Molotov marked so turns into this role once its bottle hit its site (then it goes for Paul). */
+  afterThrow: 'firebomber' | null;
   throwTo: Vec | null;
   /** Index of the site attack point this degrader / Molotov goes for. */
   pointIdx: number | null;
@@ -55,6 +58,10 @@ interface Aux {
   progressAt: number;
   /** Until this time, steer by flow field even when a straight line looks clear (set when stuck). */
   fieldUntil: number;
+  /** Post a site-bound rioter returns to after engaging Paul (null = none, or it left it for good). */
+  home: 'facade' | 'victim' | null;
+  /** Sim time it first reached its post (degrading its site / threatening its victim), null before. */
+  postAt: number | null;
 }
 
 const R = CONFIG.hostile.radius;
@@ -72,6 +79,8 @@ const STUCK_SEC = 2;
 const QUEUE_DIST = 64;
 const MAX_KO_BODIES = 16;
 const THROW_POSTPONE = 0.25;
+/** Extra windup per Molotov of the same site already winding up: their bottles never leave on the same step. */
+const MOLOTOV_STAGGER = 0.25;
 const EPS = 1e-9;
 const ZERO: Vec = { x: 0, y: 0 };
 
@@ -90,6 +99,8 @@ export class Horde {
   private wt = 0;
   private limit = 2;
   private damage: number = CONFIG.hostile.contactDamage;
+  /** At most CONFIG.hostile.fewLeft hostiles active this step: rioters long at their post go for Paul. */
+  private few = false;
 
   spawn(opts: {
     variant: Variant;
@@ -98,8 +109,9 @@ export class Horde {
     maxHp?: number;
     incidentId?: string;
     target?: Hostile['target'];
-    site?: TargetId;
+    site?: SiteId;
     round?: number;
+    afterThrow?: 'firebomber';
   }): Hostile | null {
     if (this.active().length >= CONFIG.caps.hostiles) return null;
     const maxHp = opts.maxHp ?? CONFIG.hostile.baseHp;
@@ -123,11 +135,14 @@ export class Horde {
     this.list.push(h);
     this.aux.set(h.lifeId, {
       windKind: null,
+      afterThrow: opts.afterThrow ?? null,
       throwTo: null,
       pointIdx: null,
       progressPos: { ...h.pos },
       progressAt: -Infinity,
       fieldUntil: -Infinity,
+      home: (opts.role === 'degrader' || opts.role === 'aggressor') && h.target !== 'player' ? h.target : null,
+      postAt: null,
     });
     return h;
   }
@@ -175,10 +190,11 @@ export class Horde {
     this.damage = Math.min(12, CONFIG.hostile.contactDamage + Math.floor(ctx.pressure / 2));
     this.wc = 0;
     this.wt = 0;
+    this.few = act.length <= CONFIG.hostile.fewLeft;
     for (const h of act) {
       if (h.state !== 'windup') continue;
       const k = this.auxOf(h).windKind;
-      if (k === 'throw') this.wt++;
+      if (k === 'throw' || k === 'bottle') this.wt++;
       else if (k === 'contact') this.wc++;
     }
 
@@ -196,6 +212,7 @@ export class Horde {
       const a = this.auxOf(h);
       if (h.state === 'recover' && now >= h.stateUntil) h.state = 'approach';
       const want = this.behave(h, a, now, ctx, events);
+      if (a.postAt === null && (h.state === 'degrade' || h.state === 'threaten')) a.postAt = now;
       const delta = this.separation(h, ctx.player.pos);
       if (!isZero(want)) {
         delta.x += want.x * CONFIG.hostile.speed * dt;
@@ -220,6 +237,7 @@ export class Horde {
 
   /** Returns the desired unit direction (or zero) and advances the hostile's state machine. */
   private behave(h: Hostile, a: Aux, now: number, ctx: HordeCtx, ev: SimEvent[]): Vec {
+    this.engage(h, a, now, ctx);
     if (h.target === 'facade' && !this.siteOf(h, ctx)) h.target = 'player';
     if (h.target === 'victim' && !ctx.victimPos) h.target = 'player';
     if (h.target === 'player' && (h.state === 'degrade' || h.state === 'threaten')) h.state = 'approach';
@@ -243,7 +261,38 @@ export class Horde {
       return this.steer(h, a, goal, ctx.fields.victim, now, ctx);
     }
     if (h.role === 'thrower') return this.thrower(h, a, now, ctx, ev);
+    if (h.role === 'firebomber') return this.firebomber(h, a, now, ctx, ev);
     return this.contact(h, a, now, ctx, ev);
+  }
+
+  /**
+   * Draws a site-bound rioter (degrader, victim aggressor) to Paul: it fights him (target 'player', as a contact) while
+   * he is within aggroRadius with a clear line, until he is beyond aggroRelease; then it goes back to its post. With
+   * few hostiles left, one at its post for more than postSec leaves it for good. A Molotov (or a rioter turned contact)
+   * is never concerned.
+   */
+  private engage(h: Hostile, a: Aux, now: number, ctx: HordeCtx): void {
+    if (a.home === null || (h.role !== 'degrader' && h.role !== 'aggressor')) return;
+    const lost = a.home === 'facade' ? !this.siteOf(h, ctx) : !ctx.victimPos;
+    const pulled = this.few && a.postAt !== null && now - a.postAt > CONFIG.hostile.postSec + EPS;
+    if (lost || pulled) {
+      a.home = null;
+      h.target = 'player';
+      return;
+    }
+    const p = ctx.player;
+    const d = dist(h.pos, p.pos);
+    if (h.target !== 'player') {
+      if (d <= CONFIG.hostile.aggroRadius && !p.ko && ctx.grid.lineClear(h.pos, p.pos)) h.target = 'player';
+    } else if (d > CONFIG.hostile.aggroRelease) {
+      h.target = a.home;
+      // a contact windup in progress is dropped: it goes back to its post
+      if (h.state === 'windup' && a.windKind === 'contact') {
+        a.windKind = null;
+        this.wc--;
+        h.state = 'approach';
+      }
+    }
   }
 
   private contact(h: Hostile, a: Aux, now: number, ctx: HordeCtx, ev: SimEvent[]): Vec {
@@ -307,6 +356,48 @@ export class Horde {
     return ZERO;
   }
 
+  /**
+   * Like a rock thrower with a lit bottle (CONFIG.firebomber): keeps keepMin–keepMax px from Paul with a clear line,
+   * winds up (EnemyThrowStarted, aimed at where Paul stands now) then throws (FirebombThrown, landing `flightSec`
+   * later where he stood: a moving Paul dodges it). Paul within `fallback` px → a contact. KO'd during the windup:
+   * nothing is thrown (KO hostiles are not stepped).
+   */
+  private firebomber(h: Hostile, a: Aux, now: number, ctx: HordeCtx, ev: SimEvent[]): Vec {
+    const p = ctx.player;
+    const fb = CONFIG.firebomber;
+    if (h.state === 'windup' && a.windKind === 'bottle') {
+      if (now < h.stateUntil - EPS) return ZERO;
+      a.windKind = null;
+      this.wt--;
+      ev.push({ type: 'FirebombThrown', from: { ...h.pos }, to: { ...a.throwTo! }, until: now + fb.flightSec });
+      a.throwTo = null;
+      h.state = 'recover';
+      h.stateUntil = h.nextAttackAt;
+      return ZERO;
+    }
+    const d = dist(h.pos, p.pos);
+    if (d < fb.fallback || (h.state === 'windup' && a.windKind === 'contact')) return this.contact(h, a, now, ctx, ev);
+    if (d > fb.keepMax || !ctx.grid.lineClear(h.pos, p.pos)) return this.steer(h, a, p.pos, ctx.fields.player, now, ctx);
+    if (d < fb.keepMin) return norm(sub(h.pos, p.pos));
+    if (h.state === 'approach' && now >= h.nextAttackAt - EPS && this.wt < this.limit && !p.ko) {
+      const to = { ...p.pos };
+      h.state = 'windup';
+      h.stateUntil = now + fb.windup;
+      h.nextAttackAt = now + fb.throwInterval;
+      a.windKind = 'bottle';
+      a.throwTo = to;
+      this.wt++;
+      ev.push({ type: 'EnemyThrowStarted', from: { ...h.pos }, to: { ...to }, until: h.stateUntil });
+    }
+    return ZERO;
+  }
+
+  /** A Molotov or firebomber holding up a lit bottle right now (render: raised bottle and "!"). */
+  bottleUp(lifeId: number): boolean {
+    const k = this.aux.get(lifeId)?.windKind;
+    return k === 'molotov' || k === 'bottle';
+  }
+
   /** The standing site a degrader / Molotov goes for, or null (missing or ruined → it turns on Paul). */
   private siteOf(h: Hostile, ctx: HordeCtx): HordeSite | null {
     const s = h.site ? ctx.sites[h.site] : undefined;
@@ -335,7 +426,7 @@ export class Horde {
 
   /**
    * Walks to its site; within range of an attack point with a clear line, winds up (bottle raised), then throws at
-   * the door and turns on Paul as a contact. A KO during the windup throws nothing (KO hostiles are not stepped).
+   * the door and turns on Paul as a contact (or as a firebomber when marked `afterThrow`). A KO during the windup throws nothing (KO hostiles are not stepped).
    */
   private molotov(h: Hostile, a: Aux, site: HordeSite, now: number, ctx: HordeCtx, ev: SimEvent[]): Vec {
     if (h.state === 'windup' && a.windKind === 'molotov') {
@@ -343,13 +434,19 @@ export class Horde {
       a.windKind = null;
       h.state = 'approach';
       h.target = 'player';
-      ev.push({ type: 'MolotovThrown', from: { ...h.pos }, to: { ...site.door }, target: h.site! });
+      // the attack's last Molotov (from CONFIG.firebomber.fromRound) keeps throwing, at Paul now
+      if (a.afterThrow) h.role = a.afterThrow;
+      ev.push({ type: 'MolotovThrown', from: { ...h.pos }, to: { ...site.door }, target: h.site as TargetId });
       return ZERO;
     }
     const goal = this.sitePoint(h, a, site.points);
     if (dist(h.pos, goal) <= CONFIG.molotov.range && ctx.grid.lineClear(h.pos, goal)) {
+      // the n-th of a site's Molotovs raising a bottle at once holds it n × MOLOTOV_STAGGER longer (no windup cap applies)
+      let latest = now + CONFIG.molotov.windup - MOLOTOV_STAGGER;
+      for (const o of this.list)
+        if (o !== h && o.site === h.site && o.state === 'windup' && this.auxOf(o).windKind === 'molotov') latest = Math.max(latest, o.stateUntil);
       h.state = 'windup';
-      h.stateUntil = now + CONFIG.molotov.windup;
+      h.stateUntil = Math.max(now + CONFIG.molotov.windup, latest + MOLOTOV_STAGGER);
       a.windKind = 'molotov';
       return ZERO;
     }
