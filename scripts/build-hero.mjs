@@ -1,5 +1,5 @@
 // Composes the landing hero (src/site/hero.png) from the game's own tiles and LPC sheets, at native game-pixel
-// size: the page scales it up with `image-rendering: pixelated`. Runtime-drawn textures (heal kit, rocks, road
+// size: the page scales it up with `image-rendering: pixelated`. Runtime-drawn textures (rocks, road
 // sign, fire, smoke) are reproduced with plain pixel drawing, matching src/game/render/*.ts.
 // Deterministic: fixed-seed RNG, no browser, no network. No flags, no photograph. Usage: npm run hero
 import fs from 'node:fs';
@@ -187,26 +187,6 @@ group.forEach((m, i) => {
   rect(cx - 1, cy - 4, 2, 2, 0xffffff);
 }
 
-// heal kit (world.ts makeTextures 'station' + StationsView): glow, white plate with green cross, "Soins"
-const kit = { x: 190, y: 212 };
-ellipse(kit.x, kit.y + 8, 30, 12, 0x5ee07a, 0.3);
-{
-  const x0 = kit.x - 10;
-  const y0 = kit.y - 10 - 2; // charged kits float a little
-  const rounded = (x, y, w, h, r, c) => {
-    for (let yy = 0; yy < h; yy++)
-      for (let xx = 0; xx < w; xx++) {
-        const cx = xx < r ? r - xx - 0.5 : xx >= w - r ? xx - (w - r) + 0.5 : 0;
-        const cy = yy < r ? r - yy - 0.5 : yy >= h - r ? yy - (h - r) + 0.5 : 0;
-        if (cx * cx + cy * cy <= r * r) blend(x + xx, y + yy, hex(c));
-      }
-  };
-  rounded(x0, y0, 20, 20, 4, 0x14121c);
-  rounded(x0 + 1, y0 + 1, 18, 18, 3, 0xf4f4f0);
-  rect(x0 + 8, y0 + 4, 4, 12, 0x23a84a);
-  rect(x0 + 4, y0 + 8, 12, 4, 0x23a84a);
-}
-
 // road sign weapon (weapons.ts 'weapon_panneau') on the ground: yellow pickup glow, slight sway
 const sign = { x: 262, y: 236 };
 ellipse(sign.x, sign.y + 6, 26, 10, 0xffe066, 0.35);
@@ -292,11 +272,8 @@ for (let y = 0; y < H; y++)
     add(x, y, [255, 128, 48], glow * 0.42);
   }
 
-// "Soins" label and kit cross stay bright (UI text in the game)
-text('Soins', kit.x - Math.ceil(textWidth('Soins') / 2), kit.y + 11, 0xe8ffe8, 0x14121c);
-// pickup glows read as light sources
+// pickup glow reads as a light source
 ellipse(sign.x, sign.y + 6, 22, 8, 0xffe066, 0.18);
-ellipse(kit.x, kit.y + 8, 26, 10, 0x5ee07a, 0.15);
 
 // ---------- smoke (dithered pixel puffs drifting up-right) ----------
 const SMOKE = [0x4a4650, 0x5a5560, 0x3c3842];
