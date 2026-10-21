@@ -149,10 +149,11 @@ export class PowBubbles {
     }
   }
 
-  spawn(x: number, y: number, nowMs: number): void {
+  /** `word`: a given word (the gant's « BOING ! »), else the next of POW_WORDS. */
+  spawn(x: number, y: number, nowMs: number, word: string = POW_WORDS[this.count % POW_WORDS.length]!): void {
     let p = this.pool[0]!;
     for (const q of this.pool) if (q.born < p.born) p = q;
-    const word = POW_WORDS[this.count++ % POW_WORDS.length]!;
+    this.count++;
     if (word !== p.word) {
       p.word = word;
       p.text.setText(word);

@@ -9,6 +9,7 @@ import {
   bearingDeg,
   edgePosition,
   formatMeters,
+  hintIds,
   incidentAlert,
   incidentLook,
   pixelSvg,
@@ -359,7 +360,7 @@ export class Hud {
 
     const active = s.ended ? [] : activeIncidents(s);
     if (s.ended) this.alert.clear();
-    else this.alert.prune(new Set(active.map((i) => i.id)));
+    else this.alert.prune(new Set([...active.map((i) => i.id), ...hintIds(s)]));
     this.alert.track(s.player.pos);
     this.placeAlert();
     this.updateRound(roundPanel(s));

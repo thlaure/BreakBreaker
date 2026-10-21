@@ -56,7 +56,8 @@ export class RockLayer {
 
 /**
  * Thrower telegraphs: red dashed line from→to and a ground ring at `to`, plus a red arrow at the screen edge
- * pointing at windups whose thrower is off screen. A firebomber's telegraph rings the whole fire patch it will leave.
+ * pointing at windups whose thrower is off screen. Shooters' aim lines (`snapshot.aims`): a thin solid red line with a
+ * cross where Paul stood (and the same edge arrow). A firebomber's telegraph rings the whole fire patch it will leave.
  * A telegraph whose thrower is already KO is hidden (matched by position, the sim keeps it until `until`).
  */
 export class TelegraphLayer {
@@ -76,6 +77,16 @@ export class TelegraphLayer {
     this.edge.clear();
     const live = visibleTelegraphs(snap);
     const pulse = 0.6 + 0.4 * Math.abs(Math.sin(timeMs / 90));
+    // shooters' aim lines: a thin solid red line at chest height to where Paul stood, a small cross there
+    for (const t of snap.aims) {
+      const lift = 16;
+      this.line.lineStyle(1, 0xff3b30, pulse).lineBetween(t.from.x, t.from.y - lift, t.to.x, t.to.y - lift);
+      this.line.lineStyle(1, 0xff3b30, pulse * 0.5).lineBetween(t.from.x, t.from.y - lift + 1, t.to.x, t.to.y - lift + 1);
+      const cx = Math.round(t.to.x);
+      const cy = Math.round(t.to.y - lift);
+      this.line.lineStyle(1, 0xff3b30, pulse).strokeCircle(cx, cy, 5).lineBetween(cx - 8, cy, cx + 8, cy).lineBetween(cx, cy - 8, cx, cy + 8);
+      if (!view.contains(t.from.x, t.from.y)) this.arrow(t.from, view);
+    }
     const bombers = snap.hostiles.filter((h) => h.role === 'firebomber' && h.state === 'windup');
     for (const t of live) {
       const fire = bombers.some((h) => Math.abs(h.pos.x - t.from.x) < 2 && Math.abs(h.pos.y - t.from.y) < 2);

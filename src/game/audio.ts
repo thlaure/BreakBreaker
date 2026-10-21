@@ -259,6 +259,72 @@ export class GameAudio {
     });
   }
 
+  /** A shooter's bullet: a tiny cartoon « pop » (0.06 s noise click through a band-pass, quiet: bursts of 3). */
+  pop(): void {
+    this.voice((ctx, out, t) => {
+      const len = Math.floor(ctx.sampleRate * 0.06);
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 1500;
+      bp.Q.value = 1.4;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.28, t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+      src.connect(bp).connect(g).connect(out);
+      src.start(t);
+      return src;
+    });
+  }
+
+  /** Flashball shot: a low « thump » (sine 150 → 55 Hz, 0.16 s) with a soft click on top. */
+  thump(): void {
+    this.voice((ctx, out, t) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(150, t);
+      osc.frequency.exponentialRampToValueAtTime(55, t + 0.15);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.6, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      osc.connect(g).connect(out);
+      osc.start(t);
+      osc.stop(t + 0.17);
+      return osc;
+    });
+  }
+
+  /** The glove lands: a springy « boing » (triangle wobbling 220 ↔ 330 Hz at 18 Hz, falling, 0.3 s). */
+  boing(): void {
+    this.voice((ctx, out, t) => {
+      const osc = ctx.createOscillator();
+      const lfo = ctx.createOscillator();
+      const depth = ctx.createGain();
+      const g = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(330, t);
+      osc.frequency.exponentialRampToValueAtTime(180, t + 0.28);
+      lfo.frequency.value = 18;
+      depth.gain.value = 60;
+      lfo.connect(depth).connect(osc.frequency);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.45, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+      osc.connect(g).connect(out);
+      osc.start(t);
+      lfo.start(t);
+      osc.stop(t + 0.31);
+      lfo.stop(t + 0.31);
+      return osc;
+    });
+  }
+
   /** Mode furie on: a 0.5 s square sweep rising 196 → 1046 Hz with a bright tail (power-up). */
   powerUp(): void {
     this.voice((ctx, out, t) => {
@@ -525,6 +591,17 @@ export class GameAudio {
           break;
         case 'ShieldBlocked':
           this.clank();
+          break;
+        case 'BulletFired':
+          this.pop();
+          break;
+        case 'FlashballFired':
+          this.thump();
+          break;
+        case 'GlovePunched':
+          // the spring's « boing » on a hit; a punch in the air only whooshes
+          if (e.lifeId !== null) this.boing();
+          else this.play('throw');
           break;
         case 'EnergyReady':
           this.energyReady(e.level);

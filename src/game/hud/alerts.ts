@@ -21,9 +21,9 @@ export type DropKind = 'bouclierDrop';
  * Everything the banner can announce: positioned incidents and drops, and position-less round starts and mode furie
  * starts (`furie`).
  */
-export type AlertKind = IncidentKind | 'round' | DropKind | 'furie' | 'flagCaptured';
+export type AlertKind = IncidentKind | 'round' | DropKind | 'furie' | 'flagCaptured' | 'flashball';
 export type AlertTone = 'fire' | 'warn' | 'round' | 'drop' | 'furie' | 'win';
-export type AlertIcon = 'flame' | 'alert' | 'horde' | 'glass' | 'bolt' | 'flag' | 'shield' | 'crown';
+export type AlertIcon = 'flame' | 'alert' | 'horde' | 'glass' | 'bolt' | 'flag' | 'shield' | 'crown' | 'flashball';
 /** What a round is about (its first beat), shown under « MANCHE N ! ». */
 export type RoundHeadline = CasseKind | 'rescue' | 'monument';
 /** A round headline as the banner words it: a rescue headline names its variant when known. */
@@ -71,6 +71,22 @@ export const FURIE_ALERT_MS = 2200;
 export const FLAG_ALERT_MS = 2600;
 /** How long the short, position-less « LE CAÏD ARRIVE ! » banner stays. */
 export const CAID_ALERT_MS = 2600;
+
+/** How long the one-line « FLASHBALL AU SOL » hint stays. */
+export const FLASHBALL_ALERT_MS = 3200;
+
+/** Id of the flashball hint of the drop at `pos`: alive while that flashball lies on the ground (see hintIds). */
+export function flashballHintId(pos: Vec): string {
+  return `flashball@${pos.x},${pos.y}`;
+}
+
+/**
+ * Ids that keep a hint banner alive without an edge indicator: every flashball on the ground (the banner of the one
+ * dropped with the first shooter goes once it is picked up).
+ */
+export function hintIds(s: Snapshot): string[] {
+  return s.weaponsOnGround.filter((w) => w.kind === 'flashball').map((w) => flashballHintId(w.pos));
+}
 
 /** `activeIncidents` id of the Caïd of life `lifeId` (the banner is dropped once he is KO). */
 export function caidId(lifeId: number): string {
@@ -146,6 +162,9 @@ export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: 
       ms: FLAG_ALERT_MS,
     };
   if (kind === 'caid') return { ...INCIDENT_ALERTS.caid, meta: '', positioned: false, ms: CAID_ALERT_MS };
+  // the flashball guaranteed with the first shooter: one line, with the arrow and distance to it (no edge indicator)
+  if (kind === 'flashball')
+    return { title: 'FLASHBALL AU SOL', sub: '', label: 'FLASHBALL', tone: 'drop', icon: 'flashball', meta: '', positioned: true, ms: FLASHBALL_ALERT_MS };
   const meta = round <= 0 ? '' : total > 0 ? `Manche ${round} · ${casseurs(total)}` : `Manche ${round}`;
   return { ...INCIDENT_ALERTS[kind], meta, positioned: true };
 }
@@ -224,6 +243,11 @@ export function alertFromEvent(e: SimEvent): Alert | null {
   if (e.type === 'FlagSwapped')
     return { id: `${e.incidentId}:swap`, kind: 'flag', pos: { ...e.pos }, wave: 0, total: 0, incident: 'monument:flag' };
   if (e.type === 'FlagCaptured') return { id: `flag#${e.swap}`, kind: 'flagCaptured', pos: null, wave: 0, total: 0 };
+  // the first shooter's flashball: a one-line hint pointing at it, dropped once it is picked up
+  if (e.type === 'FlashballDropped') {
+    const id = flashballHintId(e.pos);
+    return { id, kind: 'flashball', pos: { ...e.pos }, wave: 0, total: 0, incident: id };
+  }
   // the Caïd walks in: short banner without arrow, dropped once he is KO
   if (e.type === 'CaidArrived') {
     const id = caidId(e.lifeId);
@@ -445,6 +469,19 @@ const SPRITES: Record<Sprite, string[]> = {
     'KOOOOOOOK.',
     'KKKKKKKKK.',
   ],
+  // the cartoon flashball launcher: grey body, orange muzzle
+  flashball: [
+    '..........',
+    'KKKKKKKKK.',
+    'KSSSSSSOOK',
+    'KSKKKKSOYK',
+    'KSSSSSSOOK',
+    'KKKSSKKKK.',
+    '..KSSK....',
+    '..KSSK....',
+    '.KSSSK....',
+    '.KKKKK....',
+  ],
   // points right (0°); rotated toward the target
   arrow: ['....C...', '....CC..', 'CCCCCCC.', 'CCCCCCCC', 'CCCCCCC.', '....CC..', '....C...'],
   // points down-right (45°)
@@ -601,6 +638,7 @@ export class AlertBanner {
     this.ico.innerHTML = pixelSvg(spec.icon, 3);
     this.title.textContent = spec.title;
     this.sub.textContent = spec.sub;
+    this.sub.hidden = !spec.sub;
     this.meta.textContent = spec.meta;
     this.meta.hidden = !spec.meta;
     this.dir.hidden = !spec.positioned;

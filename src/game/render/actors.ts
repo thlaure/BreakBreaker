@@ -5,6 +5,7 @@ import type { Launch, Vec } from '../../sim/types';
 import { DEPTH } from './depth';
 import { edgeExit, landingDistance, launchPose, satelliteDelay, satellitePose } from './furieMath';
 import { MAX_SATELLITES, Twinkles } from './satellite';
+import { RifleProp } from './guns';
 import { DUST_MS, badgeOf, hpBarShown, hpFill, rioterSheet, roleScale } from './roleLook';
 
 type HostileSnap = Snapshot['hostiles'][number];
@@ -396,6 +397,8 @@ class HostileView {
   private readonly flag: Phaser.GameObjects.Image | null;
   private readonly pole: Phaser.GameObjects.Rectangle | null;
   private readonly bottle: BottleProp | null;
+  /** A shooter's cartoon rifle (and its « ! » while aiming). */
+  private readonly rifle: RifleProp | null;
   private flight: Flight | null = null;
   /** Satellite gone: the sprites are destroyed, nothing more is drawn. */
   private gone = false;
@@ -418,6 +421,7 @@ class HostileView {
     this.flag = flagFrame >= 0 ? scene.add.image(0, 0, 'flags', flagFrame).setOrigin(0, 1) : null;
     this.pole = flagFrame >= 0 ? scene.add.rectangle(0, 0, 1, 22, 0x5a4632).setOrigin(0.5, 1) : null;
     this.bottle = h.role === 'molotov' || h.role === 'firebomber' ? new BottleProp(scene) : null;
+    this.rifle = h.role === 'shooter' ? new RifleProp(scene) : null;
   }
 
   /** `index` = rank of this body among the satellites of one beam (take-off stagger, see satelliteDelay). */
@@ -450,6 +454,7 @@ class HostileView {
       this.flag?.setVisible(false);
       this.pole?.setVisible(false);
       this.bottle?.update(h, this.view.sprite.depth, nowMs);
+      this.rifle?.update(h, this.view.sprite.depth, nowMs);
       this.role?.update(h, this.view.sprite);
       this.satellite(this.flight, nowMs, ctx);
       return;
@@ -489,6 +494,7 @@ class HostileView {
       this.flag.setPosition(px, py - 10).setFlipX(dir === 'e').setOrigin(dir === 'e' ? 1 : 0, 1).setDepth(s.depth + 0.03);
     }
     this.bottle?.update(h, s.depth, nowMs);
+    this.rifle?.update(h, s.depth, nowMs);
     this.role?.update(h, s);
   }
 
@@ -560,6 +566,7 @@ class HostileView {
     this.flag?.destroy();
     this.pole?.destroy();
     this.bottle?.destroy();
+    this.rifle?.destroy();
     this.role?.destroy();
   }
 }

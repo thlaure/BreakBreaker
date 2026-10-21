@@ -23,6 +23,7 @@ import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapo
 import { ItemLayer, makeItemTextures } from '../render/items';
 import { BubbleView, SpecialFx, makeSpecialTextures } from '../render/specials';
 import { ScorePopups } from '../render/scorePopups';
+import { BulletLayer, GloveFx } from '../render/guns';
 
 const HIT_STOP_MS = 60;
 const SHAKE_MS = 120;
@@ -86,6 +87,10 @@ export class WorldScene extends Phaser.Scene {
   private specialFx!: SpecialFx;
   /** Floating « +N » / « −N » score popups where points were won or lost. */
   private scorePopups!: ScorePopups;
+  /** Shooters' bullets, flashball shots, muzzle puffs and impact sparks. */
+  private bullets!: BulletLayer;
+  /** The spring-loaded glove's punch. */
+  private glove!: GloveFx;
   private reducedMotion = false;
 
   private hitStopUntil = 0;
@@ -215,6 +220,8 @@ export class WorldScene extends Phaser.Scene {
     this.shield = new BubbleView(this, this.reducedMotion);
     this.specialFx = new SpecialFx(this);
     this.scorePopups = new ScorePopups(this, this.reducedMotion);
+    this.bullets = new BulletLayer(this);
+    this.glove = new GloveFx(this);
     this.toolboxes = new ToolboxView(this);
 
     const cam = this.cameras.main;
@@ -326,6 +333,9 @@ export class WorldScene extends Phaser.Scene {
           const cam = this.cameras.main;
           cam.shake(BEAM_SHAKE_MS, new Phaser.Math.Vector2(BEAM_SHAKE_PX / cam.width, BEAM_SHAKE_PX / cam.height), false);
         }
+      } else if (e.type === 'GlovePunched') {
+        this.glove.punch(e.from, e.to, time);
+        if (e.lifeId !== null) this.pows.spawn(e.to.x, e.to.y, time, 'BOING !');
       } else if (e.type === 'ToolboxPickedUp') {
         this.toolboxes.picked(time);
       } else if (e.type === 'FlagCaptured') {
@@ -335,6 +345,7 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     if (scored.length > 0) this.scorePopups.spawn(scored, time);
+    this.bullets.onEvents(events, snap);
     if (furieHit && !this.reducedMotion) {
       const cam = this.cameras.main;
       cam.shake(FURIE_SHAKE_MS, new Phaser.Math.Vector2(FURIE_SHAKE_PX / cam.width, FURIE_SHAKE_PX / cam.height), false);
@@ -357,6 +368,8 @@ export class WorldScene extends Phaser.Scene {
     this.hostiles.update(snap.hostiles, time);
     this.rocks.update(snap.rocks, (id) => flying.get(id) ?? 0, time);
     this.telegraphs.update(snap, this.cameras.main.worldView, time);
+    this.bullets.update(snap);
+    this.glove.update(time);
     this.group.update(time);
     this.victim.update(snap.rescue, time);
     this.items.update(snap.rescue, snap.player, time);
