@@ -10,41 +10,37 @@ import { WEAPONS, Weapons } from '../../src/sim/weapons';
 import { autopilot } from './autopilot';
 
 const grid = new Grid(DISTRICT);
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false };
+const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
 const input = (o: Partial<InputFrame> = {}): InputFrame => ({ ...IDLE, ...o });
 const STEPS = (sec: number): number => Math.round(sec / CONFIG.step);
 type Ev<T extends SimEvent['type']> = Extract<SimEvent, { type: T }>;
 const of = <T extends SimEvent['type']>(ev: SimEvent[], type: T): Ev<T>[] => ev.filter((e): e is Ev<T> => e.type === type);
 
-/** Puts a furie under Paul and steps once: the mode is on. */
+/** Fills the energy gauge and presses Furie (R): the mode is on. */
 function pickFurie(sim: Sim): SimEvent[] {
-  sim.weapons.ground.push({ id: 900 + sim.weapons.ground.length, kind: 'furie', pos: { ...sim.player.pos }, expiresAt: null });
-  return sim.step(IDLE);
+  sim.energy.value = CONFIG.energy.max;
+  return sim.step(input({ furie: true }));
 }
 
-describe('mode furie pickup', () => {
-  test('walking over a furie activates the mode for 12 s and keeps the held weapon', () => {
+describe('mode furie from the energy gauge', () => {
+  test('Furie with a full gauge activates the mode for 12 s and keeps the held weapon', () => {
     const sim = new Sim(5);
     sim.weapons.held = { kind: 'baton', uses: 7 };
     const ev = pickFurie(sim);
     expect(ev).toContainEqual({ type: 'FurieStarted', secondsLeft: CONFIG.furie.durationSec });
     expect(of(ev, 'WeaponPickedUp')).toEqual([]);
     expect(sim.weapons.held).toEqual({ kind: 'baton', uses: 7 });
-    expect(sim.weapons.ground).toHaveLength(0);
     const s = sim.snapshot();
-    expect(s.furie).toEqual({ secondsLeft: CONFIG.furie.durationSec });
+    expect(s.furie!.secondsLeft).toBeCloseTo(CONFIG.furie.durationSec - CONFIG.step, 6);
     expect(s.weapon).toEqual({ kind: 'baton', uses: 7 });
   });
 
-  test('the timer runs out after 12 s (FurieEnded); a second pickup resets it to 12 s', () => {
+  test('the timer runs out after 12 s (FurieEnded)', () => {
     const sim = new Sim(5);
-    pickFurie(sim);
-    const all: SimEvent[] = [];
+    const all: SimEvent[] = [...pickFurie(sim)];
     for (let i = 0; i < STEPS(6); i++) all.push(...sim.step(IDLE));
-    expect(sim.snapshot().furie!.secondsLeft).toBeCloseTo(CONFIG.furie.durationSec - 6, 3);
-    all.push(...pickFurie(sim));
-    expect(sim.snapshot().furie!.secondsLeft).toBeCloseTo(CONFIG.furie.durationSec, 6);
-    for (let i = 0; i < STEPS(CONFIG.furie.durationSec) - 2; i++) all.push(...sim.step(IDLE));
+    expect(sim.snapshot().furie!.secondsLeft).toBeCloseTo(CONFIG.furie.durationSec - 6 - CONFIG.step, 3);
+    for (let i = 0; i < STEPS(CONFIG.furie.durationSec - 6) - 3; i++) all.push(...sim.step(IDLE));
     expect(sim.snapshot().furie).not.toBeNull();
     expect(of(all, 'FurieEnded')).toEqual([]);
     for (let i = 0; i < 3; i++) all.push(...sim.step(IDLE));
@@ -231,69 +227,32 @@ describe('mode furie launches', () => {
   });
 });
 
-describe('where a furie appears', () => {
-  test('timed spawns: never before round 6; from round 6 about 1 in 6', () => {
-    const count = (round: number) => {
-      let furies = 0;
-      let total = 0;
-      for (let seed = 1; seed <= 60; seed++) {
+describe('no furie or onde pickup ever appears', () => {
+  test('timed street spawns: only regular weapons and the bouclier, whatever the round', () => {
+    const kinds = new Set<string>();
+    for (const round of [1, 4, 6, 9, 12])
+      for (let seed = 1; seed <= 30; seed++) {
         const w = new Weapons(grid, rng(seed));
         const paul = createPlayer({ ...DISTRICT.playerSpawn });
-        for (let t = 0; t < 400; t += 1) {
-          for (const e of w.step(1, t, paul, round))
-            if (e.type === 'WeaponSpawned') {
-              total++;
-              if (e.kind === 'furie') furies++;
-            }
+        for (let t = 0; t < 300; t += 1) {
+          for (const e of w.step(1, t, paul, round)) if (e.type === 'WeaponSpawned') kinds.add(e.kind);
           w.ground.length = 0;
         }
       }
-      return furies / total;
-    };
-    expect(count(1)).toBe(0);
-    expect(count(5)).toBe(0);
-    const share = count(6);
-    expect(share).toBeGreaterThan(0.1);
-    expect(share).toBeLessThan(0.24);
+    expect([...kinds].sort()).toEqual([...Object.keys(WEAPONS), 'bouclier'].sort());
   });
 
-  test('dropSpecial with a kind drops that kind', () => {
-    const w = new Weapons(grid, rng(2));
-    const g = w.dropSpecial(DISTRICT.playerSpawn, 'furie')!;
-    expect(g.kind).toBe('furie');
-    expect(g.expiresAt).toBeCloseTo(CONFIG.weapons.dropLifetime, 6);
-  });
-
-  test('twist weapon drop: never a furie before round 4; the round-end drop is never a furie', () => {
-    const sim = new Sim(3, { invulnerable: true });
-    const twists = new Map<number, Ev<'TwistStarted'>>();
-    const endDrops: string[] = [];
-    const furieSpawnsBefore4: string[] = [];
-    for (let i = 0; i < 60 * 1500 && sim.director.round <= 6; i++) {
-      const ev = sim.step(autopilot(sim));
-      const t = of(ev, 'TwistStarted').find((e) => e.kind === 'weaponDrop');
-      const spawned = of(ev, 'WeaponSpawned');
-      if (t) {
-        twists.set(sim.director.round, t);
-        if (t.pos) {
-          const w = spawned.find((s) => s.pos.x === t.pos!.x && s.pos.y === t.pos!.y);
-          if (sim.director.round < CONFIG.furie.dropFromRound) expect(w!.kind).not.toBe('furie');
-          if (t.special) expect(w!.kind).toBe(t.special);
-        }
+  test('in sessions over several seeds and rounds: every pickup is a regular weapon or the bouclier; twists only announce the bouclier', () => {
+    const allowed = new Set<string>([...Object.keys(WEAPONS), 'bouclier']);
+    for (const seed of [3, 8, 21]) {
+      const sim = new Sim(seed, { invulnerable: true });
+      for (let i = 0; i < 60 * 1500 && sim.director.round <= 7; i++) {
+        const ev = sim.step(autopilot(sim));
+        for (const s of of(ev, 'WeaponSpawned')) expect(allowed.has(s.kind), s.kind).toBe(true);
+        for (const t of of(ev, 'TwistStarted')) if (t.special !== undefined) expect(t.special).toBe('bouclier');
+        for (const g of sim.weapons.ground) expect(allowed.has(g.kind)).toBe(true);
+        expect(of(ev, 'FurieStarted')).toEqual([]);
       }
-      if (ev.some((e) => e.type === 'RoundCompleted')) for (const s of spawned) endDrops.push(s.kind);
-      if (sim.director.round < CONFIG.furie.spawnFromRound) for (const s of spawned) if (s.kind === 'furie' && sim.director.round < 4) furieSpawnsBefore4.push(s.kind);
     }
-    expect(twists.get(2)).toBeDefined();
-    expect(twists.get(2)!.special).toBeUndefined();
-    expect(twists.get(3)!.special).toBe('bouclier');
-    expect(['furie', 'bouclier', 'kamehame']).toContain(twists.get(5)!.special);
-    expect(twists.get(4)).toMatchObject({ kind: 'weaponDrop' });
-    expect(['furie', 'bouclier']).toContain(twists.get(4)!.special);
-    expect(['furie', 'bouclier', 'kamehame']).toContain(twists.get(6)!.special);
-    expect(endDrops.length).toBeGreaterThan(3);
-    expect(endDrops).not.toContain('furie');
-    expect(furieSpawnsBefore4).toEqual([]);
   });
-
 });

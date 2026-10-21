@@ -10,7 +10,7 @@ try {
   const STEPS = MIN * 60 * 60;
   const sim = new Sim(12345, { invulnerable: true });
   const st = { n: 0 };
-  const idle = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false };
+  const idle = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
   const times = new Float64Array(STEPS);
   let maxHostiles = 0;
   let maxFly = 0;
@@ -18,7 +18,7 @@ try {
   for (let i = 0; i < STEPS; i++) {
     // Paul wanders in a slow loop and swings every 1.5 s (strikes rarely connect, so the crowd stays at 40).
     const a = (i / 60) * 0.5;
-    const input = { ...idle, move: { x: Math.cos(a), y: Math.sin(a) }, strike: i % 90 === 0, strikeHeld: false, throwRock: i % 120 === 0, act: false };
+    const input = { ...idle, move: { x: Math.cos(a), y: Math.sin(a) }, strike: i % 90 === 0, chargeHeld: false, throwRock: i % 120 === 0, act: false };
     topUp(sim, 40, st);
     const t0 = performance.now();
     sim.step(input);

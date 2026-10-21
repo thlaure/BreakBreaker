@@ -14,7 +14,7 @@ import { autopilot } from './autopilot';
 const grid = new Grid(DISTRICT);
 const DT = 1 / 60;
 const FB = CONFIG.firebomber;
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false };
+const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
 type Ev<T extends SimEvent['type']> = Extract<SimEvent, { type: T }>;
 const of = <T extends SimEvent['type']>(ev: SimEvent[], type: T): Ev<T>[] => ev.filter((e): e is Ev<T> => e.type === type);
 
@@ -215,7 +215,7 @@ describe('fire patches in the sim', () => {
 
   test('mode furie halves the patch damage', () => {
     const sim = withFirebomber();
-    sim.weapons.ground.push({ id: 900, kind: 'furie', pos: { ...sim.player.pos }, expiresAt: null });
+    sim.weapons.startFurie();
     const ev: SimEvent[] = [];
     for (let i = 0; i < Math.round(2.6 / DT); i++) ev.push(...sim.step(IDLE));
     const dmg = of(ev, 'PlayerDamaged');

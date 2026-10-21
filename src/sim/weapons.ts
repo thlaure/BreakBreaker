@@ -20,19 +20,13 @@ export const HELD_LABELS: Readonly<Record<HeldKind, string>> = {
   marteau: WEAPONS.marteau.label,
   panneau: WEAPONS.panneau.label,
   bouclier: 'Bouclier',
-  kamehame: 'Onde d’énergie',
 };
 
-/** The special pickups, in stream order (one draw picks among the unlocked ones). */
-export const SPECIALS: readonly SpecialKind[] = ['furie', 'bouclier', 'kamehame'];
+/** The special pickups (only the bouclier: the mode furie and the onde d’énergie come from the energy gauge). */
+export const SPECIALS: readonly SpecialKind[] = ['bouclier'];
 
 export function isSpecial(kind: PickupKind): kind is SpecialKind {
-  return kind === 'furie' || kind === 'bouclier' || kind === 'kamehame';
-}
-
-/** Specials the round's twist drop can be (CONFIG.<kind>.dropFromRound). */
-export function dropSpecials(round: number): SpecialKind[] {
-  return SPECIALS.filter((k) => round >= CONFIG[k].dropFromRound);
+  return kind === 'bouclier';
 }
 
 /** Specials a timed street spawn can be (CONFIG.<kind>.spawnFromRound), each with weight CONFIG.<kind>.spawnShare. */
@@ -48,9 +42,7 @@ export interface GroundWeapon {
   expiresAt: number | null;
 }
 
-/**
- * `uses` = strikes left (regular weapons) or beams left (kamehame); 0 for the bouclier, which has `secondsLeft` instead.
- */
+/** `uses` = strikes left (regular weapons); 0 for the bouclier, which has `secondsLeft` instead. */
 export interface HeldWeapon {
   kind: HeldKind;
   uses: number;
@@ -60,7 +52,6 @@ export interface HeldWeapon {
 /** A freshly picked held weapon of `kind`. */
 export function heldOf(kind: HeldKind): HeldWeapon {
   if (kind === 'bouclier') return { kind, uses: 0, secondsLeft: CONFIG.bouclier.durationSec };
-  if (kind === 'kamehame') return { kind, uses: CONFIG.kamehame.uses };
   return { kind, uses: WEAPONS[kind].uses };
 }
 
@@ -68,10 +59,9 @@ export function heldOf(kind: HeldKind): HeldWeapon {
  * Random weapon pickups. A weapon appears every CONFIG.weapons.spawnEvery seconds (random within the range) on a
  * free spot away from Paul, up to maxGround at once. Walking over one takes it (replacing the current weapon).
  * A strike that hits at least one rioter uses one strike; at 0 the weapon breaks and Paul fights bare-handed.
- * A furie pickup does not replace the weapon: it switches the mode furie on for CONFIG.furie.durationSec (reset by a
- * second one); the timer runs with the sim steps (frozen while paused) and `endFurie` cuts it short (Paul KO).
- * The bouclier and the onde d’énergie (kamehame) are held like weapons: the bouclier breaks after
- * CONFIG.bouclier.durationSec of steps; the kamehame after its last beam (`onBeam`).
+ * The mode furie (`startFurie`, from the energy gauge) does not touch the weapon: it lasts CONFIG.furie.durationSec;
+ * the timer runs with the sim steps (frozen while paused) and `endFurie` cuts it short (Paul KO).
+ * The bouclier is held like a weapon and breaks after CONFIG.bouclier.durationSec of steps.
  */
 export class Weapons {
   ground: GroundWeapon[] = [];
@@ -101,9 +91,14 @@ export class Weapons {
    */
   range(): number {
     const k = this.held?.kind;
-    const base =
-      k === undefined || k === 'kamehame' ? CONFIG.melee.range : k === 'bouclier' ? CONFIG.bouclier.bashRange : WEAPONS[k].range;
+    const base = k === undefined ? CONFIG.melee.range : k === 'bouclier' ? CONFIG.bouclier.bashRange : WEAPONS[k].range;
     return this.furie() ? base * CONFIG.furie.reachMul : base;
+  }
+
+  /** Starts the mode furie for CONFIG.furie.durationSec (FurieStarted). */
+  startFurie(): SimEvent[] {
+    this.furieLeft = CONFIG.furie.durationSec;
+    return [{ type: 'FurieStarted', secondsLeft: this.furieLeft }];
   }
 
   /** Ends the mode furie at once (Paul KO); FurieEnded when it was on. */
@@ -113,7 +108,7 @@ export class Weapons {
     return [{ type: 'FurieEnded' }];
   }
 
-  /** `round` gates the furie among the timed spawns (CONFIG.furie.spawnFromRound). */
+  /** `round` gates the bouclier among the timed spawns (CONFIG.bouclier.spawnFromRound). */
   step(dt: number, now: number, player: Player, round = 1): SimEvent[] {
     this.now = now;
     const ev: SimEvent[] = [];
@@ -136,13 +131,8 @@ export class Weapons {
     const taken = this.ground.find((g) => dist(g.pos, player.pos) <= CONFIG.weapons.pickupRadius);
     if (taken && !player.ko) {
       this.ground = this.ground.filter((g) => g !== taken);
-      if (taken.kind === 'furie') {
-        this.furieLeft = CONFIG.furie.durationSec;
-        ev.push({ type: 'FurieStarted', secondsLeft: this.furieLeft });
-      } else {
-        this.held = heldOf(taken.kind);
-        ev.push({ type: 'WeaponPickedUp', kind: taken.kind });
-      }
+      this.held = heldOf(taken.kind);
+      ev.push({ type: 'WeaponPickedUp', kind: taken.kind });
     }
     if (now >= this.nextSpawnAt) {
       const [lo, hi] = CONFIG.weapons.spawnEvery;
@@ -177,7 +167,7 @@ export class Weapons {
   }
 
   /**
-   * Special drop (round twist / round end): a random weapon (or the given kind, e.g. a furie) 160–480 px from Paul
+   * Special drop (round twist / round end): a random weapon (or the given kind, e.g. a bouclier) 160–480 px from Paul
    * right now, outside the timer and the ground cap; it vanishes after CONFIG.weapons.dropLifetime s if nobody takes
    * it. Null when no free spot was found.
    */
@@ -202,28 +192,19 @@ export class Weapons {
   }
 
   /**
-   * The round twist's weapon drop: one of the specials unlocked at `round` (`dropSpecials`, picked with this stream),
-   * or a regular weapon before any is unlocked. `special` = the special kind dropped (null for a regular weapon).
+   * The round twist's weapon drop: from CONFIG.bouclier.dropFromRound a bouclier with probability
+   * CONFIG.bouclier.dropShare (one draw of this stream), a regular weapon otherwise (and always before).
+   * `special` = 'bouclier' when it is one (null for a regular weapon).
    */
   dropTwist(player: Vec, round: number): { drop: GroundWeapon | null; special: SpecialKind | null } {
-    const pool = dropSpecials(round);
-    if (pool.length === 0) return { drop: this.dropSpecial(player), special: null };
-    const kind = pool[Math.min(pool.length - 1, Math.floor(this.rand() * pool.length))]!;
-    return { drop: this.dropSpecial(player, kind), special: kind };
-  }
-
-  /** One onde d’énergie fired: uses one beam; the last one breaks the weapon. */
-  onBeam(): SimEvent[] {
-    if (this.held?.kind !== 'kamehame') return [];
-    this.held.uses -= 1;
-    if (this.held.uses > 0) return [];
-    this.held = null;
-    return [{ type: 'WeaponBroken', kind: 'kamehame' }];
+    if (round < CONFIG.bouclier.dropFromRound || this.rand() >= CONFIG.bouclier.dropShare)
+      return { drop: this.dropSpecial(player), special: null };
+    return { drop: this.dropSpecial(player, 'bouclier'), special: 'bouclier' };
   }
 
   /** Call after each swing with the number of rioters hit (regular weapons only: the specials have no strike count). */
   onSwing(hits: number): SimEvent[] {
-    if (!this.held || hits === 0 || this.held.kind === 'bouclier' || this.held.kind === 'kamehame') return [];
+    if (!this.held || hits === 0 || this.held.kind === 'bouclier') return [];
     this.held.uses -= 1;
     if (this.held.uses > 0) return [];
     const kind = this.held.kind;

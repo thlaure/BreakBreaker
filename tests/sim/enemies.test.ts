@@ -102,10 +102,9 @@ describe('damage rules on tougher rioters', () => {
     const b = sim.horde.spawn({ variant: 'classic', role: 'brute', pos: { x: OPEN.x + 80, y: OPEN.y } })!;
     const c = sim.horde.spawn({ variant: 'classic', role: 'boss', pos: { x: OPEN.x + 140, y: OPEN.y } })!;
     b.nextAttackAt = c.nextAttackAt = 1e9;
-    sim.weapons.held = { kind: 'kamehame', uses: 2 };
+    sim.energy.value = CONFIG.energy.ondeCost;
     const ev: SimEvent[] = [];
-    ev.push(...sim.step(input({ strike: true, strikeHeld: true, aim: { x: 1, y: 0 } })));
-    for (let i = 0; i < 70; i++) ev.push(...sim.step(input({ strikeHeld: true, aim: { x: 1, y: 0 } })));
+    for (let i = 0; i < 71; i++) ev.push(...sim.step(input({ chargeHeld: true, aim: { x: 1, y: 0 } })));
     expect(of(ev, 'BeamFired')).toHaveLength(1);
     expect(b.state).toBe('ko');
     expect(c.state).toBe('ko');

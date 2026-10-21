@@ -9,11 +9,11 @@ import { rng } from '../../src/sim/rng';
 import { Sim } from '../../src/sim/sim';
 import { beam } from '../../src/sim/specials';
 import type { InputFrame, SimEvent, Vec } from '../../src/sim/types';
-import { dropSpecials, heldOf, isSpecial, spawnSpecials, Weapons } from '../../src/sim/weapons';
+import { heldOf, isSpecial, spawnSpecials, WEAPONS, Weapons } from '../../src/sim/weapons';
 import { autopilot } from './autopilot';
 
 const grid = new Grid(DISTRICT);
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false };
+const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
 const input = (o: Partial<InputFrame> = {}): InputFrame => ({ ...IDLE, ...o });
 const STEPS = (sec: number): number => Math.round(sec / CONFIG.step);
 const DT = CONFIG.step;
@@ -268,12 +268,13 @@ describe('onde d’énergie: beam geometry', () => {
 });
 
 describe('onde d’énergie: charge and fire (Sim)', () => {
-  const HOLD = input({ strikeHeld: true });
-  const PRESS = input({ strike: true, strikeHeld: true });
+  const HOLD = input({ chargeHeld: true });
+  const PRESS = HOLD;
 
+  /** Paul facing right with a full energy gauge (two beams). */
   function armed(seed = 5): Sim {
     const sim = new Sim(seed);
-    sim.weapons.held = heldOf('kamehame');
+    sim.energy.value = CONFIG.energy.max;
     sim.player.facing = { x: 1, y: 0 };
     return sim;
   }
@@ -305,7 +306,7 @@ describe('onde d’énergie: charge and fire (Sim)', () => {
       expect(k.launch!.dir.x).toBeGreaterThan(Math.cos(CONFIG.kamehame.satelliteJitter) - 1e-6);
       expect(k.launch!.kind).toBe('satellite');
     }
-    expect(sim.weapons.held).toEqual({ kind: 'kamehame', uses: CONFIG.kamehame.uses - 1 });
+    expect(sim.energy.value).toBe(CONFIG.energy.max - CONFIG.energy.ondeCost);
     expect(sim.snapshot().charge).toBeNull();
     // still held: no new charge until the next press
     expect(of(sim.step(HOLD), 'BeamCharging')).toEqual([]);
@@ -318,7 +319,7 @@ describe('onde d’énergie: charge and fire (Sim)', () => {
     all.push(...sim.step(IDLE));
     expect(of(all, 'BeamCancelled')).toHaveLength(1);
     expect(of(all, 'BeamFired')).toEqual([]);
-    expect(sim.weapons.held).toEqual({ kind: 'kamehame', uses: CONFIG.kamehame.uses });
+    expect(sim.energy.value).toBe(CONFIG.energy.max);
     const x = sim.player.pos.x;
     sim.step(input({ move: { x: 1, y: 0 } }));
     expect(sim.player.pos.x).toBeGreaterThan(x);
@@ -328,7 +329,7 @@ describe('onde d’énergie: charge and fire (Sim)', () => {
     const sim = armed();
     sim.step(PRESS);
     const before = { ...sim.player.pos };
-    for (let i = 0; i < 20; i++) sim.step(input({ strikeHeld: true, move: { x: 0, y: 1 }, run: true, aim: { x: 0, y: -1 } }));
+    for (let i = 0; i < 20; i++) sim.step(input({ chargeHeld: true, move: { x: 0, y: 1 }, run: true, aim: { x: 0, y: -1 } }));
     expect(sim.player.pos).toEqual(before);
     expect(sim.player.facing).toEqual({ x: 0, y: -1 });
   });
@@ -347,27 +348,22 @@ describe('onde d’énergie: charge and fire (Sim)', () => {
     expect(of(ev, 'BeamCancelled')).toHaveLength(1);
     expect(sim.snapshot().charge).toBeNull();
     for (let i = 0; i < STEPS(1.2); i++) expect(of(sim.step(HOLD), 'BeamFired')).toEqual([]);
-    expect(sim.weapons.held!.uses).toBe(CONFIG.kamehame.uses);
+    expect(sim.energy.value).toBe(CONFIG.energy.max);
   });
 
-  test('losing the weapon cancels the charge', () => {
+  test('a beam with no target still costs its energy; no weapon is involved', () => {
     const sim = armed();
-    sim.step(PRESS);
     sim.weapons.held = heldOf('baton');
-    expect(of(sim.step(HOLD), 'BeamCancelled')).toHaveLength(1);
-  });
-
-  test('a beam with no target still uses one; the last use breaks the weapon', () => {
-    const sim = armed();
     const all: SimEvent[] = [];
-    for (let shot = 0; shot < CONFIG.kamehame.uses; shot++) {
+    for (let shot = 0; shot < 2; shot++) {
       all.push(...sim.step(PRESS));
       for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec); i++) all.push(...sim.step(HOLD));
       all.push(...sim.step(IDLE));
     }
     expect(of(all, 'BeamFired').map((e) => e.kos)).toEqual([0, 0]);
-    expect(sim.weapons.held).toBeNull();
-    expect(all).toContainEqual({ type: 'WeaponBroken', kind: 'kamehame' });
+    expect(sim.energy.value).toBe(0);
+    expect(sim.weapons.held).toEqual(heldOf('baton'));
+    expect(of(all, 'WeaponBroken')).toEqual([]);
   });
 
   test('the beam stops at a building and never reaches rioters behind the peaceful group', () => {
@@ -395,12 +391,12 @@ describe('onde d’énergie: charge and fire (Sim)', () => {
     expect(sim.snapshot().charge!.progress).toBeGreaterThan(prog);
   });
 
-  test('a strike with the kamehame does not swing (no melee hit while charging)', () => {
+  test('no melee swing on the step a charge starts nor while it grows', () => {
     const sim = armed();
     const p = sim.player.pos;
     const h = calm(sim, { x: p.x + 20, y: p.y });
-    const ev = sim.step(PRESS);
-    expect(of(ev, 'HitConfirmed')).toEqual([]);
+    expect(of(sim.step(input({ chargeHeld: true, strike: true })), 'HitConfirmed')).toEqual([]);
+    expect(of(sim.step(input({ chargeHeld: true, strike: true })), 'HitConfirmed')).toEqual([]);
     expect(h.state).not.toBe('ko');
   });
 });
@@ -409,13 +405,13 @@ describe('onde d’énergie: satellisation (cosmetic launch payload)', () => {
   /** Charges and fires a beam through a line of `n` rioters; returns the KO events and the sim. */
   function shoot(seed: number, n = 4) {
     const sim = new Sim(seed);
-    sim.weapons.held = heldOf('kamehame');
+    sim.energy.value = CONFIG.energy.ondeCost;
     sim.player.facing = { x: 1, y: 0 };
     const p = { ...sim.player.pos };
-    sim.step(input({ strike: true, strikeHeld: true }));
-    for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec) - 1; i++) sim.step(input({ strikeHeld: true }));
+    sim.step(input({ chargeHeld: true }));
+    for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec) - 1; i++) sim.step(input({ chargeHeld: true }));
     for (let i = 0; i < n; i++) calm(sim, { x: p.x + 40 + i * 50, y: p.y });
-    const ev = sim.step(input({ strikeHeld: true }));
+    const ev = sim.step(input({ chargeHeld: true }));
     return { sim, kos: of(ev, 'ActorKnockedOut') };
   }
 
@@ -474,40 +470,42 @@ describe('onde d’énergie: satellisation (cosmetic launch payload)', () => {
 
 /* ------------------------------------------------------------------ who drops them ------------------------------------------------------------------ */
 
-describe('specials: unlocks and drops', () => {
-  test('twist drop pools: none before round 3, bouclier from 3, furie from 4, kamehame from 5', () => {
-    expect(dropSpecials(1)).toEqual([]);
-    expect(dropSpecials(2)).toEqual([]);
-    expect(dropSpecials(3)).toEqual(['bouclier']);
-    expect(dropSpecials(4)).toEqual(['furie', 'bouclier']);
-    expect(dropSpecials(5)).toEqual(['furie', 'bouclier', 'kamehame']);
-    expect(isSpecial('bouclier') && isSpecial('kamehame') && isSpecial('furie')).toBe(true);
-    expect(isSpecial('baton')).toBe(false);
+describe('specials: the bouclier is the only special pickup', () => {
+  test('isSpecial: only the bouclier', () => {
+    expect(isSpecial('bouclier')).toBe(true);
+    for (const k of Object.keys(WEAPONS)) expect(isSpecial(k as never)).toBe(false);
   });
 
-  test('dropTwist: a regular weapon before round 3, then only unlocked specials (all of them over many draws)', () => {
+  test('dropTwist: a regular weapon before round 3; from round 3 a seeded pick, about half boucliers', () => {
     for (const round of [1, 2]) {
-      const w = new Weapons(grid, rng(round));
-      const { drop, special } = w.dropTwist(DISTRICT.playerSpawn, round);
-      expect(special).toBeNull();
-      expect(isSpecial(drop!.kind)).toBe(false);
-    }
-    for (const round of [3, 4, 5, 8]) {
-      const seen = new Set<string>();
-      for (let seed = 1; seed <= 40; seed++) {
+      for (let seed = 1; seed <= 20; seed++) {
         const w = new Weapons(grid, rng(seed));
         const { drop, special } = w.dropTwist(DISTRICT.playerSpawn, round);
-        expect(drop!.kind).toBe(special);
-        expect(drop!.expiresAt).toBeCloseTo(CONFIG.weapons.dropLifetime, 6);
-        seen.add(special!);
+        expect(special).toBeNull();
+        expect(isSpecial(drop!.kind)).toBe(false);
       }
-      expect([...seen].sort()).toEqual([...dropSpecials(round)].sort());
+    }
+    for (const round of [3, 4, 5, 8]) {
+      let shields = 0;
+      const n = 200;
+      for (let seed = 1; seed <= n; seed++) {
+        const w = new Weapons(grid, rng(seed));
+        const { drop, special } = w.dropTwist(DISTRICT.playerSpawn, round);
+        expect(drop!.expiresAt).toBeCloseTo(CONFIG.weapons.dropLifetime, 6);
+        if (special) {
+          expect(special).toBe('bouclier');
+          expect(drop!.kind).toBe('bouclier');
+          shields++;
+        } else expect(Object.keys(WEAPONS)).toContain(drop!.kind);
+      }
+      expect(shields / n).toBeGreaterThan(0.35);
+      expect(shields / n).toBeLessThan(0.65);
     }
   });
 
-  test('timed spawns: no special before its spawn round; each unlocked one about 1 in 6', () => {
-    const shares = (round: number) => {
-      const n: Record<string, number> = {};
+  test('timed spawns: no bouclier before round 5; then about 1 in 6', () => {
+    const share = (round: number) => {
+      let shields = 0;
       let total = 0;
       for (let seed = 1; seed <= 60; seed++) {
         const w = new Weapons(grid, rng(seed));
@@ -516,42 +514,24 @@ describe('specials: unlocks and drops', () => {
           for (const e of w.step(1, t, paul, round))
             if (e.type === 'WeaponSpawned') {
               total++;
-              n[e.kind] = (n[e.kind] ?? 0) + 1;
+              if (e.kind === 'bouclier') shields++;
             }
           w.ground.length = 0;
         }
       }
-      return (k: string) => (n[k] ?? 0) / total;
+      return shields / total;
     };
-    const r4 = shares(4);
-    for (const k of ['furie', 'bouclier', 'kamehame']) expect(r4(k)).toBe(0);
+    expect(share(4)).toBe(0);
+    expect(spawnSpecials(4)).toEqual([]);
     expect(spawnSpecials(5)).toEqual(['bouclier']);
-    const r7 = shares(7);
-    for (const k of ['furie', 'bouclier', 'kamehame']) {
-      expect(r7(k)).toBeGreaterThan(0.1);
-      expect(r7(k)).toBeLessThan(0.24);
-    }
+    const r7 = share(7);
+    expect(r7).toBeGreaterThan(0.1);
+    expect(r7).toBeLessThan(0.24);
   });
 
-  test('the onde d’énergie can be the round-5 twist drop (odd round: drop and second urgency together)', () => {
-    const r5: string[] = [];
-    for (let seed = 1; seed <= 6; seed++) {
+  test('in a session: a weapon-drop twist every round from 2; the special (bouclier only) matches the drop; deterministic', () => {
+    const run = (seed: number) => {
       const sim = new Sim(seed, { invulnerable: true });
-      for (let i = 0; i < 60 * 1500 && sim.director.round <= 5; i++) {
-        const ev = sim.step(autopilot(sim));
-        if (sim.director.round !== 5) continue;
-        const t = of(ev, 'TwistStarted').find((e) => e.kind === 'weaponDrop');
-        if (t) r5.push(t.special!);
-      }
-    }
-    expect(r5).toHaveLength(6);
-    for (const k of r5) expect(dropSpecials(5)).toContain(k);
-    expect(r5).toContain('kamehame');
-  });
-
-  test('in a session: a weapon-drop twist every round; regular before round 3, the announced special after; deterministic', () => {
-    const run = () => {
-      const sim = new Sim(3, { invulnerable: true });
       const twists: { round: number; special: string | undefined; kind: string | undefined }[] = [];
       for (let i = 0; i < 60 * 1500 && sim.director.round <= 6; i++) {
         const ev = sim.step(autopilot(sim));
@@ -562,20 +542,20 @@ describe('specials: unlocks and drops', () => {
       }
       return twists;
     };
-    const a = run();
-    expect(a.length).toBeGreaterThanOrEqual(2);
-    for (const t of a) {
-      if (t.round < 3) {
-        expect(t.special).toBeUndefined();
-        if (t.kind) expect(isSpecial(t.kind as never)).toBe(false);
-      } else {
-        expect(dropSpecials(t.round)).toContain(t.special);
-        if (t.kind) expect(t.kind).toBe(t.special);
+    const seen = new Set<string | undefined>();
+    for (const seed of [3, 4, 5, 6]) {
+      const a = run(seed);
+      expect(a.map((t) => t.round)).toEqual([2, 3, 4, 5, 6]);
+      for (const t of a) {
+        if (t.round < 3) expect(t.special).toBeUndefined();
+        if (t.special) expect(t.special).toBe('bouclier');
+        if (t.kind) expect(t.kind === 'bouclier').toBe(t.special === 'bouclier');
+        if (t.round >= 3) seen.add(t.special);
       }
+      if (seed === 3) expect(run(3)).toEqual(a);
     }
-    // one weapon-drop twist every round from 2, odd rounds included: the bouclier and the onde show up on time
-    expect(a.map((t) => t.round)).toEqual([2, 3, 4, 5, 6]);
-    expect(a.find((t) => t.round === 3)!.special).toBe('bouclier');
-    expect(run()).toEqual(a);
+    // from round 3 both outcomes happen
+    expect(seen.has('bouclier')).toBe(true);
+    expect(seen.has(undefined)).toBe(true);
   });
 });

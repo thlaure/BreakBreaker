@@ -1,5 +1,6 @@
 import { CONFIG } from './config';
 import { Director, spawnPoints, type RoundPhase, type RoundSummary } from './director';
+import { Energy } from './energy';
 import { EntryQueue, type Spawner } from './entry';
 import { FirePatches } from './firepatch';
 import { Stations, type StationMessage } from './healing';
@@ -127,17 +128,19 @@ export interface Snapshot {
   carriedItems: number;
   stations: { id: string; pos: Vec; charged: boolean }[];
   stationMessage: StationMessage;
-  /**
-   * Weapon in Paul's hands (null = bare hands): strikes left (regular weapons), beams left (kamehame), or the bouclier's
-   * `secondsLeft` (its `uses` is 0).
-   */
+  /** Weapon in Paul's hands (null = bare hands): strikes left (regular weapons), or the bouclier's `secondsLeft` (`uses` 0). */
   weapon: { kind: HeldKind; uses: number; secondsLeft?: number } | null;
   /** Onde d’énergie charging: `progress` in [0, 1] of CONFIG.kamehame.chargeSec; null when not charging. */
   charge: { progress: number } | null;
-  /** `expiresAt` = sim time a special drop vanishes (null = never); `kind: 'furie'` = the mode furie power-up. */
+  /** `expiresAt` = sim time a special drop vanishes (null = never). */
   weaponsOnGround: { id: number; kind: PickupKind; pos: Vec; expiresAt: number | null }[];
   /** Mode furie on (seconds left), or null. */
   furie: { secondsLeft: number } | null;
+  /**
+   * The energy gauge (0..max, kept across rounds): `ready.onde` = the onde d’énergie can be charged (>= ondeCost),
+   * `ready.furie` = the mode furie can start (full).
+   */
+  energy: { value: number; max: number; ready: { onde: boolean; furie: boolean } };
   /**
    * The equestrian monument: its flag; `occupation` = the latest occupation's stage and swap timer (null before the
    * first); capture the flag (`capture` seconds of `captureSec`, Paul `inZone`, `contested` by a hostile inside).
@@ -185,10 +188,12 @@ export function segmentRectEntry(a: Vec, b: Vec, r: Rect): number | null {
  * Deterministic session facade driven one fixed step at a time by the Phaser layer.
  * Step order: player move → sweep/return → hostiles → queue entries → rocks → damage → fire patches → KO check → Molotovs routed to
  * the attack on their target → attacks → rescue → toolboxes → heals → weapons (pickups, furie timer) → director.
- * Mode furie (CONFIG.furie) changes the player move, the strike and the damage taken; a KO ends it.
- * Held specials: the bouclier is a protection bubble (rocks and firebombs blocked from any side) and bashes on a strike; the onde d'énergie (kamehame)
- * charges while Frapper is held (Paul frozen), fires a beam at CONFIG.kamehame.chargeSec, and is cancelled by a release,
- * damage, the weapon lost or a KO.
+ * Energy gauge (CONFIG.energy): every KO counted by Rules fills it, except in mode furie and the beam's own KOs.
+ * Furie (`input.furie`, full gauge) spends it all on the mode furie (CONFIG.furie: player move, strike and damage
+ * taken; a KO ends it). Onde (`input.chargeHeld`, rising edge, >= ondeCost) charges the onde d'énergie (Paul frozen),
+ * fires a beam at CONFIG.kamehame.chargeSec and spends ondeCost then; a release, damage, a mode furie started or a KO
+ * cancels it at no cost. Too little energy: EnergyRefused. The bouclier (held) is a protection bubble (rocks and
+ * firebombs blocked from any side) and bashes on a strike.
  * While the school cinematic is running, only its timer advances. Agir (`input.act`, held) counts only on its rising
  * edge: holding F while walking into range, or while a hostile moves away, never starts a toolbox repair.
  * Every score change of the step (Rules' outbox, KOs included) ends the step's events as one ScoreChanged each.
@@ -222,6 +227,8 @@ export class Sim {
   private lastOccupation: MonumentIncident | null = null;
   readonly director = new Director();
   readonly weapons: Weapons;
+  /** The energy gauge: fed by KOs, spent by the mode furie and the onde d'énergie; kept across rounds. */
+  readonly energy = new Energy();
   readonly rand: () => number;
   /** Own stream for the cosmetic furie launches, so they never shift any other random sequence. */
   private readonly launchRand: () => number;
@@ -246,6 +253,8 @@ export class Sim {
   private readonly caidsDown = new Set<number>();
   /** Agir (F / touch Agir) was down on the previous step: the toolbox only reacts to a fresh press (rising edge). */
   private prevAct = false;
+  /** Onde (C / touch Onde) was down on the previous step: a charge only starts on a fresh press. */
+  private prevCharge = false;
 
   constructor(seed: number, opts: { invulnerable?: boolean } = {}) {
     this.rand = rng(seed);
@@ -280,6 +289,8 @@ export class Sim {
     // Agir is a press, not a hold: only its rising edge counts (tracked on every step the sim sees, paused ones included)
     const actPressed = input.act && !this.prevAct;
     this.prevAct = input.act;
+    const chargePressed = input.chargeHeld && !this.prevCharge;
+    this.prevCharge = input.chargeHeld;
     if (this.paused || this.rules.ended) return [];
     const dt = CONFIG.step;
     const ev: SimEvent[] = [];
@@ -294,12 +305,15 @@ export class Sim {
     const now = this.now;
     const p = this.player;
 
+    if (input.furie) this.activateFurie(ev);
     const furie = this.weapons.furie();
     // charging the onde d'énergie: movement ignored (aim still turns Paul)
     const frozen = this.charge !== null;
     stepPlayer(p, frozen ? { ...input, move: { x: 0, y: 0 } } : input, dt, now, this.grid, furie ? CONFIG.furie.speedMul : 1);
-    if (this.charge !== null || this.weapons.held?.kind === 'kamehame') this.stepCharge(input, dt, ev);
-    else if (input.strike) {
+    // no swing on the step a charge starts, while it grows, or the step it fires
+    if (frozen) this.stepCharge(input, dt, ev);
+    else if (chargePressed) this.startCharge(ev);
+    if (!frozen && this.charge === null && input.strike) {
       // Bare hands: 1 damage. A regular weapon: KO in one hit, but CONFIG.toughWeaponDamage on a brute or the Caïd.
       // Mode furie: KO in one hit, more targets, the weapon is not used, every KO is launched. Bouclier: a bash
       // (one-hit KO, knockback, no charge used).
@@ -510,6 +524,7 @@ export class Sim {
       charge: this.charge ? { progress: Math.min(1, this.charge.t / CONFIG.kamehame.chargeSec) } : null,
       weaponsOnGround: this.weapons.ground.map((w) => ({ id: w.id, kind: w.kind, pos: v(w.pos), expiresAt: w.expiresAt })),
       furie: this.weapons.furie() ? { secondsLeft: this.weapons.furieLeft } : null,
+      energy: { value: this.energy.value, max: CONFIG.energy.max, ready: this.energy.ready() },
       monument: this.monumentView(),
       stats: { ...this.rules.stats },
     };
@@ -590,26 +605,45 @@ export class Sim {
   }
 
   /**
-   * The onde d'énergie (kamehame held): a Frapper press starts the charge (BeamCharging); while Frapper stays held it
-   * grows, and at CONFIG.kamehame.chargeSec the beam fires on its own. Released, or the weapon gone: cancelled.
+   * Furie pressed: with a full gauge (and Paul up, no mode furie already on) the whole gauge is spent and the mode
+   * starts (a charge under way is cancelled at no cost); with less: EnergyRefused.
    */
-  private stepCharge(input: InputFrame, dt: number, ev: SimEvent[]): void {
-    const p = this.player;
-    const armed = this.weapons.held?.kind === 'kamehame' && !p.ko;
-    if (this.charge === null) {
-      if (armed && input.strike) {
-        this.charge = { t: 0 };
-        ev.push({ type: 'BeamCharging' });
-      }
+  private activateFurie(ev: SimEvent[]): void {
+    if (this.player.ko || this.weapons.furie()) return;
+    const cost = CONFIG.energy.furieCost;
+    if (!this.energy.spend(cost)) {
+      ev.push({ type: 'EnergyRefused', need: cost });
       return;
     }
-    if (!armed || !input.strikeHeld) {
+    if (this.charge !== null) this.cancelCharge(ev);
+    ev.push(...this.weapons.startFurie());
+  }
+
+  /** Onde pressed: with at least ondeCost energy (and Paul up) the charge starts (BeamCharging); else EnergyRefused. */
+  private startCharge(ev: SimEvent[]): void {
+    if (this.player.ko) return;
+    if (this.energy.value < CONFIG.energy.ondeCost) {
+      ev.push({ type: 'EnergyRefused', need: CONFIG.energy.ondeCost });
+      return;
+    }
+    this.charge = { t: 0 };
+    ev.push({ type: 'BeamCharging' });
+  }
+
+  /**
+   * The charge grows while Onde stays held; at CONFIG.kamehame.chargeSec the beam fires on its own and the energy is
+   * spent. Released (or not enough energy left): cancelled, nothing spent.
+   */
+  private stepCharge(input: InputFrame, dt: number, ev: SimEvent[]): void {
+    if (this.charge === null) return;
+    if (!input.chargeHeld || this.player.ko || this.energy.value < CONFIG.energy.ondeCost) {
       this.cancelCharge(ev);
       return;
     }
     this.charge.t += dt;
     if (this.charge.t + 1e-9 < CONFIG.kamehame.chargeSec) return;
     this.charge = null;
+    this.energy.spend(CONFIG.energy.ondeCost);
     this.fireBeam(ev);
   }
 
@@ -618,7 +652,7 @@ export class Sim {
     ev.push({ type: 'BeamCancelled' });
   }
 
-  /** The beam along Paul's facing: every rioter on it is KO'd (+1 each) and launched along the beam; one use. */
+  /** The beam along Paul's facing: every rioter on it is KO'd (+1 each, no energy) and launched along the beam. */
   private fireBeam(ev: SimEvent[]): void {
     const p = this.player;
     const dir = norm(p.facing);
@@ -630,7 +664,6 @@ export class Sim {
       if (this.hit(id, damage, ev, dir)) kos += 1;
     }
     ev.push({ type: 'BeamFired', from: v(p.pos), to: v(shot.to), kos });
-    ev.push(...this.weapons.onBeam());
   }
 
   /** A bouclier bash pushes the KO'd body CONFIG.bouclier.knockback px away from Paul (never into a wall). */
@@ -645,12 +678,14 @@ export class Sim {
 
   /**
    * Every 'ko' from applyHit scores +1 (deduped by Rules) and emits ActorKnockedOut; `launched` (Paul's strike in mode
-   * furie: true; the onde d'énergie: its direction) adds the cosmetic launch payload. True on a KO.
+   * furie: true; the onde d'énergie: its direction) adds the cosmetic launch payload. A KO Rules counts fills the energy
+   * gauge, except in mode furie and for the beam's KOs (no chain refills). True on a KO.
    */
   private hit(lifeId: number, dmg: number, ev: SimEvent[], launched: boolean | Vec = false): boolean {
     if (this.horde.applyHit(lifeId, dmg) !== 'ko') return false;
     const h = this.horde.list.find((x) => x.lifeId === lifeId);
-    this.rules.onKnockout(lifeId, h?.pos);
+    const counted = this.rules.onKnockout(lifeId, h?.pos);
+    if (counted && h && !this.weapons.furie() && typeof launched !== 'object') ev.push(...this.energy.gain(h.role));
     if (h?.role === 'boss') this.caidDown(h, ev);
     const along = typeof launched === 'object' ? launched : undefined;
     ev.push(h && launched ? { type: 'ActorKnockedOut', lifeId, launch: this.launch(h.pos, along) } : { type: 'ActorKnockedOut', lifeId });

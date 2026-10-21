@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   ALERT_MS,
   AlertBanner,
+  DROPS,
   FURIE_ALERT_MS,
   incidentLook,
   activeIncidents,
@@ -64,7 +65,6 @@ describe('pure helpers', () => {
     expect(incidentAlert('car')).toMatchObject({ title: 'VOITURE EN FEU !', sub: 'Chasse les casseurs', label: 'VOITURE', tone: 'fire', icon: 'flame' });
     expect(incidentAlert('busStop')).toMatchObject({ title: 'ABRIBUS SACCAGÉ !', sub: 'Arrête la casse', label: 'ABRIBUS', tone: 'warn', icon: 'glass' });
     expect(incidentAlert('bouclierDrop')).toMatchObject({ title: 'BOUCLIER DISPONIBLE !', sub: 'Fonce le ramasser', label: 'BOUCLIER', positioned: true, meta: '' });
-    expect(incidentAlert('kamehameDrop')).toMatchObject({ title: 'ONDE D’ÉNERGIE DISPONIBLE !', sub: 'Fonce la ramasser', label: 'RAYON', positioned: true, meta: '' });
   });
 
   test('the retro video-game shop: « BOUTIQUE EN FEU ! » on its fire only, « Boutique menacée » round line, warn then fire indicator', () => {
@@ -93,8 +93,7 @@ describe('pure helpers', () => {
     expect(alertFromEvent(fireEv('car', 'car1', { x: 50, y: 60 }))).toEqual({ id: 'car#3', kind: 'car', pos: { x: 50, y: 60 }, wave: 3, total: 0, incident: 'car1' });
     // a special drop is tied to its pickup on the ground (same id as its activeIncidents entry)
     expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 }, special: 'bouclier' })).toMatchObject({ kind: 'bouclierDrop', pos: { x: 7, y: 8 }, incident: 'drop@7,8' });
-    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 }, special: 'kamehame' })).toMatchObject({ kind: 'kamehameDrop', incident: 'drop@7,8' });
-    // a regular weapon drop (before round 3) has no banner
+    // a regular weapon drop has no banner
     expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 } })).toBeNull();
     // no banner for a drop that found no spot, nor for a second urgency (its own fire announces it)
     expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: null })).toBeNull();
@@ -161,18 +160,18 @@ describe('pure helpers', () => {
     expect(activeIncidents(s)).toEqual([]);
   });
 
-  test('activeIncidents: every special pickup on the ground is one (kind-based, expiry or not); a regular weapon never', () => {
+  test('activeIncidents: every bouclier on the ground is one (kind-based, expiry or not); a regular weapon never', () => {
     const s = new Sim(1).snapshot();
     for (const t of s.targets) t.state = 'intact';
     s.weaponsOnGround = [
       { id: 1, kind: 'baton', pos: { x: 10, y: 20 }, expiresAt: null },
       { id: 2, kind: 'marteau', pos: { x: 30, y: 40 }, expiresAt: 99 },
       { id: 3, kind: 'bouclier', pos: { x: 50, y: 60 }, expiresAt: null },
-      { id: 4, kind: 'kamehame', pos: { x: 70, y: 80 }, expiresAt: 99 },
+      { id: 4, kind: 'bouclier', pos: { x: 70, y: 80 }, expiresAt: 99 },
     ];
     expect(activeIncidents(s)).toEqual([
       { id: 'drop@50,60', kind: 'bouclierDrop', pos: { x: 50, y: 60 } },
-      { id: 'drop@70,80', kind: 'kamehameDrop', pos: { x: 70, y: 80 } },
+      { id: 'drop@70,80', kind: 'bouclierDrop', pos: { x: 70, y: 80 } },
     ]);
   });
 
@@ -188,7 +187,7 @@ describe('pure helpers', () => {
   });
 
   test('pixel icons are crisp inline SVGs', () => {
-    for (const n of ['flame', 'alert', 'horde', 'glass', 'star', 'arrow', 'arrowDiag'] as const) {
+    for (const n of ['flame', 'alert', 'horde', 'glass', 'bolt', 'arrow', 'arrowDiag'] as const) {
       const svg = pixelSvg(n);
       expect(svg).toContain('shape-rendering="crispEdges"');
       expect(svg).toContain('<rect');
@@ -277,11 +276,11 @@ describe('AlertBanner', () => {
     expect(b.el.querySelector('.sub')!.textContent).toBe('Arrête la casse');
   });
 
-  test('a special weapon drop is announced at the drop, with arrow and distance', () => {
+  test('a bouclier drop is announced at the drop, with arrow and distance', () => {
     const b = new AlertBanner(document.body);
-    b.push(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 320, y: 0 }, special: 'kamehame' })!);
-    expect(b.el.querySelector('.title')!.textContent).toBe('ONDE D’ÉNERGIE DISPONIBLE !');
-    expect(b.el.querySelector('.sub')!.textContent).toBe('Fonce la ramasser');
+    b.push(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 320, y: 0 }, special: 'bouclier' })!);
+    expect(b.el.querySelector('.title')!.textContent).toBe('BOUCLIER DISPONIBLE !');
+    expect(b.el.querySelector('.sub')!.textContent).toBe('Fonce le ramasser');
     expect(b.el.querySelector<HTMLElement>('.dir')!.hidden).toBe(false);
     b.track({ x: 0, y: 0 });
     expect(b.el.querySelector('.dist')!.textContent).toBe('10 m');
@@ -620,7 +619,7 @@ describe('Hud alerts and edge indicators', () => {
     hud.destroy();
   });
 
-  test('special pickups get « BOUCLIER » / « RAYON » edge indicators with their own icon; regular weapons none', () => {
+  test('the bouclier gets a « BOUCLIER » edge indicator with its own icon; regular weapons none', () => {
     const hud = new Hud(document.body, null);
     const edges = () => [...hud.root.querySelectorAll<HTMLElement>('.bb-edge')].filter((e) => !e.hidden);
     const off = { ...view, x: 5000, y: 5000 };
@@ -628,19 +627,15 @@ describe('Hud alerts and edge indicators', () => {
     expect(edges()).toHaveLength(1);
     expect(edges()[0]!.querySelector('.lbl')!.textContent).toBe('BOUCLIER');
     expect(edges()[0]!.classList.contains('tone-drop')).toBe(true);
-    hud.update(snap((x) => { calm(x); x.weaponsOnGround = [{ id: 5, kind: 'kamehame', pos: { x: 100, y: 100 }, expiresAt: 40 }]; }), off);
-    expect(edges()).toHaveLength(1);
-    expect(edges()[0]!.querySelector('.lbl')!.textContent).toBe('RAYON');
     // a regular weapon has none, twist drop (expiry) or not
     hud.update(snap((x) => { calm(x); x.weaponsOnGround = [{ id: 4, kind: 'baton', pos: { x: 100, y: 100 }, expiresAt: null }, { id: 6, kind: 'panneau', pos: { x: 90, y: 90 }, expiresAt: 40 }]; }), off);
     expect(edges()).toHaveLength(0);
     hud.destroy();
   });
 
-  test('specials icons: shield and energy orb, at most 10×11 art px', () => {
+  test('bouclier icon: a shield, at most 10×11 art px', () => {
     expect(incidentLook('bouclierDrop')).toEqual({ tone: 'drop', icon: 'shield' });
-    expect(incidentLook('kamehameDrop')).toEqual({ tone: 'drop', icon: 'orb' });
-    for (const icon of ['shield', 'orb'] as const) {
+    for (const icon of ['shield'] as const) {
       const svg = pixelSvg(icon, 1);
       const [, w, h] = /viewBox="0 0 (\d+) (\d+)"/.exec(svg)!;
       expect(Number(w)).toBeLessThanOrEqual(10);
@@ -715,57 +710,24 @@ describe('mode furie alerts', () => {
     return s;
   };
 
-  test('specs: the drop banner, its « FURIE » indicator and the short position-less pickup banner', () => {
-    expect(incidentAlert('furieDrop')).toMatchObject({
-      title: 'MODE FURIE DISPONIBLE !',
-      sub: 'Fonce le ramasser',
-      label: 'FURIE',
-      tone: 'furie',
-      icon: 'star',
-      positioned: true,
-    });
+  test('specs: the short position-less banner of the mode furie start; no furie or onde drop kind exists any more', () => {
     expect(incidentAlert('furie')).toMatchObject({ title: 'MODE FURIE !', positioned: false, tone: 'furie', ms: FURIE_ALERT_MS });
     expect(FURIE_ALERT_MS).toBeLessThan(ALERT_MS);
-    expect(incidentLook('furieDrop')).toEqual({ tone: 'furie', icon: 'star' });
     expect(pixelSvg('bolt')).toContain('<svg');
+    expect(Object.keys(DROPS)).toEqual(['bouclierDrop']);
   });
 
-  test('event mapping: a furie twist drop, the pickup', () => {
-    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 }, special: 'furie' })).toEqual({
-      id: 'drop@7,8',
-      kind: 'furieDrop',
-      pos: { x: 7, y: 8 },
-      wave: 0,
-      total: 0,
-      incident: 'drop@7,8',
-    });
-    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: null, special: 'furie' })).toBeNull();
+  test('event mapping: the mode furie start (from the gauge)', () => {
     expect(alertFromEvent({ type: 'FurieStarted', secondsLeft: 12 })).toEqual({ id: 'furie', kind: 'furie', pos: null, wave: 0, total: 0 });
     expect(alertFromEvent({ type: 'FurieEnded' })).toBeNull();
+    expect(alertFromEvent({ type: 'EnergyReady', level: 'furie' })).toBeNull();
+    expect(alertFromEvent({ type: 'EnergyRefused', need: 100 })).toBeNull();
   });
 
-  test('activeIncidents: a furie on the ground is a « furieDrop », twist drop or timed spawn', () => {
-    const s = snap((x) => {
-      calm(x);
-      x.weaponsOnGround = [
-        { id: 1, kind: 'furie', pos: { x: 10, y: 20 }, expiresAt: null },
-        { id: 2, kind: 'furie', pos: { x: 30, y: 40 }, expiresAt: 99 },
-      ];
-    });
-    expect(activeIncidents(s)).toEqual([
-      { id: 'drop@10,20', kind: 'furieDrop', pos: { x: 10, y: 20 } },
-      { id: 'drop@30,40', kind: 'furieDrop', pos: { x: 30, y: 40 } },
-    ]);
-  });
-
-  test('Hud: « FURIE » edge indicator with its own tone; the pickup banner has no arrow and goes quickly', () => {
+  test('Hud: the furie banner has no arrow and goes quickly; no edge indicator for it', () => {
     const hud = new Hud(document.body, null);
-    const off = { ...view, x: 5000, y: 5000 };
-    hud.update(snap((x) => { calm(x); x.weaponsOnGround = [{ id: 3, kind: 'furie', pos: { x: 100, y: 100 }, expiresAt: 40 }]; }), off);
-    const edges = [...hud.root.querySelectorAll<HTMLElement>('.bb-edge')];
-    expect(edges).toHaveLength(1);
-    expect(edges[0]!.querySelector('.lbl')!.textContent).toBe('FURIE');
-    expect(edges[0]!.classList.contains('tone-furie')).toBe(true);
+    hud.update(snap(calm), { ...view, x: 5000, y: 5000 });
+    expect([...hud.root.querySelectorAll<HTMLElement>('.bb-edge')].filter((e) => !e.hidden)).toHaveLength(0);
     hud.onEvents([{ type: 'FurieStarted', secondsLeft: 12 }]);
     const a = hud.root.querySelector<HTMLElement>('.bb-alert')!;
     expect(a.hidden).toBe(false);

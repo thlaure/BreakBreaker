@@ -156,7 +156,7 @@ describe('rounds in the sim', () => {
     expect(twists[0]!.kind).toBe('weaponDrop');
   });
 
-  test('round 3 twist drops the bouclier AND starts a second attack that raises the total (RoundTotalChanged)', () => {
+  test('round 3 twist drops a weapon (bouclier or regular, announced only for the bouclier) AND starts a second attack that raises the total (RoundTotalChanged)', () => {
     const sim = new Sim(8, { invulnerable: true });
     const ev = drive(sim, roundStarted(3));
     const [rs] = of(ev, 'RoundStarted').filter((e) => e.index === 3);
@@ -165,10 +165,11 @@ describe('rounds in the sim', () => {
     const rest = drive(sim, (e) => e.some((x) => x.type === 'TwistStarted'));
     const tws = of(rest, 'TwistStarted');
     expect(tws.map((t) => t.kind)).toEqual(['weaponDrop', 'secondUrgency']);
-    // the special unlocked at round 3 really appears at round 3
-    expect(tws[0]!.special).toBe('bouclier');
+    // from round 3 the drop may be the bouclier (then announced as the special) or a regular weapon (no special)
     const spawned = of(rest, 'WeaponSpawned').filter((w) => w.pos.x === tws[0]!.pos?.x && w.pos.y === tws[0]!.pos?.y);
-    expect(spawned.map((w) => w.kind)).toEqual(['bouclier']);
+    expect(spawned).toHaveLength(1);
+    if (tws[0]!.special) expect(spawned[0]!.kind).toBe('bouclier');
+    else expect(spawned[0]!.kind).not.toBe('bouclier');
     const extra = sim.attacks.filter((a) => a.round === 3 && !before.has(a.target));
     expect(extra).toHaveLength(1);
     expect(extra[0]!.urgent()).toBe(true);

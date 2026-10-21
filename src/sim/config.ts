@@ -60,11 +60,17 @@ export const CONFIG = {
   heal: { amount: 25 },
   weapons: { firstSpawn: 10, spawnEvery: [15, 25] as const, maxGround: 2, pickupRadius: 20, minDist: 160, maxDist: 480, dropLifetime: 15 },
   /**
-   * Mode furie (power-up pickup): lasts `durationSec` (a second pickup resets it). While active Paul moves `speedMul`
-   * faster, strikes `reachMul` farther at up to `maxTargets` rioters, every strike KOs (`damage`) without using the
-   * weapon, and he takes `damageTakenMul` of the damage. The twist weapon drop is a furie from `dropFromRound`; from
-   * `spawnFromRound` a timed spawn is a furie with probability `spawnShare`. Every rioter KO'd by Paul's strike is
-   * launched (cosmetic): `launchPower` px, `launchSpin` turns, direction away from Paul ± `launchJitter` rad.
+   * Energy gauge (« mana », 0..`max`): every rioter KO counted by Rules fills it by `gain` (`boss` for Le Caïd, `brute`
+   * for a brute, `rioter` for anyone else), except while the mode furie is on and for the onde d’énergie's own KOs. It
+   * is kept across rounds (a new session starts at 0) and never decays. Full (`furieCost` = `max`): Furie (R) spends it
+   * all on the mode furie. At `ondeCost` or more: Onde (C held) charges the beam, which spends `ondeCost` when it fires.
+   */
+  energy: { max: 100, ondeCost: 50, furieCost: 100, gain: { rioter: 4, brute: 8, boss: 20 } },
+  /**
+   * Mode furie (from a full energy gauge): lasts `durationSec`. While active Paul moves `speedMul` faster, strikes
+   * `reachMul` farther at up to `maxTargets` rioters, every strike KOs (`damage`) without using the weapon, and he
+   * takes `damageTakenMul` of the damage. Every rioter KO'd by Paul's strike is launched (cosmetic): `launchPower` px,
+   * `launchSpin` turns, direction away from Paul ± `launchJitter` rad.
    */
   furie: {
     durationSec: 12,
@@ -73,42 +79,35 @@ export const CONFIG = {
     maxTargets: 8,
     damage: 99,
     damageTakenMul: 0.5,
-    dropFromRound: 4,
-    spawnFromRound: 6,
-    spawnShare: 1 / 6,
     launchPower: [220, 420] as const,
     launchSpin: [2, 5] as const,
     launchJitter: 0.35,
   },
   /**
-   * Bouclier (special weapon, held): a protection bubble around Paul; lasts `durationSec` of active sim time, then
-   * breaks; no strike counter. Every rock and firebomb that would hit Paul is blocked, from any side (360°); ground fire
-   * and contact blows are not. A strike is a bash: reach
-   * `bashRange`, one-hit KO, `knockback` px away from Paul, no charge used. Twist drop from `dropFromRound`, timed spawn
-   * from `spawnFromRound` with weight `spawnShare` (same rule as the furie).
+   * Bouclier (the one special pickup, held): a protection bubble around Paul; lasts `durationSec` of active sim time,
+   * then breaks; no strike counter. Every rock and firebomb that would hit Paul is blocked, from any side (360°); ground
+   * fire and contact blows are not. A strike is a bash: reach `bashRange`, one-hit KO, `knockback` px away from Paul, no
+   * charge used. From `dropFromRound` the twist weapon drop is a bouclier with probability `dropShare` (a regular weapon
+   * otherwise); from `spawnFromRound` a timed street spawn is one with probability `spawnShare`.
    */
   bouclier: {
     durationSec: 20,
     bashRange: 64,
     knockback: 24,
     dropFromRound: 3,
+    dropShare: 0.5,
     spawnFromRound: 5,
     spawnShare: 1 / 6,
   },
   /**
-   * Kamehame (« Onde d’énergie », special weapon, held): `uses` beams. Holding Frapper charges `chargeSec` (Paul cannot
-   * move), then a beam `length` px long KOs every active rioter within `halfWidth` + its radius of the line, which stops
-   * at the first solid (buildings, props, trunks, plinth, the peaceful group). Twist drop from `dropFromRound`, timed
-   * spawn from `spawnFromRound` with weight `spawnShare`.
+   * Kamehame (« Onde d’énergie », from the energy gauge): holding Onde charges `chargeSec` (Paul cannot move), then a
+   * beam `length` px long KOs every active rioter within `halfWidth` + its radius of the line, which stops at the first
+   * solid (buildings, props, trunks, plinth, the peaceful group).
    */
   kamehame: {
-    uses: 2,
     chargeSec: 1,
     length: 320,
     halfWidth: 16,
-    dropFromRound: 5,
-    spawnFromRound: 7,
-    spawnShare: 1 / 6,
     /**
      * Cosmetic « satellisation » of the beam's KOs: `satellitePower` px along the beam ± `satelliteJitter` rad,
      * `satelliteSpin` turns.

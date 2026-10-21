@@ -20,7 +20,8 @@ interface Tracked {
 
 /**
  * Touch controls over the HTML in `root` (#touch-ui): `[data-zone=stick]` (dynamic-origin joystick),
- * `[data-action=strike|throw|act|pause]` buttons. Each control tracks its own pointerId.
+ * `[data-action=strike|throw|act|furie|onde|pause]` buttons. Each control tracks its own pointerId. Onde is held (charges
+ * the onde d’énergie); Furie is a press.
  */
 export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSource {
   const q = (s: string): HTMLElement | null => root.querySelector<HTMLElement>(s);
@@ -30,10 +31,12 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
 
   let stick: Tracked | null = null;
   let actId: number | null = null;
-  /** Pointer holding Frapper (charges the onde d'énergie). */
-  let strikeId: number | null = null;
+  /** Pointer holding Onde (charges the onde d'énergie). */
+  let ondeId: number | null = null;
   let rock: Tracked | null = null;
   let strike = false;
+  /** Furie went down since the last read. */
+  let furie = false;
   let throwRock = false;
   /** Agir went down since the last read: a tap shorter than one sim step still reaches one read as `act`. */
   let actTap = false;
@@ -85,12 +88,14 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
     const strikeEl = btn('strike');
     const throwEl = btn('throw');
     const actEl = btn('act');
+    const furieEl = btn('furie');
+    const ondeEl = btn('onde');
     const pauseEl = btn('pause');
-    if (strikeEl?.contains(t)) {
-      strike = true;
-      if (strikeId === null) strikeId = e.pointerId;
-    }
-    else if (throwEl?.contains(t)) {
+    if (strikeEl?.contains(t)) strike = true;
+    else if (furieEl?.contains(t)) furie = true;
+    else if (ondeEl?.contains(t)) {
+      if (ondeId === null) ondeId = e.pointerId;
+    } else if (throwEl?.contains(t)) {
       if (!rock) {
         rock = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY };
         aimed = false;
@@ -130,7 +135,7 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
       drawKnob();
     }
     if (actId === e.pointerId) actId = null;
-    if (strikeId === e.pointerId) strikeId = null;
+    if (ondeId === e.pointerId) ondeId = null;
     if (rock && e.pointerId === rock.id) {
       const a = rockAim();
       if (a) lastAim = a;
@@ -147,9 +152,10 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
   const releaseAll = (): void => {
     stick = null;
     actId = null;
-    strikeId = null;
+    ondeId = null;
     rock = null;
     strike = false;
+    furie = false;
     throwRock = false;
     actTap = false;
     aimed = false;
@@ -181,12 +187,14 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
         aim,
         run: Math.hypot(m.x, m.y) > RUN_AT,
         strike,
-        strikeHeld: strikeId !== null,
+        chargeHeld: ondeId !== null,
         throwRock,
         act: actId !== null || actTap,
+        furie,
       };
       if (dragAim) lastAim = dragAim;
       strike = false;
+      furie = false;
       throwRock = false;
       actTap = false;
       pendingAim = null;

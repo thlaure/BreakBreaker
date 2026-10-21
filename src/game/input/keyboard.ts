@@ -20,10 +20,10 @@ export function createKeyboard(
   const held = new Set<string>();
   let strike = false;
   let throwRock = false;
+  /** R went down since the last read (Furie): edge-triggered, so a short tap still reaches one read. */
+  let furie = false;
   /** F went down since the last read: a tap shorter than one sim step still reaches one read as `act`. */
   let actTap = false;
-  /** Left mouse button held (Space held is read from `held`). */
-  let mouseStrike = false;
   let mouseUntil = -Infinity;
   let mouse: { x: number; y: number } | null = null;
 
@@ -33,6 +33,7 @@ export function createKeyboard(
       if (e.code === 'Space') strike = true;
       else if (e.code === 'KeyE') throwRock = true;
       else if (e.code === 'KeyF') actTap = true;
+      else if (e.code === 'KeyR') furie = true;
       else if (e.code === 'Escape') opts.onPause?.();
     }
     held.add(e.code);
@@ -53,14 +54,8 @@ export function createKeyboard(
     if (e.pointerType === 'touch') return;
     mouse = local(e);
     mouseUntil = now() + MOUSE_AIM_MS;
-    if (e.button === 0) {
-      strike = true;
-      mouseStrike = true;
-    } else if (e.button === 2) throwRock = true;
-  };
-  const pup = (e: PointerEvent): void => {
-    if (e.pointerType === 'touch') return;
-    if (e.button === 0) mouseStrike = false;
+    if (e.button === 0) strike = true;
+    else if (e.button === 2) throwRock = true;
   };
   const ctx = (e: Event): void => e.preventDefault();
   const release = (): void => {
@@ -68,7 +63,7 @@ export function createKeyboard(
     strike = false;
     throwRock = false;
     actTap = false;
-    mouseStrike = false;
+    furie = false;
   };
 
   target.addEventListener('keydown', keydown);
@@ -76,8 +71,6 @@ export function createKeyboard(
   target.addEventListener('blur', release);
   canvas.addEventListener('pointermove', pmove);
   canvas.addEventListener('pointerdown', pdown);
-  // released anywhere (the pointer may have left the canvas while held)
-  target.addEventListener('pointerup', pup);
   canvas.addEventListener('contextmenu', ctx);
 
   const any = (...codes: string[]): boolean => codes.some((c) => held.has(c));
@@ -104,13 +97,15 @@ export function createKeyboard(
         aim,
         run: any('ShiftLeft', 'ShiftRight'),
         strike,
-        strikeHeld: held.has('Space') || mouseStrike,
+        chargeHeld: held.has('KeyC'),
         throwRock,
         act: held.has('KeyF') || actTap,
+        furie,
       };
       strike = false;
       throwRock = false;
       actTap = false;
+      furie = false;
       return frame;
     },
     releaseAll: release,
@@ -120,7 +115,6 @@ export function createKeyboard(
       target.removeEventListener('blur', release);
       canvas.removeEventListener('pointermove', pmove);
       canvas.removeEventListener('pointerdown', pdown);
-      target.removeEventListener('pointerup', pup);
       canvas.removeEventListener('contextmenu', ctx);
     },
   };

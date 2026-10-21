@@ -235,7 +235,7 @@ export function weaponValue(s: Snapshot): string {
   return weaponText(s, 'Mains nues');
 }
 
-/** « Bâton (12) », « Onde d’énergie (2) » (beams left), « Bouclier (14 s) » (whole seconds left, rounded up). */
+/** « Bâton (12) » (strikes left), « Bouclier (14 s) » (whole seconds left, rounded up). */
 function heldText(w: NonNullable<Snapshot['weapon']>): string {
   const n = w.kind === 'bouclier' ? `${Math.max(1, Math.ceil((w.secondsLeft ?? 0) - 1e-9))} s` : `${w.uses}`;
   return `${HELD_LABELS[w.kind]} (${n})`;

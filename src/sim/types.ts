@@ -15,28 +15,32 @@ export interface Launch {
 }
 
 /**
- * strike/throwRock are edge-triggered presses; act and strikeHeld are held. The Sim only acts on the rising edge of
- * `act` (a fresh press of Agir); the input layer latches a tap so it lasts one read.
+ * strike/throwRock/furie are edge-triggered presses; act and chargeHeld are held. The Sim only acts on the rising edge
+ * of `act` (a fresh press of Agir) and of `chargeHeld`; the input layer latches a tap so it lasts one read.
  */
 export interface InputFrame {
   move: Vec;
   aim: Vec | null;
   run: boolean;
   strike: boolean;
-  /** Frapper is held down (Space / left mouse / touch Frapper): charges the onde d’énergie. */
-  strikeHeld: boolean;
+  /** Onde held down (C / touch Onde): charges the onde d’énergie from the energy gauge (CONFIG.energy.ondeCost). */
+  chargeHeld: boolean;
   throwRock: boolean;
   act: boolean;
+  /** Furie pressed (R / touch Furie): starts the mode furie when the energy gauge is full. */
+  furie: boolean;
 }
 
 /** Regular street weapons (limited strikes). */
 export type WeaponKind = 'baton' | 'marteau' | 'panneau';
-/** Special pickups: the mode furie power-up and the two special weapons. */
-export type SpecialKind = 'furie' | 'bouclier' | 'kamehame';
-/** What Paul can hold: a regular weapon, the bouclier or the onde d’énergie (kamehame). */
-export type HeldKind = WeaponKind | 'bouclier' | 'kamehame';
+/** The one special pickup (the mode furie and the onde d’énergie come from the energy gauge, never from the ground). */
+export type SpecialKind = 'bouclier';
+/** What Paul can hold: a regular weapon or the bouclier. */
+export type HeldKind = WeaponKind | 'bouclier';
 /** What can lie on the ground. */
-export type PickupKind = HeldKind | 'furie';
+export type PickupKind = HeldKind;
+/** The two energy thresholds: the onde d’énergie (CONFIG.energy.ondeCost) and the mode furie (full gauge). */
+export type EnergyLevel = 'onde' | 'furie';
 
 export type Variant = 'classic' | 'palestinian' | 'antifa';
 /** 'runner' (fast, fragile), 'brute' (tough, slow, pushes Paul) and 'boss' (« Le Caïd ») fight as contacts. */
@@ -93,23 +97,27 @@ export type SimEvent =
   /** Paul handed the belonging back to the victim (+CONFIG.rescue.itemBonus). */
   | { type: 'ItemReturned'; rescueId: string; item: string }
   | { type: 'HealCompleted' }
-  /** A pickup appears: a weapon, a special weapon, or the mode furie (`kind: 'furie'`). */
+  /** A pickup appears: a regular weapon or the bouclier. */
   | { type: 'WeaponSpawned'; kind: PickupKind; pos: Vec }
-  /** Paul walked over a furie: the mode is on for `secondsLeft` s (reset when already on). */
+  /** Paul spent a full energy gauge (Furie): the mode is on for `secondsLeft` s. */
   | { type: 'FurieStarted'; secondsLeft: number }
   /** The mode furie is over (time out, or Paul KO). */
   | { type: 'FurieEnded' }
   | { type: 'WeaponPickedUp'; kind: HeldKind }
-  /** The held weapon is gone: no strikes left, the bouclier's time is up, or the last onde d’énergie fired. */
+  /** The held weapon is gone: no strikes left, or the bouclier's time is up. */
   | { type: 'WeaponBroken'; kind: HeldKind }
   /** The bouclier's bubble stopped a rock or a firebomb, from any side (`pos` = where it was stopped, on Paul). */
   | { type: 'ShieldBlocked'; pos: Vec }
-  /** Paul started charging the onde d’énergie (Frapper held). */
+  /** Paul started charging the onde d’énergie (Onde pressed with enough energy). */
   | { type: 'BeamCharging' }
-  /** The onde d’énergie fired from `from` to `to` (truncated at the first solid) and knocked out `kos` rioters. */
+  /** The onde d’énergie fired from `from` to `to` (truncated at the first solid), knocked out `kos` rioters, cost paid. */
   | { type: 'BeamFired'; from: Vec; to: Vec; kos: number }
-  /** The charge stopped before firing (released, damage, weapon lost, KO): nothing used. */
+  /** The charge stopped before firing (released, damage, a mode furie started, KO): no energy spent. */
   | { type: 'BeamCancelled' }
+  /** The energy gauge just rose to a threshold: the onde d’énergie (`onde`) or the mode furie (`furie`) is available. */
+  | { type: 'EnergyReady'; level: EnergyLevel }
+  /** Furie or Onde pressed with too little energy: `need` = the energy it takes. */
+  | { type: 'EnergyRefused'; need: number }
   /** A non-school target comes under attack. */
   | { type: 'CasseStarted'; incidentId: string; kind: CasseKind; target: TargetId; pos: Vec; round: number; total: number }
   | { type: 'MolotovThrown'; from: Vec; to: Vec; target: TargetId }
@@ -146,8 +154,8 @@ export type SimEvent =
   | { type: 'RoundCompleted'; index: number; bonus: boolean }
   | { type: 'RoundTotalChanged'; index: number; total: number }
   /**
-   * `special` = the special pickup the weapon drop is (furie from CONFIG.furie.dropFromRound, bouclier and kamehame from
-   * their own `dropFromRound`); absent for a regular weapon drop.
+   * `special` = the bouclier when the weapon drop is one (from CONFIG.bouclier.dropFromRound, CONFIG.bouclier.dropShare of
+   * the drops); absent for a regular weapon drop.
    */
   | { type: 'TwistStarted'; kind: 'weaponDrop' | 'secondUrgency'; pos: Vec | null; special?: SpecialKind }
   | { type: 'StationsRecharged' }

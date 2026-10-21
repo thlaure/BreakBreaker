@@ -119,8 +119,8 @@ export interface MonumentPlan {
  * car, bus stop, weight 2, or 1 if it was `last` round's headline (it may repeat, rarely; nothing is forced). Second
  * beat: the rescue; from round CONFIG.monument.fromRound the monument occupation instead when the flag is French and
  * last round's second beat was not the monument (they alternate; never while the flag is Palestinian). Twists: from
- * round 2 always a weapon drop (a special pickup once one is unlocked: bouclier from round 3, furie from 4, kamehame
- * from 5; a regular weapon before), and on odd rounds from r3 a second urgency as well (when the urgency cap allows).
+ * round 2 always a weapon drop (from round 3 a bouclier half the time, a regular weapon otherwise; regular in round 2),
+ * and on odd rounds from r3 a second urgency as well (when the urgency cap allows).
  * No free target → the second beat alone (its kind is the headline).
  */
 export function roundPlan(
@@ -670,8 +670,8 @@ export class Director {
   }
 
   /**
-   * The weapon drop (every round from 2): a special unlocked at this round (bouclier, furie, kamehame:
-   * CONFIG.<kind>.dropFromRound), a regular weapon before any is.
+   * The weapon drop (every round from 2): a bouclier (from CONFIG.bouclier.dropFromRound, CONFIG.bouclier.dropShare of
+   * the time) or a regular weapon (`special` set only for the bouclier).
    */
   private weaponDrop(host: DirectorHost, ev: SimEvent[]): void {
     const { drop: w, special } = host.weapons.dropTwist(host.player.pos, this.round);

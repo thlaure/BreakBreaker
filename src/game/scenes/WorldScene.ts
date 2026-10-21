@@ -52,7 +52,7 @@ export class WorldScene extends Phaser.Scene {
   private stress = 0;
   private stressState = { n: 0 };
   private clock!: FixedClock;
-  private input$: () => InputFrame = () => ({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false });
+  private input$: () => InputFrame = () => ({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false });
   private disposeInput: (() => void) | null = null;
   private ui: GameUi | null = null;
   private sources: InputSource[] = [];
@@ -343,8 +343,8 @@ export class WorldScene extends Phaser.Scene {
 
   private render(snap: Snapshot, time: number, dtMs: number): void {
     const flying = new Map(this.sim.rocks.flying().map((r) => [r.id, r.t]));
-    // a Frapper press with the onde d’énergie starts a charge, not a swing
-    if (snap.weapon?.kind === 'kamehame' || snap.charge) this.struck = false;
+    // no swing while the onde d’énergie charges
+    if (snap.charge) this.struck = false;
     this.paul.update(snap.player, this.struck, time, dtMs, snap.furie !== null);
     this.healthBar.update(snap, this.paul.sprite, time);
     this.furieAura.update(snap.ended ? null : snap.furie, this.paul.sprite, time);

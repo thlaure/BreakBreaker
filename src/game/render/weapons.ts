@@ -35,12 +35,11 @@ export function makeWeaponTextures(scene: Phaser.Scene): void {
 }
 
 /** Additive glow under a special pickup. */
-const SPECIAL_GLOW: Readonly<Record<string, number>> = { furie: 0xfff09a, bouclier: 0x7bb4ff, kamehame: 0x8fd3ff };
+const SPECIAL_GLOW: Readonly<Record<string, number>> = { bouclier: 0x7bb4ff };
 
 /**
- * Weapons lying in the street: bob, gentle sway and a pulsing glow so they read as pickups. The special pickups (mode
- * furie `weapon_furie`, see render/furie.ts; bouclier and onde d’énergie, see render/specials.ts) float higher, pulse
- * in size and have a bigger additive glow in their own colour.
+ * Weapons lying in the street: bob, gentle sway and a pulsing glow so they read as pickups. The special pickup (the
+ * bouclier, see render/specials.ts) floats higher, pulses in size and has a bigger additive glow in its own colour.
  */
 export class WeaponLayer {
   private readonly items = new Map<number, { glow: Phaser.GameObjects.Ellipse; sprite: Phaser.GameObjects.Image }>();
@@ -111,16 +110,15 @@ export class HeldWeaponView {
       this.kind = weapon.kind;
       this.sprite.setTexture(`weapon_${weapon.kind}`);
     }
-    const orb = weapon.kind === 'kamehame';
-    if (struck && !orb) this.spinUntil = nowMs + SPIN_MS;
+    if (struck) this.spinUntil = nowMs + SPIN_MS;
     const side = player.facing.x < 0 ? -1 : 1;
-    let angle = orb ? 0 : side * 35;
+    let angle = side * 35;
     if (nowMs < this.spinUntil) angle += (1 - (this.spinUntil - nowMs) / SPIN_MS) * 360 * side;
     this.sprite
       .setVisible(true)
       .setPosition(Math.round(player.pos.x + side * 9), Math.round(player.pos.y - 14))
       .setAngle(angle)
-      .setScale(orb ? 0.6 : 1)
+      .setScale(1)
       .setDepth(player.pos.y + (player.facing.y < 0 ? -0.5 : 0.5));
   }
 }
