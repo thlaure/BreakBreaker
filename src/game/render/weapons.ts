@@ -90,7 +90,7 @@ export class WeaponLayer {
 
 /**
  * The weapon in Paul's hand: carried at his side, spins once around him on each strike. The bouclier is drawn by
- * ShieldView (in front of him); the onde d’énergie is a small orb at his side that does not spin.
+ * BubbleView (a protection bubble around him); the onde d’énergie is a small orb at his side that does not spin.
  */
 export class HeldWeaponView {
   private readonly sprite: Phaser.GameObjects.Image;

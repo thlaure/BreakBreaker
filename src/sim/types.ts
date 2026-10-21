@@ -94,7 +94,7 @@ export type SimEvent =
   | { type: 'WeaponPickedUp'; kind: HeldKind }
   /** The held weapon is gone: no strikes left, the bouclier's time is up, or the last onde d’énergie fired. */
   | { type: 'WeaponBroken'; kind: HeldKind }
-  /** The bouclier stopped a rock or a firebomb coming from the front (`pos` = where it was stopped). */
+  /** The bouclier's bubble stopped a rock or a firebomb, from any side (`pos` = where it was stopped, on Paul). */
   | { type: 'ShieldBlocked'; pos: Vec }
   /** Paul started charging the onde d’énergie (Frapper held). */
   | { type: 'BeamCharging' }

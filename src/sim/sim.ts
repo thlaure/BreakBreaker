@@ -184,7 +184,7 @@ export function segmentRectEntry(a: Vec, b: Vec, r: Rect): number | null {
  * Step order: player move → sweep/return → hostiles → queue entries → rocks → damage → fire patches → KO check → Molotovs routed to
  * the attack on their target → attacks → rescue → toolboxes → heals → weapons (pickups, furie timer) → director.
  * Mode furie (CONFIG.furie) changes the player move, the strike and the damage taken; a KO ends it.
- * Held specials: the bouclier blocks front rocks and firebombs and bashes on a strike; the onde d'énergie (kamehame)
+ * Held specials: the bouclier is a protection bubble (rocks and firebombs blocked from any side) and bashes on a strike; the onde d'énergie (kamehame)
  * charges while Frapper is held (Paul frozen), fires a beam at CONFIG.kamehame.chargeSec, and is cancelled by a release,
  * damage, the weapon lost or a KO.
  * While the school cinematic is running, only its timer advances. Agir (`input.act`, held) counts only on its rising
@@ -570,9 +570,9 @@ export class Sim {
     };
   }
 
-  /** Paul's facing while he holds the bouclier (front rocks and firebombs are blocked), else null. */
-  private shield(): Vec | null {
-    return this.weapons.held?.kind === 'bouclier' && !this.player.ko ? this.player.facing : null;
+  /** Paul holds the bouclier: its bubble blocks every rock and firebomb that would hit him, from any side. */
+  private shield(): boolean {
+    return this.weapons.held?.kind === 'bouclier' && !this.player.ko;
   }
 
   /**

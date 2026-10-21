@@ -7,7 +7,7 @@ import { createPlayer, type HostileView } from '../../src/sim/player';
 import { Rocks, type RockCtx } from '../../src/sim/projectiles';
 import { rng } from '../../src/sim/rng';
 import { Sim } from '../../src/sim/sim';
-import { beam, shieldBlocks } from '../../src/sim/specials';
+import { beam } from '../../src/sim/specials';
 import type { InputFrame, SimEvent, Vec } from '../../src/sim/types';
 import { dropSpecials, heldOf, isSpecial, spawnSpecials, Weapons } from '../../src/sim/weapons';
 import { autopilot } from './autopilot';
@@ -37,7 +37,7 @@ function calm(sim: Sim, pos: Vec) {
 describe('bouclier: blocking', () => {
   const paul: Vec = { x: 656, y: 720 };
   const R = CONFIG.player.radius;
-  const ctx = (shield: Vec | null, over: Partial<RockCtx['player']> = {}): RockCtx => ({
+  const ctx = (shield: boolean, over: Partial<RockCtx['player']> = {}): RockCtx => ({
     player: { pos: paul, r: R, invulnerable: false, shield, ...over },
     hostiles: [],
     groupBlocks: () => null,
@@ -54,54 +54,54 @@ describe('bouclier: blocking', () => {
     return ev;
   };
 
-  test('the front cone is ±60° (frontDeg 120)', () => {
-    const facing = { x: 1, y: 0 };
-    // travel = flight direction; the rock comes from −travel
-    expect(shieldBlocks(facing, { x: -1, y: 0 })).toBe(true);
-    expect(shieldBlocks(facing, at(180 + 55, 1, { x: 0, y: 0 }))).toBe(true);
-    expect(shieldBlocks(facing, at(180 + 70, 1, { x: 0, y: 0 }))).toBe(false);
-    expect(shieldBlocks(facing, { x: 1, y: 0 })).toBe(false);
+  test('a bubble: a rock is blocked from the front, the sides and behind (any facing): no damage, recoverable rock, ShieldBlocked', () => {
+    for (const deg of [0, 45, 90, 135, 180, -135, -90, -45]) {
+      const ev = throwAt(deg, ctx(true));
+      expect(of(ev, 'ShieldBlocked'), `deg ${deg}`).toHaveLength(1);
+      expect(of(ev, 'PlayerDamaged'), `deg ${deg}`).toEqual([]);
+    }
+    // without the bubble the same rocks hurt
+    for (const deg of [0, 90, 180]) expect(of(throwAt(deg, ctx(false)), 'PlayerDamaged')).toHaveLength(1);
   });
 
-  test('a front rock is blocked: no damage, recoverable rock at the hit point, ShieldBlocked', () => {
+  test('a blocked rock lands recoverable at the hit point (on Paul: picked up at once)', () => {
     const rocks = new Rocks(grid);
-    rocks.spawnEnemy(at(0, 120, paul), at(180, 60, paul), 0);
+    rocks.spawnEnemy(at(180, 120, paul), at(0, 60, paul), 0);
     const ev: SimEvent[] = [];
-    for (let i = 0, now = 0; i < 120; i++) ev.push(...rocks.step(DT, (now += DT), ctx({ x: 1, y: 0 }, { pos: { ...paul } })));
+    for (let i = 0, now = 0; i < 120; i++) ev.push(...rocks.step(DT, (now += DT), ctx(true, { pos: { ...paul } })));
     expect(of(ev, 'PlayerDamaged')).toEqual([]);
     const blocked = of(ev, 'ShieldBlocked');
     expect(blocked).toHaveLength(1);
     expect(Math.hypot(blocked[0]!.pos.x - paul.x, blocked[0]!.pos.y - paul.y)).toBeLessThanOrEqual(R + 1e-6);
-    // landed recoverable where it was stopped (Paul stands on it: it is picked up at once)
     expect(of(ev, 'ProjectileLanded')).toHaveLength(1);
     expect(rocks.ground().length + rocks.carried).toBe(1);
   });
 
-  test('a rock from behind or 70° off the facing hurts', () => {
-    for (const deg of [180, 70, -70]) {
-      const ev = throwAt(deg, ctx({ x: 1, y: 0 }));
-      expect(of(ev, 'ShieldBlocked'), String(deg)).toEqual([]);
-      expect(of(ev, 'PlayerDamaged'), `deg ${deg}`).toHaveLength(1);
-    }
-    for (const deg of [0, 50, -50]) {
-      const ev = throwAt(deg, ctx({ x: 1, y: 0 }));
-      expect(of(ev, 'ShieldBlocked')).toHaveLength(1);
-      expect(of(ev, 'PlayerDamaged')).toEqual([]);
-    }
+  test('a rock that would miss Paul is not stopped by the bubble', () => {
+    const rocks = new Rocks(grid);
+    rocks.spawnEnemy({ x: paul.x + 120, y: paul.y + 30 }, { x: paul.x - 60, y: paul.y + 30 }, 0);
+    const ev: SimEvent[] = [];
+    for (let i = 0, now = 0; i < 120; i++) ev.push(...rocks.step(DT, (now += DT), ctx(true)));
+    expect(of(ev, 'ShieldBlocked')).toEqual([]);
+    expect(of(ev, 'PlayerDamaged')).toEqual([]);
   });
 
-  test('a front firebomb fizzles (no patch); one from behind lights its patch', () => {
-    const front = new FirePatches();
-    front.throwBottle(at(0, 150, paul), { ...paul }, 0.5);
+  test('a firebomb landing on Paul fizzles from any side (no patch); one landing away still lights its patch', () => {
     const hurt = (): boolean => true;
-    const ev1 = front.step(0.6, grid, paul, hurt, { x: 1, y: 0 });
-    expect(of(ev1, 'ShieldBlocked')).toHaveLength(1);
-    expect(of(ev1, 'FirePatchStarted')).toEqual([]);
-    expect(front.list).toHaveLength(0);
-
-    const back = new FirePatches();
-    back.throwBottle(at(180, 150, paul), { ...paul }, 0.5);
-    const ev2 = back.step(0.6, grid, paul, hurt, { x: 1, y: 0 });
+    for (const deg of [0, 90, 180, -90]) {
+      const f = new FirePatches();
+      f.throwBottle(at(deg, 150, paul), { ...paul }, 0.5);
+      const ev = f.step(0.6, grid, paul, hurt, true);
+      expect(of(ev, 'ShieldBlocked'), `deg ${deg}`).toHaveLength(1);
+      // the block is reported on Paul's rim, toward the thrower
+      const b = of(ev, 'ShieldBlocked')[0]!.pos;
+      expect(Math.hypot(b.x - paul.x, b.y - paul.y)).toBeCloseTo(R, 6);
+      expect(of(ev, 'FirePatchStarted')).toEqual([]);
+      expect(f.list).toHaveLength(0);
+    }
+    const away = new FirePatches();
+    away.throwBottle(at(0, 150, paul), at(0, 80, paul), 0.5);
+    const ev2 = away.step(0.6, grid, paul, hurt, true);
     expect(of(ev2, 'ShieldBlocked')).toEqual([]);
     expect(of(ev2, 'FirePatchStarted')).toHaveLength(1);
   });
@@ -123,17 +123,37 @@ describe('bouclier: blocking', () => {
     expect(of(s2.step(IDLE), 'PlayerDamaged')).toHaveLength(1);
   });
 
-  test('in the Sim, a rock thrown at Paul’s shield is blocked', () => {
-    const sim = new Sim(5);
-    sim.weapons.held = heldOf('bouclier');
-    sim.player.facing = { x: 1, y: 0 };
-    const p = sim.player.pos;
-    sim.rocks.spawnEnemy({ x: p.x + 100, y: p.y }, { x: p.x - 60, y: p.y }, 0);
-    const ev: SimEvent[] = [];
-    for (let i = 0; i < 60; i++) ev.push(...sim.step(IDLE));
-    expect(of(ev, 'ShieldBlocked')).toHaveLength(1);
-    expect(of(ev, 'PlayerDamaged')).toEqual([]);
-    expect(sim.player.hp).toBe(CONFIG.player.maxHp);
+  test('in the Sim, rocks thrown at Paul from in front, the side and behind are all blocked by the bubble', () => {
+    for (const [dx, dy] of [[100, 0], [0, 100], [-100, 0]] as const) {
+      const sim = new Sim(5);
+      sim.weapons.held = heldOf('bouclier');
+      sim.player.facing = { x: 1, y: 0 };
+      const p = sim.player.pos;
+      sim.rocks.spawnEnemy({ x: p.x + dx, y: p.y + dy }, { x: p.x - dx * 0.6, y: p.y - dy * 0.6 }, 0);
+      const ev: SimEvent[] = [];
+      for (let i = 0; i < 60; i++) ev.push(...sim.step(IDLE));
+      expect(of(ev, 'ShieldBlocked'), `${dx},${dy}`).toHaveLength(1);
+      expect(of(ev, 'PlayerDamaged')).toEqual([]);
+      expect(sim.player.hp).toBe(CONFIG.player.maxHp);
+    }
+  });
+
+  test('the bubble is deterministic: same seed, same blocks', () => {
+    const run = () => {
+      const sim = new Sim(9, { invulnerable: false });
+      sim.weapons.held = heldOf('bouclier');
+      const p = { ...sim.player.pos };
+      const out: SimEvent[] = [];
+      for (let k = 0; k < 4; k++) {
+        const a = (k * Math.PI) / 2;
+        sim.rocks.spawnEnemy({ x: p.x + Math.cos(a) * 90, y: p.y + Math.sin(a) * 90 }, { x: p.x - Math.cos(a) * 40, y: p.y - Math.sin(a) * 40 }, 0);
+      }
+      for (let i = 0; i < 90; i++) out.push(...sim.step(IDLE));
+      return of(out, 'ShieldBlocked');
+    };
+    const a = run();
+    expect(a).toHaveLength(4);
+    expect(run()).toEqual(a);
   });
 });
 
