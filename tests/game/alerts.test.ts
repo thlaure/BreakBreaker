@@ -795,3 +795,64 @@ test('firebombs and their fire patches raise no banner (only a fire on a target 
   expect(alertFromEvent({ type: 'FirebombThrown', from: { x: 0, y: 0 }, to: { x: 9, y: 9 }, until: 2 })).toBeNull();
   expect(alertFromEvent({ type: 'FirePatchStarted', id: 1, pos: { x: 9, y: 9 } })).toBeNull();
 });
+
+describe('« Le Caïd » alerts', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+  const view: CameraView = { x: 0, y: 0, zoom: 1, width: 800, height: 600 };
+  const boss = (lifeId: number, pos: { x: number; y: number }, state: Snapshot['hostiles'][number]['state'] = 'approach'): Snapshot['hostiles'][number] => ({
+    lifeId,
+    pos,
+    facing: { x: 0, y: 1 },
+    state,
+    variant: 'antifa',
+    role: 'boss',
+    hp: 6,
+    maxHp: 6,
+    windup: false,
+    bottleUp: false,
+  });
+  const snap = (patch: (s: Snapshot) => void): Snapshot => {
+    const s = new Sim(1).snapshot();
+    for (const t of s.targets) t.state = 'intact';
+    s.rescue = null;
+    patch(s);
+    return s;
+  };
+
+  test('CaidArrived → a short, position-less « LE CAÏD ARRIVE ! / Mets-le KO » banner tied to his life', () => {
+    const a = alertFromEvent({ type: 'CaidArrived', lifeId: 42, pos: { x: 10, y: 20 }, round: 3 });
+    expect(a).toEqual({ id: 'caid#42', kind: 'caid', pos: null, wave: 3, total: 0, incident: 'caid#42' });
+    expect(incidentAlert('caid')).toMatchObject({ title: 'LE CAÏD ARRIVE !', sub: 'Mets-le KO', label: 'CAÏD', icon: 'crown', positioned: false, meta: '' });
+    expect(incidentAlert('caid').ms).toBeLessThan(ALERT_MS);
+    expect(pixelSvg('crown')).toContain('<svg');
+  });
+
+  test('activeIncidents: an indicator « CAÏD » while he stands, none once KO; other roles never', () => {
+    const s = snap((x) => {
+      x.hostiles = [boss(42, { x: 100, y: 200 }), boss(7, { x: 5, y: 5 }, 'ko'), { ...boss(8, { x: 9, y: 9 }), role: 'brute' }];
+    });
+    expect(activeIncidents(s).filter((i) => i.kind === 'caid')).toEqual([{ id: 'caid#42', kind: 'caid', pos: { x: 100, y: 200 } }]);
+  });
+
+  test('Hud: the banner shows without arrow; it is pruned when he is KO; his edge indicator says « CAÏD »', () => {
+    const hud = new Hud(document.body, null);
+    const off = { ...view, x: 5000, y: 5000 };
+    hud.update(snap((x) => (x.hostiles = [boss(42, { x: 100, y: 100 })])), off);
+    const edges = [...hud.root.querySelectorAll<HTMLElement>('.bb-edge')];
+    expect(edges).toHaveLength(1);
+    expect(edges[0]!.querySelector('.lbl')!.textContent).toBe('CAÏD');
+    hud.onEvents([{ type: 'CaidArrived', lifeId: 42, pos: { x: 100, y: 100 }, round: 3 }]);
+    const a = hud.root.querySelector<HTMLElement>('.bb-alert')!;
+    expect(a.hidden).toBe(false);
+    expect(a.querySelector('.title')!.textContent).toBe('LE CAÏD ARRIVE !');
+    expect(a.querySelector<HTMLElement>('.dir')!.hidden).toBe(true);
+    hud.update(snap((x) => (x.hostiles = [boss(42, { x: 100, y: 100 })])), off);
+    expect(a.hidden).toBe(false);
+    // KO: banner dropped, indicator gone
+    hud.update(snap((x) => (x.hostiles = [boss(42, { x: 100, y: 100 }, 'ko')])), off);
+    expect(a.hidden).toBe(true);
+    expect(hud.root.querySelectorAll('.bb-edge')).toHaveLength(0);
+    hud.destroy();
+  });
+});

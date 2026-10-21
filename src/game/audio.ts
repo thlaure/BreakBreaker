@@ -34,6 +34,9 @@ export function threatLevel(s: Snapshot): number {
  * Raw WebAudio. The AudioContext is created only by `unlock()` (called from the Commencer click).
  * Any failure leaves the game silent but running. Groups: sfx and ambience gains feed a master gain (mute).
  */
+/** Playback rate of the heavier hits (brute, Caïd). */
+export const HEAVY_RATE = 0.7;
+
 export class GameAudio {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -428,7 +431,8 @@ export class GameAudio {
     for (const e of events) {
       switch (e.type) {
         case 'HitConfirmed':
-          this.play(`hit${1 + Math.floor(Math.random() * 3)}` as Sfx);
+          // a brute or the Caïd: the same impact, pitched down (heavier)
+          this.play(`hit${1 + Math.floor(Math.random() * 3)}` as Sfx, 0, e.heavy ? HEAVY_RATE : 1);
           break;
         case 'EnemyRockThrown':
         case 'ProjectileReturned':
@@ -482,7 +486,11 @@ export class GameAudio {
           chimed = true;
           break;
         case 'PlayerDamaged':
-          this.play('hurt');
+          // a brute's or the Caïd's push: a lower « hurt » plus a dull thud
+          if (e.push) {
+            this.play('hurt', 0, HEAVY_RATE);
+            this.play('land', 0, HEAVY_RATE);
+          } else this.play('hurt');
           break;
         // alarm = fire: it marks the bottle setting a target on fire (not the attack start nor the first hp lost, so
         // it is not used up before the fire); the fire loop then follows burning targets (threatLevel, every frame)

@@ -11,7 +11,7 @@ import { createKeyboard } from '../input/keyboard';
 import { guardLifecycle, merge, type InputSource } from '../input/merge';
 import { createTouch } from '../input/touch';
 import { Grid } from '../../sim/map/grid';
-import { HostileLayer, PaulView } from '../render/actors';
+import { HostileLayer, PaulView, makeRoleTextures } from '../render/actors';
 import { PaulHealthBar } from '../render/healthBar';
 import { FurieAura, PowBubbles, makeFurieTextures } from '../render/furie';
 import { GroupView, VictimView } from '../render/crowd';
@@ -183,6 +183,7 @@ export class WorldScene extends Phaser.Scene {
     makeFurieTextures(this);
     makeSpecialTextures(this);
     makeMonumentTextures(this);
+    makeRoleTextures(this);
     this.reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.world = new WorldView(this);
     this.targetViews = new TargetsLayer(this, this.world.buildingParts);

@@ -10,8 +10,11 @@ import type { CasseKind, PickupKind, SimEvent, SpecialKind, Vec } from '../../si
  * INCIDENT_ALERTS (and a headline line); `alertFromEvent` / `activeIncidents` read the generic TargetIgnited event and
  * `snapshot.targets`. A round start has no position: its banner shows no arrow and no distance.
  */
-/** `monument` = an occupation under way; `flag` = the flag replaced, to capture back. */
-export type IncidentKind = CasseKind | 'groupHarassed' | 'elderlyRobbed' | 'monument' | 'flag';
+/**
+ * `monument` = an occupation under way; `flag` = the flag replaced, to capture back; `caid` = « Le Caïd » (mini-boss)
+ * standing (his banner is short and position-less, his edge indicator follows him).
+ */
+export type IncidentKind = CasseKind | 'groupHarassed' | 'elderlyRobbed' | 'monument' | 'flag' | 'caid';
 /** A special pickup waiting on the ground: the mode furie, the bouclier or the onde d’énergie (kamehame). */
 export type DropKind = 'furieDrop' | 'bouclierDrop' | 'kamehameDrop';
 /**
@@ -20,7 +23,7 @@ export type DropKind = 'furieDrop' | 'bouclierDrop' | 'kamehameDrop';
  */
 export type AlertKind = IncidentKind | 'round' | DropKind | 'furie' | 'flagCaptured';
 export type AlertTone = 'fire' | 'warn' | 'round' | 'drop' | 'furie' | 'win';
-export type AlertIcon = 'flame' | 'alert' | 'horde' | 'glass' | 'star' | 'bolt' | 'flag' | 'shield' | 'orb';
+export type AlertIcon = 'flame' | 'alert' | 'horde' | 'glass' | 'star' | 'bolt' | 'flag' | 'shield' | 'orb' | 'crown';
 /** What a round is about (its first beat), shown under « MANCHE N ! ». */
 export type RoundHeadline = CasseKind | 'rescue' | 'monument';
 /** A round headline as the banner words it: a rescue headline names its variant when known. */
@@ -46,6 +49,7 @@ export const INCIDENT_ALERTS: Readonly<Record<IncidentKind, AlertSpec>> = {
   elderlyRobbed: { title: 'VOL EN COURS !', sub: 'Une personne âgée est menacée', label: 'VOL', tone: 'warn', icon: 'alert' },
   monument: { title: 'MONUMENT ATTAQUÉ !', sub: 'Défends le drapeau', label: 'MONUMENT', tone: 'warn', icon: 'flag' },
   flag: { title: 'DRAPEAU REMPLACÉ !', sub: 'Reprends le monument', label: 'DRAPEAU', tone: 'warn', icon: 'flag' },
+  caid: { title: 'LE CAÏD ARRIVE !', sub: 'Mets-le KO', label: 'CAÏD', tone: 'warn', icon: 'crown' },
 };
 
 export const DROPS: Readonly<Record<DropKind, AlertSpec>> = {
@@ -67,6 +71,13 @@ function isDrop(kind: AlertKind): kind is DropKind {
 export const FURIE_ALERT_MS = 2200;
 /** How long the short « DRAPEAU RÉCUPÉRÉ ! » banner stays. */
 export const FLAG_ALERT_MS = 2600;
+/** How long the short, position-less « LE CAÏD ARRIVE ! » banner stays. */
+export const CAID_ALERT_MS = 2600;
+
+/** `activeIncidents` id of the Caïd of life `lifeId` (the banner is dropped once he is KO). */
+export function caidId(lifeId: number): string {
+  return `caid#${lifeId}`;
+}
 
 /** Non-committal: the round start does not know whether the bottle will be thrown. */
 export const ROUND_HEADLINES: Readonly<Record<BannerHeadline, string>> = {
@@ -136,6 +147,7 @@ export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: 
       positioned: false,
       ms: FLAG_ALERT_MS,
     };
+  if (kind === 'caid') return { ...INCIDENT_ALERTS.caid, meta: '', positioned: false, ms: CAID_ALERT_MS };
   const meta = round <= 0 ? '' : total > 0 ? `Manche ${round} · ${casseurs(total)}` : `Manche ${round}`;
   return { ...INCIDENT_ALERTS[kind], meta, positioned: true };
 }
@@ -214,6 +226,11 @@ export function alertFromEvent(e: SimEvent): Alert | null {
   if (e.type === 'FlagSwapped')
     return { id: `${e.incidentId}:swap`, kind: 'flag', pos: { ...e.pos }, wave: 0, total: 0, incident: 'monument:flag' };
   if (e.type === 'FlagCaptured') return { id: `flag#${e.swap}`, kind: 'flagCaptured', pos: null, wave: 0, total: 0 };
+  // the Caïd walks in: short banner without arrow, dropped once he is KO
+  if (e.type === 'CaidArrived') {
+    const id = caidId(e.lifeId);
+    return { id, kind: 'caid', pos: null, wave: e.round, total: 0, incident: id };
+  }
   return null;
 }
 
@@ -221,7 +238,7 @@ export function alertFromEvent(e: SimEvent): Alert | null {
  * Incidents that still need Paul: every target under an urgent attack or still burning (at its door: a fire stays until
  * put out with a toolbox), the rescue while threatened (or secured with belongings still to bring back), and
  * every special pickup on the ground (furie, bouclier, kamehame: kind-based, twist drop or street spawn) until it is
- * picked up or vanishes. Regular weapons are never listed.
+ * picked up or vanishes, and « Le Caïd » while he stands. Regular weapons are never listed.
  */
 export function activeIncidents(s: Snapshot): Incident[] {
   const out: Incident[] = [];
@@ -240,6 +257,8 @@ export function activeIncidents(s: Snapshot): Incident[] {
     const kind = dropKindOf(w.kind);
     if (kind) out.push({ id: dropId(w.pos), kind, pos: { ...w.pos } });
   }
+  // « Le Caïd » while he stands (his indicator follows him)
+  for (const h of s.hostiles) if (h.role === 'boss' && h.state !== 'ko') out.push({ id: caidId(h.lifeId), kind: 'caid', pos: { ...h.pos } });
   return out;
 }
 
@@ -429,6 +448,17 @@ const SPRITES: Record<Sprite, string[]> = {
     '.KBLLLLBK.',
     '..KBBBBK..',
     '...KKKK...',
+  ],
+  // a gold crown with a red jewel: « Le Caïd »
+  crown: [
+    'Y...Y...Y.',
+    'KY.KYK.YK.',
+    'KYYKYKYYK.',
+    'KYYYYYYYK.',
+    'KYYRYYRYK.',
+    'KYYYYYYYK.',
+    'KOOOOOOOK.',
+    'KKKKKKKKK.',
   ],
   // a sparkle: the mode furie to grab
   star: [

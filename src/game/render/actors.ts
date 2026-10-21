@@ -5,6 +5,7 @@ import type { Launch, Vec } from '../../sim/types';
 import { DEPTH } from './depth';
 import { edgeExit, landingDistance, launchPose, satelliteDelay, satellitePose } from './furieMath';
 import { MAX_SATELLITES, Twinkles } from './satellite';
+import { DUST_MS, badgeOf, hpBarShown, hpFill, rioterSheet, roleScale } from './roleLook';
 
 type HostileSnap = Snapshot['hostiles'][number];
 
@@ -270,6 +271,89 @@ class BottleProp {
   }
 }
 
+const BADGE_PAL: Record<string, number> = { K: 0x14121c, S: 0x8a94a3, W: 0xd6dde6, D: 0x5b6472, Y: 0xffd166, O: 0xe0902a, R: 0xd23b3b };
+/** Brute: a dark steel helmet (18×6). */
+const HELMET = ['....KKKKKKKKKK....', '..KKSSWWSSSSSSKK..', '.KSSWWSSSSSSSSDSK.', '.KSSSSSSSSSSSDDSK.', 'KDDDDDDDDDDDDDDDDK', 'KKKKKKKKKKKKKKKKKK'];
+/** Caïd: a gold crown with red jewels (14×8). */
+const CROWN = ['K....K..K....K', 'KY..KYKKYK..YK', 'KYYKYYYYYYKYYK', 'KYYYYYYYYYYYYK', 'KYYRYYYYYYRYYK', 'KYYYYYRRYYYYYK', 'KOOOOOOOOOOOOK', 'KKKKKKKKKKKKKK'];
+
+/** `badge_helmet` / `badge_crown` textures (pixel rows drawn at runtime, no image file). */
+export function makeRoleTextures(scene: Phaser.Scene): void {
+  if (scene.textures.exists('badge_helmet')) return;
+  const g = scene.make.graphics({}, false);
+  for (const [key, rows] of [
+    ['badge_helmet', HELMET],
+    ['badge_crown', CROWN],
+  ] as const) {
+    g.clear();
+    rows.forEach((row, y) => {
+      for (let x = 0; x < row.length; x++) {
+        const c = BADGE_PAL[row[x]!];
+        if (c !== undefined) g.fillStyle(c, 1).fillRect(x, y, 1, 1);
+      }
+    });
+    g.generateTexture(key, rows[0]!.length, rows.length);
+  }
+  g.destroy();
+}
+
+/** Head top above the feet in an LPC frame at scale 1 (badges sit on it). */
+const HEAD_TOP = 44;
+const HP_W = 20;
+const HP_H = 4;
+const HP_INK = 0x14121c;
+const HP_TRACK = 0x3a3448;
+const HP_RED = 0xff5a4e;
+
+/**
+ * The role look of a brute or the Caïd: a helmet / crown badge on the head and a small red pixel HP bar over it (the
+ * Caïd always, a brute once damaged); hidden on a KO body.
+ */
+class RoleBadge {
+  private readonly badge: Phaser.GameObjects.Image | null;
+  private readonly bar: Phaser.GameObjects.Graphics;
+  private drawn = -1;
+
+  constructor(
+    scene: Phaser.Scene,
+    role: HostileSnap['role'],
+    private readonly size: number,
+  ) {
+    const key = badgeOf(role);
+    this.badge = key ? scene.add.image(0, 0, key).setOrigin(0.5, 1).setScale(size) : null;
+    this.bar = scene.add.graphics().setVisible(false);
+  }
+
+  update(h: HostileSnap, sprite: Phaser.GameObjects.Sprite): void {
+    const ko = h.state === 'ko';
+    const x = Math.round(sprite.x);
+    const top = Math.round(sprite.y - HEAD_TOP * this.size);
+    if (this.badge) {
+      this.badge.setVisible(!ko && sprite.visible);
+      // the helmet covers the top of the head, the crown sits on it
+      const sink = this.badge.texture.key === 'badge_helmet' ? 4 : 3;
+      this.badge.setPosition(x, top + Math.round(sink * this.size)).setDepth(sprite.depth + 0.05);
+    }
+    const shown = hpBarShown(h) && sprite.visible;
+    this.bar.setVisible(shown);
+    if (!shown) return;
+    const lift = this.badge ? Math.round((this.badge.height + 2) * this.size) : 4;
+    this.bar.setPosition(x - HP_W / 2, top - lift - HP_H).setDepth(DEPTH.overlay);
+    const fill = hpFill(h.hp, h.maxHp, HP_W - 2);
+    if (fill === this.drawn) return;
+    this.drawn = fill;
+    this.bar.clear();
+    this.bar.fillStyle(HP_INK, 1).fillRect(0, 0, HP_W, HP_H);
+    this.bar.fillStyle(HP_TRACK, 1).fillRect(1, 1, HP_W - 2, HP_H - 2);
+    if (fill > 0) this.bar.fillStyle(HP_RED, 1).fillRect(1, 1, fill, HP_H - 2);
+  }
+
+  destroy(): void {
+    this.badge?.destroy();
+    this.bar.destroy();
+  }
+}
+
 /** A body knocked out in mode furie: where it was hit, its launch, how far it travels, when it took off. */
 interface Flight {
   from: Vec;
@@ -296,6 +380,8 @@ export interface LaunchCtx {
   zoom: () => number;
   satellites: { flying: number };
   reducedMotion: boolean;
+  /** Runner dust puffs at the feet (shared emitter). */
+  dust: Phaser.GameObjects.Particles.ParticleEmitter;
 }
 
 /**
@@ -318,10 +404,16 @@ class HostileView {
   /** Satellite: last drawn point (edge crossing) and whether its one twinkle was shown. */
   private lastPt: Vec | null = null;
   private twinkled = false;
+  /** Sprite scale of the role (brute ×1.25, Caïd ×1.5). */
+  private readonly size: number;
+  private readonly role: RoleBadge | null;
+  private lastDust = 0;
 
   constructor(scene: Phaser.Scene, h: HostileSnap) {
-    const sheet = `rioter_${h.variant}_${h.lifeId % 2 === 0 ? 'a' : 'b'}`;
-    this.view = new CharView(scene, sheet, h.pos);
+    this.view = new CharView(scene, rioterSheet(h.variant, h.role, h.lifeId), h.pos);
+    this.size = roleScale(h.role);
+    this.view.sprite.setScale(this.size);
+    this.role = badgeOf(h.role) ? new RoleBadge(scene, h.role, this.size) : null;
     const flagFrame = h.variant === 'palestinian' ? 1 : h.variant === 'antifa' ? 2 : -1;
     this.flag = flagFrame >= 0 ? scene.add.image(0, 0, 'flags', flagFrame).setOrigin(0, 1) : null;
     this.pole = flagFrame >= 0 ? scene.add.rectangle(0, 0, 1, 22, 0x5a4632).setOrigin(0.5, 1) : null;
@@ -358,6 +450,7 @@ class HostileView {
       this.flag?.setVisible(false);
       this.pole?.setVisible(false);
       this.bottle?.update(h, this.view.sprite.depth, nowMs);
+      this.role?.update(h, this.view.sprite);
       this.satellite(this.flight, nowMs, ctx);
       return;
     }
@@ -375,8 +468,13 @@ class HostileView {
       s.setAlpha(1);
       if (h.state === 'windup') v.still(windupFrame(v.sheet, dir));
       else if (h.state === 'degrade' || h.state === 'threaten') v.slash(dir, true);
-      else if (moved > 0.05) v.walk(dir);
+      else if (moved > 0.05) v.walk(dir, h.role === 'runner' ? 1.5 : 1);
       else v.still(idleFrame(v.sheet, dir));
+      // a runner kicks up small dust puffs behind him while he runs
+      if (h.role === 'runner' && moved > 0.5 && nowMs - this.lastDust >= DUST_MS) {
+        this.lastDust = nowMs;
+        ctx.dust.emitParticleAt(h.pos.x - h.facing.x * 6, h.pos.y - 1, 1);
+      }
     }
     v.tickFlash(nowMs);
     if (this.flag && this.pole) {
@@ -384,13 +482,14 @@ class HostileView {
       this.flag.setVisible(!ko);
       this.pole.setVisible(!ko);
       // held over the shoulder on the side away from the facing
-      const side = dir === 'e' ? -9 : 9;
+      const side = Math.round((dir === 'e' ? -9 : 9) * this.size);
       const px = h.pos.x + side;
-      const py = h.pos.y - 26;
+      const py = h.pos.y - Math.round(26 * this.size);
       this.pole.setPosition(px, py).setDepth(s.depth + 0.02);
       this.flag.setPosition(px, py - 10).setFlipX(dir === 'e').setOrigin(dir === 'e' ? 1 : 0, 1).setDepth(s.depth + 0.03);
     }
     this.bottle?.update(h, s.depth, nowMs);
+    this.role?.update(h, s);
   }
 
   private fly(f: Flight, nowMs: number, ctx: LaunchCtx): void {
@@ -401,7 +500,7 @@ class HostileView {
       s.setOrigin(0.5, SPIN_ORIGIN_Y)
         .setPosition(Math.round(pose.x), y)
         .setAngle(pose.angle)
-        .setScale(pose.scaleX, pose.scaleY)
+        .setScale(pose.scaleX * this.size, pose.scaleY * this.size)
         .setAlpha(1)
         .setDepth(DEPTH.foliage + 2);
       if (Math.floor(nowMs / 32) % 2 === 0) ctx.trail.emitParticleAt(pose.x, y, 1);
@@ -411,7 +510,7 @@ class HostileView {
       f.landed = true;
       ctx.trail.emitParticleAt(pose.x, pose.y - 4, 6);
     }
-    s.setOrigin(0.5, FEET_ORIGIN_Y).setAngle(0).setScale(1).setPosition(Math.round(pose.x), Math.round(pose.y)).setAlpha(0.6).setDepth(pose.y - 8);
+    s.setOrigin(0.5, FEET_ORIGIN_Y).setAngle(0).setScale(this.size).setPosition(Math.round(pose.x), Math.round(pose.y)).setAlpha(0.6).setDepth(pose.y - 8);
   }
 
   private satellite(f: Flight, nowMs: number, ctx: LaunchCtx): void {
@@ -436,7 +535,7 @@ class HostileView {
       .setOrigin(0.5, SPIN_ORIGIN_Y)
       .setPosition(x, y)
       .setAngle(pose.angle)
-      .setScale(Math.round(pose.scale * 8) / 8)
+      .setScale((Math.round(pose.scale * 8) / 8) * this.size)
       .setAlpha(1)
       .setDepth(DEPTH.overlay);
     if (Math.floor(nowMs / 40) % 2 === 0) ctx.trail.emitParticleAt(x, y, 1);
@@ -461,6 +560,7 @@ class HostileView {
     this.flag?.destroy();
     this.pole?.destroy();
     this.bottle?.destroy();
+    this.role?.destroy();
   }
 }
 
@@ -489,7 +589,19 @@ export class HostileLayer {
       })
       .setDepth(DEPTH.foliage + 1.5);
     this.twinkles = new Twinkles(scene);
+    const dust = scene.add
+      .particles(0, 0, 'px', {
+        lifespan: { min: 220, max: 380 },
+        speed: { min: 4, max: 14 },
+        angle: { min: 200, max: 340 },
+        scale: { start: 1.6, end: 0.4 },
+        tint: [0xcfc6b4, 0xb8ad97, 0xe6dfcf],
+        alpha: { start: 0.7, end: 0 },
+        emitting: false,
+      })
+      .setDepth(DEPTH.decal + 1);
     this.ctx = {
+      dust,
       trail,
       world: opts.world,
       blocked: opts.blocked,

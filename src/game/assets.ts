@@ -7,6 +7,8 @@ export const CHAR_SHEETS = [
   'rioter_palestinian_b',
   'rioter_antifa_a',
   'rioter_antifa_b',
+  'rioter_runner_a',
+  'rioter_runner_b',
   'protester_1',
   'protester_2',
   'protester_3',
