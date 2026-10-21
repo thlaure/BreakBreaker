@@ -1,6 +1,6 @@
 # BreakBreaker — Cahier des charges fonctionnel et technique
 
-**Version :** 1.9.9 — 21 octobre 2026  
+**Version :** 1.9.10 — 21 octobre 2026  
 **Périmètre :** jeu web 2D en pixel art, vue du dessus non isométrique, mode arcade par manches sans limite de durée, Paris, Paul (commerçant fictif) comme héros unique, ordinateur et téléphone  
 **Statut :** spécification de référence ; les décisions confirmées par le porteur du projet et les recommandations de conception sont identifiées. Une première tranche jouable existe (section 24) ; ce document ne constitue pas une validation de production ni une attestation que toutes les exigences sont déjà implémentées.  
 **Langue de lancement :** français  
@@ -207,7 +207,7 @@ Chaque nouvel assaut est annoncé et identifié ; les bonus ne sont pas rejoués
 
 ### 6.1 Héros
 
-Sprite de Paul aux cheveux longs et vêtements noirs, avec un accent clair (écharpe ou bavoir blanc), lisible dans quatre orientations au minimum. Accent clair, silhouette, animation et contour doivent permettre de le distinguer des casseurs classiques également vêtus de couleurs sombres.
+Sprite de Paul aux cheveux longs, **lunettes rectangulaires noires** (v1.9.10, demande du porteur du projet ; visibles dans les trois orientations de face et de profil, reprises dans l’icône du site et l’image de la landing) et vêtements noirs, avec un accent clair (écharpe ou bavoir blanc), lisible dans quatre orientations au minimum. Accent clair, silhouette, animation et contour doivent permettre de le distinguer des casseurs classiques également vêtus de couleurs sombres.
 
 Sprite retenu : personnage composé à partir des spritesheets Universal LPC, cellules de 64 × 64 pixels pour une silhouette visible d’environ 32 × 48, avec variantes d’animation et accessoires séparés. Les pieds définissent l’ancrage et la petite zone de collision au sol.
 
@@ -311,6 +311,8 @@ Le KO a le même barème quelle que soit l’origine des dégâts de Paul : main
 ### 8.5 Groupes pacifiques protégés
 
 Les manifestants sont regroupés, avec pancartes et animation calme. Le ciblage, la frappe circulaire et le renvoi de Paul les excluent : un manifestant dans le rayon de frappe n’est ni touché ni compté parmi les trois cibles. Ils ne possèdent pas de transition de KO infligée par le joueur. Pendant un secours identifié, un sous-ensemble du groupe ou une victime désignée peut passer en détresse sous la menace des agresseurs affectés à cet événement.
+
+**Ajouté (v1.9.10, demande du porteur du projet) — bulle de mécontentement.** Au-dessus du groupe de manifestants pacifiques, une bulle pixel à bordure et texte rouges affiche tour à tour une phrase de protestation neutre, 2,8 s sur 4,2 s, avec un léger tremblement : « ÇA SUFFIT ! », « ON EN A MARRE ! », « ARRÊTEZ ÇA ! », « STOP À LA CASSE ! », « C’EST HONTEUX ! ». Les phrases ne visent aucun groupe en particulier, ne contiennent ni insulte ni mot-clé politique, et la bulle ne change rien au jeu (le groupe reste non ciblable).
 
 Les groupes occupent un espace identifiable à contourner. Leurs positions ne peuvent pas bloquer entièrement un objectif, une sortie ou un soin. Le joueur ne peut pas les déplacer ou les disperser à coups. Les ennemis doivent également pouvoir les contourner.
 
@@ -748,6 +750,23 @@ Un secours ne réapparaît pas par entrée/sortie de zone. Une personne déjà s
 Les délais de bâtiment, détresse, capture et interaction n’imposent aucune durée totale de partie. Leur expiration affecte seulement l’incident concerné. Pause, aide, cinématique et perte de focus suspendent tous les délais et toutes les actions hostiles.
 
 La réduction de qualité graphique ne modifie pas ces délais. Un mode découverte peut les allonger explicitement avec record séparé. Le HUD réserve les nombres d’urgence aux incidents actifs, sans remettre une case globale « Temps restant ».
+
+### 12.14 Nouveaux ennemis et armes de la phase B (à venir)
+
+Exigences issues de la conception de la tranche 2 « Fun » (section 6 et tableau 2) ; les ennemis arrivent progressivement pour casser le « toujours plus de casseurs ».
+
+| Ennemi | À partir de | Comportement | Lisibilité |
+| --- | --- | --- | --- |
+| Coureur | Manche 3 | Vitesse ×1,6, 1 PV, par groupes de 4 à 6 | Silhouette plus légère à capuche, poussière |
+| Costaud | Manche 4 | 4 PV, vitesse ×0,75, un coup repousse Paul | Sprite plus grand, casque |
+| Tireur AK-47 (cartoon) | Manche 6 | S’arrête à 220–300 px, ligne de visée rouge 0,8 s puis rafale de 3 balles lentes, rechargement 3 s, 3 PV ; 1 tireur aux manches 6–7, 2 dès la 8, 3 au plus | Ligne de visée et « ! » au-dessus de la tête, balles jaunes visibles et esquivables ; aucun sang |
+| « Le Caïd » (mini-boss) | Manche 3 | 6 PV, clôt la manche, repousse Paul, +5 à sa chute, laisse une arme | Sprite ×1,5, couronne ou casquette, barre de vie propre |
+
+Armes : **flashball** (tir visé, 6 coups, KO d’un coup, arrêté par les murs, une arme garantie avec le premier tireur) et **gant de boxe à ressort** (coup long de 160 px, repousse ; à partir de la manche 3). Les balles font 8 de dégâts, sont arrêtées par bâtiments, mobilier, groupe pacifique et bouclier, au plus 30 en vol. La règle « jamais d’arme à feu » est levée pour ces seuls éléments, en style cartoon, sans sang ni gore.
+
+### 12.15 Chutes de KO et effets de coups de la phase D (à venir)
+
+Chaque KO choisit une chute qui dépend de l’arme, avec une part d’aléatoire (flux aléatoire séparé, déterministe) : mains nues, tassement ou tour sur soi ; panneau, vol lointain en rotation ; marteau, aplati comme une crêpe puis qui se redresse ; gant, rebond de flipper contre les murs ; flashball, salto arrière ; onde d’énergie, satellisation (livrée, v1.9.8). Environ un KO sur dix est une **chute rare « WTF »** : triple salto, hélice verticale, glissade à plat ventre, tête la première dans une poubelle (jambes qui dépassent) ou **effet domino** (le corps projeté fait tomber un à deux casseurs voisins, comptés +1 chacun, avec une bulle « DOMINO ×2 ! »). Seul le domino a un effet de simulation ; le reste est du rendu. À chaque coup : gel d’image de 2 à 3 images, légère secousse d’écran (plus forte pour onde, domino et Caïd), bulles pixel « POW ! », « BONK ! », « PAF ! », « BOING ! » (gant), sons variés ; sous « réduire les animations », ni secousse ni gel prolongé. Aucun sang : les casseurs restent étourdis avec des étoiles, puis disparaissent.
 
 ## 13. Score, compteur de casseurs neutralisés et bilan
 
@@ -1354,11 +1373,11 @@ Installation PWA facultative, démarrage hors connexion après cache complet, ma
 | --- | --- | --- |
 | Vue et rendu | 2D du dessus non isométrique, tuiles de 32 px, sprites Universal LPC, zoom de caméra entier en mode RESIZE | Habillage abouti, optimisation |
 | Héros | Paul unique, déplacement en huit directions, frappe circulaire | — |
-| Hordes | Trois variantes cosmétiques, rôles contact et lanceur, barème +1 égal | Casseurs renforcés, nouveaux types d’ennemis |
-| Projectiles | Lancers annoncés, récupération au sol, stock de trois, renvoi | Blocage par bouclier |
-| Armes | Bâton, Marteau, Panneau de signalisation ; apparition aléatoire, usure et bris | Gant de boxe à ressort, Kamehame, Bouclier |
-| Objectifs | École, voiture, abribus et boutique de jeux rétro (v1.9.4) avec santé, Molotov, feu et ruines ; caisses à outils (réparation ou extinction par Agir) ; secours dynamique | Monument, maternelle, kiosque, mairie, bibliothèque |
-| Soins | Stations au contact, petits soins de terrain | — |
+| Hordes | Trois variantes cosmétiques, rôles contact, lanceur de pierres, Molotov et lanceur sur Paul (v1.9.4), barème +1 égal | Nouveaux types d’ennemis : coureur, costaud, tireur AK-47 cartoon, mini-boss « Le Caïd » (section 12.14) |
+| Projectiles | Lancers annoncés, récupération au sol, stock de trois, renvoi, blocage par le bouclier (v1.9.7), flaques de feu des lanceurs sur Paul | Balles des tireurs (section 12.14) |
+| Armes | Bâton, Marteau, Panneau de signalisation ; apparition aléatoire, usure et bris ; bouclier et onde d’énergie (« kamehame ») à tir chargé, mode furie, indicateur réservé aux armes spéciales (v1.9.3, v1.9.7) | Gant de boxe à ressort, flashball |
+| Objectifs | École, voiture, abribus et boutique de jeux rétro (v1.9.4) avec santé, Molotov, feu et ruines ; monument à cavalier avec capture du drapeau ; caisses à outils (réparation ou extinction par Agir) ; secours dynamique avec objets volés à rendre (v1.9.5) ; casse phare tirée au sort à partir de la manche 2 | Maternelle, kiosque, mairie, bibliothèque |
+| Soins | Stations au contact (+25, rechargées entre les manches) | Petits soins de terrain : +10 tous les 8 KO, deux au sol au plus (section 12.5) |
 | Structure | Manches à effectif fixe (10, 14, 18, 22, puis +4), répit de 6 s avec panneau « Manche N terminée », annonce, retournement et apogée (tranche 2, phase A) | Nouveautés par manche de la section 12.2 (ennemis, armes, casse) |
 | Score et bilan | Score, compteur « Casseurs neutralisés », record local, bilan | Statistiques de manche |
 | Accès | Landing sur `/`, jeu sur `/jouer/`, démarrage immédiat par `/jouer/?go` | — |
@@ -1366,7 +1385,7 @@ Installation PWA facultative, démarrage hors connexion après cache complet, ma
 
 Les éléments de la colonne « Reste à faire » demeurent des exigences de la cible de diffusion.
 
-**Tranche 2 « Fun » — phases B à D à venir.** La phase A (rythme des manches, santé des lieux, Molotov, feu, ruines, caisses à outils, voiture et abribus) est décrite dans ce document. Les phases suivantes suivent la [conception de la tranche 2 « Fun »](superpowers/specs/2026-10-20-slice-2-fun-design.md) : **B** nouveaux ennemis (coureur, costaud, tireur AK-47 cartoon, mini-boss « Le Caïd ») et nouvelles armes (flashball, gant de boxe à ressort, bouclier, kamehame) ; **C** nouveaux lieux de casse (boutique au rideau automatique, monument, maternelle, kiosque, mairie, bibliothèque) et deux urgences simultanées ; **D** chutes de KO comiques (dont des chutes rares « WTF » et l’effet domino), gel d’impact, secousse et onomatopées pixel. Cette conception l’emporte sur les règles plus anciennes qu’elle contredit.
+**Tranche 2 « Fun » — état d’avancement (v1.9.10).** Conception : [tranche 2 « Fun »](superpowers/specs/2026-10-20-slice-2-fun-design.md), qui l’emporte sur les règles plus anciennes qu’elle contredit. **Phase A (livrée) :** rythme des manches, santé des lieux, Molotov, feu, ruines, caisses à outils, voiture, abribus, casse phare tirée au sort. **Phase B (en partie) :** livrés — bouclier, onde d’énergie, mode furie, lanceurs sur Paul ; à faire — coureur, costaud, tireur AK-47 cartoon, mini-boss « Le Caïd », gant de boxe à ressort, flashball (section 12.14). **Phase C (en partie) :** livrés — boutique de jeux rétro, monument et capture du drapeau, deux urgences simultanées ; à faire — maternelle, kiosque, mairie, bibliothèque, petits soins de terrain. **Phase D (à peine commencée) :** livrés — projections du mode furie, casseurs satellisés par l’onde d’énergie, points flottants ; à faire — chutes de KO comiques par arme, chutes rares « WTF » et effet domino, gel d’impact, secousse et onomatopées sur tous les coups (section 12.15).
 
 ## 25. Décisions restantes et sources
 
@@ -1437,6 +1456,7 @@ Une capture d’écran pixelisée, une conversion de perspective ou les anciens 
 - **1.9.4 — 21 octobre 2026 :** lanceurs sur Paul (section 10.9), à la demande du porteur du projet : dès la manche 3, quelques casseurs lancent leurs Molotov sur Paul (environ un casseur de remplissage sur huit, trois au plus par manche, et le dernier lanceur de Molotov de chaque attaque après sa bouteille sur le lieu) ; élan de 1,2 s avec ligne de visée, bouteille de 0,7 s vers la position de Paul au début de l’élan, flaque de feu de 3,5 s (4 PV toutes les 0,5 s, moitié en mode furie, six au plus), sans bannière (sections 8, 10.9, 16 ; RC-103, RC-104). Carte « Comment jouer » bloquante au lancement (RC-70, RC-87) : la partie attend une touche, un clic ou un toucher. Boutique de jeux vidéo rétro (sections 10, 12.2, 14, 24 ; RC-105, RC-106), à la demande du porteur du projet : nouveau bâtiment à protéger (100 PV, +6 / −2 / +4), tirée au sort comme casse phare avec les autres lieux libres dès la manche 2 ; « BOUTIQUE EN FEU ! », enseigne pixel « JEUX RÉTRO » ; le rideau et le commerçant de la section 23.1 restent non livrés. Statue équestre au drapeau français et capture du drapeau (section 11 réécrite, EX-15, sections 12.2, 13, 14.1 ; RC-32, RC-107 à RC-109), à la demande du porteur du projet : dès la manche 4, en alternance avec le secours, des casseurs attaquent la statue et remplacent en quelques secondes le drapeau français par un drapeau palestinien (−3) ; tous KO avant = +4 ; le drapeau reste palestinien jusqu’à ce que Paul tienne 8 s la zone sans hostile à l’intérieur (+10 par reprise). Casse phare tirée au sort à partir de la manche 2 (manche 1 = école ; RC-106, RC-110), à la demande du porteur du projet.
 - **1.9.5 — 21 octobre 2026 :** objets volés à rendre (sections 12.10, 12.12 ; RC-111, RC-112), à la demande du porteur du projet : pendant un secours, aux seuils de 75, 50 et 25 % de la réserve, un agresseur prend un objet personnel ordinaire de la victime (sac, chapeau, canne, sac à dos, écharpe, casquette ; jamais de vêtement porté ni rien de dégradant) ; le voleur KO le lâche, Paul le ramasse et le rend près de la victime (+2 par objet) ; un secours sécurisé attend jusqu’à 12 s les objets dehors avant les 1,5 s de « MERCI ! » et le +6 ; objets non rendus perdus sans pénalité ; carte « Objets 1/3 rendus », case « Objets N », bulles « MON SAC ! ». Les agresseurs de victime ne quittent plus leur poste pour Paul quand il reste peu de casseurs (les dégradeurs, si ; section 10).
 - **1.9.9 — 21 octobre 2026 :** points flottants (section 14.1 ; RC-118), à la demande du porteur du projet : « +N » vert et « -N » rouge en police pixel, qui apparaissent puis montent et s’effacent depuis le casseur KO, la porte du lieu, la victime, le monument ou Paul (bonus de manche) ; chaque variation du score de `Rules` porte sa position (événement `ScoreChanged`).
+- **1.9.10 — 21 octobre 2026 :** mise en cohérence du cahier avec le jeu livré : tableau et paragraphe de la section 24 mis à jour (bouclier, onde d’énergie, monument, boutique, secours à objets volés livrés ; maternelle, kiosque, mairie, bibliothèque, petits soins de terrain, nouveaux ennemis, gant, flashball, chutes comiques restent à faire) ; nouvelles sections 12.14 (ennemis et armes de la phase B) et 12.15 (chutes et effets de coups de la phase D) reprises de la conception ; lunettes de Paul (section 6.1) ; bulle de mécontentement du groupe pacifique.
 - **1.9.8 — 21 octobre 2026 :** casseurs satellisés par l’onde d’énergie (section 8.9 ; RC-116), à la demande du porteur du projet : envol `satellite` (1 100–1 800 px, 6–10 tours, le long du rayon) au lieu du tourbillon du mode furie ; vol d’environ 1,3 s qui accélère, tournoie, monte et rapetisse, sans limite de carte, puis étoile « ✦ » (et « PING ! » une fois sur deux) au bord de l’écran où il sort, ou à sa fin s’il reste à l’écran, départs décalés de 0 à 120 ms, et plus aucun corps au sol ; 16 satellites au plus ; 0,5 s sans rotation avec `prefers-reduced-motion`.
 - **1.9.7 — 21 octobre 2026 :** armes spéciales (section 8.9 ; sections 8.7, 8.8, 12.2, 14.1, 16 ; RC-102, RC-113 à RC-117), à la demande du porteur du projet : **bouclier** (20 s, bloque de face pierres et bouteilles, coup de bouclier qui repousse sans usure) et **onde d’énergie** (identifiant `kamehame` ; maintenir Frapper 1 s, Paul immobile, rayon de 320 px qui met KO toute la ligne et s’arrête aux obstacles et au groupe ; 2 tirs) ; entrée « Frapper maintenu » (`strikeHeld`) ; le retournement tire au sort parmi les spéciaux débloqués (bouclier dès la manche 3, mode furie dès la 4, onde dès la 5), une arme ordinaire avant ; bannière et indicateur de bord d’écran **seulement pour les spéciaux** (« FURIE », « BOUCLIER », « RAYON »), plus jamais pour une arme ordinaire (fin de « ARME SPÉCIALE ! »). Menu pause et autres panneaux superposés centrés à l’écran, horizontalement et verticalement (défilement conservé pour les panneaux longs).
 - **1.9.6 — 21 octobre 2026 :** HUD (section 14.1, sections 10.6 et 12.12 ; RC-56, RC-98), à la demande du porteur du projet : santé au-dessus de Paul (barre pixel dans le monde, verte / jaune / rouge, clignotement blanc au coup, masquée au KO ; valeur gardée pour les lecteurs d’écran), liste de score en police pixel en haut à gauche (SCORE en grand, NEUTRALISÉS, MANCHE N · K/T, PIERRES, ARME, OBJETS), indicateur de caisse retiré.
