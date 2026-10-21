@@ -156,10 +156,24 @@
 @media (max-width: 400px) { .bb-round { gap: 5px; padding: 6px 8px; } .bb-round .title { font-size: 11px; } .bb-round .score { font-size: 8px; } .bb-round, .bb-round .obj { font-size: 7px; } }
 @media (prefers-reduced-motion: reduce) { .bb-alert, .bb-edge, .bb-stats .wave.pulse .val, .bb-stats .wave.pulse .lbl, .bb-stats .score .val.pop, .bb-round.in, .bb-round .bonus { animation: none; } }
 
-.bb-overlay { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-start; justify-content: center; overflow: auto; background: rgba(10, 8, 16, 0.88); color: var(--bb-fg); font: 16px/1.45 system-ui, sans-serif; -webkit-user-select: text; user-select: text; touch-action: pan-y; }
+/*
+ * Menus and modals centred on screen, horizontally and vertically. The panel's auto margins do the centring and stay
+ * "safe": a panel taller than the screen starts at the top and the overlay scrolls (align-items: center alone would
+ * clip its top). Safe-area insets pad the overlay (notches, home bar).
+ */
+.bb-overlay {
+  position: fixed; inset: 0; z-index: 20; box-sizing: border-box; display: flex; align-items: center; justify-content: center; overflow: auto;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: rgba(10, 8, 16, 0.88); color: var(--bb-fg); font: 16px/1.45 system-ui, sans-serif; -webkit-user-select: text; user-select: text; touch-action: pan-y;
+}
 .bb-overlay[data-panel='start'] { background: var(--bb-bg); }
 .bb-overlay[hidden] { display: none; }
-.bb-panel { box-sizing: border-box; width: min(640px, 100%); margin: auto; padding: 20px 16px 28px; }
+.bb-panel { box-sizing: border-box; width: min(640px, 100%); flex: 0 0 auto; margin: auto; padding: 20px 16px 28px; }
+/* short menus (pause, leave confirmation): a narrow column, centred, title included */
+.bb-overlay[data-panel='pause'] .bb-panel { width: min(360px, 100%); text-align: center; }
+.bb-overlay[data-panel='pause'] .bb-panel .col { max-width: none; }
+.bb-overlay[data-panel='confirm'] .bb-panel { width: min(480px, 100%); text-align: center; }
+.bb-overlay[data-panel='confirm'] .bb-panel .row { justify-content: center; }
 .bb-panel h1 { margin: 0 0 8px; font-size: 28px; color: var(--bb-accent); }
 .bb-panel h2 { margin: 20px 0 6px; font-size: 18px; }
 .bb-panel p { margin: 6px 0; }
