@@ -117,3 +117,46 @@ export function satellitePose(from: Vec, launch: Launch, ms: number, reduced = f
     t,
   };
 }
+
+/** Satellites of one beam leave one after the other: SATELLITE_STAGGER_MS per index, at most SATELLITE_DELAY_MAX_MS. */
+export const SATELLITE_STAGGER_MS = 30;
+export const SATELLITE_DELAY_MAX_MS = 120;
+
+/** Deterministic take-off delay (ms) of the `index`-th body satellised by one beam (0, 30, 60, 90, 120, 0, 30…). */
+export function satelliteDelay(index: number): number {
+  const steps = SATELLITE_DELAY_MAX_MS / SATELLITE_STAGGER_MS + 1;
+  return (Math.max(0, Math.floor(index)) % steps) * SATELLITE_STAGGER_MS;
+}
+
+export interface ViewRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Where a satellite leaves the view: null while `cur` is still inside `view` shrunk by `inset` (world px); else the
+ * point where the segment `prev` → `cur` crosses that inner rectangle's edge (when `prev` was inside), clamped inside
+ * it — so a twinkle drawn there is always on screen.
+ */
+export function edgeExit(prev: Vec, cur: Vec, view: ViewRect, inset: number): Vec | null {
+  const x0 = view.x + inset;
+  const y0 = view.y + inset;
+  const x1 = view.x + view.width - inset;
+  const y1 = view.y + view.height - inset;
+  const inside = (p: Vec): boolean => p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1;
+  if (inside(cur)) return null;
+  let p = cur;
+  if (inside(prev)) {
+    const dx = cur.x - prev.x;
+    const dy = cur.y - prev.y;
+    let t = 1;
+    if (dx > 0) t = Math.min(t, (x1 - prev.x) / dx);
+    if (dx < 0) t = Math.min(t, (x0 - prev.x) / dx);
+    if (dy > 0) t = Math.min(t, (y1 - prev.y) / dy);
+    if (dy < 0) t = Math.min(t, (y0 - prev.y) / dy);
+    p = { x: prev.x + dx * t, y: prev.y + dy * t };
+  }
+  return { x: Math.min(x1, Math.max(x0, p.x)), y: Math.min(y1, Math.max(y0, p.y)) };
+}

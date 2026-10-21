@@ -3,7 +3,7 @@ import type { CharLayout, CharSheet, Dir } from '../assets';
 import type { Snapshot } from '../../sim/sim';
 import type { Launch, Vec } from '../../sim/types';
 import { DEPTH } from './depth';
-import { landingDistance, launchPose, satellitePose } from './furieMath';
+import { edgeExit, landingDistance, launchPose, satelliteDelay, satellitePose } from './furieMath';
 import { MAX_SATELLITES, Twinkles } from './satellite';
 
 type HostileSnap = Snapshot['hostiles'][number];
@@ -293,6 +293,7 @@ export interface LaunchCtx {
   blocked: (p: Vec) => boolean;
   twinkles: Twinkles;
   view: () => Phaser.Geom.Rectangle;
+  zoom: () => number;
   satellites: { flying: number };
   reducedMotion: boolean;
 }
@@ -314,6 +315,9 @@ class HostileView {
   private gone = false;
   /** The satellite counter this body takes a slot of while it flies (released when it vanishes or is removed). */
   private slot: { flying: number } | null = null;
+  /** Satellite: last drawn point (edge crossing) and whether its one twinkle was shown. */
+  private lastPt: Vec | null = null;
+  private twinkled = false;
 
   constructor(scene: Phaser.Scene, h: HostileSnap) {
     const sheet = `rioter_${h.variant}_${h.lifeId % 2 === 0 ? 'a' : 'b'}`;
@@ -324,7 +328,8 @@ class HostileView {
     this.bottle = h.role === 'molotov' || h.role === 'firebomber' ? new BottleProp(scene) : null;
   }
 
-  launch(from: Vec, launch: Launch, nowMs: number, ctx: LaunchCtx): void {
+  /** `index` = rank of this body among the satellites of one beam (take-off stagger, see satelliteDelay). */
+  launch(from: Vec, launch: Launch, nowMs: number, ctx: LaunchCtx, index = 0): void {
     if (this.gone || this.flight) return;
     if (launch.kind === 'satellite') {
       // over the cap: no flight, it vanishes at once with its twinkle
@@ -334,7 +339,7 @@ class HostileView {
       }
       ctx.satellites.flying += 1;
       this.slot = ctx.satellites;
-      this.flight = { from: { ...from }, launch, dist: launch.power, start: nowMs, landed: false };
+      this.flight = { from: { ...from }, launch, dist: launch.power, start: nowMs + satelliteDelay(index), landed: false };
       return;
     }
     const dist = landingDistance(from, launch, ctx.world, ctx.blocked);
@@ -413,6 +418,16 @@ class HostileView {
     const pose = satellitePose(f.from, f.launch, nowMs - f.start, ctx.reducedMotion);
     const x = Math.round(pose.x);
     const y = Math.round(pose.y - pose.lift - SPIN_LIFT);
+    // the one twinkle: where it leaves the camera view (inset 8 screen px), else where it ends
+    if (!this.twinkled && this.lastPt) {
+      const cam = ctx.view();
+      const exit = edgeExit(this.lastPt, { x, y }, cam, 8 / ctx.zoom());
+      if (exit) {
+        this.twinkled = true;
+        ctx.twinkles.spawn(exit.x, exit.y, nowMs);
+      }
+    }
+    this.lastPt = { x, y };
     if (pose.t >= 1) {
       this.vanish(x, y, nowMs, ctx);
       return;
@@ -427,9 +442,13 @@ class HostileView {
     if (Math.floor(nowMs / 40) % 2 === 0) ctx.trail.emitParticleAt(x, y, 1);
   }
 
-  /** The satellite is gone: a twinkle where it vanished when that point is on screen, then the sprites are destroyed. */
+  /** The satellite is gone: its twinkle where it vanished (unless already shown at the view edge), sprites destroyed. */
   private vanish(x: number, y: number, nowMs: number, ctx: LaunchCtx): void {
-    if (ctx.view().contains(x, y)) ctx.twinkles.spawn(x, y, nowMs);
+    if (!this.twinkled) {
+      this.twinkled = true;
+      const exit = edgeExit({ x, y }, { x, y }, ctx.view(), 8 / ctx.zoom());
+      ctx.twinkles.spawn(exit?.x ?? x, exit?.y ?? y, nowMs);
+    }
     this.destroy();
   }
 
@@ -476,6 +495,7 @@ export class HostileLayer {
       blocked: opts.blocked,
       twinkles: this.twinkles,
       view: () => scene.cameras.main.worldView,
+      zoom: () => scene.cameras.main.zoom || 1,
       satellites: { flying: 0 },
       reducedMotion: opts.reducedMotion ?? false,
     };
@@ -485,8 +505,8 @@ export class HostileLayer {
    * The body of `lifeId` (knocked out at `from`) flies along the launch: a tumble for furieMath.LAUNCH_MS, a satellite
    * for SATELLITE_MS (then gone).
    */
-  launch(lifeId: number, from: Vec, launch: Launch, nowMs: number): void {
-    this.views.get(lifeId)?.launch(from, launch, nowMs, this.ctx);
+  launch(lifeId: number, from: Vec, launch: Launch, nowMs: number, index = 0): void {
+    this.views.get(lifeId)?.launch(from, launch, nowMs, this.ctx, index);
   }
 
   update(list: Snapshot['hostiles'], nowMs: number): void {

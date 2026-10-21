@@ -116,3 +116,14 @@ Product owner: « quand j'utilise l'onde d'énergie, j'ai envie que les émeutie
   nothing left on the ground.
 - Concern: the vanish point is usually off screen (1100+ px away), so the twinkle mostly shows for shots aimed at a
   short screen axis or with zoom 1 on a wide window; the climb (220 px) keeps it near the screen when firing down.
+
+### Follow-up 2: twinkle always seen, staggered take-off
+- `furieMath.edgeExit(prev, cur, view, inset)` (pure): null while inside the camera view shrunk by 8 screen px (8 / zoom
+  world px); else the point where the frame's step crosses that inner edge, clamped inside. `HostileView` spawns the one
+  « ✦ » twinkle there on the first frame outside; if the body ends on screen, the end-point twinkle stays; a flag makes
+  it one twinkle per body (an over-cap body or one that never had an inside frame twinkles at its point clamped into
+  the view). Twinkle and « PING ! » scaled ×max(1, round(2 / zoom)) like the other bubbles.
+- `furieMath.satelliteDelay(index)` = (index mod 5) × 30 ms → 0–120 ms; `WorldScene` ranks the satellite KOs of the
+  event batch, `HostileLayer.launch(…, index)` starts the flight that much later (the body waits at its spot).
+- Tests: edge crossing (straight, diagonal, corner, starting outside), no exit inside, stagger values and bounds.
+- Dev server: a 5-KO beam to the right gave exactly 5 twinkles, all on the inset right edge of the view.

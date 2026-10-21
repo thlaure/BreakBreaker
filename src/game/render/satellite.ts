@@ -23,6 +23,8 @@ interface Twinkle {
   star: Phaser.GameObjects.Image;
   ping: Phaser.GameObjects.Text;
   born: number;
+  /** Zoom compensation at spawn time. */
+  k: number;
 }
 
 /**
@@ -43,7 +45,7 @@ export class Twinkles {
         .setDepth(DEPTH.overlay + 2)
         .setVisible(false);
       ping.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
-      this.pool.push({ star, ping, born: -Infinity });
+      this.pool.push({ star, ping, born: -Infinity, k: 1 });
     }
   }
 
@@ -51,8 +53,14 @@ export class Twinkles {
     let tw = this.pool[0]!;
     for (const q of this.pool) if (q.born < tw.born) tw = q;
     tw.born = nowMs;
+    // scaled for the camera zoom like the other bubbles (×2 at zoom 1)
+    const zoom = tw.star.scene.cameras.main.zoom || 1;
+    tw.k = Math.max(1, Math.round(2 / zoom));
     tw.star.setPosition(Math.round(x), Math.round(y)).setVisible(true);
-    tw.ping.setPosition(Math.round(x), Math.round(y) - 6).setVisible(this.count++ % PING_EVERY === 0);
+    tw.ping
+      .setPosition(Math.round(x), Math.round(y) - 6 * tw.k)
+      .setScale(tw.k)
+      .setVisible(this.count++ % PING_EVERY === 0);
   }
 
   update(nowMs: number): void {
@@ -67,7 +75,7 @@ export class Twinkles {
       const t = age / TWINKLE_MS;
       // pops to ×3, then shrinks to nothing, by whole steps; quarter turns keep the pixels crisp
       const s = t < 0.2 ? 1 + 10 * t : 3 * (1 - (t - 0.2) / 0.8);
-      tw.star.setScale(Math.max(0.25, Math.round(s * 2) / 2)).setAngle(Math.floor(age / 90) % 2 === 0 ? 0 : 90);
+      tw.star.setScale(tw.k * Math.max(0.25, Math.round(s * 2) / 2)).setAngle(Math.floor(age / 90) % 2 === 0 ? 0 : 90);
       tw.ping.setAlpha(t > 0.7 ? (1 - t) / 0.3 : 1);
     }
   }

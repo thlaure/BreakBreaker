@@ -291,6 +291,8 @@ export class WorldScene extends Phaser.Scene {
 
   private react(events: SimEvent[], time: number, snap: Snapshot): void {
     let furieHit = false;
+    /** Rank of each body satellised by this batch's beam (take-off stagger). */
+    let satellites = 0;
     for (const e of events) {
       if (e.type === 'HitConfirmed') {
         this.hostiles.flash(e.targetLifeId, time);
@@ -302,7 +304,8 @@ export class WorldScene extends Phaser.Scene {
         }
       } else if (e.type === 'ActorKnockedOut' && e.launch) {
         const h = snap.hostiles.find((x) => x.lifeId === e.lifeId);
-        if (h) this.hostiles.launch(e.lifeId, h.pos, e.launch, time);
+        const index = e.launch.kind === 'satellite' ? satellites++ : 0;
+        if (h) this.hostiles.launch(e.lifeId, h.pos, e.launch, time, index);
       } else if (e.type === 'PlayerDamaged') {
         const cam = this.cameras.main;
         cam.shake(SHAKE_MS, new Phaser.Math.Vector2(SHAKE_PX / cam.width, SHAKE_PX / cam.height), true);
