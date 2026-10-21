@@ -146,14 +146,13 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
 }
 
 /**
- * Rescue card progress once a belonging was stolen: « Objets 1/3 rendus » (returned / stolen so far); null before any
- * theft.
+ * Rescue card progress once a belonging was stolen: « Objets 1/3 rendus » (returned / every belonging the victim
+ * carries); null before any theft.
  */
 export function rescueItemsLine(r: NonNullable<Snapshot['rescue']>): string | null {
-  const stolen = r.items.filter((it) => it.state !== 'held').length;
-  if (stolen === 0) return null;
+  if (!r.items.some((it) => it.state !== 'held')) return null;
   const back = r.items.filter((it) => it.state === 'returned').length;
-  return `Objets ${back}/${stolen} rendus`;
+  return `Objets ${back}/${r.items.length} rendus`;
 }
 
 /** HUD slot beside the toolbox while Paul carries belongings to hand back: « Objets 2 »; null when he carries none. */

@@ -8,7 +8,8 @@ export const CONFIG = {
   /**
    * Site-bound rioters (degraders, victim aggressors) are drawn to Paul: they engage him within `aggroRadius` px with a
    * clear line and go back to their post beyond `aggroRelease` px; with at most `fewLeft` hostiles active, one at its
-   * post for more than `postSec` s leaves it for Paul for good. A Molotov is never diverted before its throw.
+   * post for more than `postSec` s leaves it for Paul for good (degraders only: a victim aggressor stays on the victim
+   * until Paul comes within `aggroRadius`). A Molotov is never diverted before its throw.
    */
   hostile: {
     baseHp: 2,

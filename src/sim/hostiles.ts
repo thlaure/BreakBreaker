@@ -268,13 +268,13 @@ export class Horde {
   /**
    * Draws a site-bound rioter (degrader, victim aggressor) to Paul: it fights him (target 'player', as a contact) while
    * he is within aggroRadius with a clear line, until he is beyond aggroRelease; then it goes back to its post. With
-   * few hostiles left, one at its post for more than postSec leaves it for good. A Molotov (or a rioter turned contact)
-   * is never concerned.
+   * few hostiles left, a degrader at its post for more than postSec leaves it for good; a victim aggressor never does
+   * (it keeps robbing the victim until Paul comes close). A Molotov (or a rioter turned contact) is never concerned.
    */
   private engage(h: Hostile, a: Aux, now: number, ctx: HordeCtx): void {
     if (a.home === null || (h.role !== 'degrader' && h.role !== 'aggressor')) return;
     const lost = a.home === 'facade' ? !this.siteOf(h, ctx) : !ctx.victimPos;
-    const pulled = this.few && a.postAt !== null && now - a.postAt > CONFIG.hostile.postSec + EPS;
+    const pulled = h.role === 'degrader' && this.few && a.postAt !== null && now - a.postAt > CONFIG.hostile.postSec + EPS;
     if (lost || pulled) {
       a.home = null;
       h.target = 'player';

@@ -31,13 +31,13 @@ function snap(patch: (s: Snapshot) => void = () => {}): Snapshot {
 }
 
 describe('rescue belongings in the HUD', () => {
-  test('card progress « Objets n/m rendus » once something was stolen', () => {
+  test('card progress « Objets n/3 rendus » (out of every belonging) once something was stolen', () => {
     expect(rescueItemsLine(rescue([]))).toBeNull();
-    expect(rescueItemsLine(rescue(['carried-by-thief']))).toBe('Objets 0/1 rendus');
+    expect(rescueItemsLine(rescue(['carried-by-thief']))).toBe('Objets 0/3 rendus');
     expect(rescueItemsLine(rescue(['returned', 'dropped', 'carried']))).toBe('Objets 1/3 rendus');
     const lines = incidentLines(snap((x) => (x.rescue = rescue(['returned', 'carried-by-thief']))), 'en cours');
     const r = lines.find((l) => l.key === 'rescue')!;
-    expect(r.items).toBe('Objets 1/2 rendus');
+    expect(r.items).toBe('Objets 1/3 rendus');
     expect(r.time).toBe('20 s');
   });
 

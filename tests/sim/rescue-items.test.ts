@@ -1,11 +1,13 @@
 import { describe, expect, test } from 'vitest';
 import { CONFIG } from '../../src/sim/config';
-import { Horde } from '../../src/sim/hostiles';
+import { Horde, type HordeCtx } from '../../src/sim/hostiles';
 import { RESCUE_ITEMS, RescueIncident } from '../../src/sim/incidents/rescue';
 import { DISTRICT } from '../../src/sim/map/district';
+import { FlowField } from '../../src/sim/map/flowfield';
 import { Grid } from '../../src/sim/map/grid';
 import { dist } from '../../src/sim/math';
 import { createPlayer } from '../../src/sim/player';
+import { Rocks } from '../../src/sim/projectiles';
 import { rng } from '../../src/sim/rng';
 import { Rules } from '../../src/sim/rules';
 import { Sim } from '../../src/sim/sim';
@@ -210,12 +212,42 @@ describe('rescue belongings (« objets volés à rendre »)', () => {
   });
 });
 
+test('a small rescue alone on the map (3 aggressors, Paul far, real AI) loses its 3 belongings at 75/50/25 %, then fails', () => {
+  const { horde, rules, player, inc, of } = setup(5);
+  expect(horde.list).toHaveLength(3);
+  const ctx: HordeCtx = {
+    player,
+    grid,
+    fields: { player: new FlowField(grid), victim: new FlowField(grid) },
+    rocks: new Rocks(grid),
+    sites: {},
+    victimPos: site,
+    pressure: 1,
+  };
+  const ev: SimEvent[] = [];
+  const atTheft: number[] = [];
+  let now = 0;
+  for (let i = 0; i < 60 * 40 && inc.stage === 'threat'; i++) {
+    horde.step(DT, (now += DT), ctx);
+    const e = inc.step(DT, { horde, rules, player });
+    if (e.some((x) => x.type === 'ItemStolen')) atTheft.push(inc.remaining);
+    ev.push(...e);
+  }
+  // nobody leaves the victim after 6 s at its post: the reserve runs out, one theft at each threshold
+  expect(of(ev, 'ItemStolen')).toHaveLength(3);
+  R.theftAt.forEach((share, k) => expect(atTheft[k]).toBeCloseTo(share * R.threatSeconds, 1));
+  expect(inc.stage).toBe('failed');
+  expect(inc.remaining).toBe(0);
+  for (const it of inc.items) expect(it.state).toBe('lost');
+  expect(inc.carried).toBe(0);
+  expect(rules.score).toBe(0);
+  for (const h of horde.list) expect(h.target).toBe('player');
+});
+
 describe('belongings in the full sim', () => {
   /**
-   * KOs every hostile at once, except while a rescue is threatened for less than `rescueSec` s: then nobody is KO'd,
-   * and two patrols (outside the round roster) stand in a far corner so more than CONFIG.hostile.fewLeft rioters are
-   * active and the aggressors stay on the victim. Once the rescue is secured, Paul teleports onto each dropped
-   * belonging, then to the victim (`fetch`).
+   * KOs every hostile at once, except while a rescue is threatened for less than `rescueSec` s: then nobody is KO'd.
+   * Once the rescue is secured, Paul teleports onto each dropped belonging, then to the victim (`fetch`).
    */
   function play(seed: number, rescueSec: number, fetch: boolean) {
     const sim = new Sim(seed, { invulnerable: true });
@@ -225,10 +257,7 @@ describe('belongings in the full sim', () => {
     for (let i = 0; i < 60 * 240 && sim.rules.stats.roundsCompleted === 0; i++) {
       if (sim.school.stage === 'cinematic') sim.skipCinematic();
       const r = sim.rescue;
-      if (r?.stage === 'threat' && threatAt === null) {
-        threatAt = sim.now;
-        for (let k = 0; k < 2; k++) sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { x: 80 + 30 * k, y: 80 } });
-      }
+      if (r?.stage === 'threat' && threatAt === null) threatAt = sim.now;
       const hold = r?.stage === 'threat' && sim.now - threatAt! < rescueSec;
       if (!hold)
         for (const h of sim.horde.active()) if (sim.horde.applyHit(h.lifeId, 99) === 'ko') sim.rules.onKnockout(h.lifeId);

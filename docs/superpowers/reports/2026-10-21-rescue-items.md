@@ -11,9 +11,10 @@ nudity or anything degrading, in sprites, text, bubbles, docs or tests.
 | --- | --- |
 | `a76b468` | sim: belongings, thefts, drops, pickup/return, return wait, snapshot + events, tests |
 | `edd57ee` | render / HUD / audio: item icons and layer, victim shouts, card progress and slot, edge indicator, sounds; tests |
-| (docs commit) | CAHIER_DES_CHARGES v1.9.5 (§12.10, §12.12, RC-111/RC-112, changelog), README, this report |
+| `68b7a87` | CAHIER_DES_CHARGES v1.9.5 (§12.10, §12.12, RC-111/RC-112, changelog), README, this report |
+| (follow-up commit) | victim aggressors exempt from the « few left » pull; « Objets n/3 rendus »; tests, CAHIER, this report |
 
-Final checks: `npx vitest run` 418/418 (399 before), `npm run typecheck` clean, `npm run build` ok, `npm run bench`
+Final checks: `npx vitest run` 419/419 (399 before), `npm run typecheck` clean, `npm run build` ok, `npm run bench`
 per-step mean ≈ 0.21–0.23 ms (budget 0.3 ms).
 
 ## Sim (`src/sim`)
@@ -55,7 +56,7 @@ per-step mean ≈ 0.21–0.23 ms (budget 0.3 ms).
   a new rescue id.
 - `render/crowd.ts`: `Bubble` accepts `shout:<id>` kinds (red, like the call for help); `VictimView` uses `VictimMood`.
   The view is still keyed on the rescue id (the invisible-victim fix is kept).
-- HUD: rescue card gets an `items` span « Objets 1/3 rendus » (returned / stolen so far) after the first theft; during
+- HUD: rescue card gets an `items` span « Objets 1/3 rendus » (returned / all the victim's belongings) after the first theft; during
   the wait the time reads « Rends les objets · 8 s »; slot « Objets 2 » beside « Caisse » while carrying (hidden at 0).
   `activeIncidents` keeps the rescue while threatened or while secured with an item on the ground or carried, so the
   edge indicator points to the victim and an announced banner is not pruned too early. No new banner.
@@ -85,7 +86,8 @@ director: fine for a look, not for round flow.)
   +2 each once, then +6 once after 1.5 s; wait of 12 s then items lost and +6 once; failure loses thief-held and
   carried items; unique bonus keys over two rescues; full sim: round 1 closes with K === T with every stolen item
   returned, deterministic per seed (events and snapshot); items left on the ground → wait seen, rescue completes, round
-  closes; snapshot shape, plain data, pause freezes.
+  closes; snapshot shape, plain data, pause freezes; a 3-aggressor rescue alone with the real horde AI and Paul far
+  loses its three items at 75/50/25 % and fails coherently.
 - `tests/game/rescue-items-hud.test.ts` (new): card progress and wait text, « Objets N » slot, edge-indicator rule,
   belonging events raise no banner and the rescue banner is pruned only once the rescue is over, shouts for every
   belonging, `VictimMood` sequence (help → shout 2 s → help → thanks), secured wait, new rescue id starts afresh.
@@ -94,16 +96,19 @@ director: fine for a look, not for round flow.)
 
 ## Notes / concerns
 
-- **Thefts are rare when few rioters are on the map.** With at most `CONFIG.hostile.fewLeft` (3) hostiles active,
-  aggressors at their post for more than `postSec` (6 s) leave the victim for Paul, so the reserve stops draining at
-  about 19 s left — just above the first threshold (18.75 s). A small rescue alone on the map (round 1 often, or 2–3
-  aggressors) therefore usually steals nothing; with 4 aggressors, or fill rioters around, the thefts happen as
-  designed. The full-sim test adds two patrols for that reason. If the owner wants thefts in every rescue, options:
-  thresholds earlier (e.g. 0.85/0.6/0.35) or exempt rescue aggressors from the `postSec` pull while Paul is far away —
-  not done here (it is a design call).
+- **Fixed (follow-up): thefts in small rescues.** With at most `CONFIG.hostile.fewLeft` (3) hostiles active, a
+  site-bound rioter at its post for more than `postSec` (6 s) used to leave it for Paul for good; for a victim
+  aggressor this stopped the reserve at about 19 s left, just above the first threshold, so a small rescue alone on
+  the map stole nothing. `Horde.engage` now applies that pull to degraders only; victim aggressors stay on the victim
+  until Paul comes within `aggroRadius` (220 px, release 320 px: unchanged, the intended defence). Consequence: a
+  rescue Paul ignores now runs its reserve out and fails (before, a lone small rescue never could once its aggressors
+  had walked off). The hostiles test that asserted the old pull for aggressors was inverted; a new test runs a
+  3-aggressor rescue alone with the real AI and Paul far: three thefts at 75/50/25 %, then failure with every item
+  lost. The two-patrols workaround in the full-sim test is gone.
 - One thief can carry several items (nearest aggressor each time); its KO drops them all on the same spot, and one
   walk over picks them all up.
-- « Objets n/m rendus » counts against items stolen so far, not the 3 the victim carries (so « 2/2 » reads complete).
+- « Objets n/3 rendus » counts against every belonging the victim carries (follow-up; it first counted the stolen
+  ones only).
 - The thief's icon follows the thief's snapshot position; the « carried » item's `pos` is Paul's.
 - Commit trailer: the commits carry `Co-Authored-By: Claude Opus 5.5` (the model that did the work), not the
   « Sonnet 5.5 » written in the brief.
