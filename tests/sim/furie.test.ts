@@ -286,6 +286,8 @@ describe('where a furie appears', () => {
     }
     expect(twists.get(2)).toBeDefined();
     expect(twists.get(2)!.special).toBeUndefined();
+    expect(twists.get(3)!.special).toBe('bouclier');
+    expect(['furie', 'bouclier', 'kamehame']).toContain(twists.get(5)!.special);
     expect(twists.get(4)).toMatchObject({ kind: 'weaponDrop' });
     expect(['furie', 'bouclier']).toContain(twists.get(4)!.special);
     expect(['furie', 'bouclier', 'kamehame']).toContain(twists.get(6)!.special);

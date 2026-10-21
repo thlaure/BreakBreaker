@@ -47,6 +47,11 @@ export interface RescueCtx {
 }
 
 const VARIANTS: Variant[] = ['classic', 'palestinian', 'antifa'];
+
+/** The rescue variant, 50/50 from one draw. */
+export function drawRescueKind(rand: () => number): RescueKind {
+  return rand() < 0.5 ? 'groupHarassed' : 'elderlyRobbed';
+}
 const SPAWN_MIN_FROM_PLAYER = 160;
 const OFFSET_MIN = 48;
 const OFFSET_MAX = 80;
@@ -94,7 +99,16 @@ export class RescueIncident {
   private rand: () => number = Math.random;
   private grid: Grid | null = null;
 
-  constructor(readonly id: string) {}
+  /**
+   * `kind`: drawn by the director when the rescue is prepared (round start), so the round headline can name it; without
+   * it, start() draws it.
+   */
+  constructor(
+    readonly id: string,
+    private readonly preset: RescueKind | null = null,
+  ) {
+    if (preset) this.kind = preset;
+  }
 
   /** Rioters to knock out in this rescue: aggressors already spawned plus those still waiting to spawn. */
   get total(): number {
@@ -114,7 +128,7 @@ export class RescueIncident {
     this.grid = grid;
     this.victimPos = { ...site };
     this.round = opts.round ?? null;
-    this.kind = rand() < 0.5 ? 'groupHarassed' : 'elderlyRobbed';
+    this.kind = this.preset ?? drawRescueKind(rand);
     this.items = RESCUE_ITEMS[this.kind].slice(0, CONFIG.rescue.itemCount).map((it) => ({
       id: it.id,
       name: it.name,

@@ -3,6 +3,9 @@ import { CONTROLS, RULES } from '../../src/content/controls';
 import { contextPrompt, formatDuration, formatSummary, hpLabel, incidentLines, roundPanel, roundValue, waveLine, weaponLine, weaponValue } from '../../src/game/hud/format';
 import { HEALTH_BAR_W, HEALTH_GREEN, HEALTH_RED, HEALTH_YELLOW, chargeFill, healthColor } from '../../src/game/render/healthBar';
 import { renderMarkdown } from '../../src/game/hud/markdown';
+import { RescueIncident } from '../../src/sim/incidents/rescue';
+import { DISTRICT } from '../../src/sim/map/district';
+import { rng } from '../../src/sim/rng';
 import { Sim, type Snapshot } from '../../src/sim/sim';
 
 function snap(patch: (s: Snapshot) => void = () => {}): Snapshot {
@@ -43,8 +46,8 @@ describe('formatSummary', () => {
     expect(r['Record']).toBe('20');
     expect(r['Manche atteinte']).toBe('3');
     expect(r['Casseurs neutralisés']).toBe('9');
-    expect(r['École']).toBe('sauvée');
-    expect(r['Secours']).toBe('manqué');
+    expect(r['École']).toBe('1 sauvée · 0 perdue');
+    expect(r['Secours']).toBe('0 réussi · 1 raté');
     expect(r['Soins utilisés']).toBe('2');
     expect(r['Pierres ramassées']).toBe('4');
     expect(r['Pierres renvoyées']).toBe('3');
@@ -63,7 +66,7 @@ describe('formatSummary', () => {
     expect(f.newRecord).toBe(true);
     const r = rows(s, null);
     expect(r['Record']).toBe('—');
-    expect(r['École']).toBe('en cours');
+    expect(r['École']).toBe('—');
     expect(r['Secours']).toBe('—');
   });
 
@@ -73,11 +76,53 @@ describe('formatSummary', () => {
       x.stats.rescuesOk = 1;
     });
     const r = rows(s, 1);
-    expect(r['École']).toBe('détruite');
-    expect(r['Secours']).toBe('réussi');
+    expect(r['École']).toBe('0 sauvée · 1 perdue');
+    expect(r['Secours']).toBe('1 réussi · 0 raté');
   });
 
-  test('summary shows Manche atteinte, Manches parfaites, Lieux sauvés / détruits, Réparations', () => {
+  test('École and Secours are session counts (plural from 2), not one status', () => {
+    const s = snap((x) => {
+      x.stats = { ...x.stats, schoolsSaved: 2, schoolsLost: 1, rescuesOk: 3, rescuesFailed: 1 };
+    });
+    const r = rows(s, null);
+    expect(r['École']).toBe('2 sauvées · 1 perdue');
+    expect(r['Secours']).toBe('3 réussis · 1 raté');
+    const t = rows(snap((x) => (x.stats = { ...x.stats, schoolsSaved: 1, schoolsLost: 2, rescuesOk: 0, rescuesFailed: 2 })), null);
+    expect(t['École']).toBe('1 sauvée · 2 perdues');
+    expect(t['Secours']).toBe('0 réussi · 2 ratés');
+  });
+
+  test('monument, belongings and repairs rows; Casseurs neutralisés kept', () => {
+    const s = snap((x) => {
+      x.kos = 31;
+      x.stats = { ...x.stats, monumentsDefended: 2, flagsLost: 1, flagsCaptured: 1, itemsReturned: 4, repairs: 3 };
+    });
+    const r = rows(s, null);
+    expect(r['Casseurs neutralisés']).toBe('31');
+    expect(r['Défenses du monument']).toBe('2');
+    expect(r['Drapeaux perdus']).toBe('1');
+    expect(r['Drapeaux repris']).toBe('1');
+    expect(r['Objets rendus']).toBe('4');
+    expect(r['Lieux réparés']).toBe('3');
+    const labels = formatSummary(s, null).rows.map((x) => x.label);
+    expect(labels.indexOf('Casseurs neutralisés')).toBeLessThan(labels.indexOf('École'));
+  });
+
+  test('a belonging handed back in a session counts in stats.itemsReturned', () => {
+    const sim = new Sim(1);
+    const site = DISTRICT.rescueSites[0]!;
+    const inc = new RescueIncident('rescue#t');
+    inc.start(sim.horde, site, rng(1), { x: site.x + 400, y: site.y }, sim.grid, { count: 0 });
+    inc.items[0]!.state = 'carried';
+    sim.rescue = inc;
+    sim.player.pos = { ...site };
+    const ev = sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false });
+    expect(ev.filter((e) => e.type === 'ItemReturned')).toHaveLength(1);
+    expect(sim.snapshot().stats.itemsReturned).toBe(1);
+    expect(rows(sim.snapshot(), null)['Objets rendus']).toBe('1');
+  });
+
+  test('summary shows Manche atteinte, Manches parfaites, Lieux sauvés / détruits, Lieux réparés', () => {
     const s = snap((x) => {
       x.round = 4;
       x.stats = { ...x.stats, targetsSaved: 3, targetsLost: 2, repairs: 1, roundsPerfect: 2 };
@@ -86,7 +131,7 @@ describe('formatSummary', () => {
     expect(r['Manche atteinte']).toBe('4');
     expect(r['Manches parfaites']).toBe('2');
     expect(r['Lieux sauvés / détruits']).toBe('3 / 2');
-    expect(r['Réparations']).toBe('1');
+    expect(r['Lieux réparés']).toBe('1');
     expect(Object.keys(r)).not.toContain('Vague atteinte');
   });
 });

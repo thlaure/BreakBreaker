@@ -7,18 +7,6 @@ import type { Vec } from './types';
 /** Sample step (px) of the beam's solid check. */
 const BEAM_SAMPLE_PX = 4;
 
-/**
- * True when something travelling along `travel` (its flight direction) hits a shield facing `facing` from the front:
- * the direction it comes from (−travel) is within ±frontDeg/2 of the facing.
- */
-export function shieldBlocks(facing: Vec, travel: Vec, frontDeg: number = CONFIG.bouclier.frontDeg): boolean {
-  const f = norm(facing);
-  const t = norm(travel);
-  if ((f.x === 0 && f.y === 0) || (t.x === 0 && t.y === 0)) return false;
-  const cos = -(f.x * t.x + f.y * t.y);
-  return cos >= Math.cos(((frontDeg / 2) * Math.PI) / 180) - 1e-9;
-}
-
 /** Squared distance from p to segment a→b. */
 function segDist2(p: Vec, a: Vec, b: Vec): number {
   const dx = b.x - a.x;

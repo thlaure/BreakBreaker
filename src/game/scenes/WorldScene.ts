@@ -21,7 +21,7 @@ import { TargetsLayer, makeTargetTextures } from '../render/targets';
 import { StationsView, ToolboxView, WorldView, makeRockTextures, makeTextures } from '../render/world';
 import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapons';
 import { ItemLayer, makeItemTextures } from '../render/items';
-import { ShieldView, SpecialFx, makeSpecialTextures } from '../render/specials';
+import { BubbleView, SpecialFx, makeSpecialTextures } from '../render/specials';
 import { ScorePopups } from '../render/scorePopups';
 
 const HIT_STOP_MS = 60;
@@ -80,8 +80,8 @@ export class WorldScene extends Phaser.Scene {
   private telegraphs!: TelegraphLayer;
   private furieAura!: FurieAura;
   private pows!: PowBubbles;
-  /** The bouclier held in front of Paul. */
-  private shield!: ShieldView;
+  /** The bouclier: a protection bubble around Paul. */
+  private shield!: BubbleView;
   /** Onde d’énergie charge glow and beam, shield block sparks. */
   private specialFx!: SpecialFx;
   /** Floating « +N » / « −N » score popups where points were won or lost. */
@@ -211,7 +211,7 @@ export class WorldScene extends Phaser.Scene {
     this.healthBar = new PaulHealthBar(this, this.reducedMotion);
     this.pows = new PowBubbles(this);
     this.heldWeapon = new HeldWeaponView(this);
-    this.shield = new ShieldView(this);
+    this.shield = new BubbleView(this, this.reducedMotion);
     this.specialFx = new SpecialFx(this);
     this.scorePopups = new ScorePopups(this, this.reducedMotion);
     this.toolboxes = new ToolboxView(this);
@@ -318,7 +318,7 @@ export class WorldScene extends Phaser.Scene {
         const cam = this.cameras.main;
         cam.shake(SHAKE_MS, new Phaser.Math.Vector2(SHAKE_PX / cam.width, SHAKE_PX / cam.height), true);
       } else if (e.type === 'ShieldBlocked') {
-        this.specialFx.block(e.pos, time);
+        this.specialFx.block(this.shield.hit(snap.player.pos, e.pos, time), time);
       } else if (e.type === 'BeamFired') {
         this.specialFx.fire(e.from, e.to, snap.player.facing, time);
         if (!this.reducedMotion) {

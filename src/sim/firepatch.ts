@@ -1,7 +1,6 @@
 import { CONFIG } from './config';
 import type { Grid } from './map/grid';
-import { dist } from './math';
-import { shieldBlocks } from './specials';
+import { dist, norm } from './math';
 import type { SimEvent, Vec } from './types';
 
 /** A firebomb in flight toward `to`; it lands at sim time `landAt`. */
@@ -31,8 +30,8 @@ const ANGLES = 16;
  * a new one beyond `maxAlive` pushes the oldest out. Paul standing inside (centre within `radius`) is hurt every
  * `tickSec`: `hurt` applies the damage through the normal path and says whether it landed (a refused hit, e.g.
  * invulnerability frames, is retried next step). Only Paul is concerned: rioters and targets never.
- * `shield` (Paul's facing while he holds the bouclier): a bottle landing on Paul (within the patch radius + his radius)
- * from the front fizzles: no patch, ShieldBlocked.
+ * `shield` (Paul inside the bouclier's bubble): a bottle landing on Paul (within the patch radius + his radius), from
+ * any side, fizzles: no patch, ShieldBlocked on his rim toward the thrower.
  */
 export class FirePatches {
   list: FirePatch[] = [];
@@ -48,14 +47,16 @@ export class FirePatches {
     return this.bombs;
   }
 
-  step(now: number, grid: Grid, player: Vec, hurt: (amount: number) => boolean, shield: Vec | null = null): SimEvent[] {
+  step(now: number, grid: Grid, player: Vec, hurt: (amount: number) => boolean, shield = false): SimEvent[] {
     const ev: SimEvent[] = [];
     if (this.bombs.length > 0) {
       const landed = this.bombs.filter((b) => b.landAt <= now + EPS);
       if (landed.length > 0) this.bombs = this.bombs.filter((b) => b.landAt > now + EPS);
       for (const b of landed) {
-        if (shield && this.blocked(b, player, shield)) {
-          ev.push({ type: 'ShieldBlocked', pos: { x: player.x + shield.x * PLAYER_R, y: player.y + shield.y * PLAYER_R } });
+        if (shield && dist(b.to, player) <= CONFIG.firePatch.radius + PLAYER_R) {
+          const d = norm({ x: b.from.x - player.x, y: b.from.y - player.y });
+          const u = d.x === 0 && d.y === 0 ? { x: 0, y: -1 } : d;
+          ev.push({ type: 'ShieldBlocked', pos: { x: player.x + u.x * PLAYER_R, y: player.y + u.y * PLAYER_R } });
           continue;
         }
         const pos = freePoint(grid, b.to);
@@ -72,12 +73,6 @@ export class FirePatches {
     if (now >= this.tickAt - EPS && this.list.some((p) => dist(p.pos, player) <= r) && hurt(CONFIG.firePatch.damage))
       this.tickAt = now + CONFIG.firePatch.tickSec;
     return ev;
-  }
-
-  /** The bottle lands on Paul (he would stand in its patch) from within the shield's front cone. */
-  private blocked(b: Firebomb, player: Vec, shield: Vec): boolean {
-    if (dist(b.to, player) > CONFIG.firePatch.radius + PLAYER_R) return false;
-    return shieldBlocks(shield, { x: b.to.x - b.from.x, y: b.to.y - b.from.y });
   }
 
   /** Plain render data. */

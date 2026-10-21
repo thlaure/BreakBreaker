@@ -1,7 +1,6 @@
 import { CONFIG } from './config';
 import type { Grid } from './map/grid';
 import { dist, norm, segmentCircleHit } from './math';
-import { shieldBlocks } from './specials';
 import type { SimEvent, Vec } from './types';
 
 export type RockState = 'EnemyFlying' | 'LandedRecoverable' | 'PlayerFlying' | 'Removed';
@@ -21,8 +20,8 @@ export interface Rock {
 }
 
 export interface RockCtx {
-  /** `shield` = Paul's facing while he holds the bouclier (front rocks are blocked), else null/absent. */
-  player: { pos: Vec; r: number; invulnerable: boolean; shield?: Vec | null };
+  /** `shield` = Paul is inside the bouclier's bubble: every rock that would hit him is blocked, from any side. */
+  player: { pos: Vec; r: number; invulnerable: boolean; shield?: boolean };
   hostiles: { lifeId: number; pos: Vec; r: number; active: boolean }[];
   /** t in [0,1] at which segment a->b first enters the peaceful group, or null. */
   groupBlocks(a: Vec, b: Vec): number | null;
@@ -159,9 +158,8 @@ export class Rocks {
     const gt = ctx.groupBlocks(a, b);
     const st = this.solidHit(a, b);
     const obstacle = Math.min(gt ?? Infinity, st ?? Infinity);
-    const shield = ctx.player.shield ?? null;
-    const blocks = shield !== null && shieldBlocks(shield, { x: b.x - a.x, y: b.y - a.y });
-    // a front rock hits the shield even during the invulnerability frames
+    const blocks = ctx.player.shield === true;
+    // a rock hits the bubble even during the invulnerability frames
     const pt = ctx.player.invulnerable && !blocks ? null : segmentCircleHit(a, b, ctx.player.pos, ctx.player.r);
     if (pt !== null && pt < obstacle && blocks) {
       // blocked by the bouclier: no damage, the rock drops at the hit point and can be picked up

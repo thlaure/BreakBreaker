@@ -40,14 +40,14 @@ describe('round catalogue', () => {
     expect(pressure(50, 500)).toBe(CONFIG.pressureMax);
   });
 
-  test('round 1 = school then rescue; from round 2 a random casse then rescue; twists alternate', () => {
+  test('round 1 = school then rescue; from round 2 a random casse then rescue; a weapon drop every round, plus a second urgency on odd rounds from 3', () => {
     const t = new Targets();
     for (let s = 1; s <= 30; s++)
-      expect(roundPlan(1, rng(s), t)).toEqual({ headline: 'school', beats: [['school'], ['rescue']], twist: null });
+      expect(roundPlan(1, rng(s), t)).toEqual({ headline: 'school', beats: [['school'], ['rescue']], twists: [] });
     for (let r = 2; r <= 8; r++) {
       const p = roundPlan(r, rng(r), t);
       expect(p.beats).toEqual([[p.headline], ['rescue']]);
-      expect(p.twist).toBe(r >= 3 && r % 2 === 1 ? 'secondUrgency' : 'weaponDrop');
+      expect(p.twists).toEqual(r >= 3 && r % 2 === 1 ? ['weaponDrop', 'secondUrgency'] : ['weaponDrop']);
     }
   });
 
@@ -99,7 +99,7 @@ describe('round catalogue', () => {
     expect(roundPlan(4, rng(1), t, null, { french: true, lastWasMonument: false })).toEqual({
       headline: 'monument',
       beats: [['monument']],
-      twist: 'weaponDrop',
+      twists: ['weaponDrop'],
     });
   });
 });
@@ -156,15 +156,19 @@ describe('rounds in the sim', () => {
     expect(twists[0]!.kind).toBe('weaponDrop');
   });
 
-  test('round 3 secondUrgency starts a second attack and raises the total (RoundTotalChanged)', () => {
+  test('round 3 twist drops the bouclier AND starts a second attack that raises the total (RoundTotalChanged)', () => {
     const sim = new Sim(8, { invulnerable: true });
     const ev = drive(sim, roundStarted(3));
     const [rs] = of(ev, 'RoundStarted').filter((e) => e.index === 3);
-    expect(sim.director.plan!.twist).toBe('secondUrgency');
+    expect(sim.director.plan!.twists).toEqual(['weaponDrop', 'secondUrgency']);
     const before = new Set(sim.attacks.filter((a) => a.round === 3).map((a) => a.target));
     const rest = drive(sim, (e) => e.some((x) => x.type === 'TwistStarted'));
-    const [tw] = of(rest, 'TwistStarted');
-    expect(tw!.kind).toBe('secondUrgency');
+    const tws = of(rest, 'TwistStarted');
+    expect(tws.map((t) => t.kind)).toEqual(['weaponDrop', 'secondUrgency']);
+    // the special unlocked at round 3 really appears at round 3
+    expect(tws[0]!.special).toBe('bouclier');
+    const spawned = of(rest, 'WeaponSpawned').filter((w) => w.pos.x === tws[0]!.pos?.x && w.pos.y === tws[0]!.pos?.y);
+    expect(spawned.map((w) => w.kind)).toEqual(['bouclier']);
     const extra = sim.attacks.filter((a) => a.round === 3 && !before.has(a.target));
     expect(extra).toHaveLength(1);
     expect(extra[0]!.urgent()).toBe(true);
@@ -405,7 +409,7 @@ describe('rounds in the sim', () => {
     for (const id of ['car1', 'car2', 'busStop', 'shop'] as const) t.ruin(id, `${id}#x`);
     for (let s = 1; s <= 40; s++) expect(roundPlan(2 + (s % 5), rng(s), t).beats[0]).toEqual(['school']);
     t.ruin('school', 'school#x');
-    expect(roundPlan(2, rng(1), t)).toEqual({ headline: 'rescue', beats: [['rescue']], twist: 'weaponDrop' });
+    expect(roundPlan(2, rng(1), t)).toEqual({ headline: 'rescue', beats: [['rescue']], twists: ['weaponDrop'] });
     expect(roundPlan(4, rng(1), t).beats).toEqual([['rescue']]);
     t.repair('car2');
     expect(roundPlan(3, rng(1), t).beats[0]).toEqual(['car']);
@@ -423,6 +427,36 @@ describe('rounds in the sim', () => {
     // fill = total − rescue aggressors, every one of them knocked out
     const fill = sim.horde.list.filter((h) => h.round === 2 && h.role !== 'aggressor').length;
     expect(fill).toBeGreaterThan(0);
+  });
+
+  test('a rescue headline carries the rescue kind drawn at round start; RescueStarted has the same kind (both kinds over seeds)', () => {
+    const kinds = new Set<string>();
+    for (let seed = 1; seed <= 8; seed++) {
+      const sim = new Sim(seed, { invulnerable: true });
+      // nothing free: round 1 is the rescue alone
+      for (const id of ['school', 'car1', 'car2', 'busStop', 'shop'] as const) sim.targets.ruin(id, `${id}#x`);
+      const ev = drive(sim, (e) => e.some((x) => x.type === 'RescueStarted'));
+      const [rs] = of(ev, 'RoundStarted');
+      const [started] = of(ev, 'RescueStarted');
+      expect(rs).toMatchObject({ index: 1, headline: 'rescue' });
+      expect(rs!.rescueKind).toBeDefined();
+      expect(started!.kind).toBe(rs!.rescueKind);
+      expect(sim.snapshot().rescue!.kind).toBe(rs!.rescueKind);
+      kinds.add(rs!.rescueKind!);
+    }
+    expect([...kinds].sort()).toEqual(['elderlyRobbed', 'groupHarassed']);
+  });
+
+  test('a casse headline has no rescueKind; the round\'s later rescue keeps its prepared kind (deterministic per seed)', () => {
+    const run = () => {
+      const sim = new Sim(4, { invulnerable: true });
+      const ev = drive(sim, (e) => e.some((x) => x.type === 'RescueStarted'));
+      return { rs: of(ev, 'RoundStarted')[0]!, kind: of(ev, 'RescueStarted')[0]!.kind };
+    };
+    const a = run();
+    expect(a.rs.headline).toBe('school');
+    expect(a.rs.rescueKind).toBeUndefined();
+    expect(run()).toEqual(a);
   });
 
   test('steady flow: autopilot {koAfterSec: 2} over 5 rounds never leaves > 3 s without an active rioter outside intro, cinematic and breather', () => {

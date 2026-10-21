@@ -2,7 +2,7 @@ import { CONFIG } from './config';
 import type { EntryQueue, SpawnRequest, Spawner } from './entry';
 import type { Stations } from './healing';
 import type { Horde } from './hostiles';
-import { RescueIncident } from './incidents/rescue';
+import { RescueIncident, drawRescueKind } from './incidents/rescue';
 import { SchoolIncident } from './incidents/school';
 import { TargetAttack, lineup } from './incidents/targetAttack';
 import { DISTRICT } from './map/district';
@@ -21,11 +21,15 @@ export type RoundPhase = 'intro' | 'play' | 'breather';
 export type BeatKind = CasseKind | 'rescue' | 'monument';
 export type Twist = 'weaponDrop' | 'secondUrgency';
 
-/** What a round brings: its headline, its beats (each beat = incidents started together) and its twist. */
+/**
+ * What a round brings: its headline, its beats (each beat = incidents started together) and its twists, fired together
+ * at half the roster in this order (none in round 1; a weapon drop from round 2; plus a second urgency on odd rounds
+ * from round 3).
+ */
 export interface RoundPlan {
   headline: BeatKind;
   beats: BeatKind[][];
-  twist: Twist | null;
+  twists: Twist[];
 }
 
 export interface RoundSummary {
@@ -107,9 +111,10 @@ export interface MonumentPlan {
  * headline casse is a seeded random draw among every kind with a free target (standing, not burning): school, shop,
  * car, bus stop, weight 2, or 1 if it was `last` round's headline (it may repeat, rarely; nothing is forced). Second
  * beat: the rescue; from round CONFIG.monument.fromRound the monument occupation instead when the flag is French and
- * last round's second beat was not the monument (they alternate; never while the flag is Palestinian). Twist
- * secondUrgency on odd rounds from r3, weaponDrop on the others (a special pickup once one is unlocked: bouclier from
- * round 3, furie from 4, kamehame from 5). No free target → the second beat alone (its kind is the headline).
+ * last round's second beat was not the monument (they alternate; never while the flag is Palestinian). Twists: from
+ * round 2 always a weapon drop (a special pickup once one is unlocked: bouclier from round 3, furie from 4, kamehame
+ * from 5; a regular weapon before), and on odd rounds from r3 a second urgency as well (when the urgency cap allows).
+ * No free target → the second beat alone (its kind is the headline).
  */
 export function roundPlan(
   round: number,
@@ -132,10 +137,10 @@ export function roundPlan(
       if (r < 0 || i === kinds.length - 1) first = kinds[i]!;
     }
   }
-  const twist: Twist | null = round === 1 ? null : round >= 3 && round % 2 === 1 ? 'secondUrgency' : 'weaponDrop';
+  const twists: Twist[] = round === 1 ? [] : round >= 3 && round % 2 === 1 ? ['weaponDrop', 'secondUrgency'] : ['weaponDrop'];
   const second: BeatKind =
     monument && round >= CONFIG.monument.fromRound && monument.french && !monument.lastWasMonument ? 'monument' : 'rescue';
-  return { headline: first ?? second, beats: first ? [[first], [second]] : [[second]], twist };
+  return { headline: first ?? second, beats: first ? [[first], [second]] : [[second]], twists };
 }
 
 /** Newcomers enter by the nearest this many eligible edge points (so they arrive closer to Paul). */
@@ -202,7 +207,7 @@ interface FillGroup {
 /**
  * Session sequencing in rounds (manches). Intro 4 s → round 1. A round: plan → RoundStarted → beat 0 at once,
  * each later beat once the previous one is settled and the urgency cap allows; the fill comes in groups (the last
- * one is the climax), group n+1 only once group n is down; the twist fires once at half the roster; the flow keeper
+ * one is the climax), group n+1 only once group n is down; the twists fire once at half the roster; the flow keeper
  * lets someone in after 1.5 s with nobody around (RC-94). Round over (all beats settled, nothing of the round queued
  * or standing) → bonus, rewards, 6 s breather with no entry, next round.
  */
@@ -313,7 +318,12 @@ export class Director {
     this.fill = [];
     this.fill = this.fillGroups(this.total - objective);
     this.nextFill = 0;
-    ev.push({ type: 'RoundStarted', index: this.round, total: this.total, headline: plan.headline });
+    const headlineRescue = plan.headline === 'rescue' ? this.beats[0]?.find((o) => o.rescue)?.rescue : undefined;
+    ev.push(
+      headlineRescue
+        ? { type: 'RoundStarted', index: this.round, total: this.total, headline: plan.headline, rescueKind: headlineRescue.kind }
+        : { type: 'RoundStarted', index: this.round, total: this.total, headline: plan.headline },
+    );
     if (this.fill.length > 0) this.queueFill(host, false);
     this.launchBeats(host, ev);
     this.track(host);
@@ -323,8 +333,13 @@ export class Director {
     this.launchBeats(host, ev);
     this.track(host);
     this.advanceFill(host);
-    if (!this.twistDone && this.plan?.twist && this.roundKos(host) >= Math.ceil(CONFIG.round.twistAt * this.total))
-      this.twist(this.plan.twist, host, ev);
+    if (!this.twistDone && this.plan && this.plan.twists.length > 0 && this.roundKos(host) >= Math.ceil(CONFIG.round.twistAt * this.total)) {
+      this.twistDone = true;
+      for (const t of this.plan.twists) {
+        if (t === 'weaponDrop') this.weaponDrop(host, ev);
+        else this.secondUrgency(host, ev);
+      }
+    }
     if (this.complete(host)) {
       this.finish(host, ev);
       return;
@@ -348,7 +363,8 @@ export class Director {
       const [lo, hi] = CONFIG.rescue.aggressors;
       // round 1 keeps the random 2–4 of slice 1 (drawn here so the round total is known up front)
       const count = this.round === 1 ? lo + Math.floor(host.rand() * (hi - lo + 1)) : RESCUE_COUNT;
-      const rescue = new RescueIncident(`rescue#${++this.counters.rescue}`);
+      // its variant too: a rescue headline names it (« Agression en cours » / « Vol en cours »)
+      const rescue = new RescueIncident(`rescue#${++this.counters.rescue}`, drawRescueKind(host.rand));
       return { kind, attack: null, rescue, count, launched: false, dropped: false };
     }
     if (kind === 'monument') {
@@ -535,29 +551,34 @@ export class Director {
     this.queueFill(host, false);
   }
 
-  private twist(kind: Twist, host: DirectorHost, ev: SimEvent[]): void {
-    this.twistDone = true;
-    if (kind === 'secondUrgency' && this.urgent(host) < urgentCap(this.round)) {
-      const reserved = new Set<TargetId>();
-      for (const b of this.beats) for (const o of b) if (o.attack && !o.launched) reserved.add(o.attack.target);
-      const open = DISTRICT.targets.filter((t) => this.free(t.id, host) && !reserved.has(t.id));
-      // variety: a target already attacked this round only when no other one is free
-      const attacked = new Set(this.objectives.flatMap((o) => (o.attack ? [o.attack.target] : [])));
-      const fresh = open.filter((t) => !attacked.has(t.id));
-      const free = fresh.length > 0 ? fresh : open;
-      if (free.length > 0) {
-        const def = free[Math.floor(host.rand() * free.length) % free.length]!;
-        const attack = this.attackOn(def.kind, def.id, host, this.pressure(host.rules.kos));
-        const o: Objective = { kind: def.kind, attack, rescue: null, count: attack.total(), launched: false, dropped: false };
-        this.total += o.count;
-        ev.push({ type: 'TwistStarted', kind, pos: { ...def.door } });
-        ev.push({ type: 'RoundTotalChanged', index: this.round, total: this.total });
-        this.launch(o, host, ev);
-        return;
-      }
-    }
-    // weapon drop (also the fallback when no second urgency fits): a special unlocked at this round (bouclier, furie,
-    // kamehame: CONFIG.<kind>.dropFromRound), a regular weapon before any is
+  /**
+   * The second urgency (odd rounds from 3, with the weapon drop): another free target attacked at once, when the urgency
+   * cap allows and one is free (preferably one not attacked yet this round); otherwise nothing more happens.
+   */
+  private secondUrgency(host: DirectorHost, ev: SimEvent[]): void {
+    if (this.urgent(host) >= urgentCap(this.round)) return;
+    const reserved = new Set<TargetId>();
+    for (const b of this.beats) for (const o of b) if (o.attack && !o.launched) reserved.add(o.attack.target);
+    const open = DISTRICT.targets.filter((t) => this.free(t.id, host) && !reserved.has(t.id));
+    // variety: a target already attacked this round only when no other one is free
+    const attacked = new Set(this.objectives.flatMap((o) => (o.attack ? [o.attack.target] : [])));
+    const fresh = open.filter((t) => !attacked.has(t.id));
+    const free = fresh.length > 0 ? fresh : open;
+    if (free.length === 0) return;
+    const def = free[Math.floor(host.rand() * free.length) % free.length]!;
+    const attack = this.attackOn(def.kind, def.id, host, this.pressure(host.rules.kos));
+    const o: Objective = { kind: def.kind, attack, rescue: null, count: attack.total(), launched: false, dropped: false };
+    this.total += o.count;
+    ev.push({ type: 'TwistStarted', kind: 'secondUrgency', pos: { ...def.door } });
+    ev.push({ type: 'RoundTotalChanged', index: this.round, total: this.total });
+    this.launch(o, host, ev);
+  }
+
+  /**
+   * The weapon drop (every round from 2): a special unlocked at this round (bouclier, furie, kamehame:
+   * CONFIG.<kind>.dropFromRound), a regular weapon before any is.
+   */
+  private weaponDrop(host: DirectorHost, ev: SimEvent[]): void {
     const { drop: w, special } = host.weapons.dropTwist(host.player.pos, this.round);
     const pos = w ? { ...w.pos } : null;
     ev.push(special ? { type: 'TwistStarted', kind: 'weaponDrop', pos, special } : { type: 'TwistStarted', kind: 'weaponDrop', pos });

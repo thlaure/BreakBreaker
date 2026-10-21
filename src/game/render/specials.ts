@@ -1,6 +1,16 @@
 import Phaser from 'phaser';
 import type { Snapshot } from '../../sim/sim';
 import type { Vec } from '../../sim/types';
+import {
+  BUBBLE_LIFT,
+  HIGHLIGHT_ARC,
+  bubbleAlpha,
+  bubbleRadius,
+  highlightAngle,
+  popRing,
+  rimPoint,
+  rippleRing,
+} from './bubbleMath';
 import { DEPTH } from './depth';
 
 const INK = 0x14121c;
@@ -14,16 +24,20 @@ const ENERGY_CORE = 0xf2fbff;
 
 /** Height of Paul's hands above his feet (sprite origin), px. */
 export const HANDS_Y = 16;
-/** The held shield sits this far in front of Paul. */
-const SHIELD_REACH = 8;
-/** The held shield fades and blinks during its last seconds. */
-export const SHIELD_BLINK_SEC = 3;
 const BLOCK_MS = 220;
 export const BEAM_MS = 250;
+/** Bubble palette: light blue / white soap film. */
+const FILM = 0xbfe6ff;
+const FILM_EDGE = 0x8fd3ff;
+const RIM = 0xeaf8ff;
+const SHINE = 0xffffff;
+/** Rim flash after a hit (ms). */
+const HIT_FLASH_MS = 140;
 
 /**
- * Runtime textures of the two special weapons: `weapon_bouclier` (pickup and held: a round blue/steel shield with a
- * highlight) and `weapon_kamehame` (pickup: a glowing blue orb with a spark).
+ * Runtime textures of the two special weapons: `weapon_bouclier` (the pickup only: a round blue/steel shield with a
+ * highlight; once held it becomes the protection bubble, BubbleView) and `weapon_kamehame` (pickup: a glowing blue
+ * orb with a spark).
  */
 export function makeSpecialTextures(scene: Phaser.Scene): void {
   if (scene.textures.exists('weapon_bouclier')) return;
@@ -47,44 +61,116 @@ export function makeSpecialTextures(scene: Phaser.Scene): void {
   g.destroy();
 }
 
-/** Alpha of the held shield: full, then a fading blink in the last SHIELD_BLINK_SEC (pure, for tests). */
-export function shieldAlpha(secondsLeft: number, nowMs: number): number {
-  if (secondsLeft >= SHIELD_BLINK_SEC) return 1;
-  const fade = 0.55 + 0.45 * Math.max(0, secondsLeft / SHIELD_BLINK_SEC);
-  const off = Math.floor(nowMs / (secondsLeft < 1 ? 70 : 140)) % 2 === 0;
-  return off ? fade * 0.35 : fade;
-}
-
 /** Where a beam / charge glow is drawn: Paul's hands, a little in front along his facing. */
 export function handsPos(pos: Vec, facing: Vec): Vec {
   return { x: Math.round(pos.x + facing.x * 6), y: Math.round(pos.y - HANDS_Y + facing.y * 4) };
 }
 
 /**
- * The bouclier in Paul's hands: held in front along his facing, drawn above him when he faces down or sideways and
- * behind him when he faces up; fades and blinks in its last seconds. Hidden without a shield or while KO.
+ * The bouclier as a protection bubble around Paul: a translucent soap-bubble sphere (radius ≈ BUBBLE_R, light blue and
+ * white film, a soft additive glow, a thin 1-px lighter rim, a highlight arc slowly circling, a gentle ±1 px pulse),
+ * drawn above Paul and below his health bar. A hit (ShieldBlocked) flashes the rim and leaves a ripple ring where it
+ * struck; in its last BUBBLE_FLICKER_SEC it fades and flickers faster and faster, then pops (a quick expanding ring and
+ * a few droplets). prefers-reduced-motion: no pulse, no flicker, fixed highlight. Two Graphics reused every frame (no
+ * allocation per frame); whole-pixel positions.
  */
-export class ShieldView {
-  private readonly sprite: Phaser.GameObjects.Image;
+export class BubbleView {
+  private readonly film: Phaser.GameObjects.Graphics;
+  private readonly glow: Phaser.GameObjects.Graphics;
+  private held = false;
+  private readonly center = { x: 0, y: 0 };
+  private popAt = -Infinity;
+  private readonly pop = { x: 0, y: 0, depth: 0 };
+  private flashUntil = 0;
+  private readonly ripples: { x: number; y: number; born: number }[] = [];
 
-  constructor(scene: Phaser.Scene) {
-    this.sprite = scene.add.image(0, 0, 'weapon_bouclier').setOrigin(0.5, 0.5).setVisible(false);
+  constructor(
+    scene: Phaser.Scene,
+    private readonly reducedMotion = false,
+  ) {
+    this.film = scene.add.graphics().setVisible(false);
+    this.glow = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
+  }
+
+  /**
+   * Something hit the bubble: `hit` is the sim's block position, `feet` Paul's. Returns the rim point where it shows
+   * (for the sparks), and starts a ripple there.
+   */
+  hit(feet: Vec, hit: Vec, nowMs: number): Vec {
+    const at = this.held ? rimPoint(this.center, feet, hit, bubbleRadius(nowMs, this.reducedMotion)) : { x: Math.round(hit.x), y: Math.round(hit.y) };
+    if (this.ripples.length >= 4) this.ripples.shift();
+    this.ripples.push({ x: at.x, y: at.y, born: nowMs });
+    this.flashUntil = nowMs + HIT_FLASH_MS;
+    return at;
   }
 
   update(weapon: Snapshot['weapon'], player: Snapshot['player'], body: Phaser.GameObjects.Sprite, nowMs: number): void {
-    if (weapon?.kind !== 'bouclier' || player.ko) {
-      this.sprite.setVisible(false);
-      return;
+    const on = weapon?.kind === 'bouclier' && !player.ko;
+    if (this.held && !on && !player.ko) {
+      // expired (or swapped for another pickup): pop where it was
+      this.popAt = nowMs;
+      this.pop.x = this.center.x;
+      this.pop.y = this.center.y;
+      this.pop.depth = this.film.depth;
     }
-    const f = player.facing;
-    const up = f.y < -0.5;
-    this.sprite
-      .setVisible(true)
-      .setPosition(Math.round(body.x + f.x * SHIELD_REACH), Math.round(body.y - 14 + f.y * 4))
-      .setFlipX(f.x < 0)
-      .setScale(up ? 0.9 : 1)
-      .setAlpha(shieldAlpha(weapon.secondsLeft ?? 0, nowMs))
-      .setDepth(body.depth + (up ? -0.1 : 0.1));
+    this.held = on;
+    const f = this.film;
+    const g = this.glow;
+    f.clear();
+    g.clear();
+    let any = false;
+    const depth = body.depth + 0.15;
+    if (on) {
+      any = true;
+      this.center.x = Math.round(body.x);
+      this.center.y = Math.round(body.y - BUBBLE_LIFT);
+      const { x, y } = this.center;
+      const r = bubbleRadius(nowMs, this.reducedMotion);
+      const a = bubbleAlpha(weapon.secondsLeft ?? 0, nowMs, this.reducedMotion);
+      const flash = nowMs < this.flashUntil ? 1 : 0;
+      // film: faint fill, a slightly denser edge band, the 1-px lighter rim
+      f.fillStyle(FILM, 0.1 * a).fillCircle(x, y, r);
+      f.lineStyle(2, FILM_EDGE, (0.22 + 0.3 * flash) * a).strokeCircle(x, y, r - 1);
+      f.lineStyle(1, RIM, (0.65 + 0.35 * flash) * a).strokeCircle(x, y, r);
+      // soft glow (additive) and the moving highlight arc with a small specular dot
+      g.fillStyle(FILM_EDGE, 0.08 * a).fillCircle(x, y, r + 2);
+      const h = highlightAngle(nowMs, this.reducedMotion);
+      g.lineStyle(2, SHINE, 0.55 * a);
+      g.beginPath();
+      g.arc(x, y, r - 4, h, h + HIGHLIGHT_ARC, false);
+      g.strokePath();
+      const sx = Math.round(x + Math.cos(h + HIGHLIGHT_ARC / 2) * (r * 0.55));
+      const sy = Math.round(y + Math.sin(h + HIGHLIGHT_ARC / 2) * (r * 0.55));
+      g.fillStyle(SHINE, 0.7 * a).fillRect(sx - 1, sy - 1, 2, 2);
+    }
+    // ripples where something struck (they outlive the bubble by a few ms)
+    let keep = 0;
+    for (const rp of this.ripples) {
+      const ring = rippleRing(nowMs - rp.born);
+      if (!ring) continue;
+      this.ripples[keep++] = rp;
+      any = true;
+      g.lineStyle(1, RIM, ring.alpha).strokeCircle(rp.x, rp.y, ring.r);
+    }
+    this.ripples.length = keep;
+    // pop: a quick expanding ring and eight droplets flying out
+    const ring = popRing(nowMs - this.popAt);
+    if (ring) {
+      any = true;
+      g.lineStyle(1, RIM, ring.alpha).strokeCircle(this.pop.x, this.pop.y, ring.r);
+      g.fillStyle(SHINE, ring.alpha);
+      for (let k = 0; k < 8; k++) {
+        const ang = (k * Math.PI) / 4;
+        g.fillRect(Math.round(this.pop.x + Math.cos(ang) * (ring.r + 3)), Math.round(this.pop.y + Math.sin(ang) * (ring.r + 3)), 1, 1);
+      }
+    }
+    f.setVisible(on).setDepth(depth);
+    g.setVisible(any).setDepth(on ? depth + 0.01 : this.pop.depth + 0.01);
+  }
+
+  destroy(): void {
+    this.film.destroy();
+    this.glow.destroy();
   }
 }
 
@@ -96,8 +182,8 @@ interface Block {
 
 /**
  * Onde d’énergie and bouclier effects: the charge glow growing in Paul's hands (additive blue-white disc and a thin
- * ring), the beam (~BEAM_MS, pixel-stepped widths, additive glow, flicker) and, on a shield block, a spark burst and a
- * short expanding ring.
+ * ring), the beam (~BEAM_MS, pixel-stepped widths, additive glow, flicker) and, on a bubble block, a spark burst and a
+ * short expanding ring at the rim point (BubbleView.hit).
  */
 export class SpecialFx {
   private readonly glow: Phaser.GameObjects.Graphics;
@@ -123,7 +209,7 @@ export class SpecialFx {
     this.sparks.setDepth(DEPTH.overlay - 1);
   }
 
-  /** The bouclier stopped something at `pos`. */
+  /** The bouclier's bubble stopped something at `pos` (its rim point). */
   block(pos: Vec, nowMs: number): void {
     this.sparks.explode(10, pos.x, pos.y);
     this.blocks.push({ x: Math.round(pos.x), y: Math.round(pos.y), born: nowMs });

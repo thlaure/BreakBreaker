@@ -35,6 +35,8 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
   let rock: Tracked | null = null;
   let strike = false;
   let throwRock = false;
+  /** Agir went down since the last read: a tap shorter than one sim step still reaches one read as `act`. */
+  let actTap = false;
   let aimed = false; // rock drag exceeded the minimum
   let pendingAim: Vec | null = null; // aim delivered with the release throw
   let lastAim: Vec | null = null;
@@ -95,6 +97,7 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
       }
     } else if (actEl?.contains(t)) {
       if (actId === null) actId = e.pointerId;
+      actTap = true;
     } else if (pauseEl?.contains(t)) opts.onPause?.();
     else if (zone?.contains(t)) {
       if (e.pointerType === 'mouse') return;
@@ -148,6 +151,7 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
     rock = null;
     strike = false;
     throwRock = false;
+    actTap = false;
     aimed = false;
     pendingAim = null;
     drawKnob();
@@ -179,11 +183,12 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
         strike,
         strikeHeld: strikeId !== null,
         throwRock,
-        act: actId !== null,
+        act: actId !== null || actTap,
       };
       if (dragAim) lastAim = dragAim;
       strike = false;
       throwRock = false;
+      actTap = false;
       pendingAim = null;
       return frame;
     },

@@ -81,14 +81,14 @@ export const CONFIG = {
     launchJitter: 0.35,
   },
   /**
-   * Bouclier (special weapon, held): lasts `durationSec` of active sim time, then breaks; no strike counter. Rocks and
-   * firebombs hitting Paul from within `frontDeg` (total cone) of his facing are blocked. A strike is a bash: reach
+   * Bouclier (special weapon, held): a protection bubble around Paul; lasts `durationSec` of active sim time, then
+   * breaks; no strike counter. Every rock and firebomb that would hit Paul is blocked, from any side (360°); ground fire
+   * and contact blows are not. A strike is a bash: reach
    * `bashRange`, one-hit KO, `knockback` px away from Paul, no charge used. Twist drop from `dropFromRound`, timed spawn
    * from `spawnFromRound` with weight `spawnShare` (same rule as the furie).
    */
   bouclier: {
     durationSec: 20,
-    frontDeg: 120,
     bashRange: 64,
     knockback: 24,
     dropFromRound: 3,

@@ -3,6 +3,7 @@ import { DISTRICT, type Rect, type TargetDef } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
 import type { SimEvent, TargetId, Vec } from '../../sim/types';
 import { FLAG } from '../assets';
+import { schoolFlagShown } from './targetMath';
 import { DEPTH } from './depth';
 import { FACADE_H, buildingIndex, type BuildingPart, type WorldView } from './world';
 
@@ -280,7 +281,7 @@ const BAR_COLORS: [number, number][] = [
 /**
  * One destructible target: hp bar, fire + smoke while `burning`, ruin (scorched, debris, smoke wisps) while ruined,
  * back to normal once repaired. A building (school, retro video-game shop) dims its own parts when ruined, and the
- * school raises the French flag once saved; props
+ * school flies the French flag while it stands and is not on fire (schoolFlagShown); props
  * (cars, bus shelter) are drawn on their solid footprint and swap to a wreck texture.
  */
 class TargetView {
@@ -387,7 +388,7 @@ class TargetView {
   }
 
   /** `burning` = the sim's flag, held back while the igniting bottle is still in the air. */
-  update(t: TargetSnap, burning: boolean, schoolSaved: boolean, nowMs: number, dtMs: number): void {
+  update(t: TargetSnap, burning: boolean, nowMs: number, dtMs: number): void {
     const ruined = t.state === 'ruined';
     if (ruined !== this.ruined) this.setRuined(ruined);
     if (burning !== this.burning) {
@@ -402,7 +403,7 @@ class TargetView {
       const flare = this.flareUntil > nowMs ? (0.5 * (this.flareUntil - nowMs)) / FLARE_MS : 0;
       this.glow.setAlpha(Math.min(1, 0.18 + 0.12 * Math.abs(Math.sin(nowMs / 70) * Math.sin(nowMs / 113)) + flare));
     }
-    this.mast?.setVisible(schoolSaved && !ruined);
+    this.mast?.setVisible(schoolFlagShown(t, burning));
     if (this.sprite && this.flashUntil > 0 && nowMs >= this.flashUntil) {
       this.flashUntil = 0;
       this.sprite.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
@@ -527,14 +528,13 @@ export class TargetsLayer {
       for (const v of this.views.values()) if (v.def.door.x === to.x && v.def.door.y === to.y && v.isBurning) v.flare(nowMs);
     }
     for (const m of snap.molotovs) this.inFlight.set(`${m.until}@${m.to.x},${m.to.y}`, m.to);
-    const saved = snap.school.stage === 'saved';
     for (const t of snap.targets) {
       const v = this.views.get(t.id);
       if (!v) continue;
       // the sim ignites on the throw; a new fire waits for the bottle to land on the door (an existing one keeps going)
       const door = v.def.door;
       const held = !v.isBurning && snap.molotovs.some((m) => m.to.x === door.x && m.to.y === door.y);
-      v.update(t, t.burning && !held, t.id === 'school' && saved, nowMs, dtMs);
+      v.update(t, t.burning && !held, nowMs, dtMs);
     }
   }
 

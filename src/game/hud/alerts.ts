@@ -23,6 +23,8 @@ export type AlertTone = 'fire' | 'warn' | 'round' | 'drop' | 'furie' | 'win';
 export type AlertIcon = 'flame' | 'alert' | 'horde' | 'glass' | 'star' | 'bolt' | 'flag' | 'shield' | 'orb';
 /** What a round is about (its first beat), shown under « MANCHE N ! ». */
 export type RoundHeadline = CasseKind | 'rescue' | 'monument';
+/** A round headline as the banner words it: a rescue headline names its variant when known. */
+export type BannerHeadline = RoundHeadline | 'groupHarassed' | 'elderlyRobbed';
 
 export interface AlertSpec {
   /** Banner title. */
@@ -67,12 +69,14 @@ export const FURIE_ALERT_MS = 2200;
 export const FLAG_ALERT_MS = 2600;
 
 /** Non-committal: the round start does not know whether the bottle will be thrown. */
-export const ROUND_HEADLINES: Readonly<Record<RoundHeadline, string>> = {
+export const ROUND_HEADLINES: Readonly<Record<BannerHeadline, string>> = {
   school: 'École menacée',
   car: 'Voiture menacée',
   busStop: 'Abribus menacé',
   shop: 'Boutique menacée',
   rescue: 'Agression en cours',
+  groupHarassed: 'Agression en cours',
+  elderlyRobbed: 'Vol en cours',
   monument: 'Monument menacé',
 };
 
@@ -98,7 +102,7 @@ export function casseurs(n: number): string {
  * Banner content of an alert kind; `round`/`total` give the round number and its roster (0 = unknown), `headline` what
  * a round start is about.
  */
-export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: RoundHeadline): ShownAlert {
+export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: BannerHeadline): ShownAlert {
   if (kind === 'round')
     return {
       title: `MANCHE ${round} !`,
@@ -169,8 +173,8 @@ export interface Alert {
   pos: Vec | null;
   wave: number;
   total: number;
-  /** Round starts only. */
-  headline?: RoundHeadline;
+  /** Round starts only (a rescue headline carries its variant). */
+  headline?: BannerHeadline;
   /**
    * Id of the incident in `activeIncidents` (target id, 'rescue' or the drop's id) for incident and drop alerts: the
    * banner drops the alert once that incident is over or that weapon gone. Absent for round starts, which run their course.
@@ -188,7 +192,14 @@ export function alertFromEvent(e: SimEvent): Alert | null {
   if (e.type === 'RescueStarted')
     return { id: e.incidentId, kind: e.kind, pos: { ...e.pos }, wave: e.wave, total: e.total, incident: 'rescue' };
   if (e.type === 'RoundStarted')
-    return { id: `round#${e.index}`, kind: 'round', pos: null, wave: e.index, total: e.total, headline: e.headline };
+    return {
+      id: `round#${e.index}`,
+      kind: 'round',
+      pos: null,
+      wave: e.index,
+      total: e.total,
+      headline: e.headline === 'rescue' && e.rescueKind ? e.rescueKind : e.headline,
+    };
   // a second urgency is announced by its own start event; a drop that found no spot, or a regular weapon (no special),
   // has nothing to show
   if (e.type === 'TwistStarted' && e.kind === 'weaponDrop' && e.pos && e.special) {

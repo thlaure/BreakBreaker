@@ -14,7 +14,10 @@ export interface Launch {
   kind?: 'tumble' | 'satellite';
 }
 
-/** strike/throwRock are edge-triggered presses; act and strikeHeld are held. */
+/**
+ * strike/throwRock are edge-triggered presses; act and strikeHeld are held. The Sim only acts on the rising edge of
+ * `act` (a fresh press of Agir); the input layer latches a tap so it lasts one read.
+ */
 export interface InputFrame {
   move: Vec;
   aim: Vec | null;
@@ -91,7 +94,7 @@ export type SimEvent =
   | { type: 'WeaponPickedUp'; kind: HeldKind }
   /** The held weapon is gone: no strikes left, the bouclier's time is up, or the last onde d’énergie fired. */
   | { type: 'WeaponBroken'; kind: HeldKind }
-  /** The bouclier stopped a rock or a firebomb coming from the front (`pos` = where it was stopped). */
+  /** The bouclier's bubble stopped a rock or a firebomb, from any side (`pos` = where it was stopped, on Paul). */
   | { type: 'ShieldBlocked'; pos: Vec }
   /** Paul started charging the onde d’énergie (Frapper held). */
   | { type: 'BeamCharging' }
@@ -116,7 +119,14 @@ export type SimEvent =
   | { type: 'TargetRepaired'; target: TargetId; incidentId: string }
   | { type: 'ToolboxSpawned'; id: number; pos: Vec }
   | { type: 'ToolboxPickedUp'; id: number }
-  | { type: 'RoundStarted'; index: number; total: number; headline: CasseKind | 'rescue' | 'monument' }
+  /** `rescueKind`: set when the headline is the rescue (its variant, drawn at round start; RescueStarted has the same). */
+  | {
+      type: 'RoundStarted';
+      index: number;
+      total: number;
+      headline: CasseKind | 'rescue' | 'monument';
+      rescueKind?: 'groupHarassed' | 'elderlyRobbed';
+    }
   /** Occupiers head for the monument's plinth (round `round`, roster `total`); `pos` = the flag mast. */
   | { type: 'MonumentAttacked'; incidentId: string; pos: Vec; round: number; total: number }
   /** Every occupier KO'd before the swap: the French flag stays. */
