@@ -194,14 +194,17 @@ export function alertFromEvent(e: SimEvent): Alert | null {
 
 /**
  * Incidents that still need Paul: every target under an urgent attack or still burning (at its door: a fire stays until
- * put out with a toolbox), the rescue while threatened, and
+ * put out with a toolbox), the rescue while threatened (or secured with belongings still to bring back), and
  * every special drop (a weapon with an expiry) until it is picked up or vanishes.
  */
 export function activeIncidents(s: Snapshot): Incident[] {
   const out: Incident[] = [];
   for (const t of s.targets)
     if (t.state === 'attacked' || t.state === 'burning') out.push({ id: t.id, kind: t.kind, pos: { ...t.door }, burning: t.burning });
-  if (s.rescue?.stage === 'threat') out.push({ id: 'rescue', kind: s.rescue.kind, pos: { ...s.rescue.victimPos } });
+  // the rescue while threatened, and while belongings lie on the ground or Paul carries them back
+  const r = s.rescue;
+  const toReturn = r?.stage === 'secured' && r.items.some((it) => it.state === 'dropped' || it.state === 'carried');
+  if (r && (r.stage === 'threat' || toReturn)) out.push({ id: 'rescue', kind: r.kind, pos: { ...r.victimPos } });
   // the monument: its flag to take back (any time, breather included), or an occupation under way. Distinct ids, so an
   // occupation banner still queued is dropped once the flag is swapped (or the occupation is over)
   const m = s.monument;

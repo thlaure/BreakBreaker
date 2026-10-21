@@ -19,6 +19,7 @@ import { MonumentView, makeMonumentTextures } from '../render/monument';
 import { TargetsLayer, makeTargetTextures } from '../render/targets';
 import { StationsView, ToolboxView, WorldView, makeRockTextures, makeTextures } from '../render/world';
 import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapons';
+import { ItemLayer, makeItemTextures } from '../render/items';
 
 const HIT_STOP_MS = 60;
 const SHAKE_MS = 120;
@@ -62,6 +63,7 @@ export class WorldScene extends Phaser.Scene {
   private stations!: StationsView;
   private group!: GroupView;
   private victim!: VictimView;
+  private items!: ItemLayer;
   private paul!: PaulView;
   private hostiles!: HostileLayer;
   private rocks!: RockLayer;
@@ -162,6 +164,7 @@ export class WorldScene extends Phaser.Scene {
     makeTextures(this);
     makeRockTextures(this);
     makeWeaponTextures(this);
+    makeItemTextures(this);
     makeTargetTextures(this);
     makeFurieTextures(this);
     makeMonumentTextures(this);
@@ -172,6 +175,7 @@ export class WorldScene extends Phaser.Scene {
     this.stations = new StationsView(this);
     this.group = new GroupView(this);
     this.victim = new VictimView(this);
+    this.items = new ItemLayer(this);
     // static map data only (no sim state): where a launched body may land
     const grid = new Grid(DISTRICT);
     this.hostiles = new HostileLayer(this, {
@@ -313,6 +317,7 @@ export class WorldScene extends Phaser.Scene {
     this.telegraphs.update(snap, this.cameras.main.worldView, time);
     this.group.update(time);
     this.victim.update(snap.rescue, time);
+    this.items.update(snap.rescue, snap.player, time);
     this.targetViews.update(snap, time, dtMs);
     this.monument.update(snap.monument, time);
     this.molotovFx.update(snap.molotovs, snap.now, time);

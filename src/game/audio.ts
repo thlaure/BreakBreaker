@@ -342,6 +342,7 @@ export class GameAudio {
         case 'ProjectilePickedUp':
         case 'WeaponPickedUp':
         case 'ToolboxPickedUp':
+        case 'ItemPickedUp':
         case 'HealCompleted':
           this.play('pickup');
           break;
@@ -362,6 +363,7 @@ export class GameAudio {
         case 'RoundCompleted':
         case 'MonumentDefended':
         case 'FlagCaptured':
+        case 'ItemReturned':
           // one chime per batch: a target saved by the round's last KO lands with RoundCompleted
           if (!chimed) this.chime();
           chimed = true;

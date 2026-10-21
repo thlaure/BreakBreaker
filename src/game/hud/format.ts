@@ -109,6 +109,8 @@ export interface IncidentLine {
   hp: number | null;
   status: IncidentStatus;
   target: Vec;
+  /** Rescue only, once a belonging was stolen: « Objets 1/3 rendus »; null otherwise. */
+  items: string | null;
 }
 
 /**
@@ -123,12 +125,14 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
     if (t.state !== 'attacked' && t.state !== 'burning') continue;
     const hp = Math.max(0, Math.min(100, (100 * t.hp) / t.maxHp));
     const status: IncidentStatus = t.id === 'school' && s.school.stage === 'cinematic' ? 'renforts' : t.burning ? 'en feu' : 'attaquée';
-    out.push({ key: t.id, kind: t.kind, name: TARGET_NAMES[t.kind], time: `${Math.ceil(hp - 1e-9)} %`, hp, status, target: t.door });
+    out.push({ key: t.id, kind: t.kind, name: TARGET_NAMES[t.kind], time: `${Math.ceil(hp - 1e-9)} %`, hp, status, target: t.door, items: null });
   }
   const r = s.rescue;
   if (r && (r.stage === 'threat' || r.stage === 'secured')) {
     const status: IncidentStatus = r.stage === 'secured' ? 'sécurisé' : rescueDrain;
-    out.push({ key: 'rescue', kind: r.kind, name: 'Secours', time: secs(r.remaining), hp: null, status, target: r.victimPos });
+    // secured, waiting for the belongings: the wait replaces the (frozen) reserve
+    const time = r.returnLeft !== null ? `Rends les objets · ${secs(r.returnLeft)}` : secs(r.remaining);
+    out.push({ key: 'rescue', kind: r.kind, name: 'Secours', time, hp: null, status, target: r.victimPos, items: rescueItemsLine(r) });
   }
   const m = s.monument;
   if (m.flag === 'palestinian') {
@@ -136,9 +140,25 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
     const status: IncidentStatus = m.contested ? 'zone contestée' : m.inZone ? 'en cours' : 'à reprendre';
     const held = Math.min(m.captureSec, Math.floor(m.capture + 1e-9));
     const hp = Math.max(0, Math.min(100, (100 * m.capture) / m.captureSec));
-    out.push({ key: 'monument', kind: 'flag', name: 'Drapeau', time: `capture ${held}/${m.captureSec} s`, hp, status, target: m.mast });
+    out.push({ key: 'monument', kind: 'flag', name: 'Drapeau', time: `capture ${held}/${m.captureSec} s`, hp, status, target: m.mast, items: null });
   }
   return out;
+}
+
+/**
+ * Rescue card progress once a belonging was stolen: « Objets 1/3 rendus » (returned / stolen so far); null before any
+ * theft.
+ */
+export function rescueItemsLine(r: NonNullable<Snapshot['rescue']>): string | null {
+  const stolen = r.items.filter((it) => it.state !== 'held').length;
+  if (stolen === 0) return null;
+  const back = r.items.filter((it) => it.state === 'returned').length;
+  return `Objets ${back}/${stolen} rendus`;
+}
+
+/** HUD slot beside the toolbox while Paul carries belongings to hand back: « Objets 2 »; null when he carries none. */
+export function itemsLine(s: Snapshot): string | null {
+  return s.carriedItems > 0 ? `Objets ${s.carriedItems}` : null;
 }
 
 /** Content of the non-modal round panel shown during the breather (null otherwise). */

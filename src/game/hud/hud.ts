@@ -21,6 +21,7 @@ import {
   DEFAULT_ACT_LABEL,
   contextPrompt,
   incidentLines,
+  itemsLine,
   roundPanel,
   toolboxLine,
   waveLine,
@@ -92,6 +93,8 @@ interface Card {
   bar: HTMLElement;
   fill: HTMLElement;
   status: HTMLElement;
+  /** Rescue belongings progress (« Objets 1/3 rendus »), hidden otherwise. */
+  items: HTMLElement;
   dist: HTMLElement;
 }
 
@@ -123,6 +126,8 @@ export class Hud {
   private readonly wave = el('span', 'stat');
   private readonly weapon = el('span', 'stat');
   private readonly kit = el('span', 'stat');
+  /** Belongings Paul carries back to the rescue victim (hidden when none). */
+  private readonly items = el('span', 'stat items');
   private readonly slots: HTMLElement[] = [];
   private readonly top = el('div', 'bb-top');
   private readonly cardsEl = el('div', 'bb-cards');
@@ -176,7 +181,8 @@ export class Hud {
       this.slots.push(s);
       rocks.append(s);
     }
-    l2.append(this.wave, rocks, this.kit, this.weapon);
+    this.items.hidden = true;
+    l2.append(this.wave, rocks, this.kit, this.items, this.weapon);
     top.append(hp, l1, l2, this.cardsEl);
     this.round = this.makeRound();
     this.prompt.hidden = true;
@@ -295,6 +301,9 @@ export class Hud {
     c.cls(this.weapon, s.furie ? 'stat furie' : 'stat');
     c.text(this.kit, toolboxLine(s));
     c.cls(this.kit, s.toolboxes.carried ? 'stat kit full' : 'stat kit');
+    const items = itemsLine(s);
+    this.items.hidden = items === null;
+    c.text(this.items, items ?? '');
     this.slots.forEach((slot, i) => {
       const full = i < s.carried;
       c.text(slot, full ? '●' : '○');
@@ -368,8 +377,9 @@ export class Hud {
     const fill = el('span', 'fill');
     bar.append(fill);
     bar.setAttribute('aria-hidden', 'true');
-    const c: Card = { root, ico: el('span', 'ico'), name: el('b', 'name'), time: el('span', 'time'), bar, fill, status: el('span', 'status'), dist: el('span', 'dist') };
-    root.append(c.ico, c.name, bar, c.time, c.status, c.dist);
+    const c: Card = { root, ico: el('span', 'ico'), name: el('b', 'name'), time: el('span', 'time'), bar, fill, status: el('span', 'status'), items: el('span', 'items'), dist: el('span', 'dist') };
+    c.items.hidden = true;
+    root.append(c.ico, c.name, bar, c.time, c.status, c.items, c.dist);
     return c;
   }
 
@@ -392,6 +402,8 @@ export class Hud {
       c.cls(card.fill, line.kind === 'flag' ? 'fill capture' : line.hp <= 30 ? 'fill low' : 'fill');
     }
     c.text(card.status, line.status);
+    card.items.hidden = line.items === null;
+    c.text(card.items, line.items ?? '');
     const tiles = Math.round(Math.hypot(line.target.x - s.player.pos.x, line.target.y - s.player.pos.y) / TILE);
     c.text(card.dist, `${tiles} m`);
   }
