@@ -24,9 +24,9 @@ import {
   incidentLines,
   itemsLine,
   roundPanel,
-  toolboxLine,
+  roundValue,
   waveLine,
-  weaponLine,
+  weaponValue,
   type IncidentLine,
   type RoundPanel,
 } from './format';
@@ -47,6 +47,8 @@ const EDGE_PAD = 8;
 /** Touch buttons in the bottom-right corner (see jouer/index.html), kept clear of the edge indicators. */
 const TOUCH_PAD_W = 200;
 const TOUCH_PAD_H = 210;
+/** How far the score list's stepped border and drop shadow (box-shadow, see hud.css) reach past its box. */
+const PANEL_SHADOW = { right: 8, bottom: 8 };
 const SLOTS = CONFIG.rock.maxCarried;
 const TILE = CONFIG.tile;
 
@@ -55,6 +57,23 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text = '
   if (cls) e.className = cls;
   if (text) e.textContent = text;
   return e;
+}
+
+interface StatRow {
+  li: HTMLElement;
+  val: HTMLElement;
+}
+
+/** One row of the score list: small muted label, big bright value. */
+function statRow(cls: string, label: string): StatRow {
+  const li = el('li', `row ${cls}`);
+  const val = el('span', 'val');
+  li.append(el('span', 'lbl', label), val);
+  return { li, val };
+}
+
+function aria(node: HTMLElement, label: string): void {
+  if (node.getAttribute('aria-label') !== label) node.setAttribute('aria-label', label);
 }
 
 /** Writes to the DOM only when the value changed. */
@@ -113,7 +132,7 @@ interface RoundEls {
 }
 
 /**
- * HTML overlay `#hud`: stats and incident cards (top-left), contextual prompt under Paul, an alert banner when an
+ * HTML overlay `#hud`: score list (pixel font) and incident cards (top-left), contextual prompt under Paul, an alert banner when an
  * incident or round starts, one edge indicator per active incident whose target is off-screen, and the non-modal round
  * panel (top centre, under the banner and clear of the stats panel) during the breather between rounds.
  */
@@ -122,13 +141,15 @@ export class Hud {
   private readonly c = new Cache();
   /** Screen-reader copy of Paul's health (the visible bar is drawn over his head in the world). */
   private readonly hp = el('div', 'bb-sr');
-  private readonly score = el('span', 'stat');
-  private readonly kos = el('span', 'stat');
-  private readonly wave = el('span', 'stat');
-  private readonly weapon = el('span', 'stat');
-  private readonly kit = el('span', 'stat');
+  /** Score list (top-left, pixel font): one row per stat, in order. */
+  private readonly stats = el('ul', 'bb-stats');
+  private readonly score = statRow('score', 'SCORE');
+  private readonly kos = statRow('kos', 'NEUTRALISÉS');
+  private readonly wave = statRow('wave', 'MANCHE');
+  private readonly rocks = statRow('rocks minor', 'PIERRES');
+  private readonly weapon = statRow('weapon minor', 'ARME');
   /** Belongings Paul carries back to the rescue victim (hidden when none). */
-  private readonly items = el('span', 'stat items');
+  private readonly items = statRow('items minor', 'OBJETS');
   private readonly slots: HTMLElement[] = [];
   private readonly top = el('div', 'bb-top');
   private readonly cardsEl = el('div', 'bb-cards');
@@ -150,8 +171,10 @@ export class Hud {
     this.toolsBox = null;
   };
   private lastNow = -1;
-  /** Round number last shown (the line pulses once when it changes). */
+  /** Round number last shown (the row pulses once when it changes). */
   private lastWave = -1;
+  /** Score last shown (its value pops when it goes up). */
+  private lastScore = Number.NaN;
   private lastRescue = Number.POSITIVE_INFINITY;
   private rescueDrain: 'en cours' | 'interrompu' = 'en cours';
 
@@ -170,19 +193,16 @@ export class Hud {
     const hp = this.hp;
     hp.setAttribute('role', 'progressbar');
     hp.setAttribute('aria-valuemin', '0');
-    const l1 = el('div', 'bb-line');
-    l1.append(this.score, this.kos);
-    const l2 = el('div', 'bb-line');
-    const rocks = el('span', 'stat');
-    rocks.append(el('span', 'lbl', 'Pierres '));
     for (let i = 0; i < SLOTS; i++) {
-      const s = el('span', 'slot', '○');
-      this.slots.push(s);
-      rocks.append(s);
+      const slot = el('span', 'slot', '○');
+      this.slots.push(slot);
+      this.rocks.val.append(slot);
     }
-    this.items.hidden = true;
-    l2.append(this.wave, rocks, this.kit, this.items, this.weapon);
-    top.append(hp, l1, l2, this.cardsEl);
+    this.items.li.hidden = true;
+    this.score.val.addEventListener('animationend', () => this.score.val.classList.remove('pop'));
+    this.stats.setAttribute('aria-label', 'Score');
+    this.stats.append(...[this.score, this.kos, this.wave, this.rocks, this.weapon, this.items].map((r) => r.li));
+    top.append(hp, this.stats, this.cardsEl);
     this.round = this.makeRound();
     this.prompt.hidden = true;
     this.prompt.setAttribute('aria-live', 'polite');
@@ -281,29 +301,7 @@ export class Hud {
   update(s: Snapshot, view: CameraView): void {
     const c = this.c;
     this.updateHp(s);
-    c.text(this.score, `Score : ${s.score}`);
-    c.text(this.kos, `Casseurs neutralisés : ${s.kos}`);
-    c.text(this.wave, waveLine(s));
-    if (s.round !== this.lastWave) {
-      if (this.lastWave >= 0) {
-        // restart the stepped pulse (CSS, off under prefers-reduced-motion)
-        this.wave.classList.remove('pulse');
-        void this.wave.offsetWidth;
-        this.wave.classList.add('pulse');
-      }
-      this.lastWave = s.round;
-    }
-    c.text(this.weapon, weaponLine(s));
-    c.cls(this.weapon, s.furie ? 'stat furie' : 'stat');
-    c.text(this.kit, toolboxLine(s));
-    c.cls(this.kit, s.toolboxes.carried ? 'stat kit full' : 'stat kit');
-    const items = itemsLine(s);
-    this.items.hidden = items === null;
-    c.text(this.items, items ?? '');
-    this.slots.forEach((slot, i) => {
-      const full = i < s.carried;
-      c.text(slot, full ? '●' : '○');
-    });
+    this.updateStats(s);
 
     this.trackRescue(s);
     this.updateCards(incidentLines(s, this.rescueDrain), s);
@@ -329,6 +327,42 @@ export class Hud {
     this.placeAlert();
     this.updateRound(roundPanel(s));
     this.updateEdges(active, s, view, touch);
+  }
+
+  /** The score list: values, the score pop (only when it goes up) and the round pulse (when the round changes). */
+  private updateStats(s: Snapshot): void {
+    const c = this.c;
+    c.text(this.score.val, String(s.score));
+    if (s.score !== this.lastScore) {
+      const up = s.score > this.lastScore; // false on the first frame (NaN)
+      this.lastScore = s.score;
+      // restart the stepped pop (CSS, off under prefers-reduced-motion); a drop clears it
+      this.score.val.classList.remove('pop');
+      if (up) {
+        void this.score.val.offsetWidth;
+        this.score.val.classList.add('pop');
+      }
+    }
+    c.text(this.kos.val, String(s.kos));
+    aria(this.kos.li, `Casseurs neutralisés : ${s.kos}`);
+    c.text(this.wave.val, roundValue(s));
+    aria(this.wave.li, waveLine(s));
+    if (s.round !== this.lastWave) {
+      if (this.lastWave >= 0) {
+        // restart the stepped pulse (CSS, off under prefers-reduced-motion)
+        this.wave.li.classList.remove('pulse');
+        void this.wave.li.offsetWidth;
+        this.wave.li.classList.add('pulse');
+      }
+      this.lastWave = s.round;
+    }
+    this.slots.forEach((slot, i) => c.text(slot, i < s.carried ? '●' : '○'));
+    aria(this.rocks.li, `Pierres : ${s.carried} sur ${SLOTS}`);
+    c.text(this.weapon.val, weaponValue(s));
+    this.weapon.li.classList.toggle('furie', s.furie !== null);
+    const items = itemsLine(s);
+    this.items.li.hidden = items === null;
+    c.text(this.items.val, String(s.carriedItems));
   }
 
   /** « Santé 85 sur 100 » for screen readers (progressbar, visually hidden). */
@@ -477,12 +511,16 @@ export class Hud {
       const r = e.getBoundingClientRect();
       return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
     };
-    this.topBox ??= box(this.top);
+    if (!this.topBox) {
+      // the score list's pixel border and hard drop shadow are box-shadows, outside its layout box
+      const t = box(this.top);
+      this.topBox = { ...t, right: t.right + PANEL_SHADOW.right, bottom: t.bottom + PANEL_SHADOW.bottom };
+    }
     this.toolsBox ??= box(this.tools);
     return { top: this.topBox, tools: this.toolsBox };
   }
 
-  /** Top centre, or just under the stats panel / Commandes button when the screen is too narrow to fit between. */
+  /** Top centre, or just under the score list / Commandes button when the screen is too narrow to fit between. */
   private placeAlert(): void {
     const a = this.alert.el;
     if (a.hidden) return;

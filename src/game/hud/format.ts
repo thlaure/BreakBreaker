@@ -199,9 +199,10 @@ export function waveLine(s: Snapshot): string {
   return `Manche ${s.round} : ${Math.min(s.roundKos, s.roundTotal)}/${casseurs(s.roundTotal)}`;
 }
 
-/** HUD toolbox slot: « Caisse 0/1 » or « Caisse 1/1 ». */
-export function toolboxLine(s: Snapshot): string {
-  return `Caisse ${s.toolboxes.carried ? 1 : 0}/1`;
+/** Value of the HUD « MANCHE » row: « 3 · 4/18 » (K/T casseurs), or just « 1 » while the round has no roster yet. */
+export function roundValue(s: Snapshot): string {
+  if (s.roundTotal <= 0) return String(s.round);
+  return `${s.round} · ${Math.min(s.roundKos, s.roundTotal)}/${s.roundTotal}`;
 }
 
 /**
@@ -209,7 +210,16 @@ export function toolboxLine(s: Snapshot): string {
  * (rounded up) follow: « Arme : Bâton (12) · Mode furie 9 s ».
  */
 export function weaponLine(s: Snapshot): string {
-  const arme = s.weapon ? `Arme : ${WEAPONS[s.weapon.kind].label} (${s.weapon.uses})` : 'Arme : mains nues';
+  return `Arme : ${weaponText(s, 'mains nues')}`;
+}
+
+/** Value of the HUD « ARME » row, same logic as weaponLine: « Bâton (12) », « Mains nues », « … · Mode furie 9 s ». */
+export function weaponValue(s: Snapshot): string {
+  return weaponText(s, 'Mains nues');
+}
+
+function weaponText(s: Snapshot, bare: string): string {
+  const arme = s.weapon ? `${WEAPONS[s.weapon.kind].label} (${s.weapon.uses})` : bare;
   return s.furie ? `${arme} · Mode furie ${Math.max(1, Math.ceil(s.furie.secondsLeft - 1e-9))} s` : arme;
 }
 

@@ -322,19 +322,80 @@ describe('Hud alerts and edge indicators', () => {
     hud.destroy();
   });
 
-  test('HUD round line shows K/T and pulses when the round number changes', () => {
+  test('HUD round row shows K/T and pulses when the round number changes', () => {
     const hud = new Hud(document.body, null);
-    const line = () => [...hud.root.querySelectorAll<HTMLElement>('.stat')].find((e) => e.textContent!.startsWith('Manche'))!;
+    const row = () => hud.root.querySelector<HTMLElement>('.bb-stats .wave')!;
+    const val = () => row().querySelector('.val')!.textContent;
     hud.update(snap(() => {}), view);
-    expect(line().textContent).toBe('Manche 1');
-    expect(line().classList.contains('pulse')).toBe(false);
+    expect(val()).toBe('1');
+    expect(row().getAttribute('aria-label')).toBe('Manche 1');
+    expect(row().classList.contains('pulse')).toBe(false);
     hud.update(snap((x) => { x.roundTotal = 11; x.roundKos = 4; }), view);
-    expect(line().textContent).toBe('Manche 1 : 4/11 casseurs');
-    expect(line().classList.contains('pulse')).toBe(false);
+    expect(val()).toBe('1 · 4/11');
+    expect(row().getAttribute('aria-label')).toBe('Manche 1 : 4/11 casseurs');
+    expect(row().classList.contains('pulse')).toBe(false);
     hud.update(snap((x) => { x.round = 2; x.roundTotal = 3; }), view);
-    expect(line().textContent).toBe('Manche 2 : 0/3 casseurs');
-    expect(line().classList.contains('pulse')).toBe(true);
-    expect(hud.root.textContent).toContain('Casseurs neutralisés : 0');
+    expect(val()).toBe('2 · 0/3');
+    expect(row().classList.contains('pulse')).toBe(true);
+    hud.destroy();
+  });
+
+  test('score list: one row per stat, in order, pixel labels and values; objects only while carrying', () => {
+    const hud = new Hud(document.body, null);
+    const rows = (): string[][] =>
+      [...hud.root.querySelectorAll<HTMLElement>('.bb-stats > li')]
+        .filter((li) => !li.hidden)
+        .map((li) => [li.querySelector('.lbl')!.textContent!, li.querySelector('.val')!.textContent!]);
+    hud.update(snap((x) => { x.score = 1250; x.kos = 34; x.round = 3; x.roundTotal = 18; x.roundKos = 12; x.carried = 1; x.weapon = { kind: 'baton', uses: 12 }; }), view);
+    expect(rows()).toEqual([
+      ['SCORE', '1250'],
+      ['NEUTRALISÉS', '34'],
+      ['MANCHE', '3 · 12/18'],
+      ['PIERRES', '●○○'],
+      ['ARME', 'Bâton (12)'],
+    ]);
+    const list = hud.root.querySelector('.bb-stats')!;
+    expect(list.parentElement!.classList.contains('bb-top')).toBe(true);
+    // the cards stay below the list
+    expect(list.nextElementSibling!.classList.contains('bb-cards')).toBe(true);
+    expect(hud.root.querySelector('.bb-stats .kos')!.getAttribute('aria-label')).toBe('Casseurs neutralisés : 34');
+    expect(hud.root.textContent).not.toMatch(/OQTF/i);
+    hud.update(snap((x) => { x.carriedItems = 2; x.weapon = null; x.furie = { secondsLeft: 8.2 }; }), view);
+    expect(rows().slice(4)).toEqual([
+      ['ARME', 'Mains nues · Mode furie 9 s'],
+      ['OBJETS', '2'],
+    ]);
+    expect(hud.root.querySelector('.bb-stats .weapon')!.classList.contains('furie')).toBe(true);
+    hud.destroy();
+  });
+
+  test('score value pops only when the score goes up', () => {
+    const hud = new Hud(document.body, null);
+    const val = () => hud.root.querySelector<HTMLElement>('.bb-stats .score .val')!;
+    hud.update(snap((x) => { x.score = 10; }), view);
+    expect(val().classList.contains('pop')).toBe(false);
+    hud.update(snap((x) => { x.score = 10; }), view);
+    expect(val().classList.contains('pop')).toBe(false);
+    hud.update(snap((x) => { x.score = 12; }), view);
+    expect(val().classList.contains('pop')).toBe(true);
+    val().dispatchEvent(new Event('animationend'));
+    expect(val().classList.contains('pop')).toBe(false);
+    hud.update(snap((x) => { x.score = 11; }), view);
+    expect(val().classList.contains('pop')).toBe(false);
+    hud.update(snap((x) => { x.score = 11; }), view);
+    expect(val().classList.contains('pop')).toBe(false);
+    hud.update(snap((x) => { x.score = 15; }), view);
+    expect(val().classList.contains('pop')).toBe(true);
+    hud.destroy();
+  });
+
+  test('no toolbox slot in the HUD (« Caisse » never shown), carrying one or not', () => {
+    const hud = new Hud(document.body, null);
+    hud.update(snap(() => {}), view);
+    expect(hud.root.textContent).not.toContain('Caisse');
+    hud.update(snap((x) => { x.toolboxes.carried = true; }), view);
+    expect(hud.root.textContent).not.toContain('Caisse');
+    expect(hud.root.querySelector('.kit')).toBeNull();
     hud.destroy();
   });
 
@@ -432,7 +493,7 @@ describe('Hud alerts and edge indicators', () => {
     hud.destroy();
   });
 
-  test('HUD reads « Manche N : K/T casseurs »; incident card shows the target hp %', () => {
+  test('HUD round row reads « 1 · 3/10 » (« Manche N : K/T casseurs » for screen readers); incident card shows the target hp %', () => {
     const hud = new Hud(document.body, null);
     hud.update(
       snap((x) => {
@@ -444,7 +505,8 @@ describe('Hud alerts and edge indicators', () => {
       }),
       view,
     );
-    expect(hud.root.textContent).toContain('Manche 1 : 3/10 casseurs');
+    expect(hud.root.querySelector('.bb-stats .wave .val')!.textContent).toBe('1 · 3/10');
+    expect(hud.root.querySelector('.bb-stats .wave')!.getAttribute('aria-label')).toBe('Manche 1 : 3/10 casseurs');
     const cards = [...hud.root.querySelectorAll<HTMLElement>('.bb-card')].filter((c) => !c.hidden);
     expect(cards.map((c) => `${c.querySelector('.name')!.textContent} ${c.querySelector('.time')!.textContent}`)).toEqual(['École 64 %', 'Voiture 50 %']);
     expect(cards[0]!.querySelector<HTMLElement>('.hpbar .fill')!.style.width).toBe('63%');
@@ -561,7 +623,7 @@ describe('Hud alerts and edge indicators', () => {
     hud.destroy();
   });
 
-  test('toolbox prompts: messages are informational, « Réparer » shows the touch Agir button; the toolbox slot reads Caisse 0/1 or 1/1', () => {
+  test('toolbox prompts: messages are informational, « Réparer » shows the touch Agir button', () => {
     document.body.innerHTML = '<div id="touch-ui" class="visible"><button data-action="act">Agir</button></div>';
     const touch = document.getElementById('touch-ui')!;
     const btn = touch.querySelector<HTMLElement>('[data-action=act]')!;
@@ -571,10 +633,8 @@ describe('Hud alerts and edge indicators', () => {
     expect(prompt().hidden).toBe(false);
     expect(prompt().textContent).toBe('Caisse à outils requise');
     expect(btn.style.display).toBe('none');
-    expect(hud.root.textContent).toContain('Caisse 0/1');
     hud.update(snap((x) => { x.toolboxes.carried = true; x.toolboxes.message = 'Abords non sécurisés'; }), view);
     expect(prompt().textContent).toBe('Abords non sécurisés');
-    expect(hud.root.textContent).toContain('Caisse 1/1');
     hud.update(snap((x) => { x.toolboxes.carried = true; x.toolboxes.repairTarget = 'car1'; x.toolboxes.canRepair = true; x.toolboxes.repairKind = 'ruin'; }), view);
     // touch: no key in the text, the Agir button shows with the action's label
     expect(prompt().textContent).toBe('Réparer');
@@ -683,11 +743,11 @@ describe('mode furie alerts', () => {
     hud.destroy();
   });
 
-  test('Hud weapon line turns gold while the mode is on', () => {
+  test('Hud weapon row turns gold while the mode is on', () => {
     const hud = new Hud(document.body, null);
-    const line = () => [...hud.root.querySelectorAll<HTMLElement>('.stat')].find((e) => e.textContent!.startsWith('Arme'))!;
+    const line = () => hud.root.querySelector<HTMLElement>('.bb-stats .weapon')!;
     hud.update(snap((x) => { calm(x); x.furie = { secondsLeft: 5 }; }), view);
-    expect(line().textContent).toBe('Arme : mains nues · Mode furie 5 s');
+    expect(line().querySelector('.val')!.textContent).toBe('Mains nues · Mode furie 5 s');
     expect(line().classList.contains('furie')).toBe(true);
     hud.update(snap(calm), view);
     expect(line().classList.contains('furie')).toBe(false);

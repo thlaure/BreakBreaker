@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import { CONTROLS, RULES } from '../../src/content/controls';
-import { contextPrompt, formatDuration, formatSummary, hpLabel, incidentLines, roundPanel, waveLine, weaponLine } from '../../src/game/hud/format';
+import { contextPrompt, formatDuration, formatSummary, hpLabel, incidentLines, roundPanel, roundValue, waveLine, weaponLine, weaponValue } from '../../src/game/hud/format';
 import { HEALTH_GREEN, HEALTH_RED, HEALTH_YELLOW, healthColor } from '../../src/game/render/healthBar';
 import { renderMarkdown } from '../../src/game/hud/markdown';
 import { Sim, type Snapshot } from '../../src/sim/sim';
@@ -395,6 +395,16 @@ describe('waveLine', () => {
     expect(waveLine(snap())).toBe('Manche 1');
     expect(waveLine(snap((x) => { x.round = 3; x.roundTotal = 9; x.roundKos = 4; }))).toBe('Manche 3 : 4/9 casseurs');
     expect(waveLine(snap((x) => { x.round = 7; x.roundTotal = 1; x.roundKos = 0; }))).toBe('Manche 7 : 0/1 casseur');
+  });
+});
+
+describe('score list values', () => {
+  test('round value « N · K/T » (just N without a roster); weapon value capitalised, furie seconds kept', () => {
+    expect(roundValue(snap())).toBe('1');
+    expect(roundValue(snap((x) => { x.round = 3; x.roundTotal = 18; x.roundKos = 20; }))).toBe('3 · 18/18');
+    expect(weaponValue(snap())).toBe('Mains nues');
+    expect(weaponValue(snap((x) => { x.weapon = { kind: 'baton', uses: 12 }; }))).toBe('Bâton (12)');
+    expect(weaponValue(snap((x) => { x.weapon = { kind: 'baton', uses: 12 }; x.furie = { secondsLeft: 8.2 }; }))).toBe('Bâton (12) · Mode furie 9 s');
   });
 });
 

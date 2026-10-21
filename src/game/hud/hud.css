@@ -5,11 +5,40 @@
 
 .bb-hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; color: var(--bb-fg); font: 14px/1.3 system-ui, sans-serif; text-shadow: 0 1px 2px #000; }
 .bb-hud[hidden], .bb-hud [hidden] { display: none; }
-.bb-top { position: absolute; left: calc(8px + env(safe-area-inset-left)); top: calc(8px + env(safe-area-inset-top)); display: flex; flex-direction: column; gap: 4px; max-width: calc(100vw - 96px - env(safe-area-inset-left)); padding: 6px 8px; background: var(--bb-panel); border-radius: 8px; }
+.bb-top { position: absolute; left: calc(12px + env(safe-area-inset-left)); top: calc(12px + env(safe-area-inset-top)); display: flex; flex-direction: column; align-items: flex-start; gap: 14px; max-width: calc(100vw - 100px - env(safe-area-inset-left)); }
+/* score list: pixel panel like the alert banners (ink, stepped gold border, hard 4 px drop shadow, no blur) */
+.bb-stats {
+  --edge: var(--bb-accent);
+  box-sizing: border-box; max-width: 100%; margin: 0; padding: 8px 10px; list-style: none;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: 6px 10px;
+  background: var(--bb-ink); color: #fff; font: 8px/1.25 var(--bb-pixel); text-shadow: none;
+  box-shadow:
+    0 calc(-1 * var(--bb-px)) 0 0 var(--edge), 0 var(--bb-px) 0 0 var(--edge),
+    calc(-1 * var(--bb-px)) 0 0 0 var(--edge), var(--bb-px) 0 0 0 var(--edge),
+    0 calc(2 * var(--bb-px)) 0 0 #000, var(--bb-px) var(--bb-px) 0 0 #000;
+}
+.bb-stats .row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline; }
+.bb-stats .row[hidden] { display: none; }
+.bb-stats .lbl { font-size: 8px; color: #a99fbd; white-space: nowrap; }
+.bb-stats .val { font-size: 12px; color: #fff; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bb-stats .score .lbl { color: var(--bb-accent); }
+.bb-stats .score .val { display: inline-block; font-size: 20px; color: var(--bb-accent); text-shadow: 2px 2px 0 #000; transform-origin: left bottom; }
+.bb-stats .score .val.pop { animation: bb-score-pop 0.3s steps(1, end) 1; }
+@keyframes bb-score-pop { 0% { color: #fff; transform: scale(1.15); } 50% { color: #fff; transform: none; } }
+.bb-stats .minor .val { font-size: 10px; color: #e6dff0; }
+.bb-stats .rocks .slot { letter-spacing: 2px; }
+.bb-stats .weapon.furie .val { color: #ffe066; }
+.bb-stats .items .val { color: #ffe066; }
+/* round row: one stepped pulse when the round number changes */
+.bb-stats .wave.pulse .val, .bb-stats .wave.pulse .lbl { animation: bb-wave-pulse 0.9s steps(1, end) 1; }
+@media (max-width: 560px) {
+  .bb-stats { padding: 6px 8px; gap: 4px 8px; }
+  .bb-stats .score .val { font-size: 16px; }
+  .bb-stats .val { font-size: 10px; }
+  .bb-stats .minor .val { font-size: 8px; }
+}
 /* visually hidden, still read by screen readers (Paul's health: the bar is drawn over his head in the world) */
 .bb-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
-.bb-line { display: flex; flex-wrap: wrap; gap: 2px 12px; }
-.bb-line .slot { letter-spacing: 2px; }
 .bb-cards { display: flex; flex-direction: column; gap: 3px; }
 /* incident cards: pixel look (hard border, coloured left bar, pixel icon) */
 .bb-card { --bar: var(--bb-warn); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 5px 6px 5px 8px; font: 8px/1.5 var(--bb-pixel); text-shadow: none; background: var(--bb-ink); border: 2px solid #4a4360; box-shadow: inset 4px 0 0 var(--bar), 2px 2px 0 0 #000; }
@@ -39,8 +68,6 @@
 .bb-card.st-zone-contestée { --bar: var(--bb-bad); }
 .bb-card.st-zone-contestée .status::before { content: '‖ '; }
 .bb-card.k-flag.st-en-cours { --bar: #5a9cff; }
-.bb-line .stat.kit.full { color: var(--bb-fire); }
-.bb-line .stat.items { color: #ffe066; }
 .bb-prompt { position: absolute; left: 50%; top: calc(50% + 44px); transform: translateX(-50%); padding: 4px 10px; background: var(--bb-panel); border: 1px solid var(--bb-accent); border-radius: 6px; font-weight: bold; white-space: nowrap; }
 
 /* ---------- incident alerts (pixel style, see alerts.ts) ---------- */
@@ -82,10 +109,6 @@
 }
 @media (max-width: 560px) { .bb-alert { gap: 8px; padding: 8px; } .bb-alert .title { font-size: 11px; } .bb-alert .sub { font-size: 8px; } }
 @media (max-width: 400px) { .bb-alert { gap: 6px; padding: 6px; } .bb-alert .txt { gap: 4px; } .bb-alert .title { font-size: 10px; } .bb-alert .sub, .bb-alert .meta { font-size: 7px; } .bb-alert .ico svg { width: 20px; height: auto; } .bb-alert .dir { padding-left: 6px; } }
-/* HUD weapon line while the mode furie is on */
-.bb-line .stat.furie { color: #ffe066; }
-/* HUD wave line: one stepped pulse when the wave number changes */
-.bb-line .stat.pulse { animation: bb-wave-pulse 0.9s steps(1, end) 1; }
 @keyframes bb-wave-pulse { 0%, 66% { color: var(--bb-accent); } 33% { color: #fff; } }
 
 .bb-edge {
@@ -131,7 +154,7 @@
 .bb-round .count { color: var(--bb-accent); }
 @keyframes bb-bonus { 50% { background: #fff; } }
 @media (max-width: 400px) { .bb-round { gap: 5px; padding: 6px 8px; } .bb-round .title { font-size: 11px; } .bb-round .score { font-size: 8px; } .bb-round, .bb-round .obj { font-size: 7px; } }
-@media (prefers-reduced-motion: reduce) { .bb-alert, .bb-edge, .bb-line .stat.pulse, .bb-round.in, .bb-round .bonus { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .bb-alert, .bb-edge, .bb-stats .wave.pulse .val, .bb-stats .wave.pulse .lbl, .bb-stats .score .val.pop, .bb-round.in, .bb-round .bonus { animation: none; } }
 
 .bb-overlay { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-start; justify-content: center; overflow: auto; background: rgba(10, 8, 16, 0.88); color: var(--bb-fg); font: 16px/1.45 system-ui, sans-serif; -webkit-user-select: text; user-select: text; touch-action: pan-y; }
 .bb-overlay[data-panel='start'] { background: var(--bb-bg); }
