@@ -6,7 +6,7 @@ import { DEPTH } from './depth';
 import { edgeExit, landingDistance, launchPose, satelliteDelay, satellitePose } from './furieMath';
 import { MAX_SATELLITES, Twinkles } from './satellite';
 import { RifleProp } from './guns';
-import { DUST_MS, badgeOf, hpBarShown, hpFill, rioterSheet, roleScale } from './roleLook';
+import { DUST_MS, badgeOf, hpBarShown, hpFill, hpSegmentFills, hpSegments, rioterSheet, roleScale } from './roleLook';
 
 type HostileSnap = Snapshot['hostiles'][number];
 
@@ -305,10 +305,12 @@ const HP_H = 4;
 const HP_INK = 0x14121c;
 const HP_TRACK = 0x3a3448;
 const HP_RED = 0xff5a4e;
+/** The Caïd's segmented bar: SEG_W px per segment (2 HP), 1-px ink gaps. */
+const SEG_W = 2;
 
 /**
  * The role look of a brute or the Caïd: a helmet / crown badge on the head and a small red pixel HP bar over it (the
- * Caïd always, a brute once damaged); hidden on a KO body.
+ * Caïd always, segmented one segment per 2 HP so his progress reads; a brute once damaged); hidden on a KO body.
  */
 class RoleBadge {
   private readonly badge: Phaser.GameObjects.Image | null;
@@ -339,6 +341,10 @@ class RoleBadge {
     this.bar.setVisible(shown);
     if (!shown) return;
     const lift = this.badge ? Math.round((this.badge.height + 2) * this.size) : 4;
+    if (h.role === 'boss') {
+      this.drawSegments(h, x, top - lift - HP_H);
+      return;
+    }
     this.bar.setPosition(x - HP_W / 2, top - lift - HP_H).setDepth(DEPTH.overlay);
     const fill = hpFill(h.hp, h.maxHp, HP_W - 2);
     if (fill === this.drawn) return;
@@ -347,6 +353,24 @@ class RoleBadge {
     this.bar.fillStyle(HP_INK, 1).fillRect(0, 0, HP_W, HP_H);
     this.bar.fillStyle(HP_TRACK, 1).fillRect(1, 1, HP_W - 2, HP_H - 2);
     if (fill > 0) this.bar.fillStyle(HP_RED, 1).fillRect(1, 1, fill, HP_H - 2);
+  }
+
+  /** The Caïd's bar: one SEG_W-px segment per 2 HP (at most 13) with 1-px ink ticks between them. */
+  private drawSegments(h: HostileSnap, x: number, y: number): void {
+    const n = hpSegments(h.maxHp);
+    const w = n * (SEG_W + 1) + 1;
+    this.bar.setPosition(x - Math.floor(w / 2), y).setDepth(DEPTH.overlay);
+    const key = h.hp * 1000 + h.maxHp;
+    if (key === this.drawn) return;
+    this.drawn = key;
+    this.bar.clear();
+    this.bar.fillStyle(HP_INK, 1).fillRect(0, 0, w, HP_H);
+    const fills = hpSegmentFills(h.hp, h.maxHp, SEG_W);
+    for (let i = 0; i < n; i++) {
+      const sx = 1 + i * (SEG_W + 1);
+      this.bar.fillStyle(HP_TRACK, 1).fillRect(sx, 1, SEG_W, HP_H - 2);
+      if (fills[i]! > 0) this.bar.fillStyle(HP_RED, 1).fillRect(sx, 1, fills[i]!, HP_H - 2);
+    }
   }
 
   destroy(): void {

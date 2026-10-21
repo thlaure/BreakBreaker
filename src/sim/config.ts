@@ -171,11 +171,28 @@ export const CONFIG = {
    */
   brute: { speedMul: 0.75, hp: 4, knockback: 28, counts: [[4, 1], [6, 2], [8, 3]] as const },
   /**
-   * « Le Caïd » (mini-boss, role 'boss'): `hp` HP, `speedMul` × speed, `knockback` px push; from `fromRound` he closes
-   * every round (last fill rioter). KO'd: +1 as usual, +`bonus` (once per round) and, `dropShare` of the time (seeded), a
-   * regular weapon dropped where he fell.
+   * « Le Caïd » (mini-boss, role 'boss'): HP grow with the round, `hp` + floor((round − `fromRound`) / `hpEvery`) ×
+   * `hpStep`, capped at `hpMax` (round 3 → 14, round 5 → 16, …, 26 from round 15). `damageFrom`: the damage he takes per
+   * source (bare hands, a held weapon's swing / flashball shot / gant punch, a returned rock, a mode furie hit, the onde
+   * d’énergie's beam, the bouclier's bubble). `speedMul` × speed; a landed blow does `damageMul` × the contact damage
+   * (rounded) and pushes Paul `knockback` px; he attacks every `attackIntervalMul` × CONFIG.hostile.attackInterval.
+   * From `fromRound` he closes every round (last fill rioter). KO'd: +1 as usual, +`bonus` (once per round) and,
+   * `dropShare` of the time (seeded), a regular weapon dropped where he fell.
    */
-  caid: { speedMul: 0.9, hp: 6, knockback: 40, fromRound: 3, bonus: 5, dropShare: 0.5 },
+  caid: {
+    speedMul: 0.9,
+    hp: 14,
+    hpStep: 2,
+    hpEvery: 2,
+    hpMax: 26,
+    damageFrom: { hands: 1, weapon: 2, rock: 1, furie: 5, beam: 10, bubble: 0 },
+    damageMul: 1.5,
+    knockback: 52,
+    attackIntervalMul: 0.85,
+    fromRound: 3,
+    bonus: 5,
+    dropShare: 0.5,
+  },
   /**
    * Shooters (cartoon AK-47, role 'shooter'): `hp` HP; keep `keepMin`–`keepMax` px from Paul with a clear line (else
    * walk in); aim `aimSec` at where Paul stands (red aim line, « ! »), then a burst of `burst` bullets `burstGap` s apart

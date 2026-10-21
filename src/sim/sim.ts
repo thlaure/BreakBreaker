@@ -5,7 +5,7 @@ import { Energy } from './energy';
 import { EntryQueue, type Spawner } from './entry';
 import { FirePatches } from './firepatch';
 import { Stations, type StationMessage } from './healing';
-import { Horde, isTough, type Hostile, type HordeCtx } from './hostiles';
+import { damageOn, Horde, isTough, KO_DAMAGE, type DamageSource, type Hostile, type HordeCtx } from './hostiles';
 import type { ItemState, RescueIncident, RescueKind, RescueStage } from './incidents/rescue';
 import { SchoolIncident, type SchoolStage } from './incidents/school';
 import type { TargetAttack } from './incidents/targetAttack';
@@ -25,8 +25,6 @@ import { Targets } from './targets';
 import type { CasseKind, InputFrame, Launch, MonumentFlag, Role, SimEvent, TargetId, Variant, Vec } from './types';
 import { WEAPONS, Weapons, type HeldKind, type PickupKind } from './weapons';
 
-/** Damage of a weapon strike: enough to KO any rioter (spec: weapons are one-hit KO). */
-const WEAPON_DAMAGE = 99;
 /** How long a thrown bottle is drawn in flight (render only; the fire starts on the throw). */
 export const MOLOTOV_FLIGHT_SEC = 0.6;
 
@@ -335,12 +333,14 @@ export class Sim {
     else if (!frozen && this.charge === null && input.strike && mode === 'punch') this.punch(now, ev);
     else if (!frozen && this.charge === null && input.strike) {
       // Bare hands: 1 damage. A regular weapon: KO in one hit, but CONFIG.toughWeaponDamage on a brute or the Caïd.
-      // Mode furie: KO in one hit, more targets, the weapon is not used, every KO is launched. The bouclier changes nothing.
+      // Mode furie: KO in one hit (CONFIG.caid.damageFrom.furie on the Caïd), more targets, the weapon is not used,
+      // every KO is launched. The bouclier changes nothing.
+      const source: DamageSource = furie ? 'furie' : this.weapons.held ? 'weapon' : 'hands';
       const maxTargets = furie ? CONFIG.furie.maxTargets : CONFIG.melee.maxTargets;
       const { hits } = sweep(p, now, this.horde.views(), this.grid, this.weapons.range(), maxTargets);
       for (const id of hits) {
         const tough = this.tough(id);
-        const damage = furie ? CONFIG.furie.damage : this.weapons.held ? (tough ? CONFIG.toughWeaponDamage : WEAPON_DAMAGE) : 1;
+        const damage = this.damageTo(id, source);
         ev.push(tough ? { type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee', heavy: true } : { type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee' });
         this.hit(id, damage, ev, furie);
       }
@@ -384,6 +384,14 @@ export class Sim {
         }
         continue;
       }
+      if (e.type === 'HitConfirmed' && e.source === 'rock') {
+        // a returned rock: its damage per the target's role (CONFIG.caid.damageFrom.rock on the Caïd)
+        const damage = this.damageTo(e.targetLifeId, 'rock', e.damage);
+        ev.push({ ...e, damage });
+        this.rules.stats.rocksHit += 1;
+        this.hit(e.targetLifeId, damage, ev);
+        continue;
+      }
       ev.push(e);
       if (e.type === 'MolotovThrown') molotovs.push(e);
       else if (e.type === 'FirebombThrown') this.firePatches.throwBottle(e.from, e.to, e.until);
@@ -391,15 +399,11 @@ export class Sim {
       else if (e.type === 'ShooterAimStarted') this.aims.push({ lifeId: e.lifeId, from: v(e.from), to: v(e.to), until: e.until });
       else if (e.type === 'ProjectilePickedUp') this.rules.stats.rocksPicked += 1;
       else if (e.type === 'ProjectileReturned') this.rules.stats.rocksReturned += 1;
-      else if (e.type === 'HitConfirmed' && e.source === 'rock') {
-        this.rules.stats.rocksHit += 1;
-        this.hit(e.targetLifeId, e.damage, ev);
-      }
     }
     // flashball shots: a weapon hit on the first rioter on their path
     for (const s of shots.hits) {
       const tough = this.tough(s.lifeId);
-      const damage = tough ? CONFIG.toughWeaponDamage : WEAPON_DAMAGE;
+      const damage = this.damageTo(s.lifeId, 'weapon');
       ev.push(
         tough
           ? { type: 'HitConfirmed', targetLifeId: s.lifeId, damage, source: 'flashball', heavy: true }
@@ -715,7 +719,7 @@ export class Sim {
     const h = this.horde.list.find((x) => x.lifeId === best!.id)!;
     ev.push({ type: 'GlovePunched', from: v(p.pos), to: v(h.pos), lifeId: h.lifeId });
     const tough = isTough(h.role);
-    const damage = tough ? CONFIG.toughWeaponDamage : WEAPON_DAMAGE;
+    const damage = damageOn(h.role, 'weapon');
     ev.push(
       tough
         ? { type: 'HitConfirmed', targetLifeId: h.lifeId, damage, source: 'gant', heavy: true }
@@ -790,14 +794,17 @@ export class Sim {
     ev.push({ type: 'BeamCancelled' });
   }
 
-  /** The beam along Paul's facing: every rioter on it is KO'd (+1 each, no energy) and launched along the beam. */
+  /**
+   * The beam along Paul's facing: every rioter on it is KO'd (+1 each, no energy) and launched along the beam; the Caïd
+   * takes CONFIG.caid.damageFrom.beam.
+   */
   private fireBeam(ev: SimEvent[]): void {
     const p = this.player;
     const dir = norm(p.facing);
     const shot = beam(p.pos, dir, this.horde.views(), this.grid);
-    const damage = WEAPON_DAMAGE;
     let kos = 0;
     for (const id of shot.lifeIds) {
+      const damage = this.damageTo(id, 'beam');
       ev.push({ type: 'HitConfirmed', targetLifeId: id, damage, source: 'beam' });
       if (this.hit(id, damage, ev, dir)) kos += 1;
     }
@@ -838,6 +845,12 @@ export class Sim {
     const base = along ?? (len(away) > 1e-6 ? norm(away) : this.player.facing);
     const a = Math.atan2(base.y, base.x) + jitter;
     return { dir: { x: Math.cos(a), y: Math.sin(a) }, power, spin: sign * turns, kind: along ? 'satellite' : 'tumble' };
+  }
+
+  /** Damage rioter `lifeId` takes from `source` (damageOn by its role; `fallback` when it is gone). */
+  private damageTo(lifeId: number, source: DamageSource, fallback = KO_DAMAGE): number {
+    const h = this.horde.list.find((x) => x.lifeId === lifeId);
+    return h ? damageOn(h.role, source) : fallback;
   }
 
   /** A brute or the Caïd (heavier hits, CONFIG.toughWeaponDamage from a held weapon). */
