@@ -1,6 +1,6 @@
 import { CONFIG } from './config';
 import type { Horde } from './hostiles';
-import { DISTRICT } from './map/district';
+import { DISTRICT, targetDoor } from './map/district';
 import { dist } from './math';
 import type { Player } from './player';
 import type { Rules } from './rules';
@@ -124,12 +124,12 @@ export class Toolboxes {
       if (targets.get(target).state === 'ruined') {
         const lost = targets.repair(target);
         const key = lost !== null ? `${lost}:repaired` : `${target}:repaired#${n}`;
-        rules.award(key, CONFIG.casse.scores[kind][2]);
+        rules.award(key, CONFIG.casse.scores[kind][2], targetDoor(target));
         events.push({ type: 'TargetRepaired', target, incidentId: lost ?? key });
       } else {
         const fire = targets.extinguish(target);
         const key = fire !== null ? `${fire}:extinguished` : `${target}:extinguished#${n}`;
-        rules.award(key, CONFIG.casse.scores[kind][2]);
+        rules.award(key, CONFIG.casse.scores[kind][2], targetDoor(target));
         events.push({ type: 'FireOut', target });
         events.push({ type: 'TargetRepaired', target, incidentId: fire ?? key });
       }

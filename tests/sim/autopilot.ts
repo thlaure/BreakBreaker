@@ -23,7 +23,7 @@ export function autopilot(sim: Sim, opts: { koAfterSec?: number } = {}): InputFr
     const t = first.get(h.lifeId);
     if (t === undefined) first.set(h.lifeId, sim.now);
     if (sim.now - (t ?? sim.now) + 1e-9 >= after && sim.horde.applyHit(h.lifeId, 99) === 'ko') {
-      sim.rules.onKnockout(h.lifeId);
+      sim.rules.onKnockout(h.lifeId, h.pos);
       first.delete(h.lifeId);
     }
   }

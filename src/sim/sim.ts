@@ -188,6 +188,7 @@ export function segmentRectEntry(a: Vec, b: Vec, r: Rect): number | null {
  * charges while Frapper is held (Paul frozen), fires a beam at CONFIG.kamehame.chargeSec, and is cancelled by a release,
  * damage, the weapon lost or a KO.
  * While the school cinematic is running, only its timer advances.
+ * Every score change of the step (Rules' outbox, KOs included) ends the step's events as one ScoreChanged each.
  */
 export class Sim {
   readonly rules = new Rules();
@@ -276,6 +277,7 @@ export class Sim {
     if (this.school.suspended()) {
       ev.push(...this.school.step(dt, this.attackCtx()));
       this.tally(ev);
+      this.scoreEvents(ev);
       return ev;
     }
     this.now += dt;
@@ -362,6 +364,7 @@ export class Sim {
         ev.push({ type: 'PlayerKnockedOut' });
       }
       this.rules.end('ko');
+      this.scoreEvents(ev);
       return ev;
     }
 
@@ -390,6 +393,7 @@ export class Sim {
 
     ev.push(...this.director.step(dt, this));
     this.tally(ev);
+    this.scoreEvents(ev);
     return ev;
   }
 
@@ -625,10 +629,10 @@ export class Sim {
    */
   private hit(lifeId: number, dmg: number, ev: SimEvent[], launched: boolean | Vec = false): boolean {
     if (this.horde.applyHit(lifeId, dmg) !== 'ko') return false;
-    this.rules.onKnockout(lifeId);
-    const h = launched ? this.horde.list.find((x) => x.lifeId === lifeId) : undefined;
+    const h = this.horde.list.find((x) => x.lifeId === lifeId);
+    this.rules.onKnockout(lifeId, h?.pos);
     const along = typeof launched === 'object' ? launched : undefined;
-    ev.push(h ? { type: 'ActorKnockedOut', lifeId, launch: this.launch(h.pos, along) } : { type: 'ActorKnockedOut', lifeId });
+    ev.push(h && launched ? { type: 'ActorKnockedOut', lifeId, launch: this.launch(h.pos, along) } : { type: 'ActorKnockedOut', lifeId });
     return true;
   }
 
@@ -664,6 +668,11 @@ export class Sim {
       else next.set(h.lifeId, norm(sub(this.player.pos, h.pos)));
     }
     this.facings = next;
+  }
+
+  /** One ScoreChanged per score change applied since the last step, where it happened (else at Paul). */
+  private scoreEvents(ev: SimEvent[]): void {
+    for (const e of this.rules.drain()) ev.push({ type: 'ScoreChanged', points: e.points, pos: e.at ?? v(this.player.pos) });
   }
 
   /** Incident outcomes feed the session stats (Rules does not track them itself). */

@@ -144,3 +144,15 @@ export const DISTRICT: District = {
     attackPoints: [C(32, 21), C(32, 22), C(35, 21), C(35, 22), C(33, 23), C(34, 23), C(33, 20), C(34, 20)],
   },
 };
+
+/** Where a target's score changes show (saved, lost, extinguished, repaired): its door (a prop's footprint centre). */
+export function targetDoor(id: TargetId): Vec {
+  const def = DISTRICT.targets.find((t) => t.id === id);
+  if (!def) throw new Error(`unknown target ${id}`);
+  return { x: def.door.x, y: def.door.y };
+}
+
+/** Where the monument's score changes show (captured, defended, lost): the centre of its capture zone. */
+export function monumentCentre(): Vec {
+  return { x: DISTRICT.monument.zone.x, y: DISTRICT.monument.zone.y };
+}

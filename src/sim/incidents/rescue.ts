@@ -194,7 +194,7 @@ export class RescueIncident {
     if (this.thanks >= CONFIG.rescue.thanksSec - EPS) {
       this.stage = 'completed';
       this.loseOutstanding();
-      ctx.rules.award(`${this.id}:ok`, CONFIG.rescue.bonus);
+      ctx.rules.award(`${this.id}:ok`, CONFIG.rescue.bonus, this.victimPos);
       events.push({ type: 'RescueCompleted', incidentId: this.id });
     }
     return events;
@@ -266,7 +266,7 @@ export class RescueIncident {
       if (it.state !== 'carried') continue;
       it.state = 'returned';
       it.pos = { ...this.victimPos };
-      ctx.rules.award(`${this.id}:item:${it.id}`, CONFIG.rescue.itemBonus);
+      ctx.rules.award(`${this.id}:item:${it.id}`, CONFIG.rescue.itemBonus, this.victimPos);
       events.push({ type: 'ItemReturned', rescueId: this.id, item: it.id });
     }
   }

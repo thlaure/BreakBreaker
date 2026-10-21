@@ -133,4 +133,9 @@ export type SimEvent =
    */
   | { type: 'TwistStarted'; kind: 'weaponDrop' | 'secondUrgency'; pos: Vec | null; special?: SpecialKind }
   | { type: 'StationsRecharged' }
+  /**
+   * The score changed by `points` (signed, never 0) at `pos` (the rioter KO'd, the target's door, the victim, the
+   * monument, Paul for the round bonus): what the floating score popups show. One per Rules change, in order.
+   */
+  | { type: 'ScoreChanged'; points: number; pos: Vec }
   | { type: 'PlayerKnockedOut' };

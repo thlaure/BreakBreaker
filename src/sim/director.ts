@@ -578,7 +578,7 @@ export class Director {
       result: this.succeeded(o) ? ('réussi' as const) : ('perdu' as const),
     }));
     const bonus = objectives.every((o) => o.result === 'réussi');
-    if (bonus) host.rules.award(`round#${this.round}:bonus`, CONFIG.round.bonus);
+    if (bonus) host.rules.award(`round#${this.round}:bonus`, CONFIG.round.bonus, host.player.pos);
     ev.push({ type: 'RoundCompleted', index: this.round, bonus });
     host.stations.recharge();
     ev.push({ type: 'StationsRecharged' });

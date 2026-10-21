@@ -1,7 +1,7 @@
 import { CONFIG } from '../config';
 import type { SpawnRequest, Spawner } from '../entry';
 import type { Horde } from '../hostiles';
-import { DISTRICT } from '../map/district';
+import { DISTRICT, targetDoor } from '../map/district';
 import type { Rules } from '../rules';
 import type { Targets } from '../targets';
 import type { CasseKind, Role, SimEvent, TargetId, Variant } from '../types';
@@ -191,7 +191,7 @@ export class TargetAttack {
       } else if (st.burning) this.stage = 'smoulder';
       else {
         this.stage = 'saved';
-        ctx.rules.award(`${this.id}:saved`, CONFIG.casse.scores[this.kind][0]);
+        ctx.rules.award(`${this.id}:saved`, CONFIG.casse.scores[this.kind][0], targetDoor(this.target));
         ev.push({ type: 'TargetSaved', incidentId: this.id, target: this.target });
         ev.push(...this.onSaved());
       }
@@ -203,7 +203,7 @@ export class TargetAttack {
   private destroy(ctx: AttackCtx, ev: SimEvent[]): void {
     this.targets.ruin(this.target, this.id);
     this.lose();
-    ctx.rules.award(`${this.id}:lost`, CONFIG.casse.scores[this.kind][1]);
+    ctx.rules.award(`${this.id}:lost`, CONFIG.casse.scores[this.kind][1], targetDoor(this.target));
     ev.push({ type: 'BuildingDestroyed', incidentId: this.id, target: this.target });
   }
 
