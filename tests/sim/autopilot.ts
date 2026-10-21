@@ -1,7 +1,7 @@
 import type { Sim } from '../../src/sim/sim';
 import type { InputFrame } from '../../src/sim/types';
 
-export const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false };
+export const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false };
 
 /** When each hostile was first seen active, per sim (sim time). */
 const seen = new WeakMap<Sim, Map<number, number>>();
@@ -23,7 +23,7 @@ export function autopilot(sim: Sim, opts: { koAfterSec?: number } = {}): InputFr
     const t = first.get(h.lifeId);
     if (t === undefined) first.set(h.lifeId, sim.now);
     if (sim.now - (t ?? sim.now) + 1e-9 >= after && sim.horde.applyHit(h.lifeId, 99) === 'ko') {
-      sim.rules.onKnockout(h.lifeId);
+      sim.rules.onKnockout(h.lifeId, h.pos);
       first.delete(h.lifeId);
     }
   }

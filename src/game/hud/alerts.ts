@@ -1,25 +1,26 @@
 import { CONFIG } from '../../sim/config';
 import type { Snapshot } from '../../sim/sim';
-import type { CasseKind, SimEvent, Vec } from '../../sim/types';
+import type { CasseKind, PickupKind, SimEvent, SpecialKind, Vec } from '../../sim/types';
 
 /**
- * Incident alerts: a pixel banner when a target is set on fire, a rescue, a round or a special weapon drop starts, and one
- * edge indicator per active incident (special drops included, while on the ground). An attack start is not announced: the
+ * Incident alerts: a pixel banner when a target is set on fire, a rescue, a round or a special drop starts, and one
+ * edge indicator per active incident (special pickups included — furie, bouclier, kamehame — while on the ground;
+ * regular weapons never get one). An attack start is not announced: the
  * fire is, once the bottle is thrown (TargetIgnited). Generic on purpose: a new kind of "casse" only needs an entry in
  * INCIDENT_ALERTS (and a headline line); `alertFromEvent` / `activeIncidents` read the generic TargetIgnited event and
  * `snapshot.targets`. A round start has no position: its banner shows no arrow and no distance.
  */
 /** `monument` = an occupation under way; `flag` = the flag replaced, to capture back. */
 export type IncidentKind = CasseKind | 'groupHarassed' | 'elderlyRobbed' | 'monument' | 'flag';
-/** A special drop waiting on the ground: a weapon, or the mode furie. */
-export type DropKind = 'weaponDrop' | 'furieDrop';
+/** A special pickup waiting on the ground: the mode furie, the bouclier or the onde d’énergie (kamehame). */
+export type DropKind = 'furieDrop' | 'bouclierDrop' | 'kamehameDrop';
 /**
  * Everything the banner can announce: positioned incidents and drops, and position-less round starts and mode furie
  * starts (`furie`).
  */
 export type AlertKind = IncidentKind | 'round' | DropKind | 'furie' | 'flagCaptured';
 export type AlertTone = 'fire' | 'warn' | 'round' | 'drop' | 'furie' | 'win';
-export type AlertIcon = 'flame' | 'alert' | 'horde' | 'glass' | 'star' | 'bolt' | 'flag';
+export type AlertIcon = 'flame' | 'alert' | 'horde' | 'glass' | 'star' | 'bolt' | 'flag' | 'shield' | 'orb';
 /** What a round is about (its first beat), shown under « MANCHE N ! ». */
 export type RoundHeadline = CasseKind | 'rescue' | 'monument';
 
@@ -45,9 +46,21 @@ export const INCIDENT_ALERTS: Readonly<Record<IncidentKind, AlertSpec>> = {
   flag: { title: 'DRAPEAU REMPLACÉ !', sub: 'Reprends le monument', label: 'DRAPEAU', tone: 'warn', icon: 'flag' },
 };
 
-const WEAPON_DROP: AlertSpec = { title: 'ARME SPÉCIALE !', sub: 'Fonce la ramasser', label: 'ARME', tone: 'drop', icon: 'star' };
-const FURIE_DROP: AlertSpec = { title: 'MODE FURIE DISPONIBLE !', sub: 'Fonce le ramasser', label: 'FURIE', tone: 'furie', icon: 'bolt' };
-const DROPS: Readonly<Record<DropKind, AlertSpec>> = { weaponDrop: WEAPON_DROP, furieDrop: FURIE_DROP };
+export const DROPS: Readonly<Record<DropKind, AlertSpec>> = {
+  furieDrop: { title: 'MODE FURIE DISPONIBLE !', sub: 'Fonce le ramasser', label: 'FURIE', tone: 'furie', icon: 'star' },
+  bouclierDrop: { title: 'BOUCLIER DISPONIBLE !', sub: 'Fonce le ramasser', label: 'BOUCLIER', tone: 'drop', icon: 'shield' },
+  kamehameDrop: { title: 'ONDE D’ÉNERGIE DISPONIBLE !', sub: 'Fonce la ramasser', label: 'RAYON', tone: 'drop', icon: 'orb' },
+};
+const DROP_OF: Readonly<Record<SpecialKind, DropKind>> = { furie: 'furieDrop', bouclier: 'bouclierDrop', kamehame: 'kamehameDrop' };
+
+/** The indicator kind of a ground pickup: only the specials have one (regular weapons: null). */
+export function dropKindOf(kind: PickupKind): DropKind | null {
+  return kind === 'furie' || kind === 'bouclier' || kind === 'kamehame' ? DROP_OF[kind] : null;
+}
+
+function isDrop(kind: AlertKind): kind is DropKind {
+  return kind === 'furieDrop' || kind === 'bouclierDrop' || kind === 'kamehameDrop';
+}
 /** How long the position-less « MODE FURIE ! » banner stays (short: Paul is busy hitting). */
 export const FURIE_ALERT_MS = 2200;
 /** How long the short « DRAPEAU RÉCUPÉRÉ ! » banner stays. */
@@ -96,7 +109,7 @@ export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: 
       meta: '',
       positioned: false,
     };
-  if (kind === 'weaponDrop' || kind === 'furieDrop') return { ...DROPS[kind], meta: '', positioned: true };
+  if (isDrop(kind)) return { ...DROPS[kind], meta: '', positioned: true };
   if (kind === 'furie')
     return {
       title: 'MODE FURIE !',
@@ -138,7 +151,7 @@ export interface Incident {
  */
 export function incidentLook(kind: IncidentKind | DropKind, burning?: boolean): { tone: AlertTone; icon: AlertIcon } {
   if (burning === undefined) {
-    const spec = kind === 'weaponDrop' || kind === 'furieDrop' ? DROPS[kind] : INCIDENT_ALERTS[kind];
+    const spec = isDrop(kind) ? DROPS[kind] : INCIDENT_ALERTS[kind];
     return { tone: spec.tone, icon: spec.icon };
   }
   return burning ? { tone: 'fire', icon: 'flame' } : { tone: 'warn', icon: 'alert' };
@@ -176,9 +189,10 @@ export function alertFromEvent(e: SimEvent): Alert | null {
     return { id: e.incidentId, kind: e.kind, pos: { ...e.pos }, wave: e.wave, total: e.total, incident: 'rescue' };
   if (e.type === 'RoundStarted')
     return { id: `round#${e.index}`, kind: 'round', pos: null, wave: e.index, total: e.total, headline: e.headline };
-  // a second urgency is announced by its own start event; a drop that found no spot has nothing to show
-  if (e.type === 'TwistStarted' && e.kind === 'weaponDrop' && e.pos) {
-    const kind: DropKind = e.furie ? 'furieDrop' : 'weaponDrop';
+  // a second urgency is announced by its own start event; a drop that found no spot, or a regular weapon (no special),
+  // has nothing to show
+  if (e.type === 'TwistStarted' && e.kind === 'weaponDrop' && e.pos && e.special) {
+    const kind = DROP_OF[e.special];
     return { id: dropId(e.pos), kind, pos: { ...e.pos }, wave: 0, total: 0, incident: dropId(e.pos) };
   }
   // picked up: short position-less banner (a reset while on is announced again)
@@ -194,21 +208,27 @@ export function alertFromEvent(e: SimEvent): Alert | null {
 
 /**
  * Incidents that still need Paul: every target under an urgent attack or still burning (at its door: a fire stays until
- * put out with a toolbox), the rescue while threatened, and
- * every special drop (a weapon with an expiry) until it is picked up or vanishes.
+ * put out with a toolbox), the rescue while threatened (or secured with belongings still to bring back), and
+ * every special pickup on the ground (furie, bouclier, kamehame: kind-based, twist drop or street spawn) until it is
+ * picked up or vanishes. Regular weapons are never listed.
  */
 export function activeIncidents(s: Snapshot): Incident[] {
   const out: Incident[] = [];
   for (const t of s.targets)
     if (t.state === 'attacked' || t.state === 'burning') out.push({ id: t.id, kind: t.kind, pos: { ...t.door }, burning: t.burning });
-  if (s.rescue?.stage === 'threat') out.push({ id: 'rescue', kind: s.rescue.kind, pos: { ...s.rescue.victimPos } });
+  // the rescue while threatened, and while belongings lie on the ground or Paul carries them back
+  const r = s.rescue;
+  const toReturn = r?.stage === 'secured' && r.items.some((it) => it.state === 'dropped' || it.state === 'carried');
+  if (r && (r.stage === 'threat' || toReturn)) out.push({ id: 'rescue', kind: r.kind, pos: { ...r.victimPos } });
   // the monument: its flag to take back (any time, breather included), or an occupation under way. Distinct ids, so an
   // occupation banner still queued is dropped once the flag is swapped (or the occupation is over)
   const m = s.monument;
   if (m.flag === 'palestinian') out.push({ id: 'monument:flag', kind: 'flag', pos: { ...m.mast } });
   else if (m.occupation?.stage === 'occupy') out.push({ id: 'monument:occupy', kind: 'monument', pos: { ...m.mast } });
-  for (const w of s.weaponsOnGround)
-    if (w.expiresAt !== null) out.push({ id: dropId(w.pos), kind: w.kind === 'furie' ? 'furieDrop' : 'weaponDrop', pos: { ...w.pos } });
+  for (const w of s.weaponsOnGround) {
+    const kind = dropKindOf(w.kind);
+    if (kind) out.push({ id: dropId(w.pos), kind, pos: { ...w.pos } });
+  }
   return out;
 }
 
@@ -285,6 +305,9 @@ const PALETTE: Record<string, string> = {
   O: '#ff7a2e',
   Y: '#ffd166',
   W: '#fff7e0',
+  B: '#3b6fd8',
+  S: '#a9b6c8',
+  L: '#8fd3ff',
   C: 'currentColor',
 };
 
@@ -369,7 +392,34 @@ const SPRITES: Record<Sprite, string[]> = {
     'KWK.......',
     'KKK.......',
   ],
-  // a sparkle: the special weapon to grab
+  // a round blue/steel shield with a highlight: the bouclier to grab
+  shield: [
+    '..KKKKKK..',
+    '.KBBBBBBK.',
+    'KBWWBBBBBK',
+    'KBWSSSSBBK',
+    'KBSSSSSSBK',
+    'KBSSSSSSBK',
+    'KBBSSSSBBK',
+    '.KBBSSBBK.',
+    '..KBBBBK..',
+    '...KBBK...',
+    '....KK....',
+  ],
+  // a glowing energy orb with a spark: the onde d’énergie to grab
+  orb: [
+    '...KKKK..W',
+    '..KBBBBK.W',
+    '.KBLLLLBK.',
+    'KBLWWLLLBK',
+    'KBLWWWLLBK',
+    'KBLLWLLLBK',
+    'KBLLLLLLBK',
+    '.KBLLLLBK.',
+    '..KBBBBK..',
+    '...KKKK...',
+  ],
+  // a sparkle: the mode furie to grab
   star: [
     '....Y....',
     '...KYK...',

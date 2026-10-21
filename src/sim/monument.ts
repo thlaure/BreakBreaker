@@ -1,7 +1,7 @@
 import { CONFIG } from './config';
 import type { SpawnRequest, Spawner } from './entry';
 import type { Horde } from './hostiles';
-import { DISTRICT } from './map/district';
+import { DISTRICT, monumentCentre } from './map/district';
 import { dist } from './math';
 import type { Player } from './player';
 import type { Rules } from './rules';
@@ -62,7 +62,7 @@ export class Monument {
     this.progress = 0;
     this.paulInZone = false;
     this.contested = false;
-    ctx.rules.award(`monument#${this.swaps}:captured`, CONFIG.monument.scores.captured);
+    ctx.rules.award(`monument#${this.swaps}:captured`, CONFIG.monument.scores.captured, monumentCentre());
     return [{ type: 'FlagCaptured', swap: this.swaps, pos: { ...DISTRICT.monument.mast } }];
   }
 }
@@ -126,14 +126,14 @@ export class MonumentIncident {
       if (this.swapTimer >= CONFIG.monument.swapSec - EPS) {
         this.swapTimer = CONFIG.monument.swapSec;
         this.stage = 'swapped';
-        ctx.rules.award(`${this.id}:lost`, CONFIG.monument.scores.lost);
+        ctx.rules.award(`${this.id}:lost`, CONFIG.monument.scores.lost, monumentCentre());
         return [ctx.monument.swap(this.id)];
       }
       return [];
     }
     if (this.requiredActive(ctx.horde)) return [];
     this.stage = 'defended';
-    ctx.rules.award(`${this.id}:saved`, CONFIG.monument.scores.defended);
+    ctx.rules.award(`${this.id}:saved`, CONFIG.monument.scores.defended, monumentCentre());
     return [{ type: 'MonumentDefended', incidentId: this.id }];
   }
 

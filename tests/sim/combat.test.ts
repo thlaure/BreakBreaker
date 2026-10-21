@@ -8,7 +8,7 @@ import type { InputFrame, Vec } from '../../src/sim/types';
 
 const grid = new Grid(DISTRICT);
 const DT = 1 / 60;
-const idle: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false };
+const idle: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false };
 const view = (lifeId: number, pos: Vec, active = true): HostileView => ({ lifeId, pos, r: CONFIG.hostile.radius, active });
 
 test('sweep hits at most 3, each once per swing (RC-06)', () => {

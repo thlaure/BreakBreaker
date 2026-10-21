@@ -12,6 +12,7 @@ import { guardLifecycle, merge, type InputSource } from '../input/merge';
 import { createTouch } from '../input/touch';
 import { Grid } from '../../sim/map/grid';
 import { HostileLayer, PaulView } from '../render/actors';
+import { PaulHealthBar } from '../render/healthBar';
 import { FurieAura, PowBubbles, makeFurieTextures } from '../render/furie';
 import { GroupView, VictimView } from '../render/crowd';
 import { FirePatchLayer, MolotovFx, RockLayer, TelegraphLayer } from '../render/fx';
@@ -19,6 +20,9 @@ import { MonumentView, makeMonumentTextures } from '../render/monument';
 import { TargetsLayer, makeTargetTextures } from '../render/targets';
 import { StationsView, ToolboxView, WorldView, makeRockTextures, makeTextures } from '../render/world';
 import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapons';
+import { ItemLayer, makeItemTextures } from '../render/items';
+import { ShieldView, SpecialFx, makeSpecialTextures } from '../render/specials';
+import { ScorePopups } from '../render/scorePopups';
 
 const HIT_STOP_MS = 60;
 const SHAKE_MS = 120;
@@ -26,6 +30,9 @@ const SHAKE_PX = 2;
 /** Tiny shake on a strike that hits in mode furie (none under prefers-reduced-motion). */
 const FURIE_SHAKE_MS = 90;
 const FURIE_SHAKE_PX = 1.5;
+/** Small shake when the onde d’énergie fires (none under prefers-reduced-motion). */
+const BEAM_SHAKE_MS = 160;
+const BEAM_SHAKE_PX = 2;
 const BASE_W = 640;
 const BASE_H = 360;
 const PAN_IN_MS = 700;
@@ -45,7 +52,7 @@ export class WorldScene extends Phaser.Scene {
   private stress = 0;
   private stressState = { n: 0 };
   private clock!: FixedClock;
-  private input$: () => InputFrame = () => ({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false });
+  private input$: () => InputFrame = () => ({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false });
   private disposeInput: (() => void) | null = null;
   private ui: GameUi | null = null;
   private sources: InputSource[] = [];
@@ -62,7 +69,10 @@ export class WorldScene extends Phaser.Scene {
   private stations!: StationsView;
   private group!: GroupView;
   private victim!: VictimView;
+  private items!: ItemLayer;
   private paul!: PaulView;
+  /** Paul's pixel health bar over his head. */
+  private healthBar!: PaulHealthBar;
   private hostiles!: HostileLayer;
   private rocks!: RockLayer;
   private weaponsOnGround!: WeaponLayer;
@@ -70,6 +80,12 @@ export class WorldScene extends Phaser.Scene {
   private telegraphs!: TelegraphLayer;
   private furieAura!: FurieAura;
   private pows!: PowBubbles;
+  /** The bouclier held in front of Paul. */
+  private shield!: ShieldView;
+  /** Onde d’énergie charge glow and beam, shield block sparks. */
+  private specialFx!: SpecialFx;
+  /** Floating « +N » / « −N » score popups where points were won or lost. */
+  private scorePopups!: ScorePopups;
   private reducedMotion = false;
 
   private hitStopUntil = 0;
@@ -162,8 +178,10 @@ export class WorldScene extends Phaser.Scene {
     makeTextures(this);
     makeRockTextures(this);
     makeWeaponTextures(this);
+    makeItemTextures(this);
     makeTargetTextures(this);
     makeFurieTextures(this);
+    makeSpecialTextures(this);
     makeMonumentTextures(this);
     this.reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.world = new WorldView(this);
@@ -172,11 +190,13 @@ export class WorldScene extends Phaser.Scene {
     this.stations = new StationsView(this);
     this.group = new GroupView(this);
     this.victim = new VictimView(this);
+    this.items = new ItemLayer(this);
     // static map data only (no sim state): where a launched body may land
     const grid = new Grid(DISTRICT);
     this.hostiles = new HostileLayer(this, {
       world: { width: this.world.width, height: this.world.height },
       blocked: (p) => grid.circleBlocked(p, 6) || grid.isGroup(p),
+      reducedMotion: this.reducedMotion,
     });
     this.rocks = new RockLayer(this);
     this.weaponsOnGround = new WeaponLayer(this);
@@ -188,8 +208,12 @@ export class WorldScene extends Phaser.Scene {
     this.playerPos = { ...snap.player.pos };
     this.furieAura = new FurieAura(this);
     this.paul = new PaulView(this, snap.player.pos);
+    this.healthBar = new PaulHealthBar(this, this.reducedMotion);
     this.pows = new PowBubbles(this);
     this.heldWeapon = new HeldWeaponView(this);
+    this.shield = new ShieldView(this);
+    this.specialFx = new SpecialFx(this);
+    this.scorePopups = new ScorePopups(this, this.reducedMotion);
     this.toolboxes = new ToolboxView(this);
 
     const cam = this.cameras.main;
@@ -232,6 +256,8 @@ export class WorldScene extends Phaser.Scene {
     this.cinematicCamera(snap);
     this.playerPos = snap.player.pos;
     this.react(events, time, snap);
+    // cosmetic, on their own timer (not frozen by the hit-stop or the pause)
+    this.scorePopups.update(time);
     if (time >= this.hitStopUntil) {
       this.render(snap, time, time - this.lastVisual);
       this.lastVisual = time;
@@ -271,8 +297,12 @@ export class WorldScene extends Phaser.Scene {
 
   private react(events: SimEvent[], time: number, snap: Snapshot): void {
     let furieHit = false;
+    /** Rank of each body satellised by this batch's beam (take-off stagger). */
+    let satellites = 0;
+    const scored: Extract<SimEvent, { type: 'ScoreChanged' }>[] = [];
     for (const e of events) {
-      if (e.type === 'HitConfirmed') {
+      if (e.type === 'ScoreChanged') scored.push(e);
+      else if (e.type === 'HitConfirmed') {
         this.hostiles.flash(e.targetLifeId, time);
         this.hitStopUntil = Math.max(this.hitStopUntil, time + HIT_STOP_MS);
         if (snap.furie && e.source === 'melee') {
@@ -282,10 +312,19 @@ export class WorldScene extends Phaser.Scene {
         }
       } else if (e.type === 'ActorKnockedOut' && e.launch) {
         const h = snap.hostiles.find((x) => x.lifeId === e.lifeId);
-        if (h) this.hostiles.launch(e.lifeId, h.pos, e.launch, time);
+        const index = e.launch.kind === 'satellite' ? satellites++ : 0;
+        if (h) this.hostiles.launch(e.lifeId, h.pos, e.launch, time, index);
       } else if (e.type === 'PlayerDamaged') {
         const cam = this.cameras.main;
         cam.shake(SHAKE_MS, new Phaser.Math.Vector2(SHAKE_PX / cam.width, SHAKE_PX / cam.height), true);
+      } else if (e.type === 'ShieldBlocked') {
+        this.specialFx.block(e.pos, time);
+      } else if (e.type === 'BeamFired') {
+        this.specialFx.fire(e.from, e.to, snap.player.facing, time);
+        if (!this.reducedMotion) {
+          const cam = this.cameras.main;
+          cam.shake(BEAM_SHAKE_MS, new Phaser.Math.Vector2(BEAM_SHAKE_PX / cam.width, BEAM_SHAKE_PX / cam.height), false);
+        }
       } else if (e.type === 'ToolboxPickedUp') {
         this.toolboxes.picked(time);
       } else if (e.type === 'FlagCaptured') {
@@ -294,6 +333,7 @@ export class WorldScene extends Phaser.Scene {
         this.targetViews.onEvent(e, time);
       }
     }
+    if (scored.length > 0) this.scorePopups.spawn(scored, time);
     if (furieHit && !this.reducedMotion) {
       const cam = this.cameras.main;
       cam.shake(FURIE_SHAKE_MS, new Phaser.Math.Vector2(FURIE_SHAKE_PX / cam.width, FURIE_SHAKE_PX / cam.height), false);
@@ -302,10 +342,15 @@ export class WorldScene extends Phaser.Scene {
 
   private render(snap: Snapshot, time: number, dtMs: number): void {
     const flying = new Map(this.sim.rocks.flying().map((r) => [r.id, r.t]));
+    // a Frapper press with the onde d’énergie starts a charge, not a swing
+    if (snap.weapon?.kind === 'kamehame' || snap.charge) this.struck = false;
     this.paul.update(snap.player, this.struck, time, dtMs, snap.furie !== null);
+    this.healthBar.update(snap, this.paul.sprite, time);
     this.furieAura.update(snap.ended ? null : snap.furie, this.paul.sprite, time);
     this.pows.update(time);
     this.heldWeapon.update(snap.weapon, snap.player, this.struck, time);
+    this.shield.update(snap.weapon, snap.player, this.paul.sprite, time);
+    this.specialFx.update(snap.ended ? null : snap.charge, snap.player, this.paul.sprite, time);
     this.struck = false;
     this.weaponsOnGround.update(snap.weaponsOnGround, time, snap.now);
     this.hostiles.update(snap.hostiles, time);
@@ -313,6 +358,7 @@ export class WorldScene extends Phaser.Scene {
     this.telegraphs.update(snap, this.cameras.main.worldView, time);
     this.group.update(time);
     this.victim.update(snap.rescue, time);
+    this.items.update(snap.rescue, snap.player, time);
     this.targetViews.update(snap, time, dtMs);
     this.monument.update(snap.monument, time);
     this.molotovFx.update(snap.molotovs, snap.now, time);

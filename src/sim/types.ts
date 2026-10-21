@@ -3,22 +3,37 @@ export interface Vec {
   y: number;
 }
 
-/** Cosmetic flight of a body knocked out during the mode furie: unit `dir`, `power` px, `spin` turns (signed). */
+/**
+ * Cosmetic flight of a knocked-out body: unit `dir`, `power` px, `spin` turns (signed). `kind`: 'tumble' = mode furie
+ * (flies off spinning, lands on the map); 'satellite' = onde d’énergie (shot into the sky along the beam, never lands).
+ */
 export interface Launch {
   dir: Vec;
   power: number;
   spin: number;
+  kind?: 'tumble' | 'satellite';
 }
 
-/** strike/throwRock are edge-triggered presses; act is held. */
+/** strike/throwRock are edge-triggered presses; act and strikeHeld are held. */
 export interface InputFrame {
   move: Vec;
   aim: Vec | null;
   run: boolean;
   strike: boolean;
+  /** Frapper is held down (Space / left mouse / touch Frapper): charges the onde d’énergie. */
+  strikeHeld: boolean;
   throwRock: boolean;
   act: boolean;
 }
+
+/** Regular street weapons (limited strikes). */
+export type WeaponKind = 'baton' | 'marteau' | 'panneau';
+/** Special pickups: the mode furie power-up and the two special weapons. */
+export type SpecialKind = 'furie' | 'bouclier' | 'kamehame';
+/** What Paul can hold: a regular weapon, the bouclier or the onde d’énergie (kamehame). */
+export type HeldKind = WeaponKind | 'bouclier' | 'kamehame';
+/** What can lie on the ground. */
+export type PickupKind = HeldKind | 'furie';
 
 export type Variant = 'classic' | 'palestinian' | 'antifa';
 export type Role = 'contact' | 'thrower' | 'degrader' | 'aggressor' | 'molotov' | 'firebomber';
@@ -34,7 +49,7 @@ export type SiteId = TargetId | 'monument';
 export type MonumentFlag = 'french' | 'palestinian';
 
 export type SimEvent =
-  | { type: 'HitConfirmed'; targetLifeId: number; damage: number; source: 'melee' | 'rock' }
+  | { type: 'HitConfirmed'; targetLifeId: number; damage: number; source: 'melee' | 'rock' | 'beam' }
   | { type: 'EnemyThrowStarted'; from: Vec; to: Vec; until: number }
   /** An enemy rock actually left the thrower's hand (not emitted when the flying cap cancels the throw). */
   | { type: 'EnemyRockThrown'; rockId: number }
@@ -59,15 +74,31 @@ export type SimEvent =
   | { type: 'RescueSecured'; incidentId: string }
   | { type: 'RescueCompleted'; incidentId: string }
   | { type: 'RescueFailed'; incidentId: string }
+  /** A rescue aggressor (`thiefLifeId`) took one of the victim's belongings (`item` = its id, see RESCUE_ITEMS). */
+  | { type: 'ItemStolen'; rescueId: string; item: string; thiefLifeId: number }
+  /** The thief was knocked out: the belonging lies at `pos` and can be picked up. */
+  | { type: 'ItemDropped'; rescueId: string; item: string; pos: Vec }
+  | { type: 'ItemPickedUp'; rescueId: string; item: string }
+  /** Paul handed the belonging back to the victim (+CONFIG.rescue.itemBonus). */
+  | { type: 'ItemReturned'; rescueId: string; item: string }
   | { type: 'HealCompleted' }
-  /** A pickup appears: a weapon, or the mode furie (`kind: 'furie'`). */
-  | { type: 'WeaponSpawned'; kind: 'baton' | 'marteau' | 'panneau' | 'furie'; pos: Vec }
+  /** A pickup appears: a weapon, a special weapon, or the mode furie (`kind: 'furie'`). */
+  | { type: 'WeaponSpawned'; kind: PickupKind; pos: Vec }
   /** Paul walked over a furie: the mode is on for `secondsLeft` s (reset when already on). */
   | { type: 'FurieStarted'; secondsLeft: number }
   /** The mode furie is over (time out, or Paul KO). */
   | { type: 'FurieEnded' }
-  | { type: 'WeaponPickedUp'; kind: 'baton' | 'marteau' | 'panneau' }
-  | { type: 'WeaponBroken'; kind: 'baton' | 'marteau' | 'panneau' }
+  | { type: 'WeaponPickedUp'; kind: HeldKind }
+  /** The held weapon is gone: no strikes left, the bouclier's time is up, or the last onde d’énergie fired. */
+  | { type: 'WeaponBroken'; kind: HeldKind }
+  /** The bouclier stopped a rock or a firebomb coming from the front (`pos` = where it was stopped). */
+  | { type: 'ShieldBlocked'; pos: Vec }
+  /** Paul started charging the onde d’énergie (Frapper held). */
+  | { type: 'BeamCharging' }
+  /** The onde d’énergie fired from `from` to `to` (truncated at the first solid) and knocked out `kos` rioters. */
+  | { type: 'BeamFired'; from: Vec; to: Vec; kos: number }
+  /** The charge stopped before firing (released, damage, weapon lost, KO): nothing used. */
+  | { type: 'BeamCancelled' }
   /** A non-school target comes under attack. */
   | { type: 'CasseStarted'; incidentId: string; kind: CasseKind; target: TargetId; pos: Vec; round: number; total: number }
   | { type: 'MolotovThrown'; from: Vec; to: Vec; target: TargetId }
@@ -96,7 +127,15 @@ export type SimEvent =
   | { type: 'FlagCaptured'; swap: number; pos: Vec }
   | { type: 'RoundCompleted'; index: number; bonus: boolean }
   | { type: 'RoundTotalChanged'; index: number; total: number }
-  /** `furie: true` when the weapon drop is a mode furie pickup (from round CONFIG.furie.dropFromRound). */
-  | { type: 'TwistStarted'; kind: 'weaponDrop' | 'secondUrgency'; pos: Vec | null; furie?: true }
+  /**
+   * `special` = the special pickup the weapon drop is (furie from CONFIG.furie.dropFromRound, bouclier and kamehame from
+   * their own `dropFromRound`); absent for a regular weapon drop.
+   */
+  | { type: 'TwistStarted'; kind: 'weaponDrop' | 'secondUrgency'; pos: Vec | null; special?: SpecialKind }
   | { type: 'StationsRecharged' }
+  /**
+   * The score changed by `points` (signed, never 0) at `pos` (the rioter KO'd, the target's door, the victim, the
+   * monument, Paul for the round bonus): what the floating score popups show. One per Rules change, in order.
+   */
+  | { type: 'ScoreChanged'; points: number; pos: Vec }
   | { type: 'PlayerKnockedOut' };

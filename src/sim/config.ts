@@ -8,7 +8,8 @@ export const CONFIG = {
   /**
    * Site-bound rioters (degraders, victim aggressors) are drawn to Paul: they engage him within `aggroRadius` px with a
    * clear line and go back to their post beyond `aggroRelease` px; with at most `fewLeft` hostiles active, one at its
-   * post for more than `postSec` s leaves it for Paul for good. A Molotov is never diverted before its throw.
+   * post for more than `postSec` s leaves it for Paul for good (degraders only: a victim aggressor stays on the victim
+   * until Paul comes within `aggroRadius`). A Molotov is never diverted before its throw.
    */
   hostile: {
     baseHp: 2,
@@ -38,7 +39,24 @@ export const CONFIG = {
     throwInterval: 3.0,
   },
   school: { cinematicSec: 3 },
-  rescue: { threatSeconds: 25, aggressors: [2, 4], thanksSec: 1.5, bonus: 6 },
+  /**
+   * Rescue (§12.10–12.12). The victim carries `itemCount` belongings: at each `theftAt` share of the reserve left, the
+   * nearest active aggressor steals one. A thief KO drops it; Paul picks it up within `pickupRadius` px (carries up to
+   * `itemCount`) and hands every carried item back within `returnRadius` px of the victim (+`itemBonus` each). Secured
+   * with items still out: the victim waits up to `returnSec` s for them, then the `thanksSec` beat and `bonus`.
+   */
+  rescue: {
+    threatSeconds: 25,
+    aggressors: [2, 4],
+    thanksSec: 1.5,
+    bonus: 6,
+    itemCount: 3,
+    theftAt: [0.75, 0.5, 0.25],
+    itemBonus: 2,
+    pickupRadius: 20,
+    returnRadius: 48,
+    returnSec: 12,
+  },
   heal: { amount: 25 },
   weapons: { firstSpawn: 10, spawnEvery: [15, 25] as const, maxGround: 2, pickupRadius: 20, minDist: 160, maxDist: 480, dropLifetime: 15 },
   /**
@@ -61,6 +79,43 @@ export const CONFIG = {
     launchPower: [220, 420] as const,
     launchSpin: [2, 5] as const,
     launchJitter: 0.35,
+  },
+  /**
+   * Bouclier (special weapon, held): lasts `durationSec` of active sim time, then breaks; no strike counter. Rocks and
+   * firebombs hitting Paul from within `frontDeg` (total cone) of his facing are blocked. A strike is a bash: reach
+   * `bashRange`, one-hit KO, `knockback` px away from Paul, no charge used. Twist drop from `dropFromRound`, timed spawn
+   * from `spawnFromRound` with weight `spawnShare` (same rule as the furie).
+   */
+  bouclier: {
+    durationSec: 20,
+    frontDeg: 120,
+    bashRange: 64,
+    knockback: 24,
+    dropFromRound: 3,
+    spawnFromRound: 5,
+    spawnShare: 1 / 6,
+  },
+  /**
+   * Kamehame (« Onde d’énergie », special weapon, held): `uses` beams. Holding Frapper charges `chargeSec` (Paul cannot
+   * move), then a beam `length` px long KOs every active rioter within `halfWidth` + its radius of the line, which stops
+   * at the first solid (buildings, props, trunks, plinth, the peaceful group). Twist drop from `dropFromRound`, timed
+   * spawn from `spawnFromRound` with weight `spawnShare`.
+   */
+  kamehame: {
+    uses: 2,
+    chargeSec: 1,
+    length: 320,
+    halfWidth: 16,
+    dropFromRound: 5,
+    spawnFromRound: 7,
+    spawnShare: 1 / 6,
+    /**
+     * Cosmetic « satellisation » of the beam's KOs: `satellitePower` px along the beam ± `satelliteJitter` rad,
+     * `satelliteSpin` turns.
+     */
+    satellitePower: [1100, 1800] as const,
+    satelliteSpin: [6, 10] as const,
+    satelliteJitter: 0.15,
   },
   caps: { hostiles: 40, windupsContact: [2, 4], windupsThrow: [2, 4] },
   /**

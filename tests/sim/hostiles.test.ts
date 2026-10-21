@@ -365,14 +365,18 @@ test('no pull with 4 active hostiles', () => {
   expect(w.list.every((h) => h.target === 'facade' && h.state === 'degrade')).toBe(true);
 });
 
-test('pull: a victim aggressor leaves the victim too (the victim is then safe)', () => {
+test('no pull for a victim aggressor: alone and Paul far, it stays on the victim; Paul close still draws it', () => {
   const victimPos = DISTRICT.rescueSites[0]!;
   const player = createPlayer({ x: 1200, y: 1300 });
   const ctx = mkCtx(player, { victimPos, fields: { player: new FlowField(grid), victim: new FlowField(grid) } });
   const horde = new Horde();
   const h = horde.spawn({ variant: 'classic', role: 'aggressor', pos: { x: victimPos.x + 30, y: victimPos.y }, incidentId: 'r1' })!;
   let now = 0;
-  for (let i = 0; i < 60 * 7; i++) horde.step(DT, (now += DT), ctx);
+  for (let i = 0; i < 60 * 12; i++) horde.step(DT, (now += DT), ctx);
+  expect(h.target).toBe('victim');
+  expect(h.state).toBe('threaten');
+  // the 220 px aggro still applies: Paul coming close is the intended defence
+  player.pos = { x: h.pos.x + 60, y: h.pos.y };
+  horde.step(DT, (now += DT), ctx);
   expect(h.target).toBe('player');
-  expect(h.state).not.toBe('threaten');
 });

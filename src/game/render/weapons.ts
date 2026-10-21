@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { Snapshot } from '../../sim/sim';
-import type { WeaponKind } from '../../sim/weapons';
+import { isSpecial, type HeldKind } from '../../sim/weapons';
 
 /** Strike spin duration (ms) of the weapon in Paul's hands — matches the circular strike. */
 const SPIN_MS = 220;
@@ -34,9 +34,13 @@ export function makeWeaponTextures(scene: Phaser.Scene): void {
   g.destroy();
 }
 
+/** Additive glow under a special pickup. */
+const SPECIAL_GLOW: Readonly<Record<string, number>> = { furie: 0xfff09a, bouclier: 0x7bb4ff, kamehame: 0x8fd3ff };
+
 /**
- * Weapons lying in the street: bob, gentle sway and a pulsing glow so they read as pickups. The mode furie pickup
- * (`weapon_furie`, see render/furie.ts) floats higher, pulses in size and has a bigger additive golden glow.
+ * Weapons lying in the street: bob, gentle sway and a pulsing glow so they read as pickups. The special pickups (mode
+ * furie `weapon_furie`, see render/furie.ts; bouclier and onde d’énergie, see render/specials.ts) float higher, pulse
+ * in size and have a bigger additive glow in their own colour.
  */
 export class WeaponLayer {
   private readonly items = new Map<number, { glow: Phaser.GameObjects.Ellipse; sprite: Phaser.GameObjects.Image }>();
@@ -50,18 +54,18 @@ export class WeaponLayer {
       seen.add(w.id);
       let it = this.items.get(w.id);
       if (!it) {
-        const furie = w.kind === 'furie';
+        const special = isSpecial(w.kind);
         const glow = this.scene.add
-          .ellipse(w.pos.x, w.pos.y + 6, furie ? 34 : 26, furie ? 14 : 10, furie ? 0xfff09a : 0xffe066, 0.35)
+          .ellipse(w.pos.x, w.pos.y + 6, special ? 34 : 26, special ? 14 : 10, special ? SPECIAL_GLOW[w.kind]! : 0xffe066, 0.35)
           .setDepth(w.pos.y - 1);
-        if (furie) glow.setBlendMode(Phaser.BlendModes.ADD);
+        if (special) glow.setBlendMode(Phaser.BlendModes.ADD);
         const sprite = this.scene.add.image(w.pos.x, w.pos.y, `weapon_${w.kind}`).setOrigin(0.5, 1).setDepth(w.pos.y);
         it = { glow, sprite };
         this.items.set(w.id, it);
       }
       const phase = nowMs / 1000 + w.id;
       const pulse = 0.5 + 0.5 * Math.sin(phase * 4);
-      if (w.kind === 'furie') {
+      if (isSpecial(w.kind)) {
         it.sprite.setY(w.pos.y - Math.round(5 + 3 * Math.sin(phase * 3)));
         it.sprite.setAngle(0).setScale(Math.round((1 + 0.15 * pulse) * 8) / 8);
         it.glow.setAlpha(0.35 + 0.45 * pulse).setScale(0.85 + 0.35 * pulse);
@@ -84,10 +88,13 @@ export class WeaponLayer {
   }
 }
 
-/** The weapon in Paul's hand: carried at his side, spins once around him on each strike. */
+/**
+ * The weapon in Paul's hand: carried at his side, spins once around him on each strike. The bouclier is drawn by
+ * ShieldView (in front of him); the onde d’énergie is a small orb at his side that does not spin.
+ */
 export class HeldWeaponView {
   private readonly sprite: Phaser.GameObjects.Image;
-  private kind: WeaponKind | null = null;
+  private kind: HeldKind | null = null;
   private spinUntil = 0;
 
   constructor(scene: Phaser.Scene) {
@@ -95,7 +102,7 @@ export class HeldWeaponView {
   }
 
   update(weapon: Snapshot['weapon'], player: Snapshot['player'], struck: boolean, nowMs: number): void {
-    if (!weapon || player.ko) {
+    if (!weapon || player.ko || weapon.kind === 'bouclier') {
       this.sprite.setVisible(false);
       this.kind = null;
       return;
@@ -104,14 +111,16 @@ export class HeldWeaponView {
       this.kind = weapon.kind;
       this.sprite.setTexture(`weapon_${weapon.kind}`);
     }
-    if (struck) this.spinUntil = nowMs + SPIN_MS;
+    const orb = weapon.kind === 'kamehame';
+    if (struck && !orb) this.spinUntil = nowMs + SPIN_MS;
     const side = player.facing.x < 0 ? -1 : 1;
-    let angle = side * 35;
+    let angle = orb ? 0 : side * 35;
     if (nowMs < this.spinUntil) angle += (1 - (this.spinUntil - nowMs) / SPIN_MS) * 360 * side;
     this.sprite
       .setVisible(true)
       .setPosition(Math.round(player.pos.x + side * 9), Math.round(player.pos.y - 14))
       .setAngle(angle)
+      .setScale(orb ? 0.6 : 1)
       .setDepth(player.pos.y + (player.facing.y < 0 ? -0.5 : 0.5));
   }
 }

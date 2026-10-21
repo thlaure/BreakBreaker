@@ -1,7 +1,7 @@
 import { CONFIG } from '../../sim/config';
 import type { Snapshot } from '../../sim/sim';
 import type { CasseKind, Vec } from '../../sim/types';
-import { WEAPONS } from '../../sim/weapons';
+import { HELD_LABELS } from '../../sim/weapons';
 import { casseurs, type IncidentKind, type RoundHeadline } from './alerts';
 
 /**
@@ -109,6 +109,8 @@ export interface IncidentLine {
   hp: number | null;
   status: IncidentStatus;
   target: Vec;
+  /** Rescue only, once a belonging was stolen: « Objets 1/3 rendus »; null otherwise. */
+  items: string | null;
 }
 
 /**
@@ -123,12 +125,14 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
     if (t.state !== 'attacked' && t.state !== 'burning') continue;
     const hp = Math.max(0, Math.min(100, (100 * t.hp) / t.maxHp));
     const status: IncidentStatus = t.id === 'school' && s.school.stage === 'cinematic' ? 'renforts' : t.burning ? 'en feu' : 'attaquée';
-    out.push({ key: t.id, kind: t.kind, name: TARGET_NAMES[t.kind], time: `${Math.ceil(hp - 1e-9)} %`, hp, status, target: t.door });
+    out.push({ key: t.id, kind: t.kind, name: TARGET_NAMES[t.kind], time: `${Math.ceil(hp - 1e-9)} %`, hp, status, target: t.door, items: null });
   }
   const r = s.rescue;
   if (r && (r.stage === 'threat' || r.stage === 'secured')) {
     const status: IncidentStatus = r.stage === 'secured' ? 'sécurisé' : rescueDrain;
-    out.push({ key: 'rescue', kind: r.kind, name: 'Secours', time: secs(r.remaining), hp: null, status, target: r.victimPos });
+    // secured, waiting for the belongings: the wait replaces the (frozen) reserve
+    const time = r.returnLeft !== null ? `Rends les objets · ${secs(r.returnLeft)}` : secs(r.remaining);
+    out.push({ key: 'rescue', kind: r.kind, name: 'Secours', time, hp: null, status, target: r.victimPos, items: rescueItemsLine(r) });
   }
   const m = s.monument;
   if (m.flag === 'palestinian') {
@@ -136,9 +140,24 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
     const status: IncidentStatus = m.contested ? 'zone contestée' : m.inZone ? 'en cours' : 'à reprendre';
     const held = Math.min(m.captureSec, Math.floor(m.capture + 1e-9));
     const hp = Math.max(0, Math.min(100, (100 * m.capture) / m.captureSec));
-    out.push({ key: 'monument', kind: 'flag', name: 'Drapeau', time: `capture ${held}/${m.captureSec} s`, hp, status, target: m.mast });
+    out.push({ key: 'monument', kind: 'flag', name: 'Drapeau', time: `capture ${held}/${m.captureSec} s`, hp, status, target: m.mast, items: null });
   }
   return out;
+}
+
+/**
+ * Rescue card progress once a belonging was stolen: « Objets 1/3 rendus » (returned / every belonging the victim
+ * carries); null before any theft.
+ */
+export function rescueItemsLine(r: NonNullable<Snapshot['rescue']>): string | null {
+  if (!r.items.some((it) => it.state !== 'held')) return null;
+  const back = r.items.filter((it) => it.state === 'returned').length;
+  return `Objets ${back}/${r.items.length} rendus`;
+}
+
+/** HUD slot beside the toolbox while Paul carries belongings to hand back: « Objets 2 »; null when he carries none. */
+export function itemsLine(s: Snapshot): string | null {
+  return s.carriedItems > 0 ? `Objets ${s.carriedItems}` : null;
 }
 
 /** Content of the non-modal round panel shown during the breather (null otherwise). */
@@ -169,15 +188,21 @@ export function roundPanel(s: Snapshot): RoundPanel | null {
   };
 }
 
+/** Screen-reader text of Paul's health (the bar itself is drawn over his head): « Santé 85 sur 100 ». */
+export function hpLabel(hp: number, max: number): string {
+  return `Santé ${Math.max(0, Math.ceil(hp))} sur ${max}`;
+}
+
 /** HUD round line: « Manche 3 : 4/18 casseurs », or just « Manche 1 » while the round has no roster yet (intro). */
 export function waveLine(s: Snapshot): string {
   if (s.roundTotal <= 0) return `Manche ${s.round}`;
   return `Manche ${s.round} : ${Math.min(s.roundKos, s.roundTotal)}/${casseurs(s.roundTotal)}`;
 }
 
-/** HUD toolbox slot: « Caisse 0/1 » or « Caisse 1/1 ». */
-export function toolboxLine(s: Snapshot): string {
-  return `Caisse ${s.toolboxes.carried ? 1 : 0}/1`;
+/** Value of the HUD « MANCHE » row: « 3 · 4/18 » (K/T casseurs), or just « 1 » while the round has no roster yet. */
+export function roundValue(s: Snapshot): string {
+  if (s.roundTotal <= 0) return String(s.round);
+  return `${s.round} · ${Math.min(s.roundKos, s.roundTotal)}/${s.roundTotal}`;
 }
 
 /**
@@ -185,7 +210,22 @@ export function toolboxLine(s: Snapshot): string {
  * (rounded up) follow: « Arme : Bâton (12) · Mode furie 9 s ».
  */
 export function weaponLine(s: Snapshot): string {
-  const arme = s.weapon ? `Arme : ${WEAPONS[s.weapon.kind].label} (${s.weapon.uses})` : 'Arme : mains nues';
+  return `Arme : ${weaponText(s, 'mains nues')}`;
+}
+
+/** Value of the HUD « ARME » row, same logic as weaponLine: « Bâton (12) », « Mains nues », « … · Mode furie 9 s ». */
+export function weaponValue(s: Snapshot): string {
+  return weaponText(s, 'Mains nues');
+}
+
+/** « Bâton (12) », « Onde d’énergie (2) » (beams left), « Bouclier (14 s) » (whole seconds left, rounded up). */
+function heldText(w: NonNullable<Snapshot['weapon']>): string {
+  const n = w.kind === 'bouclier' ? `${Math.max(1, Math.ceil((w.secondsLeft ?? 0) - 1e-9))} s` : `${w.uses}`;
+  return `${HELD_LABELS[w.kind]} (${n})`;
+}
+
+function weaponText(s: Snapshot, bare: string): string {
+  const arme = s.weapon ? heldText(s.weapon) : bare;
   return s.furie ? `${arme} · Mode furie ${Math.max(1, Math.ceil(s.furie.secondsLeft - 1e-9))} s` : arme;
 }
 

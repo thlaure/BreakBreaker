@@ -10,7 +10,7 @@ import { WEAPONS, Weapons } from '../../src/sim/weapons';
 import { autopilot } from './autopilot';
 
 const grid = new Grid(DISTRICT);
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false };
+const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false };
 const input = (o: Partial<InputFrame> = {}): InputFrame => ({ ...IDLE, ...o });
 const STEPS = (sec: number): number => Math.round(sec / CONFIG.step);
 type Ev<T extends SimEvent['type']> = Extract<SimEvent, { type: T }>;
@@ -264,7 +264,7 @@ describe('where a furie appears', () => {
     expect(g.expiresAt).toBeCloseTo(CONFIG.weapons.dropLifetime, 6);
   });
 
-  test('twist weapon drop: a weapon before round 4, a furie from round 4; the round-end drop is never a furie', () => {
+  test('twist weapon drop: never a furie before round 4; the round-end drop is never a furie', () => {
     const sim = new Sim(3, { invulnerable: true });
     const twists = new Map<number, Ev<'TwistStarted'>>();
     const endDrops: string[] = [];
@@ -277,19 +277,21 @@ describe('where a furie appears', () => {
         twists.set(sim.director.round, t);
         if (t.pos) {
           const w = spawned.find((s) => s.pos.x === t.pos!.x && s.pos.y === t.pos!.y);
-          if (sim.director.round >= CONFIG.furie.dropFromRound) expect(w!.kind).toBe('furie');
-          else expect(w!.kind).not.toBe('furie');
+          if (sim.director.round < CONFIG.furie.dropFromRound) expect(w!.kind).not.toBe('furie');
+          if (t.special) expect(w!.kind).toBe(t.special);
         }
       }
       if (ev.some((e) => e.type === 'RoundCompleted')) for (const s of spawned) endDrops.push(s.kind);
       if (sim.director.round < CONFIG.furie.spawnFromRound) for (const s of spawned) if (s.kind === 'furie' && sim.director.round < 4) furieSpawnsBefore4.push(s.kind);
     }
     expect(twists.get(2)).toBeDefined();
-    expect(twists.get(2)!.furie).toBeUndefined();
-    expect(twists.get(4)).toMatchObject({ kind: 'weaponDrop', furie: true });
-    expect(twists.get(6)).toMatchObject({ kind: 'weaponDrop', furie: true });
+    expect(twists.get(2)!.special).toBeUndefined();
+    expect(twists.get(4)).toMatchObject({ kind: 'weaponDrop' });
+    expect(['furie', 'bouclier']).toContain(twists.get(4)!.special);
+    expect(['furie', 'bouclier', 'kamehame']).toContain(twists.get(6)!.special);
     expect(endDrops.length).toBeGreaterThan(3);
     expect(endDrops).not.toContain('furie');
     expect(furieSpawnsBefore4).toEqual([]);
   });
+
 });

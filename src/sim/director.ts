@@ -108,8 +108,8 @@ export interface MonumentPlan {
  * car, bus stop, weight 2, or 1 if it was `last` round's headline (it may repeat, rarely; nothing is forced). Second
  * beat: the rescue; from round CONFIG.monument.fromRound the monument occupation instead when the flag is French and
  * last round's second beat was not the monument (they alternate; never while the flag is Palestinian). Twist
- * secondUrgency on odd rounds from r3, weaponDrop on the others (a mode furie pickup from round
- * CONFIG.furie.dropFromRound). No free target → the second beat alone (its kind is the headline).
+ * secondUrgency on odd rounds from r3, weaponDrop on the others (a special pickup once one is unlocked: bouclier from
+ * round 3, furie from 4, kamehame from 5). No free target → the second beat alone (its kind is the headline).
  */
 export function roundPlan(
   round: number,
@@ -556,11 +556,11 @@ export class Director {
         return;
       }
     }
-    // weapon drop (also the fallback when no second urgency fits); a mode furie pickup from round dropFromRound
-    const furie = this.round >= CONFIG.furie.dropFromRound;
-    const w = host.weapons.dropSpecial(host.player.pos, furie ? 'furie' : undefined);
+    // weapon drop (also the fallback when no second urgency fits): a special unlocked at this round (bouclier, furie,
+    // kamehame: CONFIG.<kind>.dropFromRound), a regular weapon before any is
+    const { drop: w, special } = host.weapons.dropTwist(host.player.pos, this.round);
     const pos = w ? { ...w.pos } : null;
-    ev.push(furie ? { type: 'TwistStarted', kind: 'weaponDrop', pos, furie: true } : { type: 'TwistStarted', kind: 'weaponDrop', pos });
+    ev.push(special ? { type: 'TwistStarted', kind: 'weaponDrop', pos, special } : { type: 'TwistStarted', kind: 'weaponDrop', pos });
     if (w) ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: { ...w.pos } });
   }
 
@@ -578,7 +578,7 @@ export class Director {
       result: this.succeeded(o) ? ('réussi' as const) : ('perdu' as const),
     }));
     const bonus = objectives.every((o) => o.result === 'réussi');
-    if (bonus) host.rules.award(`round#${this.round}:bonus`, CONFIG.round.bonus);
+    if (bonus) host.rules.award(`round#${this.round}:bonus`, CONFIG.round.bonus, host.player.pos);
     ev.push({ type: 'RoundCompleted', index: this.round, bonus });
     host.stations.recharge();
     ev.push({ type: 'StationsRecharged' });

@@ -8,7 +8,7 @@ import { dist } from '../../src/sim/math';
 import { Sim } from '../../src/sim/sim';
 import type { InputFrame, SimEvent } from '../../src/sim/types';
 
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false };
+const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false };
 const input = (o: Partial<InputFrame> = {}): InputFrame => ({ ...IDLE, ...o });
 const STRIKE_RANGE = CONFIG.melee.range + CONFIG.hostile.radius;
 const SCHOOL_R1 = lineup('school', 1, 0);

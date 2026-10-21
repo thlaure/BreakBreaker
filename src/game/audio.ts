@@ -47,6 +47,8 @@ export class GameAudio {
   private unlocking: Promise<void> | null = null;
   /** Mode furie hum while on (one voice of the cap); null when off. */
   private hum: { osc: OscillatorNode; lfo: OscillatorNode; gain: GainNode } | null = null;
+  /** Onde d’énergie charge hum (rising, one voice of the cap); null when not charging. */
+  private chargeHum: { osc: OscillatorNode; gain: GainNode } | null = null;
 
   constructor(muted = false) {
     this.muted = muted;
@@ -123,6 +125,7 @@ export class GameAudio {
     this.alarmed.clear();
     this.setThreat(0);
     this.stopHum();
+    this.stopCharge();
   }
 
   setMuted(muted: boolean): void {
@@ -298,6 +301,103 @@ export class GameAudio {
     }
   }
 
+  /**
+   * Onde d’énergie charge: a triangle hum rising 110 → 440 Hz over the charge time with a slight vibrato; one voice of
+   * MAX_VOICES (skipped when none is free), stopped by `stopCharge` (fire, cancel, reset).
+   */
+  startCharge(): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.sfxBus || this.chargeHum || this.voices >= MAX_VOICES) return;
+    try {
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(110, t);
+      osc.frequency.exponentialRampToValueAtTime(440, t + 1);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.25, t + 0.9);
+      osc.connect(gain).connect(this.sfxBus);
+      this.voices += 1;
+      osc.onended = (): void => {
+        this.voices -= 1;
+        osc.disconnect();
+        gain.disconnect();
+      };
+      osc.start(t);
+      osc.stop(t + 3);
+      this.chargeHum = { osc, gain };
+    } catch {
+      /* silent */
+    }
+  }
+
+  stopCharge(): void {
+    const h = this.chargeHum;
+    const ctx = this.ctx;
+    this.chargeHum = null;
+    if (!h || !ctx) return;
+    try {
+      const t = ctx.currentTime;
+      h.gain.gain.cancelScheduledValues(t);
+      h.gain.gain.setTargetAtTime(0.0001, t, 0.03);
+      h.osc.stop(t + 0.15);
+    } catch {
+      /* silent */
+    }
+  }
+
+  /** Onde d’énergie fired: a 0.35 s bright sawtooth zap falling 1800 → 200 Hz with a noisy band-passed tail. */
+  zap(): void {
+    this.voice((ctx, out, t) => {
+      const osc = ctx.createOscillator();
+      const bp = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1800, t);
+      osc.frequency.exponentialRampToValueAtTime(200, t + 0.33);
+      bp.type = 'bandpass';
+      bp.Q.value = 0.8;
+      bp.frequency.setValueAtTime(2200, t);
+      bp.frequency.exponentialRampToValueAtTime(600, t + 0.33);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.45, t + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+      osc.connect(bp).connect(g).connect(out);
+      osc.start(t);
+      osc.stop(t + 0.36);
+      return osc;
+    });
+  }
+
+  /** Bouclier block: a short metallic clank (two detuned squares through a high band-pass, 0.18 s). */
+  clank(): void {
+    this.voice((ctx, out, t) => {
+      const a = ctx.createOscillator();
+      const b = ctx.createOscillator();
+      const bp = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      a.type = 'square';
+      b.type = 'square';
+      a.frequency.value = 820;
+      b.frequency.value = 1235;
+      bp.type = 'bandpass';
+      bp.frequency.value = 2400;
+      bp.Q.value = 2;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.4, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      a.connect(bp);
+      b.connect(bp);
+      bp.connect(g).connect(out);
+      a.start(t);
+      b.start(t);
+      a.stop(t + 0.19);
+      b.stop(t + 0.19);
+      return a;
+    });
+  }
+
   /** Thrown Molotov: a 0.35 s noise burst through a band-pass sweeping down (whoosh). */
   whoosh(): void {
     this.voice((ctx, out, t) => {
@@ -342,6 +442,7 @@ export class GameAudio {
         case 'ProjectilePickedUp':
         case 'WeaponPickedUp':
         case 'ToolboxPickedUp':
+        case 'ItemPickedUp':
         case 'HealCompleted':
           this.play('pickup');
           break;
@@ -357,11 +458,25 @@ export class GameAudio {
           this.stopHum();
           this.powerDown();
           break;
+        case 'BeamCharging':
+          this.startCharge();
+          break;
+        case 'BeamCancelled':
+          this.stopCharge();
+          break;
+        case 'BeamFired':
+          this.stopCharge();
+          this.zap();
+          break;
+        case 'ShieldBlocked':
+          this.clank();
+          break;
         case 'TargetSaved':
         case 'TargetRepaired':
         case 'RoundCompleted':
         case 'MonumentDefended':
         case 'FlagCaptured':
+        case 'ItemReturned':
           // one chime per batch: a target saved by the round's last KO lands with RoundCompleted
           if (!chimed) this.chime();
           chimed = true;

@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { CONTROLS, RULES } from '../../src/content/controls';
-import { contextPrompt, formatDuration, formatSummary, incidentLines, roundPanel, waveLine, weaponLine } from '../../src/game/hud/format';
+import { contextPrompt, formatDuration, formatSummary, hpLabel, incidentLines, roundPanel, roundValue, waveLine, weaponLine, weaponValue } from '../../src/game/hud/format';
+import { HEALTH_BAR_W, HEALTH_GREEN, HEALTH_RED, HEALTH_YELLOW, chargeFill, healthColor } from '../../src/game/render/healthBar';
 import { renderMarkdown } from '../../src/game/hud/markdown';
 import { Sim, type Snapshot } from '../../src/sim/sim';
 
@@ -114,7 +115,7 @@ describe('contextPrompt', () => {
 
   test('no "Aider" prompt next to a secured victim: the rescue completes by itself', () => {
     const s = snap((x) => {
-      x.rescue = { id: 'rescue#1', stage: 'secured', remaining: 10, victimPos: { x: 100, y: 100 }, kind: 'groupHarassed' };
+      x.rescue = { id: 'rescue#1', stage: 'secured', remaining: 10, victimPos: { x: 100, y: 100 }, kind: 'groupHarassed', items: [], returnLeft: null };
       x.player.pos = { x: 110, y: 100 };
     });
     expect(contextPrompt(s)).toBeNull();
@@ -190,7 +191,7 @@ describe('incidentLines', () => {
     const s = new Sim(21, { invulnerable: true });
     for (let i = 0; i < 60 * 30 && s.school.stage !== 'cinematic'; i++) {
       for (const h of s.horde.active()) s.horde.applyHit(h.lifeId, 99);
-      s.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false });
+      s.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false });
     }
     const [school] = incidentLines(s.snapshot(), 'en cours');
     expect(school).toMatchObject({ key: 'school', status: 'renforts' });
@@ -236,16 +237,16 @@ describe('incidentLines', () => {
     const s = snap((x) => {
       calm(x);
       x.school.stage = 'saved';
-      x.rescue = { id: 'rescue#1', stage: 'threat', remaining: 12.1, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+      x.rescue = { id: 'rescue#1', stage: 'threat', remaining: 12.1, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed', items: [], returnLeft: null };
     });
     const [rescue, none] = incidentLines(s, 'en cours');
     expect(none).toBeUndefined();
     expect(rescue).toMatchObject({ name: 'Secours', time: '13 s', status: 'en cours' });
-    s.rescue = { id: 'rescue#1', stage: 'secured', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+    s.rescue = { id: 'rescue#1', stage: 'secured', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed', items: [], returnLeft: null };
     expect(incidentLines(s, 'en cours')[0]).toMatchObject({ status: 'sécurisé' });
-    s.rescue = { id: 'rescue#1', stage: 'failed', remaining: 0, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+    s.rescue = { id: 'rescue#1', stage: 'failed', remaining: 0, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed', items: [], returnLeft: null };
     expect(incidentLines(s, 'en cours')).toEqual([]);
-    s.rescue = { id: 'rescue#1', stage: 'completed', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed' };
+    s.rescue = { id: 'rescue#1', stage: 'completed', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed', items: [], returnLeft: null };
     expect(incidentLines(s, 'en cours')).toEqual([]);
   });
 });
@@ -262,10 +263,14 @@ describe('renderMarkdown', () => {
 });
 
 describe('content', () => {
-  test('4-6 rules (the mode furie one included) and a controls table', () => {
+  test('4-6 rules (the specials one included) and a controls table', () => {
     expect(RULES.length).toBeGreaterThanOrEqual(4);
     expect(RULES.length).toBeLessThanOrEqual(6);
-    expect(RULES).toContain('Un éclair jaune rare apparaît quand ça chauffe : passe dessus pour déclencher le mode furie.');
+    const specials = RULES.find((r) => r.includes('mode furie'))!;
+    expect(specials).toMatch(/éclair jaune.*mode furie/);
+    // the two special weapons and the hold-to-charge ability
+    expect(specials).toMatch(/bouclier \(20 s\)/);
+    expect(specials).toMatch(/onde d’énergie se charge en gardant Frapper enfoncé 1 s/);
     for (const r of RULES) expect(r).not.toMatch(/saiyan/i);
     expect(CONTROLS.some((c) => c.action === 'Pause' && c.keyboard === 'Échap')).toBe(true);
   });
@@ -397,6 +402,16 @@ describe('waveLine', () => {
   });
 });
 
+describe('score list values', () => {
+  test('round value « N · K/T » (just N without a roster); weapon value capitalised, furie seconds kept', () => {
+    expect(roundValue(snap())).toBe('1');
+    expect(roundValue(snap((x) => { x.round = 3; x.roundTotal = 18; x.roundKos = 20; }))).toBe('3 · 18/18');
+    expect(weaponValue(snap())).toBe('Mains nues');
+    expect(weaponValue(snap((x) => { x.weapon = { kind: 'baton', uses: 12 }; }))).toBe('Bâton (12)');
+    expect(weaponValue(snap((x) => { x.weapon = { kind: 'baton', uses: 12 }; x.furie = { secondsLeft: 8.2 }; }))).toBe('Bâton (12) · Mode furie 9 s');
+  });
+});
+
 describe('weaponLine', () => {
   test('bare hands, then weapon name and strikes left', () => {
     expect(weaponLine(snap())).toBe('Arme : mains nues');
@@ -418,7 +433,7 @@ describe('mode furie HUD and audio', () => {
     const sim = new Sim(4);
     sim.weapons.held = { kind: 'panneau', uses: 3 };
     sim.weapons.ground.push({ id: 77, kind: 'furie', pos: { ...sim.player.pos }, expiresAt: null });
-    sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false });
+    sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false });
     const s = sim.snapshot();
     expect(s.furie).toEqual({ secondsLeft: 12 });
     expect(weaponLine(s)).toBe('Arme : Panneau (3) · Mode furie 12 s');
@@ -442,5 +457,69 @@ describe('mode furie HUD and audio', () => {
     expect(stop).toHaveBeenCalledTimes(2);
     // no AudioContext (not unlocked): everything stays silent and never throws
     a.onEvents([{ type: 'FurieStarted', secondsLeft: 12 }, { type: 'FurieEnded' }]);
+  });
+});
+
+describe('special weapons HUD and audio', () => {
+  test('weapon row: « Bouclier (14 s) » (seconds rounded up), « Onde d’énergie (2) »; furie suffix kept', () => {
+    expect(weaponValue(snap((x) => { x.weapon = { kind: 'bouclier', uses: 0, secondsLeft: 13.2 }; }))).toBe('Bouclier (14 s)');
+    expect(weaponValue(snap((x) => { x.weapon = { kind: 'bouclier', uses: 0, secondsLeft: 0.01 }; }))).toBe('Bouclier (1 s)');
+    expect(weaponValue(snap((x) => { x.weapon = { kind: 'kamehame', uses: 2 }; }))).toBe('Onde d’énergie (2)');
+    expect(weaponLine(snap((x) => { x.weapon = { kind: 'kamehame', uses: 1 }; x.furie = { secondsLeft: 3 }; }))).toBe(
+      'Arme : Onde d’énergie (1) · Mode furie 3 s',
+    );
+  });
+
+  test('a bouclier picked up in the sim shows its 20 s in the weapon row', () => {
+    const sim = new Sim(4);
+    sim.weapons.ground.push({ id: 78, kind: 'bouclier', pos: { ...sim.player.pos }, expiresAt: null });
+    sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false });
+    expect(weaponValue(sim.snapshot())).toBe('Bouclier (20 s)');
+  });
+
+  test('charge bar under the health bar: fill follows the charge progress', () => {
+    expect(chargeFill(0)).toBe(0);
+    expect(chargeFill(0.5)).toBe(Math.round((HEALTH_BAR_W - 2) / 2));
+    expect(chargeFill(1)).toBe(HEALTH_BAR_W - 2);
+    expect(chargeFill(2)).toBe(HEALTH_BAR_W - 2);
+  });
+
+  test('charge hum on BeamCharging, stopped on cancel or fire (with a zap); clank on a shield block; reset stops the hum', async () => {
+    const { GameAudio } = await import('../../src/game/audio');
+    const a = new GameAudio();
+    const start = vi.spyOn(a, 'startCharge');
+    const stop = vi.spyOn(a, 'stopCharge');
+    const zap = vi.spyOn(a, 'zap').mockImplementation(() => undefined);
+    const clank = vi.spyOn(a, 'clank').mockImplementation(() => undefined);
+    a.onEvents([{ type: 'BeamCharging' }]);
+    expect(start).toHaveBeenCalledTimes(1);
+    a.onEvents([{ type: 'BeamCancelled' }]);
+    expect(stop).toHaveBeenCalledTimes(1);
+    a.onEvents([{ type: 'BeamFired', from: { x: 0, y: 0 }, to: { x: 9, y: 0 }, kos: 2 }]);
+    expect(stop).toHaveBeenCalledTimes(2);
+    expect(zap).toHaveBeenCalledTimes(1);
+    a.onEvents([{ type: 'ShieldBlocked', pos: { x: 1, y: 1 } }]);
+    expect(clank).toHaveBeenCalledTimes(1);
+    a.reset();
+    expect(stop).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('Paul health bar (world) and its screen-reader text', () => {
+  test('healthColor: green above 50 %, yellow above 25 %, red at 25 % and below', () => {
+    expect(healthColor(100, 100)).toBe(HEALTH_GREEN);
+    expect(healthColor(51, 100)).toBe(HEALTH_GREEN);
+    expect(healthColor(50, 100)).toBe(HEALTH_YELLOW);
+    expect(healthColor(26, 100)).toBe(HEALTH_YELLOW);
+    expect(healthColor(25, 100)).toBe(HEALTH_RED);
+    expect(healthColor(0, 100)).toBe(HEALTH_RED);
+    expect(healthColor(30, 40)).toBe(HEALTH_GREEN);
+    expect(healthColor(5, 0)).toBe(HEALTH_RED);
+  });
+
+  test('hpLabel: « Santé 85 sur 100 », rounded up, never negative', () => {
+    expect(hpLabel(85, 100)).toBe('Santé 85 sur 100');
+    expect(hpLabel(84.2, 100)).toBe('Santé 85 sur 100');
+    expect(hpLabel(-3, 100)).toBe('Santé 0 sur 100');
   });
 });

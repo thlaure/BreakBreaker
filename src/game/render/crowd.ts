@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { DISTRICT } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
 import { CharView, FEET_ORIGIN_Y, idleFrame } from './actors';
+import { ITEM_SHOUTS, VictimMood } from './belongings';
 import { DEPTH } from './depth';
 
 const SIGN_COLORS = [0xf4ecd8, 0xe8f1f8, 0xf8efc8];
@@ -76,8 +77,10 @@ const BUBBLE_PAD = 3;
 const BUBBLE_Y = -46;
 const BOB_MS = 250;
 
-type BubbleKind = 'help' | 'thanks' | `grumble${0 | 1 | 2 | 3 | 4}`;
-const BUBBLES: Record<BubbleKind, { text: string; color: string; border?: number }> = {
+/** `shout:<item id>`: the victim cries for a stolen belonging (« MON SAC ! »), red like the call for help. */
+type BubbleKind = 'help' | 'thanks' | `grumble${0 | 1 | 2 | 3 | 4}` | `shout:${string}`;
+type FixedBubble = Exclude<BubbleKind, `shout:${string}`>;
+const BUBBLES: Record<FixedBubble, { text: string; color: string; border?: number }> = {
   help: { text: 'À L’AIDE !', color: '#c4372b' },
   thanks: { text: 'MERCI !', color: '#1b7a35' }, // >= 5:1 on the white bubble
   // the group is unhappy: dark red text and a red border (>= 5:1 on the white bubble)
@@ -87,6 +90,11 @@ const BUBBLES: Record<BubbleKind, { text: string; color: string; border?: number
   grumble3: { text: GRUMBLES[3], color: '#a3231a', border: 0xc4372b },
   grumble4: { text: GRUMBLES[4], color: '#a3231a', border: 0xc4372b },
 };
+
+function bubbleSpec(kind: BubbleKind): { text: string; color: string; border?: number } {
+  if (kind.startsWith('shout:')) return { text: ITEM_SHOUTS[kind.slice(6)] ?? BUBBLES.help.text, color: BUBBLES.help.color };
+  return BUBBLES[kind as FixedBubble];
+}
 
 /**
  * Pixel speech bubble (white, 1 px dark border, stepped tail pointing down) whose origin is the tail tip.
@@ -109,7 +117,7 @@ class Bubble {
     this.kind = kind;
     this.root.setVisible(kind !== null);
     if (!kind) return;
-    const b = BUBBLES[kind];
+    const b = bubbleSpec(kind);
     this.text.setText(b.text).setColor(b.color);
     this.text.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
     const tw = Math.ceil(this.text.width);
@@ -141,12 +149,14 @@ class Bubble {
 
 /**
  * Rescue victim: elder at victimPos with a pixel speech bubble — « À L’AIDE ! » (red, stepped bob) while threatened,
- * « MERCI ! » (green) once safe, until they have walked away. Failed: no bubble, the victim retreats. Never an enemy
- * marker on the victim.
+ * « MON SAC ! » (the belonging's name, red) for a moment after a theft and while it waits for its belongings,
+ * « MERCI ! » (green) for a belonging handed back and once safe, until they have walked away. Failed: no bubble, the
+ * victim retreats. Never an enemy marker on the victim. Keyed on the rescue id (never reuses a previous victim).
  */
 export class VictimView {
   private view: CharView | null = null;
   private readonly bubble: Bubble;
+  private readonly mood = new VictimMood();
   private leaving = false;
   private key = '';
 
@@ -185,13 +195,17 @@ export class VictimView {
         onComplete: () => v.sprite.setVisible(false),
       });
     }
-    if (rescue.stage === 'threat') {
-      this.bubble.set('help');
+    const kind = this.mood.update(rescue, timeMs);
+    if (rescue.stage === 'threat' && kind) {
+      this.bubble.set(kind);
       const bob = Math.floor(timeMs / BOB_MS) % 2 === 0 ? 0 : -2;
       this.bubble.place(rescue.victimPos.x, rescue.victimPos.y + BUBBLE_Y + bob);
-    } else if (rescue.stage === 'secured' || (rescue.stage === 'completed' && v.sprite.visible && v.sprite.alpha > 0.05)) {
+    } else if (rescue.stage === 'secured' && kind) {
+      this.bubble.set(kind);
+      this.bubble.place(v.sprite.x, rescue.victimPos.y + BUBBLE_Y);
+    } else if (rescue.stage === 'completed' && v.sprite.visible && v.sprite.alpha > 0.05) {
       this.bubble.set('thanks');
-      this.bubble.place(v.sprite.x, rescue.victimPos.y + BUBBLE_Y, rescue.stage === 'completed' ? v.sprite.alpha : 1);
+      this.bubble.place(v.sprite.x, rescue.victimPos.y + BUBBLE_Y, v.sprite.alpha);
     } else {
       this.bubble.set(null);
     }

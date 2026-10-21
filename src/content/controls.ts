@@ -5,7 +5,7 @@ export const RULES: readonly string[] = [
   'La partie avance par manches, avec 6 s de répit entre deux. Un lieu attaqué perd de la santé (feu, casse) : neutralise ses casseurs pour le sauver. Un lieu en feu ou détruit le reste tant qu’il n’est pas réparé, sans arrêter la partie : passe sur une caisse à outils, va près du lieu en ruine ou en feu et appuie sur F.',
   'Les groupes pacifiques et les victimes sont à protéger et à contourner : Paul ne peut pas les frapper.',
   'Des armes apparaissent au hasard dans les rues (bâton, marteau, panneau) : passe dessus pour les prendre. Elles mettent KO d’un coup, frappent plus loin et s’usent après quelques coups.',
-  'Un éclair jaune rare apparaît quand ça chauffe : passe dessus pour déclencher le mode furie.',
+  'Quand ça chauffe, des spéciaux apparaissent : un éclair jaune déclenche le mode furie ; le bouclier (20 s) arrête de face pierres et bouteilles et repousse d’un coup ; l’onde d’énergie se charge en gardant Frapper enfoncé 1 s (Paul reste immobile) puis met KO tous les casseurs sur sa ligne (2 tirs).',
   'Les pierres lancées par les casseurs tombent au sol : ramasse-les puis renvoie-les. Passe sur une station « Soins » pour récupérer de la santé (une fois par station).',
 ];
 

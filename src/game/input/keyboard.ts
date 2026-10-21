@@ -20,6 +20,8 @@ export function createKeyboard(
   const held = new Set<string>();
   let strike = false;
   let throwRock = false;
+  /** Left mouse button held (Space held is read from `held`). */
+  let mouseStrike = false;
   let mouseUntil = -Infinity;
   let mouse: { x: number; y: number } | null = null;
 
@@ -48,14 +50,21 @@ export function createKeyboard(
     if (e.pointerType === 'touch') return;
     mouse = local(e);
     mouseUntil = now() + MOUSE_AIM_MS;
-    if (e.button === 0) strike = true;
-    else if (e.button === 2) throwRock = true;
+    if (e.button === 0) {
+      strike = true;
+      mouseStrike = true;
+    } else if (e.button === 2) throwRock = true;
+  };
+  const pup = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch') return;
+    if (e.button === 0) mouseStrike = false;
   };
   const ctx = (e: Event): void => e.preventDefault();
   const release = (): void => {
     held.clear();
     strike = false;
     throwRock = false;
+    mouseStrike = false;
   };
 
   target.addEventListener('keydown', keydown);
@@ -63,6 +72,8 @@ export function createKeyboard(
   target.addEventListener('blur', release);
   canvas.addEventListener('pointermove', pmove);
   canvas.addEventListener('pointerdown', pdown);
+  // released anywhere (the pointer may have left the canvas while held)
+  target.addEventListener('pointerup', pup);
   canvas.addEventListener('contextmenu', ctx);
 
   const any = (...codes: string[]): boolean => codes.some((c) => held.has(c));
@@ -89,6 +100,7 @@ export function createKeyboard(
         aim,
         run: any('ShiftLeft', 'ShiftRight'),
         strike,
+        strikeHeld: held.has('Space') || mouseStrike,
         throwRock,
         act: held.has('KeyF'),
       };
@@ -103,6 +115,7 @@ export function createKeyboard(
       target.removeEventListener('blur', release);
       canvas.removeEventListener('pointermove', pmove);
       canvas.removeEventListener('pointerdown', pdown);
+      target.removeEventListener('pointerup', pup);
       canvas.removeEventListener('contextmenu', ctx);
     },
   };
