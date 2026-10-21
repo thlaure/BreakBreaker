@@ -29,6 +29,17 @@ export function healthColor(hp: number, max: number): number {
   return HEALTH_RED;
 }
 
+/** Onde d’énergie charge bar under the health bar: height (outline included), gap, fill colour. */
+export const CHARGE_BAR_H = 3;
+const CHARGE_GAP = 1;
+const CHARGE = 0x8fd3ff;
+
+/** Filled inner pixels of the charge bar for a charge `progress` in [0, 1] (0 = none drawn). */
+export function chargeFill(progress: number): number {
+  const inner = HEALTH_BAR_W - 2;
+  return Math.max(0, Math.min(inner, Math.round(inner * progress)));
+}
+
 /** 5×5 pixel heart, row by row ('#' = filled). */
 const HEART_ROWS = ['.#.#.', '#####', '#####', '.###.', '..#..'];
 
@@ -37,6 +48,7 @@ const HEART_ROWS = ['.#.#.', '#####', '#####', '.###.', '..#..'];
  * dark outline, track, coloured fill (healthColor), a faint heart on the left. It scales like the victim bubbles
  * (×2 at zoom 1) to stay readable, flashes white with a 1-px shake when Paul loses health (no shake under
  * prefers-reduced-motion) and hides while he is KO. Drawn above Paul and his props (the furie aura stays behind).
+ * While the onde d’énergie charges, a small light-blue charge bar shows under it.
  */
 export class PaulHealthBar {
   private readonly g: Phaser.GameObjects.Graphics;
@@ -54,7 +66,7 @@ export class PaulHealthBar {
   }
 
   /** `anchor` = Paul's sprite (feet origin); the bar follows it. */
-  update(s: Pick<Snapshot, 'hp' | 'hpMax' | 'player'>, anchor: { x: number; y: number }, nowMs: number): void {
+  update(s: Pick<Snapshot, 'hp' | 'hpMax' | 'player'> & Partial<Pick<Snapshot, 'charge'>>, anchor: { x: number; y: number }, nowMs: number): void {
     const g = this.g;
     const p = { hp: s.hp, ko: s.player.ko };
     const hpMax = s.hpMax;
@@ -78,7 +90,8 @@ export class PaulHealthBar {
     const fill = p.hp > 0 ? Math.max(1, Math.round(inner * frac)) : 0;
     const flash = nowMs < this.flashUntil;
     const color = flash ? 0xffffff : healthColor(p.hp, hpMax);
-    const key = `${fill}:${color}`;
+    const charge = s.charge ? chargeFill(s.charge.progress) : -1;
+    const key = `${fill}:${color}:${charge}`;
     if (key === this.drawn) return;
     this.drawn = key;
     // local origin = bottom centre of the bar
@@ -88,6 +101,12 @@ export class PaulHealthBar {
     g.fillStyle(INK, 1).fillRect(left, top, HEALTH_BAR_W, HEALTH_BAR_H);
     g.fillStyle(TRACK, 1).fillRect(left + 1, top + 1, inner, HEALTH_BAR_H - 2);
     if (fill > 0) g.fillStyle(color, 1).fillRect(left + 1, top + 1, fill, HEALTH_BAR_H - 2);
+    if (charge >= 0) {
+      const cy = CHARGE_GAP;
+      g.fillStyle(INK, 1).fillRect(left, cy, HEALTH_BAR_W, CHARGE_BAR_H);
+      g.fillStyle(TRACK, 1).fillRect(left + 1, cy + 1, inner, CHARGE_BAR_H - 2);
+      if (charge > 0) g.fillStyle(CHARGE, 1).fillRect(left + 1, cy + 1, charge, CHARGE_BAR_H - 2);
+    }
     const hx = left - HEART_GAP - HEART_ROWS[0]!.length;
     HEART_ROWS.forEach((row, y) => {
       for (let x = 0; x < row.length; x++) if (row[x] === '#') g.fillStyle(HEART, HEART_ALPHA).fillRect(hx + x, top + y, 1, 1);

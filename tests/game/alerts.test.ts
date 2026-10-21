@@ -63,7 +63,8 @@ describe('pure helpers', () => {
     expect(incidentAlert('elderlyRobbed')).toMatchObject({ title: 'VOL EN COURS !', sub: 'Une personne âgée est menacée', label: 'VOL', tone: 'warn', icon: 'alert' });
     expect(incidentAlert('car')).toMatchObject({ title: 'VOITURE EN FEU !', sub: 'Chasse les casseurs', label: 'VOITURE', tone: 'fire', icon: 'flame' });
     expect(incidentAlert('busStop')).toMatchObject({ title: 'ABRIBUS SACCAGÉ !', sub: 'Arrête la casse', label: 'ABRIBUS', tone: 'warn', icon: 'glass' });
-    expect(incidentAlert('weaponDrop')).toMatchObject({ title: 'ARME SPÉCIALE !', sub: 'Fonce la ramasser', positioned: true, meta: '' });
+    expect(incidentAlert('bouclierDrop')).toMatchObject({ title: 'BOUCLIER DISPONIBLE !', sub: 'Fonce le ramasser', label: 'BOUCLIER', positioned: true, meta: '' });
+    expect(incidentAlert('kamehameDrop')).toMatchObject({ title: 'ONDE D’ÉNERGIE DISPONIBLE !', sub: 'Fonce la ramasser', label: 'RAYON', positioned: true, meta: '' });
   });
 
   test('the retro video-game shop: « BOUTIQUE EN FEU ! » on its fire only, « Boutique menacée » round line, warn then fire indicator', () => {
@@ -90,8 +91,11 @@ describe('pure helpers', () => {
     expect(alertFromEvent(rescueEv('elderlyRobbed'))).toEqual({ id: 'rescue#1', kind: 'elderlyRobbed', pos: { x: 900, y: 600 }, wave: 2, total: 3, incident: 'rescue' });
     expect(alertFromEvent(waveEv)).toEqual({ id: 'round#3', kind: 'round', pos: null, wave: 3, total: 9, headline: 'car' });
     expect(alertFromEvent(fireEv('car', 'car1', { x: 50, y: 60 }))).toEqual({ id: 'car#3', kind: 'car', pos: { x: 50, y: 60 }, wave: 3, total: 0, incident: 'car1' });
-    // a drop is tied to its weapon on the ground (same id as its activeIncidents entry)
-    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 } })).toMatchObject({ kind: 'weaponDrop', pos: { x: 7, y: 8 }, incident: 'drop@7,8' });
+    // a special drop is tied to its pickup on the ground (same id as its activeIncidents entry)
+    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 }, special: 'bouclier' })).toMatchObject({ kind: 'bouclierDrop', pos: { x: 7, y: 8 }, incident: 'drop@7,8' });
+    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 }, special: 'kamehame' })).toMatchObject({ kind: 'kamehameDrop', incident: 'drop@7,8' });
+    // a regular weapon drop (before round 3) has no banner
+    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 } })).toBeNull();
     // no banner for a drop that found no spot, nor for a second urgency (its own fire announces it)
     expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: null })).toBeNull();
     expect(alertFromEvent({ type: 'TwistStarted', kind: 'secondUrgency', pos: { x: 1, y: 1 } })).toBeNull();
@@ -147,14 +151,19 @@ describe('pure helpers', () => {
     expect(activeIncidents(s)).toEqual([]);
   });
 
-  test('activeIncidents: a special drop on the ground (with an expiry) is one too, an ordinary weapon is not', () => {
+  test('activeIncidents: every special pickup on the ground is one (kind-based, expiry or not); a regular weapon never', () => {
     const s = new Sim(1).snapshot();
     for (const t of s.targets) t.state = 'intact';
     s.weaponsOnGround = [
       { id: 1, kind: 'baton', pos: { x: 10, y: 20 }, expiresAt: null },
       { id: 2, kind: 'marteau', pos: { x: 30, y: 40 }, expiresAt: 99 },
+      { id: 3, kind: 'bouclier', pos: { x: 50, y: 60 }, expiresAt: null },
+      { id: 4, kind: 'kamehame', pos: { x: 70, y: 80 }, expiresAt: 99 },
     ];
-    expect(activeIncidents(s)).toEqual([{ id: 'drop@30,40', kind: 'weaponDrop', pos: { x: 30, y: 40 } }]);
+    expect(activeIncidents(s)).toEqual([
+      { id: 'drop@50,60', kind: 'bouclierDrop', pos: { x: 50, y: 60 } },
+      { id: 'drop@70,80', kind: 'kamehameDrop', pos: { x: 70, y: 80 } },
+    ]);
   });
 
   test('arrows snap to 8 directions and only turn by multiples of 90°', () => {
@@ -260,8 +269,8 @@ describe('AlertBanner', () => {
 
   test('a special weapon drop is announced at the drop, with arrow and distance', () => {
     const b = new AlertBanner(document.body);
-    b.push(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 320, y: 0 } })!);
-    expect(b.el.querySelector('.title')!.textContent).toBe('ARME SPÉCIALE !');
+    b.push(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 320, y: 0 }, special: 'kamehame' })!);
+    expect(b.el.querySelector('.title')!.textContent).toBe('ONDE D’ÉNERGIE DISPONIBLE !');
     expect(b.el.querySelector('.sub')!.textContent).toBe('Fonce la ramasser');
     expect(b.el.querySelector<HTMLElement>('.dir')!.hidden).toBe(false);
     b.track({ x: 0, y: 0 });
@@ -586,33 +595,47 @@ describe('Hud alerts and edge indicators', () => {
     // a round banner is not tied to an incident; a drop banner lasts while its weapon is on the ground
     const dropped = (x: Snapshot): void => {
       calm(x);
-      x.weaponsOnGround = [{ id: 7, kind: 'marteau', pos: { x: 5, y: 5 }, expiresAt: 30 }];
+      x.weaponsOnGround = [{ id: 7, kind: 'bouclier', pos: { x: 5, y: 5 }, expiresAt: 30 }];
     };
-    hud.onEvents([waveEv, { type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 5, y: 5 } }]);
+    hud.onEvents([waveEv, { type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 5, y: 5 }, special: 'bouclier' }]);
     hud.update(snap(dropped), view);
     hud.update(snap(dropped), view);
     expect(title()).toBe('MANCHE 3 !');
     vi.advanceTimersByTime(ALERT_MS);
     hud.update(snap(dropped), view);
-    expect(title()).toBe('ARME SPÉCIALE !');
+    expect(title()).toBe('BOUCLIER DISPONIBLE !');
     // picked up or expired: the banner goes at once
     hud.update(snap(calm), view);
     expect(title()).toBeNull();
     hud.destroy();
   });
 
-  test('a special drop gets an « ARME » edge indicator while it lies on the ground', () => {
+  test('special pickups get « BOUCLIER » / « RAYON » edge indicators with their own icon; regular weapons none', () => {
     const hud = new Hud(document.body, null);
-    const edges = () => [...hud.root.querySelectorAll<HTMLElement>('.bb-edge')];
+    const edges = () => [...hud.root.querySelectorAll<HTMLElement>('.bb-edge')].filter((e) => !e.hidden);
     const off = { ...view, x: 5000, y: 5000 };
-    hud.update(snap((x) => { calm(x); x.weaponsOnGround = [{ id: 3, kind: 'baton', pos: { x: 100, y: 100 }, expiresAt: 40 }]; }), off);
+    hud.update(snap((x) => { calm(x); x.weaponsOnGround = [{ id: 3, kind: 'bouclier', pos: { x: 100, y: 100 }, expiresAt: null }]; }), off);
     expect(edges()).toHaveLength(1);
-    expect(edges()[0]!.querySelector('.lbl')!.textContent).toBe('ARME');
+    expect(edges()[0]!.querySelector('.lbl')!.textContent).toBe('BOUCLIER');
     expect(edges()[0]!.classList.contains('tone-drop')).toBe(true);
-    // an ordinary weapon has none; a picked-up drop loses its indicator
-    hud.update(snap((x) => { calm(x); x.weaponsOnGround = [{ id: 4, kind: 'baton', pos: { x: 100, y: 100 }, expiresAt: null }]; }), off);
+    hud.update(snap((x) => { calm(x); x.weaponsOnGround = [{ id: 5, kind: 'kamehame', pos: { x: 100, y: 100 }, expiresAt: 40 }]; }), off);
+    expect(edges()).toHaveLength(1);
+    expect(edges()[0]!.querySelector('.lbl')!.textContent).toBe('RAYON');
+    // a regular weapon has none, twist drop (expiry) or not
+    hud.update(snap((x) => { calm(x); x.weaponsOnGround = [{ id: 4, kind: 'baton', pos: { x: 100, y: 100 }, expiresAt: null }, { id: 6, kind: 'panneau', pos: { x: 90, y: 90 }, expiresAt: 40 }]; }), off);
     expect(edges()).toHaveLength(0);
     hud.destroy();
+  });
+
+  test('specials icons: shield and energy orb, at most 10×11 art px', () => {
+    expect(incidentLook('bouclierDrop')).toEqual({ tone: 'drop', icon: 'shield' });
+    expect(incidentLook('kamehameDrop')).toEqual({ tone: 'drop', icon: 'orb' });
+    for (const icon of ['shield', 'orb'] as const) {
+      const svg = pixelSvg(icon, 1);
+      const [, w, h] = /viewBox="0 0 (\d+) (\d+)"/.exec(svg)!;
+      expect(Number(w)).toBeLessThanOrEqual(10);
+      expect(Number(h)).toBeLessThanOrEqual(11);
+    }
   });
 
   test('the rescue card has no health bar', () => {
@@ -688,12 +711,12 @@ describe('mode furie alerts', () => {
       sub: 'Fonce le ramasser',
       label: 'FURIE',
       tone: 'furie',
-      icon: 'bolt',
+      icon: 'star',
       positioned: true,
     });
     expect(incidentAlert('furie')).toMatchObject({ title: 'MODE FURIE !', positioned: false, tone: 'furie', ms: FURIE_ALERT_MS });
     expect(FURIE_ALERT_MS).toBeLessThan(ALERT_MS);
-    expect(incidentLook('furieDrop')).toEqual({ tone: 'furie', icon: 'bolt' });
+    expect(incidentLook('furieDrop')).toEqual({ tone: 'furie', icon: 'star' });
     expect(pixelSvg('bolt')).toContain('<svg');
   });
 
@@ -711,7 +734,7 @@ describe('mode furie alerts', () => {
     expect(alertFromEvent({ type: 'FurieEnded' })).toBeNull();
   });
 
-  test('activeIncidents: a furie drop is a « furieDrop », a timed furie spawn is none', () => {
+  test('activeIncidents: a furie on the ground is a « furieDrop », twist drop or timed spawn', () => {
     const s = snap((x) => {
       calm(x);
       x.weaponsOnGround = [
@@ -719,7 +742,10 @@ describe('mode furie alerts', () => {
         { id: 2, kind: 'furie', pos: { x: 30, y: 40 }, expiresAt: 99 },
       ];
     });
-    expect(activeIncidents(s)).toEqual([{ id: 'drop@30,40', kind: 'furieDrop', pos: { x: 30, y: 40 } }]);
+    expect(activeIncidents(s)).toEqual([
+      { id: 'drop@10,20', kind: 'furieDrop', pos: { x: 10, y: 20 } },
+      { id: 'drop@30,40', kind: 'furieDrop', pos: { x: 30, y: 40 } },
+    ]);
   });
 
   test('Hud: « FURIE » edge indicator with its own tone; the pickup banner has no arrow and goes quickly', () => {

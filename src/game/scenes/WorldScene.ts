@@ -21,6 +21,7 @@ import { TargetsLayer, makeTargetTextures } from '../render/targets';
 import { StationsView, ToolboxView, WorldView, makeRockTextures, makeTextures } from '../render/world';
 import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapons';
 import { ItemLayer, makeItemTextures } from '../render/items';
+import { ShieldView, SpecialFx, makeSpecialTextures } from '../render/specials';
 
 const HIT_STOP_MS = 60;
 const SHAKE_MS = 120;
@@ -28,6 +29,9 @@ const SHAKE_PX = 2;
 /** Tiny shake on a strike that hits in mode furie (none under prefers-reduced-motion). */
 const FURIE_SHAKE_MS = 90;
 const FURIE_SHAKE_PX = 1.5;
+/** Small shake when the onde d’énergie fires (none under prefers-reduced-motion). */
+const BEAM_SHAKE_MS = 160;
+const BEAM_SHAKE_PX = 2;
 const BASE_W = 640;
 const BASE_H = 360;
 const PAN_IN_MS = 700;
@@ -75,6 +79,10 @@ export class WorldScene extends Phaser.Scene {
   private telegraphs!: TelegraphLayer;
   private furieAura!: FurieAura;
   private pows!: PowBubbles;
+  /** The bouclier held in front of Paul. */
+  private shield!: ShieldView;
+  /** Onde d’énergie charge glow and beam, shield block sparks. */
+  private specialFx!: SpecialFx;
   private reducedMotion = false;
 
   private hitStopUntil = 0;
@@ -170,6 +178,7 @@ export class WorldScene extends Phaser.Scene {
     makeItemTextures(this);
     makeTargetTextures(this);
     makeFurieTextures(this);
+    makeSpecialTextures(this);
     makeMonumentTextures(this);
     this.reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.world = new WorldView(this);
@@ -198,6 +207,8 @@ export class WorldScene extends Phaser.Scene {
     this.healthBar = new PaulHealthBar(this, this.reducedMotion);
     this.pows = new PowBubbles(this);
     this.heldWeapon = new HeldWeaponView(this);
+    this.shield = new ShieldView(this);
+    this.specialFx = new SpecialFx(this);
     this.toolboxes = new ToolboxView(this);
 
     const cam = this.cameras.main;
@@ -294,6 +305,14 @@ export class WorldScene extends Phaser.Scene {
       } else if (e.type === 'PlayerDamaged') {
         const cam = this.cameras.main;
         cam.shake(SHAKE_MS, new Phaser.Math.Vector2(SHAKE_PX / cam.width, SHAKE_PX / cam.height), true);
+      } else if (e.type === 'ShieldBlocked') {
+        this.specialFx.block(e.pos, time);
+      } else if (e.type === 'BeamFired') {
+        this.specialFx.fire(e.from, e.to, snap.player.facing, time);
+        if (!this.reducedMotion) {
+          const cam = this.cameras.main;
+          cam.shake(BEAM_SHAKE_MS, new Phaser.Math.Vector2(BEAM_SHAKE_PX / cam.width, BEAM_SHAKE_PX / cam.height), false);
+        }
       } else if (e.type === 'ToolboxPickedUp') {
         this.toolboxes.picked(time);
       } else if (e.type === 'FlagCaptured') {
@@ -310,11 +329,15 @@ export class WorldScene extends Phaser.Scene {
 
   private render(snap: Snapshot, time: number, dtMs: number): void {
     const flying = new Map(this.sim.rocks.flying().map((r) => [r.id, r.t]));
+    // a Frapper press with the onde d’énergie starts a charge, not a swing
+    if (snap.weapon?.kind === 'kamehame' || snap.charge) this.struck = false;
     this.paul.update(snap.player, this.struck, time, dtMs, snap.furie !== null);
     this.healthBar.update(snap, this.paul.sprite, time);
     this.furieAura.update(snap.ended ? null : snap.furie, this.paul.sprite, time);
     this.pows.update(time);
     this.heldWeapon.update(snap.weapon, snap.player, this.struck, time);
+    this.shield.update(snap.weapon, snap.player, this.paul.sprite, time);
+    this.specialFx.update(snap.ended ? null : snap.charge, snap.player, this.paul.sprite, time);
     this.struck = false;
     this.weaponsOnGround.update(snap.weaponsOnGround, time, snap.now);
     this.hostiles.update(snap.hostiles, time);

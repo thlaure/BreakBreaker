@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { CONTROLS, RULES } from '../../src/content/controls';
 import { contextPrompt, formatDuration, formatSummary, hpLabel, incidentLines, roundPanel, roundValue, waveLine, weaponLine, weaponValue } from '../../src/game/hud/format';
-import { HEALTH_GREEN, HEALTH_RED, HEALTH_YELLOW, healthColor } from '../../src/game/render/healthBar';
+import { HEALTH_BAR_W, HEALTH_GREEN, HEALTH_RED, HEALTH_YELLOW, chargeFill, healthColor } from '../../src/game/render/healthBar';
 import { renderMarkdown } from '../../src/game/hud/markdown';
 import { Sim, type Snapshot } from '../../src/sim/sim';
 
@@ -453,6 +453,51 @@ describe('mode furie HUD and audio', () => {
     expect(stop).toHaveBeenCalledTimes(2);
     // no AudioContext (not unlocked): everything stays silent and never throws
     a.onEvents([{ type: 'FurieStarted', secondsLeft: 12 }, { type: 'FurieEnded' }]);
+  });
+});
+
+describe('special weapons HUD and audio', () => {
+  test('weapon row: « Bouclier (14 s) » (seconds rounded up), « Onde d’énergie (2) »; furie suffix kept', () => {
+    expect(weaponValue(snap((x) => { x.weapon = { kind: 'bouclier', uses: 0, secondsLeft: 13.2 }; }))).toBe('Bouclier (14 s)');
+    expect(weaponValue(snap((x) => { x.weapon = { kind: 'bouclier', uses: 0, secondsLeft: 0.01 }; }))).toBe('Bouclier (1 s)');
+    expect(weaponValue(snap((x) => { x.weapon = { kind: 'kamehame', uses: 2 }; }))).toBe('Onde d’énergie (2)');
+    expect(weaponLine(snap((x) => { x.weapon = { kind: 'kamehame', uses: 1 }; x.furie = { secondsLeft: 3 }; }))).toBe(
+      'Arme : Onde d’énergie (1) · Mode furie 3 s',
+    );
+  });
+
+  test('a bouclier picked up in the sim shows its 20 s in the weapon row', () => {
+    const sim = new Sim(4);
+    sim.weapons.ground.push({ id: 78, kind: 'bouclier', pos: { ...sim.player.pos }, expiresAt: null });
+    sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false });
+    expect(weaponValue(sim.snapshot())).toBe('Bouclier (20 s)');
+  });
+
+  test('charge bar under the health bar: fill follows the charge progress', () => {
+    expect(chargeFill(0)).toBe(0);
+    expect(chargeFill(0.5)).toBe(Math.round((HEALTH_BAR_W - 2) / 2));
+    expect(chargeFill(1)).toBe(HEALTH_BAR_W - 2);
+    expect(chargeFill(2)).toBe(HEALTH_BAR_W - 2);
+  });
+
+  test('charge hum on BeamCharging, stopped on cancel or fire (with a zap); clank on a shield block; reset stops the hum', async () => {
+    const { GameAudio } = await import('../../src/game/audio');
+    const a = new GameAudio();
+    const start = vi.spyOn(a, 'startCharge');
+    const stop = vi.spyOn(a, 'stopCharge');
+    const zap = vi.spyOn(a, 'zap').mockImplementation(() => undefined);
+    const clank = vi.spyOn(a, 'clank').mockImplementation(() => undefined);
+    a.onEvents([{ type: 'BeamCharging' }]);
+    expect(start).toHaveBeenCalledTimes(1);
+    a.onEvents([{ type: 'BeamCancelled' }]);
+    expect(stop).toHaveBeenCalledTimes(1);
+    a.onEvents([{ type: 'BeamFired', from: { x: 0, y: 0 }, to: { x: 9, y: 0 }, kos: 2 }]);
+    expect(stop).toHaveBeenCalledTimes(2);
+    expect(zap).toHaveBeenCalledTimes(1);
+    a.onEvents([{ type: 'ShieldBlocked', pos: { x: 1, y: 1 } }]);
+    expect(clank).toHaveBeenCalledTimes(1);
+    a.reset();
+    expect(stop).toHaveBeenCalledTimes(3);
   });
 });
 
