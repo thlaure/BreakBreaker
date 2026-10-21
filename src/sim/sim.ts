@@ -3,7 +3,7 @@ import { Director, spawnPoints, type RoundPhase, type RoundSummary } from './dir
 import { EntryQueue, type Spawner } from './entry';
 import { FirePatches } from './firepatch';
 import { Stations, type StationMessage } from './healing';
-import { Horde, type Hostile, type HordeCtx } from './hostiles';
+import { Horde, isTough, type Hostile, type HordeCtx } from './hostiles';
 import type { ItemState, RescueIncident, RescueKind, RescueStage } from './incidents/rescue';
 import { SchoolIncident, type SchoolStage } from './incidents/school';
 import type { TargetAttack } from './incidents/targetAttack';
@@ -64,6 +64,8 @@ export interface Snapshot {
     variant: Variant;
     role: Role;
     hp: number;
+    /** Starting HP (bars: a brute once damaged, the Caïd always). */
+    maxHp: number;
     /** Winding up a blow, a throw or a Molotov. */
     windup: boolean;
     /** Holding up a lit bottle (a Molotov or firebomber windup; not a firebomber's melee blow). */
@@ -240,6 +242,8 @@ export class Sim {
   private koReported = false;
   /** Onde d'énergie charge under way: seconds held so far. */
   private charge: { t: number } | null = null;
+  /** Caïds whose KO was already rewarded (bonus + weapon drop). */
+  private readonly caidsDown = new Set<number>();
   /** Agir (F / touch Agir) was down on the previous step: the toolbox only reacts to a fresh press (rising edge). */
   private prevAct = false;
 
@@ -296,14 +300,16 @@ export class Sim {
     stepPlayer(p, frozen ? { ...input, move: { x: 0, y: 0 } } : input, dt, now, this.grid, furie ? CONFIG.furie.speedMul : 1);
     if (this.charge !== null || this.weapons.held?.kind === 'kamehame') this.stepCharge(input, dt, ev);
     else if (input.strike) {
-      // Bare hands: 1 damage (2 hits to KO). Any weapon: KO in one hit. Mode furie: KO in one hit, more targets, the
-      // weapon is not used, every KO is launched. Bouclier: a bash (one-hit KO, knockback, no charge used).
+      // Bare hands: 1 damage. A regular weapon: KO in one hit, but CONFIG.toughWeaponDamage on a brute or the Caïd.
+      // Mode furie: KO in one hit, more targets, the weapon is not used, every KO is launched. Bouclier: a bash
+      // (one-hit KO, knockback, no charge used).
       const bash = this.weapons.held?.kind === 'bouclier';
-      const damage = furie ? CONFIG.furie.damage : this.weapons.held ? WEAPON_DAMAGE : 1;
       const maxTargets = furie ? CONFIG.furie.maxTargets : CONFIG.melee.maxTargets;
       const { hits } = sweep(p, now, this.horde.views(), this.grid, this.weapons.range(), maxTargets);
       for (const id of hits) {
-        ev.push({ type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee' });
+        const tough = this.tough(id);
+        const damage = furie ? CONFIG.furie.damage : bash ? WEAPON_DAMAGE : this.weapons.held ? (tough ? CONFIG.toughWeaponDamage : WEAPON_DAMAGE) : 1;
+        ev.push(tough ? { type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee', heavy: true } : { type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee' });
         this.hit(id, damage, ev, furie);
         if (bash) this.knockback(id);
       }
@@ -326,7 +332,8 @@ export class Sim {
       pressure: this.director.pressure(this.rules.kos),
     });
     this.updateFacings(prev);
-    this.queue.step(dt, this.horde, spawnPoints(p.pos));
+    for (const h of this.queue.step(dt, this.horde, spawnPoints(p.pos)))
+      if (h.role === 'boss') ev.push({ type: 'CaidArrived', lifeId: h.lifeId, pos: v(h.pos), round: h.round ?? this.director.round });
     const rockEv = this.rocks.step(dt, now, this.rockCtx(victimPos));
 
     // damage, hits and rock bookkeeping
@@ -335,7 +342,11 @@ export class Sim {
     for (const e of [...hordeEv, ...rockEv]) {
       if (e.type === 'PlayerDamaged') {
         const amount = this.weapons.furie() ? e.amount * CONFIG.furie.damageTakenMul : e.amount;
-        if (!this.invulnerable && damagePlayer(p, amount, now)) ev.push({ ...e, amount });
+        if (!this.invulnerable && damagePlayer(p, amount, now)) {
+          ev.push({ ...e, amount });
+          // a brute's or the Caïd's blow: Paul is pushed through the player move (solids block it)
+          if (e.push && !p.ko) p.pos = moveCircle(this.grid, p.pos, e.push, CONFIG.player.radius);
+        }
         continue;
       }
       ev.push(e);
@@ -396,6 +407,8 @@ export class Sim {
     ev.push(...heal.events);
     this.stationMessage = heal.message;
     ev.push(...this.weapons.step(dt, now, p, this.director.round));
+    // a Caïd knocked out by any path (rocks, the beam, a test's direct hit) gets his bonus and drop before the round closes
+    for (const h of this.horde.list) if (h.role === 'boss' && h.state === 'ko') this.caidDown(h, ev);
 
     ev.push(...this.director.step(dt, this));
     this.tally(ev);
@@ -435,6 +448,7 @@ export class Sim {
         variant: h.variant,
         role: h.role,
         hp: h.hp,
+        maxHp: h.maxHp,
         windup: h.state === 'windup',
         bottleUp: h.state === 'windup' && this.horde.bottleUp(h.lifeId),
       })),
@@ -637,6 +651,7 @@ export class Sim {
     if (this.horde.applyHit(lifeId, dmg) !== 'ko') return false;
     const h = this.horde.list.find((x) => x.lifeId === lifeId);
     this.rules.onKnockout(lifeId, h?.pos);
+    if (h?.role === 'boss') this.caidDown(h, ev);
     const along = typeof launched === 'object' ? launched : undefined;
     ev.push(h && launched ? { type: 'ActorKnockedOut', lifeId, launch: this.launch(h.pos, along) } : { type: 'ActorKnockedOut', lifeId });
     return true;
@@ -660,6 +675,24 @@ export class Sim {
     const base = along ?? (len(away) > 1e-6 ? norm(away) : this.player.facing);
     const a = Math.atan2(base.y, base.x) + jitter;
     return { dir: { x: Math.cos(a), y: Math.sin(a) }, power, spin: sign * turns, kind: along ? 'satellite' : 'tumble' };
+  }
+
+  /** A brute or the Caïd (heavier hits, CONFIG.toughWeaponDamage from a held weapon). */
+  private tough(lifeId: number): boolean {
+    const h = this.horde.list.find((x) => x.lifeId === lifeId);
+    return h !== undefined && isTough(h.role);
+  }
+
+  /**
+   * « Le Caïd » KO'd (once per life): +CONFIG.caid.bonus with the occurrence key `caid#<round>` at his position (the
+   * KO's +1 is scored as for anyone), and a regular weapon dropped where he fell (WeaponSpawned, no indicator).
+   */
+  private caidDown(h: Hostile, ev: SimEvent[]): void {
+    if (this.caidsDown.has(h.lifeId)) return;
+    this.caidsDown.add(h.lifeId);
+    this.rules.award(`caid#${h.round ?? this.director.round}`, CONFIG.caid.bonus, h.pos);
+    const w = this.weapons.dropAt(h.pos);
+    ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: v(w.pos) });
   }
 
   /** Hostile facing = last movement direction, else toward Paul. */

@@ -53,17 +53,18 @@ describe('round balancing', () => {
   });
 
   test('fill groups are discrete: the next one is queued only once the current one is down, then enters firstDelay later; the climax group enters 0.8 s apart', () => {
-    // round 4: its fill (roster − attack − rescue) makes at least two groups of about groupSize, bigger ones last
+    // round 4: its fill (roster − attack − rescue) makes at least two groups (the runner pack is one of them)
     const R = 4;
     const sim = toRound(R);
     // the second beat is the monument occupation (first one: 6 occupiers) or the rescue
     const second = sim.director.plan!.beats.flat().includes('monument') ? occupierCount(1, R) : RESCUE_COUNT;
     const objective = sim.attacks.filter((a) => a.round === R).reduce((n, a) => n + a.total(), 0) + second;
-    const fill = sim.director.total - objective;
-    const groups = Math.ceil(fill / CONFIG.round.groupSize);
-    expect(groups).toBeGreaterThanOrEqual(2);
-    const base = Math.floor(fill / groups);
-    const size = (g: number): number => base + (g > groups - (fill - base * groups) ? 1 : 0);
+    const plan = sim.director.fillPlan();
+    expect(plan.reduce((n, g) => n + g.size, 0)).toBe(sim.director.total - objective);
+    expect(plan.length).toBeGreaterThanOrEqual(2);
+    expect(plan.filter((g) => g.pack)).toHaveLength(1);
+    expect(plan[plan.length - 1]!.climax).toBe(true);
+    const size = (g: number): number => plan[g - 1]!.size;
     // everyone but the fill is knocked out at once (objective rioters would otherwise hold the entry gate)
     const step = (): void => {
       for (const h of sim.horde.active()) if (!isFill(h.incidentId, R) && sim.horde.applyHit(h.lifeId, 99) === 'ko') sim.rules.onKnockout(h.lifeId);
@@ -86,11 +87,12 @@ describe('round balancing', () => {
     expect(entries).toHaveLength(size(2));
     expect(entries[0]! - cleared).toBeGreaterThanOrEqual(CONFIG.round.firstDelay - CONFIG.step - 1e-9);
     expect(entries[0]! - cleared).toBeLessThanOrEqual(CONFIG.round.firstDelay + 2 * CONFIG.step + 1e-9);
-    const interval = groups === 2 ? CONFIG.round.climaxInterval : CONFIG.round.interval;
+    // the climax group and the runner pack come 0.8 s apart
+    const interval = plan[1]!.climax || plan[1]!.pack ? CONFIG.round.climaxInterval : CONFIG.round.interval;
     for (let k = 1; k < entries.length; k++) expect(entries[k]! - entries[k - 1]!).toBeCloseTo(interval, 1);
   });
 
-  test('round 1 has no rock throwers; from round 2 a fifth of the fill throws rocks', () => {
+  test('round 1 has no rock throwers; from round 2 a fifth of the fill (outside the runner pack) throws rocks', () => {
     const sim = new Sim(4, { invulnerable: true });
     const roles = new Map<number, { round: number | null; role: Role; fill: boolean }>();
     for (let i = 0; i < 60 * 600 && sim.director.round <= 3; i++) {
@@ -101,7 +103,7 @@ describe('round balancing', () => {
     const all = [...roles.values()];
     expect(all.filter((r) => r.round === 1).some((r) => r.role === 'thrower')).toBe(false);
     for (const round of [2, 3]) {
-      const fill = all.filter((r) => r.round === round && r.fill);
+      const fill = all.filter((r) => r.round === round && r.fill && r.role !== 'runner');
       expect(fill.length).toBeGreaterThan(0);
       expect(fill.filter((r) => r.role === 'thrower')).toHaveLength(Math.floor(fill.length * THROWER_SHARE));
     }

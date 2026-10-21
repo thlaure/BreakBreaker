@@ -280,7 +280,7 @@ describe('who throws at Paul', () => {
       }
   });
 
-  test('fill: no firebomber in rounds 1–2; from round 3 at least 1 (fill >= 4), at most 3 per round; throwers unchanged', () => {
+  test('fill: no firebomber in rounds 1–2; from round 3 at least 1 (fill >= 4 besides the runner pack), at most 3 per round; throwers unchanged', () => {
     const sim = new Sim(4, { invulnerable: true });
     const seen = new Map<number, { round: number | null; role: Role; fill: boolean }>();
     for (let i = 0; i < 60 * 900 && sim.director.round <= 6; i++) {
@@ -293,7 +293,8 @@ describe('who throws at Paul', () => {
     const all = [...seen.values()];
     for (const round of [1, 2]) expect(all.filter((r) => r.round === round && r.role === 'firebomber')).toEqual([]);
     for (const round of [3, 4, 5]) {
-      const fill = all.filter((r) => r.round === round && r.fill);
+      // drawn over the fill outside the runner pack
+      const fill = all.filter((r) => r.round === round && r.fill && r.role !== 'runner');
       const fb = fill.filter((r) => r.role === 'firebomber').length;
       if (fill.length >= 4) expect(fb).toBeGreaterThanOrEqual(1);
       expect(fb).toBeLessThanOrEqual(FB.maxPerRound);

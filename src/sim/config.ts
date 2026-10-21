@@ -144,6 +144,24 @@ export const CONFIG = {
     maxPerRound: 3,
   },
   /**
+   * Runners (§12.14): contact rioters at `speedMul` × the hostile speed with `hp` HP. From `fromRound`, one fill group
+   * of each round becomes a pack of `pack` rioters (4–6, never added to the roster), entering CONFIG.round.climaxInterval
+   * apart, without a banner.
+   */
+  runner: { speedMul: 1.6, hp: 1, fromRound: 3, pack: [4, 6] as const },
+  /**
+   * Brutes: contact rioters at `speedMul` × speed with `hp` HP; a blow that lands pushes Paul `knockback` px away
+   * (blocked by solids, no extra damage). `counts`: [from round, brutes per round] (replacing contact slots of the fill).
+   */
+  brute: { speedMul: 0.75, hp: 4, knockback: 28, counts: [[4, 1], [6, 2], [8, 3]] as const },
+  /**
+   * « Le Caïd » (mini-boss, role 'boss'): `hp` HP, `speedMul` × speed, `knockback` px push; from `fromRound` he closes
+   * every round (last fill rioter). KO'd: +1 as usual, +`bonus` (once per round) and a regular weapon dropped where he fell.
+   */
+  caid: { speedMul: 0.9, hp: 6, knockback: 40, fromRound: 3, bonus: 5 },
+  /** Damage of a held regular weapon's strike on a brute or the Caïd (everyone else: one-hit KO). */
+  toughWeaponDamage: 2,
+  /**
    * Ground fire left by a firebomb: `radius` px, `lifeSec` s, at most `maxAlive` (a new one pushes the oldest out).
    * Paul standing inside takes `damage` every `tickSec` s through the normal damage path (invulnerability frames and
    * mode furie apply). Rioters are not hurt; a patch never ignites a target.

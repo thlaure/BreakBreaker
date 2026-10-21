@@ -86,6 +86,32 @@ const ZERO: Vec = { x: 0, y: 0 };
 
 const isZero = (v: Vec): boolean => v.x === 0 && v.y === 0;
 
+/** Starting HP of a rioter of `role`: runner, brute and Caïd have their own (CONFIG.runner / brute / caid). */
+export function roleHp(role: Role): number {
+  if (role === 'runner') return CONFIG.runner.hp;
+  if (role === 'brute') return CONFIG.brute.hp;
+  if (role === 'boss') return CONFIG.caid.hp;
+  return CONFIG.hostile.baseHp;
+}
+
+/** Speed factor of `role` over CONFIG.hostile.speed. */
+export function roleSpeedMul(role: Role): number {
+  if (role === 'runner') return CONFIG.runner.speedMul;
+  if (role === 'brute') return CONFIG.brute.speedMul;
+  if (role === 'boss') return CONFIG.caid.speedMul;
+  return 1;
+}
+
+/** Px a landed blow of `role` pushes Paul (0 = none). */
+export function roleKnockback(role: Role): number {
+  return role === 'brute' ? CONFIG.brute.knockback : role === 'boss' ? CONFIG.caid.knockback : 0;
+}
+
+/** A brute or the Caïd: a held weapon's strike does CONFIG.toughWeaponDamage instead of a one-hit KO. */
+export function isTough(role: Role): boolean {
+  return role === 'brute' || role === 'boss';
+}
+
 export class Horde {
   list: Hostile[] = [];
   private aux = new Map<number, Aux>();
@@ -114,7 +140,7 @@ export class Horde {
     afterThrow?: 'firebomber';
   }): Hostile | null {
     if (this.active().length >= CONFIG.caps.hostiles) return null;
-    const maxHp = opts.maxHp ?? CONFIG.hostile.baseHp;
+    const maxHp = opts.maxHp ?? roleHp(opts.role);
     const defTarget: Hostile['target'] =
       opts.role === 'degrader' || opts.role === 'molotov' ? 'facade' : opts.role === 'aggressor' ? 'victim' : 'player';
     const h: Hostile = {
@@ -215,8 +241,9 @@ export class Horde {
       if (a.postAt === null && (h.state === 'degrade' || h.state === 'threaten')) a.postAt = now;
       const delta = this.separation(h, ctx.player.pos);
       if (!isZero(want)) {
-        delta.x += want.x * CONFIG.hostile.speed * dt;
-        delta.y += want.y * CONFIG.hostile.speed * dt;
+        const speed = CONFIG.hostile.speed * roleSpeedMul(h.role);
+        delta.x += want.x * speed * dt;
+        delta.y += want.y * speed * dt;
       }
       if (!isZero(delta)) h.pos = moveCircle(ctx.grid, h.pos, delta, R);
       this.trackProgress(h, a, !isZero(want), this.crowded(h), now, ctx);
@@ -300,7 +327,13 @@ export class Horde {
     const d = dist(h.pos, p.pos);
     if (h.state === 'windup') {
       if (now < h.stateUntil - EPS) return ZERO;
-      if (d <= HIT_REACH && !p.ko) ev.push({ type: 'PlayerDamaged', amount: this.damage });
+      if (d <= HIT_REACH && !p.ko) {
+        // a brute or the Caïd also pushes Paul away (straight away from the rioter; its facing toward him when on top)
+        const k = roleKnockback(h.role);
+        const away = norm(sub(p.pos, h.pos));
+        const dir = isZero(away) ? { x: 1, y: 0 } : away;
+        ev.push(k > 0 ? { type: 'PlayerDamaged', amount: this.damage, push: { x: dir.x * k, y: dir.y * k } } : { type: 'PlayerDamaged', amount: this.damage });
+      }
       a.windKind = null;
       this.wc--;
       h.state = 'recover';

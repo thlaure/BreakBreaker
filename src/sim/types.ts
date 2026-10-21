@@ -39,7 +39,8 @@ export type HeldKind = WeaponKind | 'bouclier' | 'kamehame';
 export type PickupKind = HeldKind | 'furie';
 
 export type Variant = 'classic' | 'palestinian' | 'antifa';
-export type Role = 'contact' | 'thrower' | 'degrader' | 'aggressor' | 'molotov' | 'firebomber';
+/** 'runner' (fast, fragile), 'brute' (tough, slow, pushes Paul) and 'boss' (« Le Caïd ») fight as contacts. */
+export type Role = 'contact' | 'thrower' | 'degrader' | 'aggressor' | 'molotov' | 'firebomber' | 'runner' | 'brute' | 'boss';
 export type TargetId = 'school' | 'car1' | 'car2' | 'busStop' | 'shop';
 /** What kind of attack a round's "casse" is (Phase C extends both unions). */
 export type CasseKind = 'school' | 'car' | 'busStop' | 'shop';
@@ -52,7 +53,8 @@ export type SiteId = TargetId | 'monument';
 export type MonumentFlag = 'french' | 'palestinian';
 
 export type SimEvent =
-  | { type: 'HitConfirmed'; targetLifeId: number; damage: number; source: 'melee' | 'rock' | 'beam' }
+  /** `heavy`: the rioter hit is a brute or the Caïd (render / audio: a heavier hit). */
+  | { type: 'HitConfirmed'; targetLifeId: number; damage: number; source: 'melee' | 'rock' | 'beam'; heavy?: boolean }
   | { type: 'EnemyThrowStarted'; from: Vec; to: Vec; until: number }
   /** An enemy rock actually left the thrower's hand (not emitted when the flying cap cancels the throw). */
   | { type: 'EnemyRockThrown'; rockId: number }
@@ -65,7 +67,13 @@ export type SimEvent =
    * `dir` while spinning `spin` turns, signed).
    */
   | { type: 'ActorKnockedOut'; lifeId: number; launch?: Launch }
-  | { type: 'PlayerDamaged'; amount: number }
+  /**
+   * `push`: the blow of a brute or the Caïd also pushes Paul by this vector (its length = the role's knockback); the Sim
+   * moves him through the map's solids when the damage is applied.
+   */
+  | { type: 'PlayerDamaged'; amount: number; push?: Vec }
+  /** « Le Caïd » walked in (the round's last fill rioter): banner and edge indicator while he stands. */
+  | { type: 'CaidArrived'; lifeId: number; pos: Vec; round: number }
   | { type: 'BuildingThreatStarted'; incidentId: string }
   | { type: 'BuildingThreatPaused'; incidentId: string }
   | { type: 'BuildingDestroyed'; incidentId: string; target: TargetId }

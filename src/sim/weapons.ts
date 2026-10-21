@@ -191,6 +191,17 @@ export class Weapons {
   }
 
   /**
+   * A regular weapon (picked with this stream) dropped exactly at `pos` (where the Caïd fell), outside the timer and the
+   * ground cap; it vanishes after CONFIG.weapons.dropLifetime s like the other drops.
+   */
+  dropAt(pos: Vec): GroundWeapon {
+    const kind = KINDS[Math.min(KINDS.length - 1, Math.floor(this.rand() * KINDS.length))]!;
+    const w: GroundWeapon = { id: this.nextId++, kind, pos: { ...pos }, expiresAt: this.now + CONFIG.weapons.dropLifetime };
+    this.ground.push(w);
+    return w;
+  }
+
+  /**
    * The round twist's weapon drop: one of the specials unlocked at `round` (`dropSpecials`, picked with this stream),
    * or a regular weapon before any is unlocked. `special` = the special kind dropped (null for a regular weapon).
    */
