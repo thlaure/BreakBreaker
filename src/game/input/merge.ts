@@ -3,7 +3,8 @@ import type { InputFrame, Vec } from '../../sim/types';
 export interface InputSource {
   /**
    * Current state. Edge-triggered fields (strike, throwRock) are consumed: true for exactly one read; held fields
-   * (strikeHeld, act, move, run) report the current state.
+   * (strikeHeld, act, move, run) report the current state. `act` is also latched: a press released before the next
+   * read still reads true once (the sim only acts on its rising edge).
    */
   read(): Partial<InputFrame>;
   releaseAll(): void;

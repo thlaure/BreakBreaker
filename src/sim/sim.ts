@@ -187,7 +187,8 @@ export function segmentRectEntry(a: Vec, b: Vec, r: Rect): number | null {
  * Held specials: the bouclier blocks front rocks and firebombs and bashes on a strike; the onde d'énergie (kamehame)
  * charges while Frapper is held (Paul frozen), fires a beam at CONFIG.kamehame.chargeSec, and is cancelled by a release,
  * damage, the weapon lost or a KO.
- * While the school cinematic is running, only its timer advances.
+ * While the school cinematic is running, only its timer advances. Agir (`input.act`, held) counts only on its rising
+ * edge: holding F while walking into range, or while a hostile moves away, never starts a toolbox repair.
  * Every score change of the step (Rules' outbox, KOs included) ends the step's events as one ScoreChanged each.
  */
 export class Sim {
@@ -239,6 +240,8 @@ export class Sim {
   private koReported = false;
   /** Onde d'énergie charge under way: seconds held so far. */
   private charge: { t: number } | null = null;
+  /** Agir (F / touch Agir) was down on the previous step: the toolbox only reacts to a fresh press (rising edge). */
+  private prevAct = false;
 
   constructor(seed: number, opts: { invulnerable?: boolean } = {}) {
     this.rand = rng(seed);
@@ -270,6 +273,9 @@ export class Sim {
 
   /** One fixed step of CONFIG.step seconds. No-op (returns []) while paused or after the session ended. */
   step(input: InputFrame): SimEvent[] {
+    // Agir is a press, not a hold: only its rising edge counts (tracked on every step the sim sees, paused ones included)
+    const actPressed = input.act && !this.prevAct;
+    this.prevAct = input.act;
     if (this.paused || this.rules.ended) return [];
     const dt = CONFIG.step;
     const ev: SimEvent[] = [];
@@ -383,7 +389,7 @@ export class Sim {
     ev.push(...this.monument.step(dt, { player: p, horde: this.horde, rules: this.rules }));
     if (this.rescue) ev.push(...this.rescue.step(dt, { horde: this.horde, rules: this.rules, player: p, spawner: this.objectiveSpawner }));
 
-    const kit = this.toolboxes.step(dt, { player: p, horde: this.horde, targets: this.targets, rules: this.rules, act: input.act });
+    const kit = this.toolboxes.step(dt, { player: p, horde: this.horde, targets: this.targets, rules: this.rules, act: actPressed });
     ev.push(...kit.events);
     this.toolboxMessage = kit.message;
     const heal = this.stations.step({ player: p, rules: this.rules });

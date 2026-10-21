@@ -14,7 +14,10 @@ export interface Launch {
   kind?: 'tumble' | 'satellite';
 }
 
-/** strike/throwRock are edge-triggered presses; act and strikeHeld are held. */
+/**
+ * strike/throwRock are edge-triggered presses; act and strikeHeld are held. The Sim only acts on the rising edge of
+ * `act` (a fresh press of Agir); the input layer latches a tap so it lasts one read.
+ */
 export interface InputFrame {
   move: Vec;
   aim: Vec | null;

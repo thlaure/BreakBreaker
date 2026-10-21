@@ -14,7 +14,7 @@ export interface ToolboxCtx {
   horde: Horde;
   targets: Targets;
   rules: Rules;
-  /** The Agir key (F / touch Agir) is down this step. */
+  /** Agir (F / touch Agir) was pressed this step: a rising edge (the Sim turns the held key into it). */
   act: boolean;
 }
 

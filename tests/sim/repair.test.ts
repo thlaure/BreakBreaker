@@ -5,8 +5,9 @@ import { DISTRICT } from '../../src/sim/map/district';
 import { createPlayer } from '../../src/sim/player';
 import { Toolboxes } from '../../src/sim/repair';
 import { Rules } from '../../src/sim/rules';
+import { Sim } from '../../src/sim/sim';
 import { Targets } from '../../src/sim/targets';
-import type { TargetId } from '../../src/sim/types';
+import type { SimEvent, TargetId } from '../../src/sim/types';
 
 const DT = 1 / 60;
 const door = (id: TargetId) => DISTRICT.targets.find((d) => d.id === id)!.door;
@@ -233,5 +234,84 @@ describe('toolboxes', () => {
     expect(kit.ready).toBe(false);
     expect(run(3)).toEqual([]);
     expect(kit.carried).toBe(true);
+  });
+});
+
+describe('Agir is a press, not a hold (rising edge tracked by the Sim)', () => {
+  const IDLE = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false };
+  const HOLD = { ...IDLE, act: true };
+  function ruinedBusStop() {
+    const sim = new Sim(12, { invulnerable: true });
+    const d = door('busStop');
+    sim.targets.ruin('busStop', 'busStop#x');
+    sim.toolboxes.carried = true;
+    const at = (p: { x: number; y: number }) => (sim.player.pos = { ...p });
+    const kit = () => sim.snapshot().toolboxes;
+    return { sim, d, at, kit };
+  }
+
+  test('F held while walking into range never starts the repair; a fresh press in range does', () => {
+    const { sim, d, at, kit } = ruinedBusStop();
+    at({ x: d.x + 200, y: d.y });
+    sim.step(HOLD);
+    at(d);
+    for (let i = 0; i < 90; i++) sim.step(HOLD);
+    expect(kit()).toMatchObject({ canRepair: true, started: false, progress: 0 });
+    sim.step(IDLE);
+    sim.step(HOLD);
+    expect(kit().started).toBe(true);
+    const ev: SimEvent[] = [];
+    for (let i = 0; i < 60 * CONFIG.kit.repairSec; i++) ev.push(...sim.step(IDLE));
+    expect(ev.filter((e) => e.type === 'TargetRepaired')).toHaveLength(1);
+  });
+
+  test('release / press cycles once started neither restart nor double the repair', () => {
+    const { sim, d, at, kit } = ruinedBusStop();
+    at(d);
+    sim.step(IDLE);
+    const ev: SimEvent[] = [...sim.step(HOLD)];
+    const p0 = kit().progress;
+    for (let i = 0; i < 30; i++) ev.push(...sim.step(i % 2 === 0 ? IDLE : HOLD));
+    expect(kit().progress).toBeCloseTo(p0 + 30 * CONFIG.step, 6);
+    for (let i = 0; i < 60 * CONFIG.kit.repairSec; i++) ev.push(...sim.step(i % 3 === 0 ? HOLD : IDLE));
+    expect(ev.filter((e) => e.type === 'TargetRepaired')).toHaveLength(1);
+    expect(sim.rules.stats.repairs).toBe(1);
+  });
+
+  test('a hostile close resets; holding F while it goes away does not restart; leaving range and coming back held does not either', () => {
+    const { sim, d, at, kit } = ruinedBusStop();
+    at(d);
+    sim.step(IDLE);
+    sim.step(HOLD);
+    expect(kit().started).toBe(true);
+    const h = sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { x: d.x + 40, y: d.y } })!;
+    h.nextAttackAt = 1e9;
+    sim.step(HOLD);
+    expect(kit()).toMatchObject({ started: false, progress: 0 });
+    sim.horde.applyHit(h.lifeId, 99);
+    for (let i = 0; i < 30; i++) sim.step(HOLD);
+    expect(kit()).toMatchObject({ canRepair: true, started: false, progress: 0 });
+    sim.step(IDLE);
+    sim.step(HOLD);
+    expect(kit().started).toBe(true);
+    // walk out of range (reset), come back with F still down: nothing until a new press
+    at({ x: d.x + CONFIG.kit.applyRange + 40, y: d.y });
+    sim.step(HOLD);
+    expect(kit().started).toBe(false);
+    at(d);
+    for (let i = 0; i < 30; i++) sim.step(HOLD);
+    expect(kit()).toMatchObject({ started: false, progress: 0 });
+  });
+
+  test('a press without the toolbox, then the toolbox picked up with F still held: nothing starts', () => {
+    const { sim, d, at, kit } = ruinedBusStop();
+    sim.toolboxes.carried = false;
+    at(d);
+    sim.step(IDLE);
+    sim.step(HOLD);
+    expect(kit().message).toBe('Caisse à outils requise');
+    sim.toolboxes.carried = true;
+    for (let i = 0; i < 30; i++) sim.step(HOLD);
+    expect(kit()).toMatchObject({ canRepair: true, started: false });
   });
 });

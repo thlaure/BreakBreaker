@@ -20,6 +20,8 @@ export function createKeyboard(
   const held = new Set<string>();
   let strike = false;
   let throwRock = false;
+  /** F went down since the last read: a tap shorter than one sim step still reaches one read as `act`. */
+  let actTap = false;
   /** Left mouse button held (Space held is read from `held`). */
   let mouseStrike = false;
   let mouseUntil = -Infinity;
@@ -30,6 +32,7 @@ export function createKeyboard(
     if (!e.repeat) {
       if (e.code === 'Space') strike = true;
       else if (e.code === 'KeyE') throwRock = true;
+      else if (e.code === 'KeyF') actTap = true;
       else if (e.code === 'Escape') opts.onPause?.();
     }
     held.add(e.code);
@@ -64,6 +67,7 @@ export function createKeyboard(
     held.clear();
     strike = false;
     throwRock = false;
+    actTap = false;
     mouseStrike = false;
   };
 
@@ -102,10 +106,11 @@ export function createKeyboard(
         strike,
         strikeHeld: held.has('Space') || mouseStrike,
         throwRock,
-        act: held.has('KeyF'),
+        act: held.has('KeyF') || actTap,
       };
       strike = false;
       throwRock = false;
+      actTap = false;
       return frame;
     },
     releaseAll: release,

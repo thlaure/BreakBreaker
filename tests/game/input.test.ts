@@ -93,6 +93,20 @@ describe('keyboard', () => {
     kb.dispose?.();
   });
 
+  test('an F tap shorter than one read is latched: act reads true once; held F stays true', () => {
+    const { kb } = setupKeyboard();
+    key('keydown', 'KeyF');
+    key('keyup', 'KeyF');
+    expect(kb.read().act).toBe(true);
+    expect(kb.read().act).toBe(false);
+    key('keydown', 'KeyF');
+    expect(kb.read().act).toBe(true);
+    expect(kb.read().act).toBe(true);
+    key('keyup', 'KeyF');
+    expect(kb.read().act).toBe(false);
+    kb.dispose?.();
+  });
+
   test('blur releases all held inputs (RC-40)', () => {
     const { kb } = setupKeyboard();
     key('keydown', 'KeyD');
@@ -244,6 +258,14 @@ describe('touch', () => {
     f = touch.read();
     expect(f.throwRock).toBe(false);
     expect(f.aim).toBeNull();
+  });
+
+  test('a touch Agir tap shorter than one read is latched: act reads true once, then false', () => {
+    const { touch, act } = setupTouch();
+    ptr(act, 'pointerdown', 4, 0, 0);
+    ptr(window, 'pointerup', 4);
+    expect(touch.read().act).toBe(true);
+    expect(touch.read().act).toBe(false);
   });
 
   test('Agir is held; Pause button calls onPause; touch shows UI', () => {
