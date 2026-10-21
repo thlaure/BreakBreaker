@@ -20,6 +20,7 @@ import {
 import {
   DEFAULT_ACT_LABEL,
   contextPrompt,
+  hpLabel,
   incidentLines,
   itemsLine,
   roundPanel,
@@ -119,8 +120,8 @@ interface RoundEls {
 export class Hud {
   readonly root = el('div', 'bb-hud');
   private readonly c = new Cache();
-  private readonly hpFill = el('div', 'fill');
-  private readonly hpNum = el('span', 'num');
+  /** Screen-reader copy of Paul's health (the visible bar is drawn over his head in the world). */
+  private readonly hp = el('div', 'bb-sr');
   private readonly score = el('span', 'stat');
   private readonly kos = el('span', 'stat');
   private readonly wave = el('span', 'stat');
@@ -166,11 +167,9 @@ export class Hud {
     this.root.id = 'hud';
     this.root.hidden = true;
     const top = this.top;
-    const hp = el('div', 'bb-hp');
-    const bar = el('div', 'bar');
-    bar.append(this.hpFill);
-    bar.setAttribute('role', 'img');
-    hp.append(el('span', 'ico', '♥'), el('span', 'lbl', 'Santé'), bar, this.hpNum);
+    const hp = this.hp;
+    hp.setAttribute('role', 'progressbar');
+    hp.setAttribute('aria-valuemin', '0');
     const l1 = el('div', 'bb-line');
     l1.append(this.score, this.kos);
     const l2 = el('div', 'bb-line');
@@ -281,10 +280,7 @@ export class Hud {
 
   update(s: Snapshot, view: CameraView): void {
     const c = this.c;
-    c.text(this.hpNum, `${Math.ceil(s.hp)}/${s.hpMax}`);
-    const pct = Math.max(0, Math.min(100, (100 * s.hp) / s.hpMax));
-    c.style(this.hpFill, `width:${pct.toFixed(0)}%`);
-    c.cls(this.hpFill, pct <= 30 ? 'fill low' : 'fill');
+    this.updateHp(s);
     c.text(this.score, `Score : ${s.score}`);
     c.text(this.kos, `Casseurs neutralisés : ${s.kos}`);
     c.text(this.wave, waveLine(s));
@@ -333,6 +329,17 @@ export class Hud {
     this.placeAlert();
     this.updateRound(roundPanel(s));
     this.updateEdges(active, s, view, touch);
+  }
+
+  /** « Santé 85 sur 100 » for screen readers (progressbar, visually hidden). */
+  private updateHp(s: Snapshot): void {
+    const hp = Math.max(0, Math.ceil(s.hp));
+    const label = hpLabel(s.hp, s.hpMax);
+    if (this.hp.getAttribute('aria-label') === label) return;
+    this.hp.setAttribute('aria-label', label);
+    this.hp.setAttribute('aria-valuemax', String(s.hpMax));
+    this.hp.setAttribute('aria-valuenow', String(hp));
+    this.hp.textContent = label;
   }
 
   /** The snapshot has no rescue status: infer drain from the reserve between sim steps (kept while paused). */

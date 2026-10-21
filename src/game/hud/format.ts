@@ -188,6 +188,11 @@ export function roundPanel(s: Snapshot): RoundPanel | null {
   };
 }
 
+/** Screen-reader text of Paul's health (the bar itself is drawn over his head): « Santé 85 sur 100 ». */
+export function hpLabel(hp: number, max: number): string {
+  return `Santé ${Math.max(0, Math.ceil(hp))} sur ${max}`;
+}
+
 /** HUD round line: « Manche 3 : 4/18 casseurs », or just « Manche 1 » while the round has no roster yet (intro). */
 export function waveLine(s: Snapshot): string {
   if (s.roundTotal <= 0) return `Manche ${s.round}`;

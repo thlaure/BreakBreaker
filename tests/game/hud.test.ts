@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { CONTROLS, RULES } from '../../src/content/controls';
-import { contextPrompt, formatDuration, formatSummary, incidentLines, roundPanel, waveLine, weaponLine } from '../../src/game/hud/format';
+import { contextPrompt, formatDuration, formatSummary, hpLabel, incidentLines, roundPanel, waveLine, weaponLine } from '../../src/game/hud/format';
+import { HEALTH_GREEN, HEALTH_RED, HEALTH_YELLOW, healthColor } from '../../src/game/render/healthBar';
 import { renderMarkdown } from '../../src/game/hud/markdown';
 import { Sim, type Snapshot } from '../../src/sim/sim';
 
@@ -442,5 +443,24 @@ describe('mode furie HUD and audio', () => {
     expect(stop).toHaveBeenCalledTimes(2);
     // no AudioContext (not unlocked): everything stays silent and never throws
     a.onEvents([{ type: 'FurieStarted', secondsLeft: 12 }, { type: 'FurieEnded' }]);
+  });
+});
+
+describe('Paul health bar (world) and its screen-reader text', () => {
+  test('healthColor: green above 50 %, yellow above 25 %, red at 25 % and below', () => {
+    expect(healthColor(100, 100)).toBe(HEALTH_GREEN);
+    expect(healthColor(51, 100)).toBe(HEALTH_GREEN);
+    expect(healthColor(50, 100)).toBe(HEALTH_YELLOW);
+    expect(healthColor(26, 100)).toBe(HEALTH_YELLOW);
+    expect(healthColor(25, 100)).toBe(HEALTH_RED);
+    expect(healthColor(0, 100)).toBe(HEALTH_RED);
+    expect(healthColor(30, 40)).toBe(HEALTH_GREEN);
+    expect(healthColor(5, 0)).toBe(HEALTH_RED);
+  });
+
+  test('hpLabel: « Santé 85 sur 100 », rounded up, never negative', () => {
+    expect(hpLabel(85, 100)).toBe('Santé 85 sur 100');
+    expect(hpLabel(84.2, 100)).toBe('Santé 85 sur 100');
+    expect(hpLabel(-3, 100)).toBe('Santé 0 sur 100');
   });
 });

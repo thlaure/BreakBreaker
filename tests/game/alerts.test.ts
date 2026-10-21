@@ -308,6 +308,20 @@ describe('Hud alerts and edge indicators', () => {
     hud.destroy();
   });
 
+  test('health: no visible health row in the HUD, a visually hidden progressbar « Santé N sur M » follows hp', () => {
+    const hud = new Hud(document.body, null);
+    hud.update(snap((x) => { x.hp = 85; }), view);
+    const bar = hud.root.querySelector<HTMLElement>('[role=progressbar]')!;
+    expect(bar.classList.contains('bb-sr')).toBe(true);
+    expect(bar.getAttribute('aria-label')).toBe('Santé 85 sur 100');
+    expect(bar.getAttribute('aria-valuenow')).toBe('85');
+    expect(bar.getAttribute('aria-valuemax')).toBe('100');
+    hud.update(snap((x) => { x.hp = 40.5; }), view);
+    expect(bar.getAttribute('aria-label')).toBe('Santé 41 sur 100');
+    expect(hud.root.querySelector('.bb-hp')).toBeNull();
+    hud.destroy();
+  });
+
   test('HUD round line shows K/T and pulses when the round number changes', () => {
     const hud = new Hud(document.body, null);
     const line = () => [...hud.root.querySelectorAll<HTMLElement>('.stat')].find((e) => e.textContent!.startsWith('Manche'))!;

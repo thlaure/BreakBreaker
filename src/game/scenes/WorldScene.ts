@@ -12,6 +12,7 @@ import { guardLifecycle, merge, type InputSource } from '../input/merge';
 import { createTouch } from '../input/touch';
 import { Grid } from '../../sim/map/grid';
 import { HostileLayer, PaulView } from '../render/actors';
+import { PaulHealthBar } from '../render/healthBar';
 import { FurieAura, PowBubbles, makeFurieTextures } from '../render/furie';
 import { GroupView, VictimView } from '../render/crowd';
 import { FirePatchLayer, MolotovFx, RockLayer, TelegraphLayer } from '../render/fx';
@@ -65,6 +66,8 @@ export class WorldScene extends Phaser.Scene {
   private victim!: VictimView;
   private items!: ItemLayer;
   private paul!: PaulView;
+  /** Paul's pixel health bar over his head. */
+  private healthBar!: PaulHealthBar;
   private hostiles!: HostileLayer;
   private rocks!: RockLayer;
   private weaponsOnGround!: WeaponLayer;
@@ -192,6 +195,7 @@ export class WorldScene extends Phaser.Scene {
     this.playerPos = { ...snap.player.pos };
     this.furieAura = new FurieAura(this);
     this.paul = new PaulView(this, snap.player.pos);
+    this.healthBar = new PaulHealthBar(this, this.reducedMotion);
     this.pows = new PowBubbles(this);
     this.heldWeapon = new HeldWeaponView(this);
     this.toolboxes = new ToolboxView(this);
@@ -307,6 +311,7 @@ export class WorldScene extends Phaser.Scene {
   private render(snap: Snapshot, time: number, dtMs: number): void {
     const flying = new Map(this.sim.rocks.flying().map((r) => [r.id, r.t]));
     this.paul.update(snap.player, this.struck, time, dtMs, snap.furie !== null);
+    this.healthBar.update(snap, this.paul.sprite, time);
     this.furieAura.update(snap.ended ? null : snap.furie, this.paul.sprite, time);
     this.pows.update(time);
     this.heldWeapon.update(snap.weapon, snap.player, this.struck, time);

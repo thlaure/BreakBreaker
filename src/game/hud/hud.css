@@ -6,12 +6,8 @@
 .bb-hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; color: var(--bb-fg); font: 14px/1.3 system-ui, sans-serif; text-shadow: 0 1px 2px #000; }
 .bb-hud[hidden], .bb-hud [hidden] { display: none; }
 .bb-top { position: absolute; left: calc(8px + env(safe-area-inset-left)); top: calc(8px + env(safe-area-inset-top)); display: flex; flex-direction: column; gap: 4px; max-width: calc(100vw - 96px - env(safe-area-inset-left)); padding: 6px 8px; background: var(--bb-panel); border-radius: 8px; }
-.bb-hp { display: flex; align-items: center; gap: 6px; }
-.bb-hp .ico { color: var(--bb-bad); }
-.bb-hp .bar { width: 96px; height: 12px; border: 2px solid var(--bb-fg); border-radius: 3px; background: #000; overflow: hidden; }
-.bb-hp .fill { height: 100%; background: var(--bb-ok); }
-.bb-hp .fill.low { background: var(--bb-bad); }
-.bb-hp .num { font-weight: bold; font-variant-numeric: tabular-nums; }
+/* visually hidden, still read by screen readers (Paul's health: the bar is drawn over his head in the world) */
+.bb-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
 .bb-line { display: flex; flex-wrap: wrap; gap: 2px 12px; }
 .bb-line .slot { letter-spacing: 2px; }
 .bb-cards { display: flex; flex-direction: column; gap: 3px; }
