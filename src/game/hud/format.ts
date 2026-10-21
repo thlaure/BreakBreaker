@@ -246,3 +246,36 @@ function weaponText(s: Snapshot, bare: string): string {
   return s.furie ? `${arme} · Mode furie ${Math.max(1, Math.ceil(s.furie.secondsLeft - 1e-9))} s` : arme;
 }
 
+
+/** State of the HUD « ÉNERGIE » row: under 50 (`low`), the onde available (`onde`), full (`furie`), mode furie on (`active`). */
+export type EnergyState = 'low' | 'onde' | 'furie' | 'active';
+
+export interface EnergyView {
+  /** Bar fill in percent: the gauge, or the mode furie's time left while it is on (the bar drains over its 12 s). */
+  pct: number;
+  state: EnergyState;
+  /** Short tag next to the bar: « ONDE · C », « FURIE · R » (touch: the button names), « EN FURIE », or empty. */
+  tag: string;
+  /** Screen-reader line: « Énergie 36 sur 100 », with what is available. */
+  aria: string;
+}
+
+/** The HUD « ÉNERGIE » row (and the touch Furie / Onde buttons' state). */
+export function energyView(s: Pick<Snapshot, 'energy' | 'furie'>, touch = false): EnergyView {
+  const e = s.energy;
+  const value = Math.max(0, Math.min(e.max, e.value));
+  const base = `Énergie ${Math.floor(value)} sur ${e.max}`;
+  if (s.furie) {
+    const pct = Math.max(0, Math.min(100, (s.furie.secondsLeft / CONFIG.furie.durationSec) * 100));
+    return { pct, state: 'active', tag: 'EN FURIE', aria: `${base}, mode furie en cours` };
+  }
+  const pct = e.max > 0 ? (value / e.max) * 100 : 0;
+  if (e.ready.furie)
+    return { pct, state: 'furie', tag: touch ? 'FURIE !' : 'FURIE · R', aria: `${base}, mode furie disponible (${touch ? 'bouton Furie' : 'touche R'})` };
+  if (e.ready.onde)
+    return { pct, state: 'onde', tag: touch ? 'ONDE !' : 'ONDE · C', aria: `${base}, onde d’énergie disponible (${touch ? 'maintenir Onde' : 'maintenir C'})` };
+  return { pct, state: 'low', tag: '', aria: base };
+}
+
+/** The short hint shown after Furie or Onde was pressed with too little energy. */
+export const ENERGY_REFUSED_HINT = 'Énergie insuffisante';

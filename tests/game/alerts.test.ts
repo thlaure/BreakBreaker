@@ -371,6 +371,7 @@ describe('Hud alerts and edge indicators', () => {
       ['MANCHE', '3 · 12/18'],
       ['PIERRES', '●○○'],
       ['ARME', 'Bâton (12)'],
+      ['ÉNERGIE', ''],
     ]);
     const list = hud.root.querySelector('.bb-stats')!;
     expect(list.parentElement!.classList.contains('bb-top')).toBe(true);
@@ -381,6 +382,7 @@ describe('Hud alerts and edge indicators', () => {
     hud.update(snap((x) => { x.carriedItems = 2; x.weapon = null; x.furie = { secondsLeft: 8.2 }; }), view);
     expect(rows().slice(4)).toEqual([
       ['ARME', 'Mains nues · Mode furie 9 s'],
+      ['ÉNERGIE', 'EN FURIE'],
       ['OBJETS', '2'],
     ]);
     expect(hud.root.querySelector('.bb-stats .weapon')!.classList.contains('furie')).toBe(true);

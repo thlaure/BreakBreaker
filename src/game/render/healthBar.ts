@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { CONFIG } from '../../sim/config';
 import type { Snapshot } from '../../sim/sim';
 import { DEPTH } from './depth';
 
@@ -40,6 +41,25 @@ export function chargeFill(progress: number): number {
   return Math.max(0, Math.min(inner, Math.round(inner * progress)));
 }
 
+/** Energy gauge bar right under the health bar (always shown): height (outline included), gap, colours. */
+export const ENERGY_BAR_H = 3;
+const ENERGY_GAP = 1;
+export const ENERGY_CYAN = 0x5fc8ff;
+export const ENERGY_GOLD = 0xffd23a;
+
+/**
+ * The world energy bar: filled inner pixels and colour. Cyan while filling (brighter once the onde is available),
+ * gold when full; in mode furie it shows the time left (gold, draining over CONFIG.furie.durationSec).
+ */
+export function energyBar(s: Pick<Snapshot, 'energy' | 'furie'>): { fill: number; color: number } {
+  const inner = HEALTH_BAR_W - 2;
+  const px = (f: number): number => Math.max(0, Math.min(inner, Math.round(inner * f)));
+  if (s.furie) return { fill: px(s.furie.secondsLeft / CONFIG.furie.durationSec), color: ENERGY_GOLD };
+  const e = s.energy;
+  const fill = px(e.max > 0 ? e.value / e.max : 0);
+  return { fill, color: e.ready.furie ? ENERGY_GOLD : e.ready.onde ? 0x8fe4ff : ENERGY_CYAN };
+}
+
 /** 5×5 pixel heart, row by row ('#' = filled). */
 const HEART_ROWS = ['.#.#.', '#####', '#####', '.###.', '..#..'];
 
@@ -48,7 +68,8 @@ const HEART_ROWS = ['.#.#.', '#####', '#####', '.###.', '..#..'];
  * dark outline, track, coloured fill (healthColor), a faint heart on the left. It scales like the victim bubbles
  * (×2 at zoom 1) to stay readable, flashes white with a 1-px shake when Paul loses health (no shake under
  * prefers-reduced-motion) and hides while he is KO. Drawn above Paul and his props (the furie aura stays behind).
- * While the onde d’énergie charges, a small light-blue charge bar shows under it.
+ * A thin energy bar (energyBar: cyan, gold when full or in mode furie) always sits right under it; while the onde
+ * d’énergie charges, a small light-blue charge bar shows under that.
  */
 export class PaulHealthBar {
   private readonly g: Phaser.GameObjects.Graphics;
@@ -66,7 +87,7 @@ export class PaulHealthBar {
   }
 
   /** `anchor` = Paul's sprite (feet origin); the bar follows it. */
-  update(s: Pick<Snapshot, 'hp' | 'hpMax' | 'player'> & Partial<Pick<Snapshot, 'charge'>>, anchor: { x: number; y: number }, nowMs: number): void {
+  update(s: Pick<Snapshot, 'hp' | 'hpMax' | 'player'> & Partial<Pick<Snapshot, 'charge' | 'energy' | 'furie'>>, anchor: { x: number; y: number }, nowMs: number): void {
     const g = this.g;
     const p = { hp: s.hp, ko: s.player.ko };
     const hpMax = s.hpMax;
@@ -91,7 +112,8 @@ export class PaulHealthBar {
     const flash = nowMs < this.flashUntil;
     const color = flash ? 0xffffff : healthColor(p.hp, hpMax);
     const charge = s.charge ? chargeFill(s.charge.progress) : -1;
-    const key = `${fill}:${color}:${charge}`;
+    const energy = s.energy ? energyBar({ energy: s.energy, furie: s.furie ?? null }) : null;
+    const key = `${fill}:${color}:${charge}:${energy ? `${energy.fill}:${energy.color}` : '-'}`;
     if (key === this.drawn) return;
     this.drawn = key;
     // local origin = bottom centre of the bar
@@ -101,8 +123,16 @@ export class PaulHealthBar {
     g.fillStyle(INK, 1).fillRect(left, top, HEALTH_BAR_W, HEALTH_BAR_H);
     g.fillStyle(TRACK, 1).fillRect(left + 1, top + 1, inner, HEALTH_BAR_H - 2);
     if (fill > 0) g.fillStyle(color, 1).fillRect(left + 1, top + 1, fill, HEALTH_BAR_H - 2);
+    let below = 0;
+    if (energy) {
+      const ey = ENERGY_GAP;
+      g.fillStyle(INK, 1).fillRect(left, ey, HEALTH_BAR_W, ENERGY_BAR_H);
+      g.fillStyle(TRACK, 1).fillRect(left + 1, ey + 1, inner, ENERGY_BAR_H - 2);
+      if (energy.fill > 0) g.fillStyle(energy.color, 1).fillRect(left + 1, ey + 1, energy.fill, ENERGY_BAR_H - 2);
+      below = ey + ENERGY_BAR_H;
+    }
     if (charge >= 0) {
-      const cy = CHARGE_GAP;
+      const cy = below + CHARGE_GAP;
       g.fillStyle(INK, 1).fillRect(left, cy, HEALTH_BAR_W, CHARGE_BAR_H);
       g.fillStyle(TRACK, 1).fillRect(left + 1, cy + 1, inner, CHARGE_BAR_H - 2);
       if (charge > 0) g.fillStyle(CHARGE, 1).fillRect(left + 1, cy + 1, charge, CHARGE_BAR_H - 2);

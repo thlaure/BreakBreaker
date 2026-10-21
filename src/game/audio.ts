@@ -208,6 +208,57 @@ export class GameAudio {
     });
   }
 
+  /**
+   * Energy gauge reached a threshold: a soft sine ping (988 Hz, 0.25 s) when the onde becomes available, a brighter
+   * triangle arpeggio (784 → 1175 → 1568 Hz) when it is full (furie available).
+   */
+  energyReady(level: 'onde' | 'furie'): void {
+    this.voice((ctx, out, t) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      if (level === 'onde') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(988, t);
+        g.gain.exponentialRampToValueAtTime(0.3, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+      } else {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(784, t);
+        osc.frequency.setValueAtTime(1175, t + 0.08);
+        osc.frequency.setValueAtTime(1568, t + 0.16);
+        g.gain.exponentialRampToValueAtTime(0.45, t + 0.01);
+        g.gain.setValueAtTime(0.45, t + 0.22);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+      }
+      osc.connect(g).connect(out);
+      osc.start(t);
+      osc.stop(t + 0.42);
+      return osc;
+    });
+  }
+
+  /** Furie / Onde refused (too little energy): a dull 0.08 s low square « tock » (220 → 110 Hz, low-passed). */
+  tock(): void {
+    this.voice((ctx, out, t) => {
+      const osc = ctx.createOscillator();
+      const lp = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(220, t);
+      osc.frequency.exponentialRampToValueAtTime(110, t + 0.07);
+      lp.type = 'lowpass';
+      lp.frequency.value = 700;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.35, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+      osc.connect(lp).connect(g).connect(out);
+      osc.start(t);
+      osc.stop(t + 0.09);
+      return osc;
+    });
+  }
+
   /** Mode furie on: a 0.5 s square sweep rising 196 → 1046 Hz with a bright tail (power-up). */
   powerUp(): void {
     this.voice((ctx, out, t) => {
@@ -474,6 +525,12 @@ export class GameAudio {
           break;
         case 'ShieldBlocked':
           this.clank();
+          break;
+        case 'EnergyReady':
+          this.energyReady(e.level);
+          break;
+        case 'EnergyRefused':
+          this.tock();
           break;
         case 'TargetSaved':
         case 'TargetRepaired':

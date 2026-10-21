@@ -29,6 +29,36 @@
 .bb-stats .rocks .slot { letter-spacing: 2px; }
 .bb-stats .weapon.furie .val { color: #ffe066; }
 .bb-stats .items .val { color: #ffe066; }
+/* energy row: segmented pixel bar (8 segments, tick at 50 %, the end is 100 %) and its tag */
+.bb-stats .energy .val { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.bb-stats .energy .ebar {
+  position: relative; display: inline-block; width: 64px; height: 8px; box-sizing: border-box; flex: none;
+  background: #3a3448; border: 2px solid #000; box-shadow: 2px 2px 0 0 #000; transform-origin: left center;
+}
+.bb-stats .energy .efill {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #8fd3ff; transition: width 0.25s steps(4, end);
+  /* 8 segments: a dark 1-px gap every 12.5 % */
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 calc(12.5% - 1px), transparent calc(12.5% - 1px) 12.5%);
+  mask: repeating-linear-gradient(90deg, #000 0 calc(12.5% - 1px), transparent calc(12.5% - 1px) 12.5%);
+}
+.bb-stats .energy .tick { position: absolute; top: -4px; bottom: -4px; width: 2px; background: #f2e9d8; }
+.bb-stats .energy .tick.t50 { left: calc(50% - 1px); }
+.bb-stats .energy .ebar.pop { animation: bb-energy-pop 0.25s steps(1, end) 1; }
+@keyframes bb-energy-pop { 0% { transform: scale(1.12, 1.4); } 50% { transform: none; } }
+.bb-stats .energy .etag { font-size: 8px; white-space: nowrap; }
+.bb-stats .energy.st-onde .efill { background: #8fd3ff; }
+.bb-stats .energy.st-onde .etag { color: #8fd3ff; animation: bb-energy-blink 1.6s steps(1, end) infinite; }
+.bb-stats .energy.st-furie .efill, .bb-stats .energy.st-active .efill { background: #ffd23a; }
+.bb-stats .energy.st-furie .etag { color: #ffe066; animation: bb-energy-blink 0.8s steps(1, end) infinite; }
+.bb-stats .energy.st-active .efill { transition: none; }
+.bb-stats .energy.st-active .etag { color: #ffe066; }
+.bb-stats .energy.refused .etag { color: var(--bb-bad); animation: none; }
+@keyframes bb-energy-blink { 50% { opacity: 0.45; } }
+/* touch Furie / Onde buttons (see jouer/index.html): dim until the gauge allows them, glowing once ready */
+#touch-ui [data-action="furie"].dim, #touch-ui [data-action="onde"].dim { opacity: 0.45; border-style: dashed; }
+#touch-ui [data-action="onde"].ready { border-color: #8fd3ff; color: #e6f6ff; box-shadow: 0 0 0 3px rgba(143, 211, 255, 0.45), 0 0 14px 2px rgba(143, 211, 255, 0.6); animation: bb-touch-ready 1.6s steps(1, end) infinite; }
+#touch-ui [data-action="furie"].ready { border-color: #ffd23a; color: #fff6d0; box-shadow: 0 0 0 3px rgba(255, 210, 58, 0.5), 0 0 16px 3px rgba(255, 210, 58, 0.7); animation: bb-touch-ready 0.8s steps(1, end) infinite; }
+@keyframes bb-touch-ready { 50% { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35); } }
 /* round row: one stepped pulse when the round number changes */
 .bb-stats .wave.pulse .val, .bb-stats .wave.pulse .lbl { animation: bb-wave-pulse 0.9s steps(1, end) 1; }
 @media (max-width: 560px) {
@@ -154,7 +184,7 @@
 .bb-round .count { color: var(--bb-accent); }
 @keyframes bb-bonus { 50% { background: #fff; } }
 @media (max-width: 400px) { .bb-round { gap: 5px; padding: 6px 8px; } .bb-round .title { font-size: 11px; } .bb-round .score { font-size: 8px; } .bb-round, .bb-round .obj { font-size: 7px; } }
-@media (prefers-reduced-motion: reduce) { .bb-alert, .bb-edge, .bb-stats .wave.pulse .val, .bb-stats .wave.pulse .lbl, .bb-stats .score .val.pop, .bb-round.in, .bb-round .bonus { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .bb-alert, .bb-edge, .bb-stats .wave.pulse .val, .bb-stats .wave.pulse .lbl, .bb-stats .score .val.pop, .bb-round.in, .bb-round .bonus, .bb-stats .energy .etag, .bb-stats .energy .ebar.pop, #touch-ui [data-action="furie"].ready, #touch-ui [data-action="onde"].ready { animation: none; } .bb-stats .energy .efill { transition: none; } }
 
 /*
  * Menus and modals centred on screen, horizontally and vertically. The panel's auto margins do the centring and stay
