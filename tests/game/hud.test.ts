@@ -263,10 +263,14 @@ describe('renderMarkdown', () => {
 });
 
 describe('content', () => {
-  test('4-6 rules (the mode furie one included) and a controls table', () => {
+  test('4-6 rules (the specials one included) and a controls table', () => {
     expect(RULES.length).toBeGreaterThanOrEqual(4);
     expect(RULES.length).toBeLessThanOrEqual(6);
-    expect(RULES).toContain('Un éclair jaune rare apparaît quand ça chauffe : passe dessus pour déclencher le mode furie.');
+    const specials = RULES.find((r) => r.includes('mode furie'))!;
+    expect(specials).toMatch(/éclair jaune.*mode furie/);
+    // the two special weapons and the hold-to-charge ability
+    expect(specials).toMatch(/bouclier \(20 s\)/);
+    expect(specials).toMatch(/onde d’énergie se charge en gardant Frapper enfoncé 1 s/);
     for (const r of RULES) expect(r).not.toMatch(/saiyan/i);
     expect(CONTROLS.some((c) => c.action === 'Pause' && c.keyboard === 'Échap')).toBe(true);
   });
