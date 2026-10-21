@@ -11,6 +11,8 @@ export interface SessionStats {
   schoolsLost: number;
   rescuesOk: number;
   rescuesFailed: number;
+  /** Stolen belongings handed back to a rescue victim. */
+  itemsReturned: number;
   /** Every target (school included) saved / destroyed, and ruins repaired. */
   targetsSaved: number;
   targetsLost: number;
@@ -35,6 +37,7 @@ function emptyStats(): SessionStats {
     schoolsLost: 0,
     rescuesOk: 0,
     rescuesFailed: 0,
+    itemsReturned: 0,
     targetsSaved: 0,
     targetsLost: 0,
     repairs: 0,

@@ -690,6 +690,7 @@ export class Sim {
         if (e.bonus) s.roundsPerfect += 1;
       } else if (e.type === 'RescueCompleted') s.rescuesOk += 1;
       else if (e.type === 'RescueFailed') s.rescuesFailed += 1;
+      else if (e.type === 'ItemReturned') s.itemsReturned += 1;
       else if (e.type === 'FlagCaptured') s.flagsCaptured += 1;
       else if (e.type === 'FlagSwapped') s.flagsLost += 1;
       else if (e.type === 'MonumentDefended') s.monumentsDefended += 1;

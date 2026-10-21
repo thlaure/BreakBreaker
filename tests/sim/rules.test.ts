@@ -34,6 +34,7 @@ test('stats start at zero and ended starts false', () => {
     schoolsLost: 0,
     rescuesOk: 0,
     rescuesFailed: 0,
+    itemsReturned: 0,
     targetsSaved: 0,
     targetsLost: 0,
     repairs: 0,

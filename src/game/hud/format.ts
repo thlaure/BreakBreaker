@@ -38,11 +38,24 @@ export interface SummaryData {
   rows: SummaryRow[];
 }
 
-/** `record` is the best score of the same kind (KO / voluntary stop) saved before this session, or null. */
+/** « 1 sauvée », « 2 sauvées », « 0 sauvée » (French: 0 and 1 take the singular). */
+function count(n: number, one: string, many: string): string {
+  return `${n} ${n > 1 ? many : one}`;
+}
+
+/** « 2 sauvées · 1 perdue »; « — » when nothing happened. */
+function tally(ok: number, ko: number, okWords: [string, string], koWords: [string, string]): string {
+  if (ok === 0 && ko === 0) return '—';
+  return `${count(ok, ...okWords)} · ${count(ko, ...koWords)}`;
+}
+
+/**
+ * End-of-game rows. `record` is the best score of the same kind (KO / voluntary stop) saved before this session, or
+ * null. The incident rows are counts over the session (« École » « 2 sauvées · 1 perdue », « Secours » « 3 réussis ·
+ * 1 raté »), then the monument and the belongings handed back.
+ */
 export function formatSummary(s: Snapshot, record: number | null): SummaryData {
   const st = s.stats;
-  const school = st.schoolsSaved > 0 ? 'sauvée' : st.schoolsLost > 0 ? 'détruite' : 'en cours';
-  const rescue = st.rescuesOk > 0 ? 'réussi' : st.rescuesFailed > 0 ? 'manqué' : '—';
   return {
     title: s.endCause === 'quit' ? 'Session interrompue volontairement' : 'KO',
     newRecord: s.score > 0 && s.score > (record ?? 0),
@@ -53,9 +66,13 @@ export function formatSummary(s: Snapshot, record: number | null): SummaryData {
       { label: 'Manches parfaites', value: String(st.roundsPerfect) },
       { label: 'Casseurs neutralisés', value: String(s.kos) },
       { label: 'Lieux sauvés / détruits', value: `${st.targetsSaved} / ${st.targetsLost}` },
-      { label: 'Réparations', value: String(st.repairs) },
-      { label: 'École', value: school },
-      { label: 'Secours', value: rescue },
+      { label: 'Lieux réparés', value: String(st.repairs) },
+      { label: 'École', value: tally(st.schoolsSaved, st.schoolsLost, ['sauvée', 'sauvées'], ['perdue', 'perdues']) },
+      { label: 'Secours', value: tally(st.rescuesOk, st.rescuesFailed, ['réussi', 'réussis'], ['raté', 'ratés']) },
+      { label: 'Objets rendus', value: String(st.itemsReturned) },
+      { label: 'Défenses du monument', value: String(st.monumentsDefended) },
+      { label: 'Drapeaux perdus', value: String(st.flagsLost) },
+      { label: 'Drapeaux repris', value: String(st.flagsCaptured) },
       { label: 'Soins utilisés', value: String(st.healsUsed) },
       { label: 'Pierres ramassées', value: String(st.rocksPicked) },
       { label: 'Pierres renvoyées', value: String(st.rocksReturned) },
