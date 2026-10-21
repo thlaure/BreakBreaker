@@ -857,14 +857,15 @@ export class Sim {
 
   /**
    * « Le Caïd » KO'd (once per life): +CONFIG.caid.bonus with the occurrence key `caid#<round>` at his position (the
-   * KO's +1 is scored as for anyone), and a regular weapon dropped where he fell (WeaponSpawned, no indicator).
+   * KO's +1 is scored as for anyone), and CONFIG.caid.dropShare of the time a regular weapon dropped where he fell
+   * (WeaponSpawned, no indicator; none while a weapon lies within CONFIG.weapons.clearRadius px of Paul).
    */
   private caidDown(h: Hostile, ev: SimEvent[]): void {
     if (this.caidsDown.has(h.lifeId)) return;
     this.caidsDown.add(h.lifeId);
     this.rules.award(`caid#${h.round ?? this.director.round}`, CONFIG.caid.bonus, h.pos);
-    const w = this.weapons.dropAt(h.pos);
-    ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: v(w.pos) });
+    const w = this.weapons.dropAt(h.pos, this.player.pos);
+    if (w) ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: v(w.pos) });
   }
 
   /** Hostile facing = along its aim line while a shooter aims or fires, else last movement direction, else toward Paul. */

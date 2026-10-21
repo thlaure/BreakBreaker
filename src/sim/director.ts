@@ -126,7 +126,8 @@ export interface MonumentPlan {
  * car, bus stop, weight 2, or 1 if it was `last` round's headline (it may repeat, rarely; nothing is forced). Second
  * beat: the rescue; from round CONFIG.monument.fromRound the monument occupation instead when the flag is French and
  * last round's second beat was not the monument (they alternate; never while the flag is Palestinian). Twists: from
- * round 2 always a weapon drop (from round 3 a bouclier half the time, a regular weapon otherwise; regular in round 2),
+ * round 2 always a weapon drop (from round 3 a bouclier half the time; otherwise a regular weapon one time in two, else
+ * nothing; never a bouclier in round 2),
  * and on odd rounds from r3 a second urgency as well (when the urgency cap allows).
  * No free target → the second beat alone (its kind is the headline).
  */
@@ -687,7 +688,8 @@ export class Director {
 
   /**
    * The weapon drop (every round from 2): a bouclier (from CONFIG.bouclier.dropFromRound, CONFIG.bouclier.dropShare of
-   * the time) or a regular weapon (`special` set only for the bouclier).
+   * the time), else a regular weapon CONFIG.weapons.twistRegularShare of the time, else nothing (`pos` null; `special`
+   * set only for the bouclier).
    */
   private weaponDrop(host: DirectorHost, ev: SimEvent[]): void {
     const { drop: w, special } = host.weapons.dropTwist(host.player.pos, this.round);
@@ -716,7 +718,8 @@ export class Director {
     ev.push({ type: 'StationsRecharged' });
     host.targets.refill();
     ev.push(...host.toolboxes.place(DISTRICT.kitSites, host.player.pos));
-    const w = host.weapons.dropSpecial(host.player.pos);
+    // the breather drop: every CONFIG.weapons.breatherEvery-th round only (even rounds)
+    const w = this.round % CONFIG.weapons.breatherEvery === 0 ? host.weapons.dropSpecial(host.player.pos) : null;
     if (w) ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: { ...w.pos } });
     this.lastSummary = {
       index: this.round,

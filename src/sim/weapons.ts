@@ -75,7 +75,7 @@ export function heldOf(kind: HeldKind): HeldWeapon {
 
 /**
  * Random weapon pickups. A weapon appears every CONFIG.weapons.spawnEvery seconds (random within the range) on a
- * free spot away from Paul, up to maxGround at once. Walking over one takes it (replacing the current weapon).
+ * free spot away from Paul, up to maxGround at once and never while one lies within clearRadius px of Paul. Walking over one takes it (replacing the current weapon).
  * A strike that hits at least one rioter uses one strike; at 0 the weapon breaks and Paul fights bare-handed.
  * The mode furie (`startFurie`, from the energy gauge) does not touch the weapon: it lasts CONFIG.furie.durationSec;
  * the timer runs with the sim steps (frozen while paused) and `endFurie` cuts it short (Paul KO).
@@ -157,7 +157,7 @@ export class Weapons {
     if (now >= this.nextSpawnAt) {
       const [lo, hi] = CONFIG.weapons.spawnEvery;
       this.nextSpawnAt = now + lo + this.rand() * (hi - lo);
-      if (this.ground.length < CONFIG.weapons.maxGround) {
+      if (this.ground.length < CONFIG.weapons.maxGround && !this.crowded(player.pos)) {
         const pos = this.freeSpot(player.pos);
         if (pos) {
           const kind = this.timedKind(this.rand(), round);
@@ -187,12 +187,19 @@ export class Weapons {
     return kinds[Math.min(kinds.length - 1, Math.floor(u * kinds.length))]!;
   }
 
+  /** A weapon already lies within CONFIG.weapons.clearRadius px of Paul: no new regular weapon is dropped (no piles). */
+  crowded(player: Vec): boolean {
+    return this.ground.some((g) => dist(g.pos, player) <= CONFIG.weapons.clearRadius);
+  }
+
   /**
    * Special drop (round twist / round end): a random weapon (or the given kind, e.g. a bouclier) 160–480 px from Paul
    * right now, outside the timer and the ground cap; it vanishes after CONFIG.weapons.dropLifetime s if nobody takes
-   * it. Null when no free spot was found.
+   * it. Null when no free spot was found, or (a regular weapon only) while a weapon lies within
+   * CONFIG.weapons.clearRadius px of Paul.
    */
   dropSpecial(player: Vec, kindOverride?: PickupKind): GroundWeapon | null {
+    if ((kindOverride === undefined || !isSpecial(kindOverride)) && this.crowded(player)) return null;
     const pos = this.freeSpot(player);
     if (!pos) return null;
     const kind = kindOverride ?? KINDS[Math.floor(this.rand() * KINDS.length)]!;
@@ -202,10 +209,12 @@ export class Weapons {
   }
 
   /**
-   * A regular weapon (picked with this stream) dropped exactly at `pos` (where the Caïd fell), outside the timer and the
-   * ground cap; it vanishes after CONFIG.weapons.dropLifetime s like the other drops.
+   * The Caïd's drop: CONFIG.caid.dropShare of the time (one draw of this stream), a regular weapon dropped exactly at
+   * `pos` (where he fell), outside the timer and the ground cap; it vanishes after CONFIG.weapons.dropLifetime s like
+   * the other drops. Null otherwise, or while a weapon lies within CONFIG.weapons.clearRadius px of Paul (`player`).
    */
-  dropAt(pos: Vec): GroundWeapon {
+  dropAt(pos: Vec, player: Vec): GroundWeapon | null {
+    if (this.rand() >= CONFIG.caid.dropShare || this.crowded(player)) return null;
     const kind = KINDS[Math.min(KINDS.length - 1, Math.floor(this.rand() * KINDS.length))]!;
     const w: GroundWeapon = { id: this.nextId++, kind, pos: { ...pos }, expiresAt: this.now + CONFIG.weapons.dropLifetime };
     this.ground.push(w);
@@ -214,13 +223,15 @@ export class Weapons {
 
   /**
    * The round twist's weapon drop: from CONFIG.bouclier.dropFromRound a bouclier with probability
-   * CONFIG.bouclier.dropShare (one draw of this stream), a regular weapon otherwise (and always before).
-   * `special` = 'bouclier' when it is one (null for a regular weapon).
+   * CONFIG.bouclier.dropShare (one draw of this stream); otherwise (and always before) a regular weapon
+   * CONFIG.weapons.twistRegularShare of the time (a second draw), else nothing. `special` = 'bouclier' when it is one
+   * (null for a regular weapon or no drop).
    */
   dropTwist(player: Vec, round: number): { drop: GroundWeapon | null; special: SpecialKind | null } {
-    if (round < CONFIG.bouclier.dropFromRound || this.rand() >= CONFIG.bouclier.dropShare)
-      return { drop: this.dropSpecial(player), special: null };
-    return { drop: this.dropSpecial(player, 'bouclier'), special: 'bouclier' };
+    if (round >= CONFIG.bouclier.dropFromRound && this.rand() < CONFIG.bouclier.dropShare)
+      return { drop: this.dropSpecial(player, 'bouclier'), special: 'bouclier' };
+    if (this.rand() >= CONFIG.weapons.twistRegularShare) return { drop: null, special: null };
+    return { drop: this.dropSpecial(player), special: null };
   }
 
   /**

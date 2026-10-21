@@ -476,13 +476,13 @@ describe('specials: the bouclier is the only special pickup', () => {
     for (const k of Object.keys(WEAPONS)) expect(isSpecial(k as never)).toBe(false);
   });
 
-  test('dropTwist: a regular weapon before round 3; from round 3 a seeded pick, about half boucliers', () => {
+  test('dropTwist: never a bouclier before round 3; from round 3 a seeded pick, about half boucliers; else a regular weapon or nothing', () => {
     for (const round of [1, 2]) {
       for (let seed = 1; seed <= 20; seed++) {
         const w = new Weapons(grid, rng(seed));
         const { drop, special } = w.dropTwist(DISTRICT.playerSpawn, round);
         expect(special).toBeNull();
-        expect(isSpecial(drop!.kind)).toBe(false);
+        if (drop) expect(isSpecial(drop.kind)).toBe(false);
       }
     }
     for (const round of [3, 4, 5, 8]) {
@@ -491,12 +491,12 @@ describe('specials: the bouclier is the only special pickup', () => {
       for (let seed = 1; seed <= n; seed++) {
         const w = new Weapons(grid, rng(seed));
         const { drop, special } = w.dropTwist(DISTRICT.playerSpawn, round);
-        expect(drop!.expiresAt).toBeCloseTo(CONFIG.weapons.dropLifetime, 6);
+        if (drop) expect(drop.expiresAt).toBeCloseTo(CONFIG.weapons.dropLifetime, 6);
         if (special) {
           expect(special).toBe('bouclier');
           expect(drop!.kind).toBe('bouclier');
           shields++;
-        } else expect(Object.keys(WEAPONS)).toContain(drop!.kind);
+        } else if (drop) expect(Object.keys(WEAPONS)).toContain(drop.kind);
       }
       expect(shields / n).toBeGreaterThan(0.35);
       expect(shields / n).toBeLessThan(0.65);

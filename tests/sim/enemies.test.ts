@@ -292,7 +292,7 @@ describe('the Caïd in play', () => {
     throw new Error('no Caïd');
   }
 
-  test('a melee KO: +1 and +5 at his position, a regular weapon dropped where he fell, award key caid#<round>', () => {
+  test('a melee KO: +1 and +5 at his position, at most one regular weapon dropped where he fell (1 in 2), award key caid#<round>', () => {
     const { sim, caid } = untilCaid();
     expect(sim.director.round).toBe(CONFIG.caid.fromRound);
     caid.hp = 1;
@@ -306,9 +306,9 @@ describe('the Caïd in play', () => {
     expect(scored).toContainEqual({ type: 'ScoreChanged', points: CONFIG.caid.bonus, pos: caid.pos });
     // (a timed street spawn may land on the same step, elsewhere)
     const drop = of(ev, 'WeaponSpawned').filter((e) => e.pos.x === caid.pos.x && e.pos.y === caid.pos.y);
-    expect(drop).toHaveLength(1);
-    expect(['baton', 'marteau', 'panneau']).toContain(drop[0]!.kind);
-    expect(sim.weapons.ground.some((g) => g.pos.x === caid.pos.x && g.pos.y === caid.pos.y)).toBe(true);
+    expect(drop.length).toBeLessThanOrEqual(1);
+    for (const d of drop) expect(['baton', 'marteau', 'panneau']).toContain(d.kind);
+    expect(sim.weapons.ground.some((g) => g.pos.x === caid.pos.x && g.pos.y === caid.pos.y)).toBe(drop.length === 1);
     expect(sim.rules.award(`caid#${CONFIG.caid.fromRound}`, 5)).toBe(false);
     // later steps never award it again
     let again = 0;
