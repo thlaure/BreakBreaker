@@ -76,6 +76,8 @@ describe('shooter AI: aim, burst, reload', () => {
     const snap = sim.snapshot();
     expect(snap.aims).toEqual([{ from: aim.from, to: aim.to, until: aim.until }]);
     expect(snap.hostiles.find((x) => x.lifeId === h.lifeId)).toMatchObject({ aiming: true, windup: true });
+    // the rifle points along the aim line (render reads the facing)
+    expect(snap.hostiles.find((x) => x.lifeId === h.lifeId)!.facing).toEqual({ x: -1, y: 0 });
     const start = sim.now;
     // Paul walks off the line (north); the shooter keeps the line it aimed
     const fired: { at: number; id: number }[] = [];

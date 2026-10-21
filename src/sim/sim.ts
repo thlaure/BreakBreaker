@@ -867,10 +867,15 @@ export class Sim {
     ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: v(w.pos) });
   }
 
-  /** Hostile facing = last movement direction, else toward Paul. */
+  /** Hostile facing = along its aim line while a shooter aims or fires, else last movement direction, else toward Paul. */
   private updateFacings(prev: Map<number, Vec>): void {
     const next = new Map<number, Vec>();
     for (const h of this.horde.list) {
+      const aim = h.role === 'shooter' && h.state === 'windup' ? this.horde.aimLine(h.lifeId) : null;
+      if (aim) {
+        next.set(h.lifeId, aim);
+        continue;
+      }
       const before = prev.get(h.lifeId);
       const moved = before ? sub(h.pos, before) : { x: 0, y: 0 };
       const old = this.facings.get(h.lifeId);

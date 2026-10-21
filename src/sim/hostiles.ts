@@ -488,6 +488,14 @@ export class Horde {
     return ZERO;
   }
 
+  /** Unit direction of a shooter's current aim line (aiming or firing), else null. */
+  aimLine(lifeId: number): Vec | null {
+    const a = this.aux.get(lifeId);
+    if (!a || (a.windKind !== 'aim' && a.windKind !== 'burst') || !a.aimFrom || !a.throwTo) return null;
+    const d = norm(sub(a.throwTo, a.aimFrom));
+    return d.x === 0 && d.y === 0 ? null : d;
+  }
+
   /** A shooter aiming or firing its burst right now (render: raised rifle and "!"). */
   aiming(lifeId: number): boolean {
     const k = this.aux.get(lifeId)?.windKind;
