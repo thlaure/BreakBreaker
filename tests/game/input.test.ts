@@ -141,6 +141,63 @@ describe('keyboard', () => {
   });
 });
 
+describe('held strike (onde d’énergie charge)', () => {
+  test('strikeHeld stays true while Space is down; strike is true only on the first read', () => {
+    const { kb } = setupKeyboard();
+    key('keydown', 'Space');
+    const first = kb.read();
+    expect(first.strike).toBe(true);
+    expect(first.strikeHeld).toBe(true);
+    const second = kb.read();
+    expect(second.strike).toBe(false);
+    expect(second.strikeHeld).toBe(true);
+    key('keyup', 'Space');
+    expect(kb.read().strikeHeld).toBe(false);
+    kb.dispose?.();
+  });
+
+  test('left mouse held keeps strikeHeld until released (even off the canvas)', () => {
+    const { kb, canvas } = setupKeyboard();
+    ptr(canvas, 'pointerdown', 1, 10, 10, 'mouse', 0);
+    expect(kb.read()).toMatchObject({ strike: true, strikeHeld: true });
+    expect(kb.read()).toMatchObject({ strike: false, strikeHeld: true });
+    ptr(window, 'pointerup', 1, 900, 900, 'mouse', 0);
+    expect(kb.read().strikeHeld).toBe(false);
+    kb.dispose?.();
+  });
+
+  test('blur releases strikeHeld (RC-40)', () => {
+    const { kb, canvas } = setupKeyboard();
+    key('keydown', 'Space');
+    ptr(canvas, 'pointerdown', 1, 10, 10, 'mouse', 0);
+    window.dispatchEvent(new Event('blur'));
+    expect(kb.read().strikeHeld).toBe(false);
+    kb.dispose?.();
+  });
+
+  test('Frapper held by its own pointer keeps strikeHeld while the joystick moves', () => {
+    const { touch, stick, strike } = setupTouch();
+    ptr(strike, 'pointerdown', 7, 500, 300);
+    expect(touch.read()).toMatchObject({ strike: true, strikeHeld: true });
+    ptr(stick, 'pointerdown', 1, 100, 300);
+    ptr(window, 'pointermove', 1, 130, 300);
+    ptr(window, 'pointerup', 1, 130, 300);
+    expect(touch.read()).toMatchObject({ strike: false, strikeHeld: true });
+    ptr(window, 'pointerup', 7, 500, 300);
+    expect(touch.read().strikeHeld).toBe(false);
+    ptr(strike, 'pointerdown', 8, 500, 300);
+    touch.releaseAll();
+    expect(touch.read().strikeHeld).toBe(false);
+  });
+
+  test('merge ORs strikeHeld', () => {
+    const a = { read: () => ({ strikeHeld: false }), releaseAll() {} };
+    const b = { read: () => ({ strikeHeld: true }), releaseAll() {} };
+    expect(merge(a, b)().strikeHeld).toBe(true);
+    expect(merge(a)().strikeHeld).toBe(false);
+  });
+});
+
 describe('touch', () => {
   test('joystick and button pointers are independent', () => {
     const { touch, stick, strike } = setupTouch();

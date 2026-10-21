@@ -178,7 +178,7 @@ export function alertFromEvent(e: SimEvent): Alert | null {
     return { id: `round#${e.index}`, kind: 'round', pos: null, wave: e.index, total: e.total, headline: e.headline };
   // a second urgency is announced by its own start event; a drop that found no spot has nothing to show
   if (e.type === 'TwistStarted' && e.kind === 'weaponDrop' && e.pos) {
-    const kind: DropKind = e.furie ? 'furieDrop' : 'weaponDrop';
+    const kind: DropKind = e.special === 'furie' ? 'furieDrop' : 'weaponDrop';
     return { id: dropId(e.pos), kind, pos: { ...e.pos }, wave: 0, total: 0, incident: dropId(e.pos) };
   }
   // picked up: short position-less banner (a reset while on is announced again)

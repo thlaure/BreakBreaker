@@ -1,7 +1,10 @@
 import type { InputFrame, Vec } from '../../sim/types';
 
 export interface InputSource {
-  /** Current state. Edge-triggered fields (strike, throwRock) are consumed: true for exactly one read. */
+  /**
+   * Current state. Edge-triggered fields (strike, throwRock) are consumed: true for exactly one read; held fields
+   * (strikeHeld, act, move, run) report the current state.
+   */
   read(): Partial<InputFrame>;
   releaseAll(): void;
   dispose?(): void;
@@ -15,6 +18,7 @@ export function merge(...sources: InputSource[]): () => InputFrame {
     let aim: Vec | null = null;
     let run = false;
     let strike = false;
+    let strikeHeld = false;
     let throwRock = false;
     let act = false;
     for (const s of sources) {
@@ -26,6 +30,7 @@ export function merge(...sources: InputSource[]): () => InputFrame {
       if (aim === null && f.aim) aim = f.aim;
       run ||= !!f.run;
       strike ||= !!f.strike;
+      strikeHeld ||= !!f.strikeHeld;
       throwRock ||= !!f.throwRock;
       act ||= !!f.act;
     }
@@ -34,7 +39,7 @@ export function merge(...sources: InputSource[]): () => InputFrame {
       mx /= len;
       my /= len;
     }
-    return { move: { x: mx, y: my }, aim, run, strike, throwRock, act };
+    return { move: { x: mx, y: my }, aim, run, strike, strikeHeld, throwRock, act };
   };
 }
 

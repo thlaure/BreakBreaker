@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { Snapshot } from '../../sim/sim';
-import type { WeaponKind } from '../../sim/weapons';
+import type { HeldKind } from '../../sim/weapons';
 
 /** Strike spin duration (ms) of the weapon in Paul's hands — matches the circular strike. */
 const SPIN_MS = 220;
@@ -87,7 +87,7 @@ export class WeaponLayer {
 /** The weapon in Paul's hand: carried at his side, spins once around him on each strike. */
 export class HeldWeaponView {
   private readonly sprite: Phaser.GameObjects.Image;
-  private kind: WeaponKind | null = null;
+  private kind: HeldKind | null = null;
   private spinUntil = 0;
 
   constructor(scene: Phaser.Scene) {

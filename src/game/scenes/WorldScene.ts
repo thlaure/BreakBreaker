@@ -47,7 +47,7 @@ export class WorldScene extends Phaser.Scene {
   private stress = 0;
   private stressState = { n: 0 };
   private clock!: FixedClock;
-  private input$: () => InputFrame = () => ({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false });
+  private input$: () => InputFrame = () => ({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false });
   private disposeInput: (() => void) | null = null;
   private ui: GameUi | null = null;
   private sources: InputSource[] = [];

@@ -1,7 +1,7 @@
 import { CONFIG } from '../../sim/config';
 import type { Snapshot } from '../../sim/sim';
 import type { CasseKind, Vec } from '../../sim/types';
-import { WEAPONS } from '../../sim/weapons';
+import { HELD_LABELS } from '../../sim/weapons';
 import { casseurs, type IncidentKind, type RoundHeadline } from './alerts';
 
 /**
@@ -219,7 +219,7 @@ export function weaponValue(s: Snapshot): string {
 }
 
 function weaponText(s: Snapshot, bare: string): string {
-  const arme = s.weapon ? `${WEAPONS[s.weapon.kind].label} (${s.weapon.uses})` : bare;
+  const arme = s.weapon ? `${HELD_LABELS[s.weapon.kind]} (${s.weapon.uses})` : bare;
   return s.furie ? `${arme} · Mode furie ${Math.max(1, Math.ceil(s.furie.secondsLeft - 1e-9))} s` : arme;
 }
 

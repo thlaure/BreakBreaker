@@ -80,6 +80,36 @@ export const CONFIG = {
     launchSpin: [2, 5] as const,
     launchJitter: 0.35,
   },
+  /**
+   * Bouclier (special weapon, held): lasts `durationSec` of active sim time, then breaks; no strike counter. Rocks and
+   * firebombs hitting Paul from within `frontDeg` (total cone) of his facing are blocked. A strike is a bash: reach
+   * `bashRange`, one-hit KO, `knockback` px away from Paul, no charge used. Twist drop from `dropFromRound`, timed spawn
+   * from `spawnFromRound` with weight `spawnShare` (same rule as the furie).
+   */
+  bouclier: {
+    durationSec: 20,
+    frontDeg: 120,
+    bashRange: 64,
+    knockback: 24,
+    dropFromRound: 3,
+    spawnFromRound: 5,
+    spawnShare: 1 / 6,
+  },
+  /**
+   * Kamehame (« Onde d’énergie », special weapon, held): `uses` beams. Holding Frapper charges `chargeSec` (Paul cannot
+   * move), then a beam `length` px long KOs every active rioter within `halfWidth` + its radius of the line, which stops
+   * at the first solid (buildings, props, trunks, plinth, the peaceful group). Twist drop from `dropFromRound`, timed
+   * spawn from `spawnFromRound` with weight `spawnShare`.
+   */
+  kamehame: {
+    uses: 2,
+    chargeSec: 1,
+    length: 320,
+    halfWidth: 16,
+    dropFromRound: 5,
+    spawnFromRound: 7,
+    spawnShare: 1 / 6,
+  },
   caps: { hostiles: 40, windupsContact: [2, 4], windupsThrow: [2, 4] },
   /**
    * `fireDps` while the attack lasts; `smoulderDps` once its rioters are all KO but the fire still burns (school 100 hp

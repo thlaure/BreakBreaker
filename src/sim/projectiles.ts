@@ -1,6 +1,7 @@
 import { CONFIG } from './config';
 import type { Grid } from './map/grid';
 import { dist, norm, segmentCircleHit } from './math';
+import { shieldBlocks } from './specials';
 import type { SimEvent, Vec } from './types';
 
 export type RockState = 'EnemyFlying' | 'LandedRecoverable' | 'PlayerFlying' | 'Removed';
@@ -20,7 +21,8 @@ export interface Rock {
 }
 
 export interface RockCtx {
-  player: { pos: Vec; r: number; invulnerable: boolean };
+  /** `shield` = Paul's facing while he holds the bouclier (front rocks are blocked), else null/absent. */
+  player: { pos: Vec; r: number; invulnerable: boolean; shield?: Vec | null };
   hostiles: { lifeId: number; pos: Vec; r: number; active: boolean }[];
   /** t in [0,1] at which segment a->b first enters the peaceful group, or null. */
   groupBlocks(a: Vec, b: Vec): number | null;
@@ -157,7 +159,17 @@ export class Rocks {
     const gt = ctx.groupBlocks(a, b);
     const st = this.solidHit(a, b);
     const obstacle = Math.min(gt ?? Infinity, st ?? Infinity);
-    const pt = ctx.player.invulnerable ? null : segmentCircleHit(a, b, ctx.player.pos, ctx.player.r);
+    const shield = ctx.player.shield ?? null;
+    const blocks = shield !== null && shieldBlocks(shield, { x: b.x - a.x, y: b.y - a.y });
+    // a front rock hits the shield even during the invulnerability frames
+    const pt = ctx.player.invulnerable && !blocks ? null : segmentCircleHit(a, b, ctx.player.pos, ctx.player.r);
+    if (pt !== null && pt < obstacle && blocks) {
+      // blocked by the bouclier: no damage, the rock drops at the hit point and can be picked up
+      const at = lerp(a, b, pt);
+      events.push({ type: 'ShieldBlocked', pos: { ...at } });
+      this.land(rock, at, now, ctx, events);
+      return;
+    }
     if (pt !== null && pt < obstacle) {
       events.push({ type: 'PlayerDamaged', amount: CONFIG.rock.damage });
       this.land(rock, lerp(a, b, pt), now, ctx, events);

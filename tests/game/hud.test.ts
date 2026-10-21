@@ -191,7 +191,7 @@ describe('incidentLines', () => {
     const s = new Sim(21, { invulnerable: true });
     for (let i = 0; i < 60 * 30 && s.school.stage !== 'cinematic'; i++) {
       for (const h of s.horde.active()) s.horde.applyHit(h.lifeId, 99);
-      s.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false });
+      s.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false });
     }
     const [school] = incidentLines(s.snapshot(), 'en cours');
     expect(school).toMatchObject({ key: 'school', status: 'renforts' });
@@ -429,7 +429,7 @@ describe('mode furie HUD and audio', () => {
     const sim = new Sim(4);
     sim.weapons.held = { kind: 'panneau', uses: 3 };
     sim.weapons.ground.push({ id: 77, kind: 'furie', pos: { ...sim.player.pos }, expiresAt: null });
-    sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, throwRock: false, act: false });
+    sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false });
     const s = sim.snapshot();
     expect(s.furie).toEqual({ secondsLeft: 12 });
     expect(weaponLine(s)).toBe('Arme : Panneau (3) · Mode furie 12 s');

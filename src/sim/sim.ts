@@ -7,6 +7,7 @@ import { Horde, type Hostile, type HordeCtx } from './hostiles';
 import type { ItemState, RescueIncident, RescueKind, RescueStage } from './incidents/rescue';
 import { SchoolIncident, type SchoolStage } from './incidents/school';
 import type { TargetAttack } from './incidents/targetAttack';
+import { moveCircle } from './map/collide';
 import { DISTRICT, type Rect } from './map/district';
 import { FlowField } from './map/flowfield';
 import { Grid } from './map/grid';
@@ -17,9 +18,10 @@ import { Rocks, type RockCtx, type RockState } from './projectiles';
 import { rng } from './rng';
 import { Toolboxes, type ToolboxMessage } from './repair';
 import { Rules, type SessionStats } from './rules';
+import { beam } from './specials';
 import { Targets } from './targets';
 import type { CasseKind, InputFrame, Launch, MonumentFlag, Role, SimEvent, TargetId, Variant, Vec } from './types';
-import { Weapons, type PickupKind, type WeaponKind } from './weapons';
+import { Weapons, type HeldKind, type PickupKind } from './weapons';
 
 /** Damage of a weapon strike: enough to KO any rioter (spec: weapons are one-hit KO). */
 const WEAPON_DAMAGE = 99;
@@ -123,8 +125,13 @@ export interface Snapshot {
   carriedItems: number;
   stations: { id: string; pos: Vec; charged: boolean }[];
   stationMessage: StationMessage;
-  /** Weapon in Paul's hands (null = bare hands) and strikes left. */
-  weapon: { kind: WeaponKind; uses: number } | null;
+  /**
+   * Weapon in Paul's hands (null = bare hands): strikes left (regular weapons), beams left (kamehame), or the bouclier's
+   * `secondsLeft` (its `uses` is 0).
+   */
+  weapon: { kind: HeldKind; uses: number; secondsLeft?: number } | null;
+  /** Onde d’énergie charging: `progress` in [0, 1] of CONFIG.kamehame.chargeSec; null when not charging. */
+  charge: { progress: number } | null;
   /** `expiresAt` = sim time a special drop vanishes (null = never); `kind: 'furie'` = the mode furie power-up. */
   weaponsOnGround: { id: number; kind: PickupKind; pos: Vec; expiresAt: number | null }[];
   /** Mode furie on (seconds left), or null. */
@@ -177,6 +184,9 @@ export function segmentRectEntry(a: Vec, b: Vec, r: Rect): number | null {
  * Step order: player move → sweep/return → hostiles → queue entries → rocks → damage → fire patches → KO check → Molotovs routed to
  * the attack on their target → attacks → rescue → toolboxes → heals → weapons (pickups, furie timer) → director.
  * Mode furie (CONFIG.furie) changes the player move, the strike and the damage taken; a KO ends it.
+ * Held specials: the bouclier blocks front rocks and firebombs and bashes on a strike; the onde d'énergie (kamehame)
+ * charges while Frapper is held (Paul frozen), fires a beam at CONFIG.kamehame.chargeSec, and is cancelled by a release,
+ * damage, the weapon lost or a KO.
  * While the school cinematic is running, only its timer advances.
  */
 export class Sim {
@@ -226,6 +236,8 @@ export class Sim {
   private stationMessage: StationMessage = null;
   private toolboxMessage: ToolboxMessage = null;
   private koReported = false;
+  /** Onde d'énergie charge under way: seconds held so far. */
+  private charge: { t: number } | null = null;
 
   constructor(seed: number, opts: { invulnerable?: boolean } = {}) {
     this.rand = rng(seed);
@@ -271,16 +283,21 @@ export class Sim {
     const p = this.player;
 
     const furie = this.weapons.furie();
-    stepPlayer(p, input, dt, now, this.grid, furie ? CONFIG.furie.speedMul : 1);
-    if (input.strike) {
+    // charging the onde d'énergie: movement ignored (aim still turns Paul)
+    const frozen = this.charge !== null;
+    stepPlayer(p, frozen ? { ...input, move: { x: 0, y: 0 } } : input, dt, now, this.grid, furie ? CONFIG.furie.speedMul : 1);
+    if (this.charge !== null || this.weapons.held?.kind === 'kamehame') this.stepCharge(input, dt, ev);
+    else if (input.strike) {
       // Bare hands: 1 damage (2 hits to KO). Any weapon: KO in one hit. Mode furie: KO in one hit, more targets, the
-      // weapon is not used, every KO is launched.
+      // weapon is not used, every KO is launched. Bouclier: a bash (one-hit KO, knockback, no charge used).
+      const bash = this.weapons.held?.kind === 'bouclier';
       const damage = furie ? CONFIG.furie.damage : this.weapons.held ? WEAPON_DAMAGE : 1;
       const maxTargets = furie ? CONFIG.furie.maxTargets : CONFIG.melee.maxTargets;
       const { hits } = sweep(p, now, this.horde.views(), this.grid, this.weapons.range(), maxTargets);
       for (const id of hits) {
         ev.push({ type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee' });
         this.hit(id, damage, ev, furie);
+        if (bash) this.knockback(id);
       }
       if (!furie) ev.push(...this.weapons.onSwing(hits.length));
     }
@@ -305,6 +322,7 @@ export class Sim {
     const rockEv = this.rocks.step(dt, now, this.rockCtx(victimPos));
 
     // damage, hits and rock bookkeeping
+    const hpBefore = p.hp;
     const molotovs: Extract<SimEvent, { type: 'MolotovThrown' }>[] = [];
     for (const e of [...hordeEv, ...rockEv]) {
       if (e.type === 'PlayerDamaged') {
@@ -330,8 +348,10 @@ export class Sim {
         if (this.invulnerable || !damagePlayer(p, a, now)) return false;
         ev.push({ type: 'PlayerDamaged', amount: a });
         return true;
-      }),
+      }, this.shield()),
     );
+    // taking damage (or a KO) cancels the charge: nothing used
+    if (this.charge !== null && (p.hp < hpBefore || p.ko)) this.cancelCharge(ev);
     this.telegraphs = this.telegraphs.filter((t) => t.until > now);
     this.molotovs = this.molotovs.filter((t) => t.until > now);
 
@@ -463,6 +483,7 @@ export class Sim {
       stations: this.stations.list.map((s) => ({ id: s.id, pos: v(s.pos), charged: s.charged })),
       stationMessage: this.stationMessage,
       weapon: this.weapons.held ? { ...this.weapons.held } : null,
+      charge: this.charge ? { progress: Math.min(1, this.charge.t / CONFIG.kamehame.chargeSec) } : null,
       weaponsOnGround: this.weapons.ground.map((w) => ({ id: w.id, kind: w.kind, pos: v(w.pos), expiresAt: w.expiresAt })),
       furie: this.weapons.furie() ? { secondsLeft: this.weapons.furieLeft } : null,
       monument: this.monumentView(),
@@ -527,29 +548,96 @@ export class Sim {
     const area = DISTRICT.peacefulGroup.area;
     const p = this.player;
     return {
-      player: { pos: p.pos, r: CONFIG.player.radius, invulnerable: this.invulnerable || p.ko || this.now < p.invulnUntil },
+      player: {
+        pos: p.pos,
+        r: CONFIG.player.radius,
+        invulnerable: this.invulnerable || p.ko || this.now < p.invulnUntil,
+        shield: this.shield(),
+      },
       hostiles: this.horde.views(),
       groupBlocks: (a, b) => segmentRectEntry(a, b, area),
       victimPos,
     };
   }
 
-  /**
-   * Every 'ko' from applyHit scores +1 (deduped by Rules) and emits ActorKnockedOut; `launched` (Paul's strike in mode
-   * furie) adds the cosmetic launch payload.
-   */
-  private hit(lifeId: number, dmg: number, ev: SimEvent[], launched = false): void {
-    if (this.horde.applyHit(lifeId, dmg) !== 'ko') return;
-    this.rules.onKnockout(lifeId);
-    const h = launched ? this.horde.list.find((x) => x.lifeId === lifeId) : undefined;
-    ev.push(h ? { type: 'ActorKnockedOut', lifeId, launch: this.launch(h.pos) } : { type: 'ActorKnockedOut', lifeId });
+  /** Paul's facing while he holds the bouclier (front rocks and firebombs are blocked), else null. */
+  private shield(): Vec | null {
+    return this.weapons.held?.kind === 'bouclier' && !this.player.ko ? this.player.facing : null;
   }
 
   /**
-   * Flight of a body knocked out at `at` in mode furie: away from Paul (his facing when on top of him) turned by a
-   * jitter, power and spin from their ranges; always 4 draws from the launch stream.
+   * The onde d'énergie (kamehame held): a Frapper press starts the charge (BeamCharging); while Frapper stays held it
+   * grows, and at CONFIG.kamehame.chargeSec the beam fires on its own. Released, or the weapon gone: cancelled.
    */
-  private launch(at: Vec): Launch {
+  private stepCharge(input: InputFrame, dt: number, ev: SimEvent[]): void {
+    const p = this.player;
+    const armed = this.weapons.held?.kind === 'kamehame' && !p.ko;
+    if (this.charge === null) {
+      if (armed && input.strike) {
+        this.charge = { t: 0 };
+        ev.push({ type: 'BeamCharging' });
+      }
+      return;
+    }
+    if (!armed || !input.strikeHeld) {
+      this.cancelCharge(ev);
+      return;
+    }
+    this.charge.t += dt;
+    if (this.charge.t + 1e-9 < CONFIG.kamehame.chargeSec) return;
+    this.charge = null;
+    this.fireBeam(ev);
+  }
+
+  private cancelCharge(ev: SimEvent[]): void {
+    this.charge = null;
+    ev.push({ type: 'BeamCancelled' });
+  }
+
+  /** The beam along Paul's facing: every rioter on it is KO'd (+1 each) and launched along the beam; one use. */
+  private fireBeam(ev: SimEvent[]): void {
+    const p = this.player;
+    const dir = norm(p.facing);
+    const shot = beam(p.pos, dir, this.horde.views(), this.grid);
+    const damage = WEAPON_DAMAGE;
+    let kos = 0;
+    for (const id of shot.lifeIds) {
+      ev.push({ type: 'HitConfirmed', targetLifeId: id, damage, source: 'beam' });
+      if (this.hit(id, damage, ev, dir)) kos += 1;
+    }
+    ev.push({ type: 'BeamFired', from: v(p.pos), to: v(shot.to), kos });
+    ev.push(...this.weapons.onBeam());
+  }
+
+  /** A bouclier bash pushes the KO'd body CONFIG.bouclier.knockback px away from Paul (never into a wall). */
+  private knockback(lifeId: number): void {
+    const h = this.horde.list.find((x) => x.lifeId === lifeId);
+    if (!h || h.state !== 'ko') return;
+    const away = sub(h.pos, this.player.pos);
+    const d = len(away) > 1e-6 ? norm(away) : this.player.facing;
+    const k = CONFIG.bouclier.knockback;
+    h.pos = moveCircle(this.grid, h.pos, { x: d.x * k, y: d.y * k }, CONFIG.hostile.radius);
+  }
+
+  /**
+   * Every 'ko' from applyHit scores +1 (deduped by Rules) and emits ActorKnockedOut; `launched` (Paul's strike in mode
+   * furie: true; the onde d'énergie: its direction) adds the cosmetic launch payload. True on a KO.
+   */
+  private hit(lifeId: number, dmg: number, ev: SimEvent[], launched: boolean | Vec = false): boolean {
+    if (this.horde.applyHit(lifeId, dmg) !== 'ko') return false;
+    this.rules.onKnockout(lifeId);
+    const h = launched ? this.horde.list.find((x) => x.lifeId === lifeId) : undefined;
+    const along = typeof launched === 'object' ? launched : undefined;
+    ev.push(h ? { type: 'ActorKnockedOut', lifeId, launch: this.launch(h.pos, along) } : { type: 'ActorKnockedOut', lifeId });
+    return true;
+  }
+
+  /**
+   * Flight of a body knocked out at `at` (mode furie, onde d'énergie): away from Paul (his facing when on top of him),
+   * or along `along` (the beam), turned by a jitter, power and spin from their ranges; always 4 draws from the launch
+   * stream.
+   */
+  private launch(at: Vec, along?: Vec): Launch {
     const { launchPower, launchSpin, launchJitter } = CONFIG.furie;
     const r = this.launchRand;
     const jitter = (r() * 2 - 1) * launchJitter;
@@ -557,7 +645,7 @@ export class Sim {
     const turns = launchSpin[0] + r() * (launchSpin[1] - launchSpin[0]);
     const sign = r() < 0.5 ? -1 : 1;
     const away = sub(at, this.player.pos);
-    const base = len(away) > 1e-6 ? norm(away) : this.player.facing;
+    const base = along ?? (len(away) > 1e-6 ? norm(away) : this.player.facing);
     const a = Math.atan2(base.y, base.x) + jitter;
     return { dir: { x: Math.cos(a), y: Math.sin(a) }, power, spin: sign * turns };
   }

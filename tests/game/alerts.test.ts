@@ -698,7 +698,7 @@ describe('mode furie alerts', () => {
   });
 
   test('event mapping: a furie twist drop, the pickup', () => {
-    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 }, furie: true })).toEqual({
+    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: { x: 7, y: 8 }, special: 'furie' })).toEqual({
       id: 'drop@7,8',
       kind: 'furieDrop',
       pos: { x: 7, y: 8 },
@@ -706,7 +706,7 @@ describe('mode furie alerts', () => {
       total: 0,
       incident: 'drop@7,8',
     });
-    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: null, furie: true })).toBeNull();
+    expect(alertFromEvent({ type: 'TwistStarted', kind: 'weaponDrop', pos: null, special: 'furie' })).toBeNull();
     expect(alertFromEvent({ type: 'FurieStarted', secondsLeft: 12 })).toEqual({ id: 'furie', kind: 'furie', pos: null, wave: 0, total: 0 });
     expect(alertFromEvent({ type: 'FurieEnded' })).toBeNull();
   });
