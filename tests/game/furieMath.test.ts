@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { FURIE_FADE_SEC, LAUNCH_EDGE_PX, LAUNCH_MS, auraAlpha, landingDistance, launchPose } from '../../src/game/render/furieMath';
+import { FURIE_FADE_SEC, LAUNCH_EDGE_PX, LAUNCH_MS, SATELLITE_END_SCALE, SATELLITE_MS, SATELLITE_MS_REDUCED, SATELLITE_RISE_PX, auraAlpha, landingDistance, launchPose, satellitePose } from '../../src/game/render/furieMath';
 import { DISTRICT } from '../../src/sim/map/district';
 import { Grid } from '../../src/sim/map/grid';
 import type { Launch } from '../../src/sim/types';
@@ -60,5 +60,46 @@ describe('aura', () => {
     expect(Math.max(...late)).toBeLessThan(1);
     expect(new Set(late).size).toBeGreaterThan(1);
     expect(auraAlpha(0, 0)).toBeGreaterThan(0);
+  });
+});
+
+describe('satellites (onde d’énergie)', () => {
+  const beam: Launch = { dir: { x: 1, y: 0 }, power: 1500, spin: 8, kind: 'satellite' };
+  const from = { x: 100, y: 200 };
+
+  test('starts at the hit point, full size, no spin', () => {
+    expect(satellitePose(from, beam, 0)).toMatchObject({ x: 100, y: 200, lift: 0, angle: 0, scale: 1, t: 0 });
+  });
+
+  test('ease-in then fast: less than a quarter of the way at half time, all of it at the end, off the map allowed', () => {
+    const mid = satellitePose(from, beam, SATELLITE_MS / 2);
+    expect(mid.x - 100).toBeLessThan(1500 / 4);
+    expect(mid.x).toBeGreaterThan(100);
+    const end = satellitePose(from, beam, SATELLITE_MS);
+    expect(end.t).toBe(1);
+    expect(end.x).toBeCloseTo(1600, 6); // beyond a 1536 px world: never clamped
+    expect(end.lift).toBeCloseTo(SATELLITE_RISE_PX, 6);
+    expect(end.angle).toBeCloseTo(8 * 360, 6);
+    expect(end.scale).toBeCloseTo(SATELLITE_END_SCALE, 6);
+    expect(satellitePose(from, beam, SATELLITE_MS * 3).t).toBe(1);
+  });
+
+  test('shrinks and climbs monotonically', () => {
+    let prev = satellitePose(from, beam, 0);
+    for (let ms = 100; ms <= SATELLITE_MS; ms += 100) {
+      const p = satellitePose(from, beam, ms);
+      expect(p.scale).toBeLessThan(prev.scale);
+      expect(p.lift).toBeGreaterThan(prev.lift);
+      expect(p.x).toBeGreaterThan(prev.x);
+      prev = p;
+    }
+  });
+
+  test('reduced motion: 0.5 s flight, no spin', () => {
+    expect(SATELLITE_MS_REDUCED).toBe(500);
+    const end = satellitePose(from, beam, SATELLITE_MS_REDUCED, true);
+    expect(end.t).toBe(1);
+    expect(end.angle).toBe(0);
+    expect(satellitePose(from, beam, 250, true).angle).toBe(0);
   });
 });

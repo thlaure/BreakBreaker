@@ -193,6 +193,7 @@ export class WorldScene extends Phaser.Scene {
     this.hostiles = new HostileLayer(this, {
       world: { width: this.world.width, height: this.world.height },
       blocked: (p) => grid.circleBlocked(p, 6) || grid.isGroup(p),
+      reducedMotion: this.reducedMotion,
     });
     this.rocks = new RockLayer(this);
     this.weaponsOnGround = new WeaponLayer(this);

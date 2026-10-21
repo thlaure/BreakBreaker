@@ -109,6 +109,13 @@ export const CONFIG = {
     dropFromRound: 5,
     spawnFromRound: 7,
     spawnShare: 1 / 6,
+    /**
+     * Cosmetic « satellisation » of the beam's KOs: `satellitePower` px along the beam ± `satelliteJitter` rad,
+     * `satelliteSpin` turns.
+     */
+    satellitePower: [1100, 1800] as const,
+    satelliteSpin: [6, 10] as const,
+    satelliteJitter: 0.15,
   },
   caps: { hostiles: 40, windupsContact: [2, 4], windupsThrow: [2, 4] },
   /**

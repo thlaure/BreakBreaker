@@ -76,3 +76,44 @@ export function auraAlpha(secondsLeft: number, nowMs: number): number {
   const blink = Math.floor(nowMs / period) % 2 === 0 ? 1 : 0.45;
   return (0.25 + 0.75 * k) * blink;
 }
+
+/** Flight time (ms) of a body « satellisé » by the onde d’énergie; shorter, without spin, under reduced motion. */
+export const SATELLITE_MS = 1300;
+export const SATELLITE_MS_REDUCED = 500;
+/** How high (px, screen up) a satellite climbs by the end of its flight: it leaves for the sky. */
+export const SATELLITE_RISE_PX = 220;
+/** Scale of a satellite at the end of its flight. */
+export const SATELLITE_END_SCALE = 0.25;
+/** Ease-in exponent of the satellite travel (slow start, then fast). */
+const SATELLITE_EASE = 2.4;
+
+export interface SatellitePose {
+  /** Point under the body along the beam (not clamped to the map). */
+  x: number;
+  y: number;
+  /** Height above that point (px). */
+  lift: number;
+  angle: number;
+  scale: number;
+  /** 0..1 flight progress (1 = gone, twinkle time). */
+  t: number;
+}
+
+/**
+ * Pose of a satellite `ms` after the beam KO: ease-in travel over the whole `launch.power` along `launch.dir` (never
+ * clamped to the world), climbing SATELLITE_RISE_PX, spinning `spin` turns, shrinking to SATELLITE_END_SCALE. Reduced
+ * motion: SATELLITE_MS_REDUCED and no spin.
+ */
+export function satellitePose(from: Vec, launch: Launch, ms: number, reduced = false): SatellitePose {
+  const dur = reduced ? SATELLITE_MS_REDUCED : SATELLITE_MS;
+  const t = Math.min(1, Math.max(0, ms / dur));
+  const ease = t ** SATELLITE_EASE;
+  return {
+    x: from.x + launch.dir.x * launch.power * ease,
+    y: from.y + launch.dir.y * launch.power * ease,
+    lift: SATELLITE_RISE_PX * t * t,
+    angle: reduced ? 0 : launch.spin * 360 * ease,
+    scale: 1 - (1 - SATELLITE_END_SCALE) * t,
+    t,
+  };
+}

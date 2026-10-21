@@ -282,7 +282,8 @@ describe('onde d’énergie: charge and fire (Sim)', () => {
     expect(sim.rules.score).toBe(3);
     for (const k of of(ev, 'ActorKnockedOut')) {
       expect(k.launch).toBeDefined();
-      expect(k.launch!.dir.x).toBeGreaterThan(Math.cos(CONFIG.furie.launchJitter) - 1e-6);
+      expect(k.launch!.dir.x).toBeGreaterThan(Math.cos(CONFIG.kamehame.satelliteJitter) - 1e-6);
+      expect(k.launch!.kind).toBe('satellite');
     }
     expect(sim.weapons.held).toEqual({ kind: 'kamehame', uses: CONFIG.kamehame.uses - 1 });
     expect(sim.snapshot().charge).toBeNull();
@@ -381,6 +382,73 @@ describe('onde d’énergie: charge and fire (Sim)', () => {
     const ev = sim.step(PRESS);
     expect(of(ev, 'HitConfirmed')).toEqual([]);
     expect(h.state).not.toBe('ko');
+  });
+});
+
+describe('onde d’énergie: satellisation (cosmetic launch payload)', () => {
+  /** Charges and fires a beam through a line of `n` rioters; returns the KO events and the sim. */
+  function shoot(seed: number, n = 4) {
+    const sim = new Sim(seed);
+    sim.weapons.held = heldOf('kamehame');
+    sim.player.facing = { x: 1, y: 0 };
+    const p = { ...sim.player.pos };
+    sim.step(input({ strike: true, strikeHeld: true }));
+    for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec) - 1; i++) sim.step(input({ strikeHeld: true }));
+    for (let i = 0; i < n; i++) calm(sim, { x: p.x + 40 + i * 50, y: p.y });
+    const ev = sim.step(input({ strikeHeld: true }));
+    return { sim, kos: of(ev, 'ActorKnockedOut') };
+  }
+
+  test('beam KOs are satellites: power 1100–1800 px, ±6–10 turns, along the beam; +1 each as usual', () => {
+    const { sim, kos } = shoot(5);
+    expect(kos).toHaveLength(4);
+    for (const k of kos) {
+      const l = k.launch!;
+      expect(l.kind).toBe('satellite');
+      expect(l.power).toBeGreaterThanOrEqual(CONFIG.kamehame.satellitePower[0]);
+      expect(l.power).toBeLessThanOrEqual(CONFIG.kamehame.satellitePower[1]);
+      expect(Math.abs(l.spin)).toBeGreaterThanOrEqual(CONFIG.kamehame.satelliteSpin[0]);
+      expect(Math.abs(l.spin)).toBeLessThanOrEqual(CONFIG.kamehame.satelliteSpin[1]);
+      expect(Math.hypot(l.dir.x, l.dir.y)).toBeCloseTo(1, 6);
+      expect(l.dir.x).toBeGreaterThan(Math.cos(CONFIG.kamehame.satelliteJitter) - 1e-6);
+    }
+    expect(sim.rules.kos).toBe(4);
+    expect(sim.rules.score).toBe(4);
+  });
+
+  test('deterministic per seed; different seeds differ', () => {
+    expect(shoot(5).kos).toEqual(shoot(5).kos);
+    expect(shoot(6).kos.map((k) => k.launch)).not.toEqual(shoot(5).kos.map((k) => k.launch));
+  });
+
+  test('furie strike KOs tumble; plain melee and rock KOs carry no launch', () => {
+    const fur = new Sim(5);
+    fur.weapons.furieLeft = 5;
+    const p = fur.player.pos;
+    calm(fur, { x: p.x + 30, y: p.y });
+    const f = of(fur.step(input({ strike: true })), 'ActorKnockedOut');
+    expect(f).toHaveLength(1);
+    expect(f[0]!.launch!.kind).toBe('tumble');
+    expect(f[0]!.launch!.power).toBeLessThanOrEqual(CONFIG.furie.launchPower[1]);
+
+    const plain = new Sim(5);
+    plain.weapons.held = heldOf('baton');
+    calm(plain, { x: plain.player.pos.x + 30, y: plain.player.pos.y });
+    const m = of(plain.step(input({ strike: true })), 'ActorKnockedOut');
+    expect(m).toHaveLength(1);
+    expect(m[0]!.launch).toBeUndefined();
+
+    const rock = new Sim(5);
+    const q = rock.player.pos;
+    const h = calm(rock, { x: q.x + 80, y: q.y });
+    h.hp = 1;
+    rock.rocks.carried = 1;
+    const all: SimEvent[] = [];
+    all.push(...rock.step(input({ throwRock: true, aim: { x: 1, y: 0 } })));
+    for (let i = 0; i < 30; i++) all.push(...rock.step(IDLE));
+    const r = of(all, 'ActorKnockedOut');
+    expect(r).toHaveLength(1);
+    expect(r[0]!.launch).toBeUndefined();
   });
 });
 

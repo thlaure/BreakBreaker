@@ -633,12 +633,14 @@ export class Sim {
   }
 
   /**
-   * Flight of a body knocked out at `at` (mode furie, onde d'énergie): away from Paul (his facing when on top of him),
-   * or along `along` (the beam), turned by a jitter, power and spin from their ranges; always 4 draws from the launch
-   * stream.
+   * Flight of a body knocked out at `at`: mode furie = a 'tumble' away from Paul (his facing when on top of him); onde
+   * d'énergie = a 'satellite' along `along` (the beam), with the kamehame power/spin ranges. Turned by a jitter; always 4
+   * draws from the launch stream.
    */
   private launch(at: Vec, along?: Vec): Launch {
-    const { launchPower, launchSpin, launchJitter } = CONFIG.furie;
+    const launchJitter = along ? CONFIG.kamehame.satelliteJitter : CONFIG.furie.launchJitter;
+    const launchPower = along ? CONFIG.kamehame.satellitePower : CONFIG.furie.launchPower;
+    const launchSpin = along ? CONFIG.kamehame.satelliteSpin : CONFIG.furie.launchSpin;
     const r = this.launchRand;
     const jitter = (r() * 2 - 1) * launchJitter;
     const power = launchPower[0] + r() * (launchPower[1] - launchPower[0]);
@@ -647,7 +649,7 @@ export class Sim {
     const away = sub(at, this.player.pos);
     const base = along ?? (len(away) > 1e-6 ? norm(away) : this.player.facing);
     const a = Math.atan2(base.y, base.x) + jitter;
-    return { dir: { x: Math.cos(a), y: Math.sin(a) }, power, spin: sign * turns };
+    return { dir: { x: Math.cos(a), y: Math.sin(a) }, power, spin: sign * turns, kind: along ? 'satellite' : 'tumble' };
   }
 
   /** Hostile facing = last movement direction, else toward Paul. */

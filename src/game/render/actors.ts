@@ -3,7 +3,8 @@ import type { CharLayout, CharSheet, Dir } from '../assets';
 import type { Snapshot } from '../../sim/sim';
 import type { Launch, Vec } from '../../sim/types';
 import { DEPTH } from './depth';
-import { landingDistance, launchPose } from './furieMath';
+import { landingDistance, launchPose, satellitePose } from './furieMath';
+import { MAX_SATELLITES, Twinkles } from './satellite';
 
 type HostileSnap = Snapshot['hostiles'][number];
 
@@ -282,17 +283,26 @@ interface Flight {
 const SPIN_ORIGIN_Y = 0.6;
 const SPIN_LIFT = Math.round((FEET_ORIGIN_Y - SPIN_ORIGIN_Y) * 64);
 
-/** What a HostileView needs for a launched body: the shared trail emitter and the landing check. */
+/**
+ * What a HostileView needs for a launched body: the shared trail emitter, the landing check (tumble), the twinkle pool
+ * and the camera view (satellite), the satellites in flight (capped) and reduced motion.
+ */
 export interface LaunchCtx {
   trail: Phaser.GameObjects.Particles.ParticleEmitter;
   world: { width: number; height: number };
   blocked: (p: Vec) => boolean;
+  twinkles: Twinkles;
+  view: () => Phaser.Geom.Rectangle;
+  satellites: { flying: number };
+  reducedMotion: boolean;
 }
 
 /**
  * Rioter: sheet by variant (_a/_b by lifeId parity), optional flag prop above the shoulder, Molotov bottle. A body
  * launched in mode furie flies off spinning (ease-out travel, arc, squash, star/dust trail) above everything, then
- * lies where it landed (inside the world, never in a wall) like any KO body.
+ * lies where it landed (inside the world, never in a wall) like any KO body. A body « satellisé » by the onde d’énergie
+ * is shot into the sky along the beam (ease-in, spinning, shrinking, star trail, never clamped to the map), twinkles
+ * where it vanishes (if on screen) and is destroyed: no body left lying.
  */
 class HostileView {
   readonly view: CharView;
@@ -300,6 +310,10 @@ class HostileView {
   private readonly pole: Phaser.GameObjects.Rectangle | null;
   private readonly bottle: BottleProp | null;
   private flight: Flight | null = null;
+  /** Satellite gone: the sprites are destroyed, nothing more is drawn. */
+  private gone = false;
+  /** The satellite counter this body takes a slot of while it flies (released when it vanishes or is removed). */
+  private slot: { flying: number } | null = null;
 
   constructor(scene: Phaser.Scene, h: HostileSnap) {
     const sheet = `rioter_${h.variant}_${h.lifeId % 2 === 0 ? 'a' : 'b'}`;
@@ -311,11 +325,37 @@ class HostileView {
   }
 
   launch(from: Vec, launch: Launch, nowMs: number, ctx: LaunchCtx): void {
+    if (this.gone || this.flight) return;
+    if (launch.kind === 'satellite') {
+      // over the cap: no flight, it vanishes at once with its twinkle
+      if (ctx.satellites.flying >= MAX_SATELLITES) {
+        this.vanish(from.x, from.y - 20, nowMs, ctx);
+        return;
+      }
+      ctx.satellites.flying += 1;
+      this.slot = ctx.satellites;
+      this.flight = { from: { ...from }, launch, dist: launch.power, start: nowMs, landed: false };
+      return;
+    }
     const dist = landingDistance(from, launch, ctx.world, ctx.blocked);
     this.flight = { from: { ...from }, launch, dist, start: nowMs, landed: false };
   }
 
+  get removed(): boolean {
+    return this.gone;
+  }
+
   update(h: HostileSnap, nowMs: number, ctx: LaunchCtx): void {
+    if (this.gone) return;
+    if (h.state === 'ko' && this.flight?.launch.kind === 'satellite') {
+      this.view.still(koFrame(this.view.sheet));
+      this.view.tickFlash(nowMs);
+      this.flag?.setVisible(false);
+      this.pole?.setVisible(false);
+      this.bottle?.update(h, this.view.sprite.depth, nowMs);
+      this.satellite(this.flight, nowMs, ctx);
+      return;
+    }
     const v = this.view;
     const moved = v.place(h.pos);
     const dir = dirOf(h.facing);
@@ -369,7 +409,35 @@ class HostileView {
     s.setOrigin(0.5, FEET_ORIGIN_Y).setAngle(0).setScale(1).setPosition(Math.round(pose.x), Math.round(pose.y)).setAlpha(0.6).setDepth(pose.y - 8);
   }
 
+  private satellite(f: Flight, nowMs: number, ctx: LaunchCtx): void {
+    const pose = satellitePose(f.from, f.launch, nowMs - f.start, ctx.reducedMotion);
+    const x = Math.round(pose.x);
+    const y = Math.round(pose.y - pose.lift - SPIN_LIFT);
+    if (pose.t >= 1) {
+      this.vanish(x, y, nowMs, ctx);
+      return;
+    }
+    this.view.sprite
+      .setOrigin(0.5, SPIN_ORIGIN_Y)
+      .setPosition(x, y)
+      .setAngle(pose.angle)
+      .setScale(Math.round(pose.scale * 8) / 8)
+      .setAlpha(1)
+      .setDepth(DEPTH.overlay);
+    if (Math.floor(nowMs / 40) % 2 === 0) ctx.trail.emitParticleAt(x, y, 1);
+  }
+
+  /** The satellite is gone: a twinkle where it vanished when that point is on screen, then the sprites are destroyed. */
+  private vanish(x: number, y: number, nowMs: number, ctx: LaunchCtx): void {
+    if (ctx.view().contains(x, y)) ctx.twinkles.spawn(x, y, nowMs);
+    this.destroy();
+  }
+
   destroy(): void {
+    if (this.gone) return;
+    this.gone = true;
+    if (this.slot) this.slot.flying = Math.max(0, this.slot.flying - 1);
+    this.slot = null;
     this.view.destroy();
     this.flag?.destroy();
     this.pole?.destroy();
@@ -382,9 +450,11 @@ export class HostileLayer {
   private readonly views = new Map<number, HostileView>();
   private readonly ctx: LaunchCtx;
 
+  private readonly twinkles: Twinkles;
+
   constructor(
     private readonly scene: Phaser.Scene,
-    opts: { world: { width: number; height: number }; blocked: (p: Vec) => boolean } = {
+    opts: { world: { width: number; height: number }; blocked: (p: Vec) => boolean; reducedMotion?: boolean } = {
       world: { width: Infinity, height: Infinity },
       blocked: () => false,
     },
@@ -399,10 +469,22 @@ export class HostileLayer {
         emitting: false,
       })
       .setDepth(DEPTH.foliage + 1.5);
-    this.ctx = { trail, world: opts.world, blocked: opts.blocked };
+    this.twinkles = new Twinkles(scene);
+    this.ctx = {
+      trail,
+      world: opts.world,
+      blocked: opts.blocked,
+      twinkles: this.twinkles,
+      view: () => scene.cameras.main.worldView,
+      satellites: { flying: 0 },
+      reducedMotion: opts.reducedMotion ?? false,
+    };
   }
 
-  /** The body of `lifeId` (knocked out at `from`) flies along the launch for furieMath.LAUNCH_MS. */
+  /**
+   * The body of `lifeId` (knocked out at `from`) flies along the launch: a tumble for furieMath.LAUNCH_MS, a satellite
+   * for SATELLITE_MS (then gone).
+   */
   launch(lifeId: number, from: Vec, launch: Launch, nowMs: number): void {
     this.views.get(lifeId)?.launch(from, launch, nowMs, this.ctx);
   }
@@ -418,6 +500,7 @@ export class HostileLayer {
       }
       view.update(h, nowMs, this.ctx);
     }
+    this.twinkles.update(nowMs);
     for (const [id, view] of this.views) {
       if (seen.has(id)) continue;
       view.destroy();
@@ -426,7 +509,8 @@ export class HostileLayer {
   }
 
   flash(lifeId: number, nowMs: number): void {
-    this.views.get(lifeId)?.view.flash(nowMs);
+    const v = this.views.get(lifeId);
+    if (v && !v.removed) v.view.flash(nowMs);
   }
 }
 

@@ -95,3 +95,24 @@ charge bar fill, audio mapping; alerts adapted to special-only banners/indicator
   sparks, shield and pickups); the edge indicators were checked by tests only.
 - Commit trailer: the brief asked for `Claude Sonnet 5.5`; the session attribution says `Claude Opus 5.5` (the model
   actually used), so commits use the Opus trailer.
+
+## Follow-up: satellisation (CAHIER v1.9.8)
+
+Product owner: « quand j'utilise l'onde d'énergie, j'ai envie que les émeutiers soient satellisés ».
+
+- Sim: `Launch.kind?: 'tumble' | 'satellite'`. Beam KOs → `satellite` with `CONFIG.kamehame.satellitePower` [1100, 1800]
+  px, `satelliteSpin` [6, 10] turns, `satelliteJitter` 0.15 rad around the beam; furie KOs → `tumble` (unchanged
+  ranges); melee / rock KOs → no launch. Still 4 draws from the separate launch stream (deterministic, nothing else
+  shifted). KO count and scoring unchanged.
+- Render: `furieMath.satellitePose(from, launch, ms, reduced)` (pure: ease-in t^2.4 travel over the full power, never
+  clamped, rise 220 px, spin eased the same way, scale 1 → 0.25; 1300 ms, 500 ms without spin under reduced motion).
+  `HostileView` flies a satellite at `DEPTH.overlay` with a star/dust trail (shared emitter), then, if the vanish point
+  is inside the camera view, a pooled `Twinkles` star « ✦ » (8 in the pool, `PING !` bubble every other one, new
+  `src/game/render/satellite.ts`), and destroys the body (no lying body; later updates/flashes are no-ops). At most
+  `MAX_SATELLITES` = 16 in flight; beyond, the body vanishes at once with its twinkle. The beam shake stays.
+- Tests: payload kind per source (beam / furie / melee / rock), ranges, determinism, KO count and score; pure pose
+  helpers (start, ease-in, end off-map, monotonic shrink and climb, reduced motion).
+- Checked in the dev server: 5 KOs → 5 satellites (powers 1122–1721), bodies spin away up-right, shrink and disappear;
+  nothing left on the ground.
+- Concern: the vanish point is usually off screen (1100+ px away), so the twinkle mostly shows for shots aimed at a
+  short screen axis or with zoom 1 on a wide window; the climb (220 px) keeps it near the screen when firing down.

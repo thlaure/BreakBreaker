@@ -3,11 +3,15 @@ export interface Vec {
   y: number;
 }
 
-/** Cosmetic flight of a body knocked out during the mode furie: unit `dir`, `power` px, `spin` turns (signed). */
+/**
+ * Cosmetic flight of a knocked-out body: unit `dir`, `power` px, `spin` turns (signed). `kind`: 'tumble' = mode furie
+ * (flies off spinning, lands on the map); 'satellite' = onde d’énergie (shot into the sky along the beam, never lands).
+ */
 export interface Launch {
   dir: Vec;
   power: number;
   spin: number;
+  kind?: 'tumble' | 'satellite';
 }
 
 /** strike/throwRock are edge-triggered presses; act and strikeHeld are held. */
