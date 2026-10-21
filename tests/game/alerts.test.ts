@@ -102,11 +102,21 @@ describe('pure helpers', () => {
     expect(alertFromEvent({ type: 'HealCompleted' })).toBeNull();
   });
 
+  test('a rescue round start names its kind: « Vol en cours » for a theft, « Agression en cours » for a harassed group', () => {
+    const vol = alertFromEvent({ type: 'RoundStarted', index: 2, total: 14, headline: 'rescue', rescueKind: 'elderlyRobbed' })!;
+    expect(vol.headline).toBe('elderlyRobbed');
+    expect(incidentAlert(vol.kind, vol.wave, vol.total, vol.headline).sub).toBe('Vol en cours · 14 casseurs');
+    const agr = alertFromEvent({ type: 'RoundStarted', index: 2, total: 14, headline: 'rescue', rescueKind: 'groupHarassed' })!;
+    expect(incidentAlert(agr.kind, agr.wave, agr.total, agr.headline).sub).toBe('Agression en cours · 14 casseurs');
+  });
+
   test('incidentAlert: round banner title/non-committal headline sub; incidents get a « Manche N[ · T casseurs] » line', () => {
     expect(incidentAlert('round', 3, 9, 'car')).toMatchObject({ title: 'MANCHE 3 !', sub: 'Voiture menacée · 9 casseurs', label: 'MANCHE', meta: '', tone: 'round', icon: 'horde', positioned: false });
     expect(incidentAlert('round', 1, 10, 'school').sub).toBe('École menacée · 10 casseurs');
     expect(incidentAlert('round', 2, 14, 'busStop').sub).toBe('Abribus menacé · 14 casseurs');
     expect(incidentAlert('round', 4, 1, 'rescue').sub).toBe('Agression en cours · 1 casseur');
+    expect(incidentAlert('round', 4, 10, 'groupHarassed').sub).toBe('Agression en cours · 10 casseurs');
+    expect(incidentAlert('round', 4, 10, 'elderlyRobbed').sub).toBe('Vol en cours · 10 casseurs');
     expect(incidentAlert('school', 1, 11)).toMatchObject({ title: 'ÉCOLE EN FEU !', meta: 'Manche 1 · 11 casseurs', positioned: true });
     expect(incidentAlert('elderlyRobbed', 2, 3).meta).toBe('Manche 2 · 3 casseurs');
     expect(incidentAlert('school').meta).toBe('');

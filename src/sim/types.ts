@@ -116,7 +116,14 @@ export type SimEvent =
   | { type: 'TargetRepaired'; target: TargetId; incidentId: string }
   | { type: 'ToolboxSpawned'; id: number; pos: Vec }
   | { type: 'ToolboxPickedUp'; id: number }
-  | { type: 'RoundStarted'; index: number; total: number; headline: CasseKind | 'rescue' | 'monument' }
+  /** `rescueKind`: set when the headline is the rescue (its variant, drawn at round start; RescueStarted has the same). */
+  | {
+      type: 'RoundStarted';
+      index: number;
+      total: number;
+      headline: CasseKind | 'rescue' | 'monument';
+      rescueKind?: 'groupHarassed' | 'elderlyRobbed';
+    }
   /** Occupiers head for the monument's plinth (round `round`, roster `total`); `pos` = the flag mast. */
   | { type: 'MonumentAttacked'; incidentId: string; pos: Vec; round: number; total: number }
   /** Every occupier KO'd before the swap: the French flag stays. */

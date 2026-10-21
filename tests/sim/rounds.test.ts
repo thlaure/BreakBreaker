@@ -429,6 +429,36 @@ describe('rounds in the sim', () => {
     expect(fill).toBeGreaterThan(0);
   });
 
+  test('a rescue headline carries the rescue kind drawn at round start; RescueStarted has the same kind (both kinds over seeds)', () => {
+    const kinds = new Set<string>();
+    for (let seed = 1; seed <= 8; seed++) {
+      const sim = new Sim(seed, { invulnerable: true });
+      // nothing free: round 1 is the rescue alone
+      for (const id of ['school', 'car1', 'car2', 'busStop', 'shop'] as const) sim.targets.ruin(id, `${id}#x`);
+      const ev = drive(sim, (e) => e.some((x) => x.type === 'RescueStarted'));
+      const [rs] = of(ev, 'RoundStarted');
+      const [started] = of(ev, 'RescueStarted');
+      expect(rs).toMatchObject({ index: 1, headline: 'rescue' });
+      expect(rs!.rescueKind).toBeDefined();
+      expect(started!.kind).toBe(rs!.rescueKind);
+      expect(sim.snapshot().rescue!.kind).toBe(rs!.rescueKind);
+      kinds.add(rs!.rescueKind!);
+    }
+    expect([...kinds].sort()).toEqual(['elderlyRobbed', 'groupHarassed']);
+  });
+
+  test('a casse headline has no rescueKind; the round\'s later rescue keeps its prepared kind (deterministic per seed)', () => {
+    const run = () => {
+      const sim = new Sim(4, { invulnerable: true });
+      const ev = drive(sim, (e) => e.some((x) => x.type === 'RescueStarted'));
+      return { rs: of(ev, 'RoundStarted')[0]!, kind: of(ev, 'RescueStarted')[0]!.kind };
+    };
+    const a = run();
+    expect(a.rs.headline).toBe('school');
+    expect(a.rs.rescueKind).toBeUndefined();
+    expect(run()).toEqual(a);
+  });
+
   test('steady flow: autopilot {koAfterSec: 2} over 5 rounds never leaves > 3 s without an active rioter outside intro, cinematic and breather', () => {
     const sim = new Sim(9, { invulnerable: true });
     let empty = 0;

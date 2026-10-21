@@ -2,7 +2,7 @@ import { CONFIG } from './config';
 import type { EntryQueue, SpawnRequest, Spawner } from './entry';
 import type { Stations } from './healing';
 import type { Horde } from './hostiles';
-import { RescueIncident } from './incidents/rescue';
+import { RescueIncident, drawRescueKind } from './incidents/rescue';
 import { SchoolIncident } from './incidents/school';
 import { TargetAttack, lineup } from './incidents/targetAttack';
 import { DISTRICT } from './map/district';
@@ -318,7 +318,12 @@ export class Director {
     this.fill = [];
     this.fill = this.fillGroups(this.total - objective);
     this.nextFill = 0;
-    ev.push({ type: 'RoundStarted', index: this.round, total: this.total, headline: plan.headline });
+    const headlineRescue = plan.headline === 'rescue' ? this.beats[0]?.find((o) => o.rescue)?.rescue : undefined;
+    ev.push(
+      headlineRescue
+        ? { type: 'RoundStarted', index: this.round, total: this.total, headline: plan.headline, rescueKind: headlineRescue.kind }
+        : { type: 'RoundStarted', index: this.round, total: this.total, headline: plan.headline },
+    );
     if (this.fill.length > 0) this.queueFill(host, false);
     this.launchBeats(host, ev);
     this.track(host);
@@ -358,7 +363,8 @@ export class Director {
       const [lo, hi] = CONFIG.rescue.aggressors;
       // round 1 keeps the random 2–4 of slice 1 (drawn here so the round total is known up front)
       const count = this.round === 1 ? lo + Math.floor(host.rand() * (hi - lo + 1)) : RESCUE_COUNT;
-      const rescue = new RescueIncident(`rescue#${++this.counters.rescue}`);
+      // its variant too: a rescue headline names it (« Agression en cours » / « Vol en cours »)
+      const rescue = new RescueIncident(`rescue#${++this.counters.rescue}`, drawRescueKind(host.rand));
       return { kind, attack: null, rescue, count, launched: false, dropped: false };
     }
     if (kind === 'monument') {
