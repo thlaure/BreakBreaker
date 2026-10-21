@@ -93,8 +93,8 @@ export class WeaponLayer {
 }
 
 /**
- * The weapon in Paul's hand: carried at his side, spins once around him on each strike. The bouclier is drawn by
- * BubbleView (a protection bubble around him); the onde d’énergie is a small orb at his side that does not spin.
+ * The weapon in Paul's hand: carried at his side, spins once around him on each strike. The bouclier is not held: its
+ * protection is drawn by BubbleView (a bubble around him, on top of the held weapon).
  */
 export class HeldWeaponView {
   private readonly sprite: Phaser.GameObjects.Image;
@@ -106,7 +106,7 @@ export class HeldWeaponView {
   }
 
   update(weapon: Snapshot['weapon'], player: Snapshot['player'], struck: boolean, nowMs: number): void {
-    if (!weapon || player.ko || weapon.kind === 'bouclier') {
+    if (!weapon || player.ko) {
       this.sprite.setVisible(false);
       this.kind = null;
       return;

@@ -58,7 +58,25 @@ export const CONFIG = {
     returnSec: 12,
   },
   heal: { amount: 25 },
-  weapons: { firstSpawn: 10, spawnEvery: [15, 25] as const, maxGround: 2, pickupRadius: 20, minDist: 160, maxDist: 480, dropLifetime: 15 },
+  /**
+   * Weapon pickups. Street timer: the first at `firstSpawn` s, then every `spawnEvery` s (random in the range), only
+   * while fewer than `maxGround` weapons lie on the ground. No regular weapon is dropped (street timer, twist, breather,
+   * the Caïd's) while one already lies within `clearRadius` px of Paul (no piles; the bouclier and the first shooter's
+   * flashball are exempt). The twist drop, when it is not a bouclier, is a regular weapon `twistRegularShare` of the
+   * time (else nothing); the breather drop comes at the end of every `breatherEvery`-th round only (even rounds).
+   */
+  weapons: {
+    firstSpawn: 20,
+    spawnEvery: [30, 45] as const,
+    maxGround: 1,
+    pickupRadius: 20,
+    minDist: 160,
+    maxDist: 480,
+    dropLifetime: 15,
+    clearRadius: 200,
+    twistRegularShare: 0.5,
+    breatherEvery: 2,
+  },
   /**
    * Energy gauge (« mana », 0..`max`): every rioter KO counted by Rules fills it by `gain` (`boss` for Le Caïd, `brute`
    * for a brute, `rioter` for anyone else), except while the mode furie is on and for the onde d’énergie's own KOs. It
@@ -84,16 +102,15 @@ export const CONFIG = {
     launchJitter: 0.35,
   },
   /**
-   * Bouclier (the one special pickup, held): a protection bubble around Paul; lasts `durationSec` of active sim time,
-   * then breaks; no strike counter. Every rock, firebomb and shooter's bullet that would hit Paul is blocked, from any side (360°); ground
-   * fire and contact blows are not. A strike is a bash: reach `bashRange`, one-hit KO, `knockback` px away from Paul, no
-   * charge used. From `dropFromRound` the twist weapon drop is a bouclier with probability `dropShare` (a regular weapon
-   * otherwise); from `spawnFromRound` a timed street spawn is one with probability `spawnShare`.
+   * Bouclier (the one special pickup): protection only. Picking it up starts a protection bubble around Paul for
+   * `durationSec` of active sim time (frozen while paused; a second pickup restarts it; it ends at once if Paul is KO'd),
+   * on top of whatever he holds: it never takes the weapon slot and adds no damage (Frapper stays Paul's normal strike).
+   * Every rock, firebomb and shooter's bullet that would hit Paul is blocked, from any side (360°); ground fire and
+   * contact blows are not. From `dropFromRound` the twist weapon drop is a bouclier with probability `dropShare`; from
+   * `spawnFromRound` a timed street spawn is one with probability `spawnShare`.
    */
   bouclier: {
     durationSec: 20,
-    bashRange: 64,
-    knockback: 24,
     dropFromRound: 3,
     dropShare: 0.5,
     spawnFromRound: 5,
@@ -154,10 +171,28 @@ export const CONFIG = {
    */
   brute: { speedMul: 0.75, hp: 4, knockback: 28, counts: [[4, 1], [6, 2], [8, 3]] as const },
   /**
-   * « Le Caïd » (mini-boss, role 'boss'): `hp` HP, `speedMul` × speed, `knockback` px push; from `fromRound` he closes
-   * every round (last fill rioter). KO'd: +1 as usual, +`bonus` (once per round) and a regular weapon dropped where he fell.
+   * « Le Caïd » (mini-boss, role 'boss'): HP grow with the round, `hp` + floor((round − `fromRound`) / `hpEvery`) ×
+   * `hpStep`, capped at `hpMax` (round 3 → 14, round 5 → 16, …, 26 from round 15). `damageFrom`: the damage he takes per
+   * source (bare hands, a held weapon's swing / flashball shot / gant punch, a returned rock, a mode furie hit, the onde
+   * d’énergie's beam, the bouclier's bubble). `speedMul` × speed; a landed blow does `damageMul` × the contact damage
+   * (rounded) and pushes Paul `knockback` px; he attacks every `attackIntervalMul` × CONFIG.hostile.attackInterval.
+   * From `fromRound` he closes every round (last fill rioter). KO'd: +1 as usual, +`bonus` (once per round) and,
+   * `dropShare` of the time (seeded), a regular weapon dropped where he fell.
    */
-  caid: { speedMul: 0.9, hp: 6, knockback: 40, fromRound: 3, bonus: 5 },
+  caid: {
+    speedMul: 0.9,
+    hp: 14,
+    hpStep: 2,
+    hpEvery: 2,
+    hpMax: 26,
+    damageFrom: { hands: 1, weapon: 2, rock: 1, furie: 5, beam: 10, bubble: 0 },
+    damageMul: 1.5,
+    knockback: 52,
+    attackIntervalMul: 0.85,
+    fromRound: 3,
+    bonus: 5,
+    dropShare: 0.5,
+  },
   /**
    * Shooters (cartoon AK-47, role 'shooter'): `hp` HP; keep `keepMin`–`keepMax` px from Paul with a clear line (else
    * walk in); aim `aimSec` at where Paul stands (red aim line, « ! »), then a burst of `burst` bullets `burstGap` s apart

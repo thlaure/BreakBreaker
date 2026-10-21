@@ -33,13 +33,13 @@ function strikesToKo(sim: Sim, lifeId: number, max = 12): number {
 }
 
 describe('new roles: hp and speed', () => {
-  test('runner 1 HP, brute 4 HP, Caïd 6 HP; everyone else keeps the base HP', () => {
+  test('runner 1 HP, brute 4 HP, Caïd 14 HP (round 3; tests/sim/caid.test.ts for later rounds); everyone else keeps the base HP', () => {
     const horde = new Horde();
     const hp = (role: Role) => horde.spawn({ variant: 'antifa', role, pos: { x: 700, y: 720 } })!.maxHp;
     expect(hp('runner')).toBe(CONFIG.runner.hp);
     expect(hp('runner')).toBe(1);
     expect(hp('brute')).toBe(4);
-    expect(hp('boss')).toBe(6);
+    expect(hp('boss')).toBe(14);
     expect(hp('contact')).toBe(CONFIG.hostile.baseHp);
     expect(roleHp('thrower')).toBe(CONFIG.hostile.baseHp);
   });
@@ -72,14 +72,13 @@ describe('damage rules on tougher rioters', () => {
     sim.weapons.held = { kind, uses: WEAPONS[kind].uses };
   };
 
-  test('bare hands: 1 damage a strike (runner 1, contact 2, brute 4, Caïd 6 strikes)', () => {
+  test('bare hands: 1 damage a strike (runner 1, contact 2, brute 4 strikes; the Caïd: tests/sim/caid.test.ts)', () => {
     expect(kill('runner')).toBe(1);
     expect(kill('contact')).toBe(2);
     expect(kill('brute')).toBe(4);
-    expect(kill('boss')).toBe(6);
   });
 
-  test('a held weapon: 2 damage on a brute (2 strikes) and the Caïd (3), one-hit KO on everyone else', () => {
+  test('a held weapon: 2 damage on a brute (2 strikes) and the Caïd (7 at round 3), one-hit KO on everyone else', () => {
     for (const k of ['baton', 'marteau', 'panneau'] as const) {
       expect(kill('brute', hold(k))).toBe(2);
       expect(kill('boss', hold(k))).toBe(Math.ceil(CONFIG.caid.hp / CONFIG.toughWeaponDamage));
@@ -88,14 +87,12 @@ describe('damage rules on tougher rioters', () => {
     }
   });
 
-  test('mode furie and the bouclier bash KO a brute and the Caïd outright', () => {
-    for (const role of ['brute', 'boss'] as const) {
-      expect(kill(role, (sim) => (sim.weapons.furieLeft = 10))).toBe(1);
-      expect(kill(role, (sim) => (sim.weapons.held = { kind: 'bouclier', uses: 0, secondsLeft: 20 }))).toBe(1);
-    }
+  test('mode furie KOs a brute outright; the bouclier adds nothing to bare hands', () => {
+    expect(kill('brute', (sim) => (sim.weapons.furieLeft = 10))).toBe(1);
+    expect(kill('brute', (sim) => sim.weapons.startShield())).toBe(CONFIG.brute.hp);
   });
 
-  test('the onde d’énergie KOs a brute and the Caïd in one beam', () => {
+  test('the onde d’énergie KOs a brute in one beam; the Caïd takes CONFIG.caid.damageFrom.beam', () => {
     const sim = new Sim(2, { invulnerable: true });
     sim.player.pos = { ...OPEN };
     sim.player.facing = { x: 1, y: 0 };
@@ -107,7 +104,7 @@ describe('damage rules on tougher rioters', () => {
     for (let i = 0; i < 71; i++) ev.push(...sim.step(input({ chargeHeld: true, aim: { x: 1, y: 0 } })));
     expect(of(ev, 'BeamFired')).toHaveLength(1);
     expect(b.state).toBe('ko');
-    expect(c.state).toBe('ko');
+    expect(c.hp).toBe(c.maxHp - CONFIG.caid.damageFrom.beam);
   });
 
   test('a returned rock does 1 damage (a brute takes 4)', () => {
@@ -143,13 +140,14 @@ describe('knockback on Paul', () => {
     throw new Error('no blow landed');
   }
 
-  test('a brute pushes Paul 28 px away (west here), a Caïd 40 px; no extra damage', () => {
+  test('a brute pushes Paul 28 px away (west here) with no extra damage; a Caïd 52 px, ×1.5 damage', () => {
     for (const [role, k] of [
       ['brute', CONFIG.brute.knockback],
       ['boss', CONFIG.caid.knockback],
     ] as const) {
       const { before, after, hit } = blow(role, OPEN);
-      expect(hit.amount).toBe(CONFIG.hostile.contactDamage + Math.floor(1 / 2));
+      const base = CONFIG.hostile.contactDamage + Math.floor(1 / 2);
+      expect(hit.amount).toBe(role === 'boss' ? Math.round(base * CONFIG.caid.damageMul) : base);
       expect(Math.hypot(hit.push!.x, hit.push!.y)).toBeCloseTo(k, 6);
       expect(before.x - after.x).toBeCloseTo(k, 0);
       expect(Math.abs(after.y - before.y)).toBeLessThan(1);
@@ -292,7 +290,7 @@ describe('the Caïd in play', () => {
     throw new Error('no Caïd');
   }
 
-  test('a melee KO: +1 and +5 at his position, a regular weapon dropped where he fell, award key caid#<round>', () => {
+  test('a melee KO: +1 and +5 at his position, at most one regular weapon dropped where he fell (1 in 2), award key caid#<round>', () => {
     const { sim, caid } = untilCaid();
     expect(sim.director.round).toBe(CONFIG.caid.fromRound);
     caid.hp = 1;
@@ -306,9 +304,9 @@ describe('the Caïd in play', () => {
     expect(scored).toContainEqual({ type: 'ScoreChanged', points: CONFIG.caid.bonus, pos: caid.pos });
     // (a timed street spawn may land on the same step, elsewhere)
     const drop = of(ev, 'WeaponSpawned').filter((e) => e.pos.x === caid.pos.x && e.pos.y === caid.pos.y);
-    expect(drop).toHaveLength(1);
-    expect(['baton', 'marteau', 'panneau']).toContain(drop[0]!.kind);
-    expect(sim.weapons.ground.some((g) => g.pos.x === caid.pos.x && g.pos.y === caid.pos.y)).toBe(true);
+    expect(drop.length).toBeLessThanOrEqual(1);
+    for (const d of drop) expect(['baton', 'marteau', 'panneau']).toContain(d.kind);
+    expect(sim.weapons.ground.some((g) => g.pos.x === caid.pos.x && g.pos.y === caid.pos.y)).toBe(drop.length === 1);
     expect(sim.rules.award(`caid#${CONFIG.caid.fromRound}`, 5)).toBe(false);
     // later steps never award it again
     let again = 0;

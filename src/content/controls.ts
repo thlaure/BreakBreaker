@@ -6,7 +6,7 @@ export const RULES: readonly string[] = [
   'Les groupes pacifiques et les victimes sont à protéger et à contourner : Paul ne peut pas les frapper.',
   'Des armes apparaissent au hasard dans les rues (bâton, marteau, panneau, puis gant de boxe à ressort et flashball) : passe dessus pour les prendre. Elles mettent KO d’un coup et s’usent après quelques coups. Le gant frappe tout droit, loin devant Paul ; le flashball tire vers la souris (au tactile, droit devant avec une petite aide à la visée).',
   'Chaque casseur mis KO remplit la jauge d’énergie (plus pour une brute ou le Caïd, rien pendant le mode furie ni avec l’onde). Dès la moitié, maintiens C pour charger l’onde d’énergie 1 s (Paul reste immobile) : elle met KO tous les casseurs sur sa ligne et coûte la moitié de la jauge. Pleine, appuie sur R pour le mode furie (12 s) : elle se vide entièrement.',
-  'Quand ça chauffe, un bouclier peut apparaître (20 s) : il arrête pierres, bouteilles et balles de tous les côtés et repousse d’un coup.',
+  'Quand ça chauffe, un bouclier peut apparaître (20 s) : il protège Paul en plus de son arme, en arrêtant pierres, bouteilles et balles de tous les côtés (il ne frappe pas).',
   'Les pierres lancées par les casseurs tombent au sol : ramasse-les puis renvoie-les. Dès la manche 6, des tireurs visent Paul : une ligne rouge annonce leur rafale, écarte-toi de la ligne. Passe sur une station « Soins » pour récupérer de la santé (une fois par station).',
 ];
 

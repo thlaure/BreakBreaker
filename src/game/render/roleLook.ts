@@ -32,5 +32,26 @@ export function hpFill(hp: number, maxHp: number, inner: number): number {
   return Math.max(1, Math.min(inner, Math.round((inner * hp) / maxHp)));
 }
 
+/** HP a segment of the Caïd's HP bar stands for, and the most segments it shows. */
+export const HP_PER_SEGMENT = 2;
+export const MAX_SEGMENTS = 13;
+
+/** Segments of the Caïd's HP bar for `maxHp`: one per HP_PER_SEGMENT HP, 1..MAX_SEGMENTS. */
+export function hpSegments(maxHp: number): number {
+  return Math.max(1, Math.min(MAX_SEGMENTS, Math.ceil(maxHp / HP_PER_SEGMENT)));
+}
+
+/** Filled pixels of each segment (`segW` px wide) of the Caïd's HP bar, left to right; at least 1 px while hp > 0. */
+export function hpSegmentFills(hp: number, maxHp: number, segW: number): number[] {
+  const n = hpSegments(maxHp);
+  const per = Math.max(HP_PER_SEGMENT, maxHp / n);
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const f = Math.max(0, Math.min(1, (hp - i * per) / per));
+    out.push(f <= 0 ? 0 : Math.max(1, Math.round(f * segW)));
+  }
+  return out;
+}
+
 /** Runner dust puffs: one every DUST_MS of running (render only). */
 export const DUST_MS = 90;

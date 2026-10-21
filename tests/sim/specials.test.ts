@@ -108,7 +108,7 @@ describe('bouclier: blocking', () => {
 
   test('fire patches on the ground and contact blows are not blocked', () => {
     const sim = new Sim(5);
-    sim.weapons.held = heldOf('bouclier');
+    sim.weapons.startShield();
     const p = sim.player.pos;
     sim.player.facing = { x: 1, y: 0 };
     const h = sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { x: p.x + 14, y: p.y } })!;
@@ -118,7 +118,7 @@ describe('bouclier: blocking', () => {
     expect(of(sim.step(IDLE), 'PlayerDamaged')).toHaveLength(1);
 
     const s2 = new Sim(5);
-    s2.weapons.held = heldOf('bouclier');
+    s2.weapons.startShield();
     s2.firePatches.list.push({ id: 1, pos: { ...s2.player.pos }, until: 99 });
     expect(of(s2.step(IDLE), 'PlayerDamaged')).toHaveLength(1);
   });
@@ -126,7 +126,7 @@ describe('bouclier: blocking', () => {
   test('in the Sim, rocks thrown at Paul from in front, the side and behind are all blocked by the bubble', () => {
     for (const [dx, dy] of [[100, 0], [0, 100], [-100, 0]] as const) {
       const sim = new Sim(5);
-      sim.weapons.held = heldOf('bouclier');
+      sim.weapons.startShield();
       sim.player.facing = { x: 1, y: 0 };
       const p = sim.player.pos;
       sim.rocks.spawnEnemy({ x: p.x + dx, y: p.y + dy }, { x: p.x - dx * 0.6, y: p.y - dy * 0.6 }, 0);
@@ -141,7 +141,7 @@ describe('bouclier: blocking', () => {
   test('the bubble is deterministic: same seed, same blocks', () => {
     const run = () => {
       const sim = new Sim(9, { invulnerable: false });
-      sim.weapons.held = heldOf('bouclier');
+      sim.weapons.startShield();
       const p = { ...sim.player.pos };
       const out: SimEvent[] = [];
       for (let k = 0; k < 4; k++) {
@@ -157,69 +157,134 @@ describe('bouclier: blocking', () => {
   });
 });
 
-describe('bouclier: bash, timer', () => {
-  test('pickup holds the bouclier for 20 s; WeaponPickedUp', () => {
+describe('bouclier: protection only, on top of the held weapon', () => {
+  test('the bouclier has no bash tunables any more', () => {
+    expect(Object.keys(CONFIG.bouclier).sort()).toEqual(['dropFromRound', 'dropShare', 'durationSec', 'spawnFromRound', 'spawnShare']);
+  });
+
+  test('pickup starts the 20 s protection timer and keeps the held weapon and its uses; WeaponPickedUp', () => {
+    const w = new Weapons(grid, rng(1));
+    const paul = createPlayer({ x: 656, y: 720 });
+    w.held = { kind: 'baton', uses: 7 };
+    w.ground.push({ id: 1, kind: 'bouclier', pos: { x: 660, y: 720 }, expiresAt: null });
+    expect(w.step(DT, 0, paul)).toContainEqual({ type: 'WeaponPickedUp', kind: 'bouclier' });
+    expect(w.held).toEqual({ kind: 'baton', uses: 7 });
+    expect(w.shieldLeft).toBe(CONFIG.bouclier.durationSec);
+    expect(w.shield()).toBe(true);
+  });
+
+  test('bare hands stay bare hands with the bouclier on', () => {
     const w = new Weapons(grid, rng(1));
     const paul = createPlayer({ x: 656, y: 720 });
     w.ground.push({ id: 1, kind: 'bouclier', pos: { x: 660, y: 720 }, expiresAt: null });
-    expect(w.step(DT, 0, paul)).toContainEqual({ type: 'WeaponPickedUp', kind: 'bouclier' });
-    expect(w.held).toEqual({ kind: 'bouclier', uses: 0, secondsLeft: CONFIG.bouclier.durationSec });
+    w.step(DT, 0, paul);
+    expect(w.held).toBeNull();
+    expect(w.range()).toBe(CONFIG.melee.range);
   });
 
-  test('a bash KOs in one hit, knocks the body 24 px away and uses no charge', () => {
+  test('a regular weapon picked up while the bouclier is on replaces the weapon, the protection goes on', () => {
+    const w = new Weapons(grid, rng(1));
+    const paul = createPlayer({ x: 656, y: 720 });
+    w.startShield();
+    w.step(5, 5, paul);
+    w.ground.push({ id: 2, kind: 'panneau', pos: { x: 660, y: 720 }, expiresAt: null });
+    w.step(DT, 5 + DT, paul);
+    expect(w.held).toEqual({ kind: 'panneau', uses: WEAPONS.panneau.uses });
+    expect(w.shieldLeft).toBeCloseTo(CONFIG.bouclier.durationSec - 5 - DT, 6);
+  });
+
+  test('a second bouclier resets the timer to 20 s', () => {
+    const w = new Weapons(grid, rng(1));
+    const paul = createPlayer({ x: 656, y: 720 });
+    w.startShield();
+    w.step(12, 12, paul);
+    expect(w.shieldLeft).toBeCloseTo(CONFIG.bouclier.durationSec - 12, 6);
+    w.ground.push({ id: 3, kind: 'bouclier', pos: { x: 660, y: 720 }, expiresAt: null });
+    w.step(DT, 12 + DT, paul);
+    expect(w.shieldLeft).toBeCloseTo(CONFIG.bouclier.durationSec, 6);
+  });
+
+  test('no bash: Frapper with the bouclier is Paul’s normal strike (bare hands: 1 damage, no knockback, bare-hands reach)', () => {
     const sim = new Sim(5);
-    sim.weapons.held = heldOf('bouclier');
+    sim.weapons.startShield();
     const p = { ...sim.player.pos };
     const h = calm(sim, { x: p.x + 40, y: p.y });
-    h.hp = h.maxHp = 5;
     const before = { ...h.pos };
     const ev = sim.step(input({ strike: true }));
-    expect(h.state).toBe('ko');
-    expect(of(ev, 'ActorKnockedOut')).toHaveLength(1);
-    expect(h.pos.x - before.x).toBeCloseTo(CONFIG.bouclier.knockback, 0);
-    expect(sim.rules.kos).toBe(1);
-    expect(sim.weapons.held?.kind).toBe('bouclier');
-    expect(of(ev, 'WeaponBroken')).toEqual([]);
+    expect(of(ev, 'HitConfirmed')).toEqual([{ type: 'HitConfirmed', targetLifeId: h.lifeId, damage: 1, source: 'melee' }]);
+    expect(h.state).not.toBe('ko');
+    expect(h.hp).toBe(h.maxHp - 1);
+    // not pushed away (it may only have stepped toward Paul)
+    expect(h.pos.x).toBeLessThanOrEqual(before.x + 1e-9);
+    // out of bare-hands reach (the old 64 px bash reach): no hit
+    const s2 = new Sim(5);
+    s2.weapons.startShield();
+    const q = s2.player.pos;
+    const far = calm(s2, { x: q.x + CONFIG.melee.range + CONFIG.hostile.radius + 2, y: q.y });
+    expect(of(s2.step(input({ strike: true })), 'HitConfirmed')).toEqual([]);
+    expect(far.hp).toBe(far.maxHp);
   });
 
-  test('bash reach is 64 px', () => {
+  test('with a held weapon and the bouclier, a strike is the weapon’s strike: one-hit KO at its reach, one use spent, no knockback', () => {
     const sim = new Sim(5);
-    sim.weapons.held = heldOf('bouclier');
-    const p = sim.player.pos;
-    const far = calm(sim, { x: p.x + CONFIG.bouclier.bashRange + CONFIG.hostile.radius + 6, y: p.y });
+    sim.weapons.held = { kind: 'baton', uses: 5 };
+    sim.weapons.startShield();
+    const p = { ...sim.player.pos };
+    const h = calm(sim, { x: p.x + WEAPONS.baton.range - 2, y: p.y });
+    const before = { ...h.pos };
     sim.step(input({ strike: true }));
-    expect(far.state).not.toBe('ko');
+    expect(h.state).toBe('ko');
+    expect(h.pos).toEqual(before);
+    expect(sim.weapons.held).toEqual({ kind: 'baton', uses: 4 });
+    expect(sim.weapons.shield()).toBe(true);
+    expect(sim.snapshot().weapon).toEqual({ kind: 'baton', uses: 4 });
+    expect(sim.snapshot().shield).not.toBeNull();
   });
 
-  test('bash works in furie (more targets, launch)', () => {
+  test('the flashball still shoots with the bouclier on', () => {
     const sim = new Sim(5);
-    sim.weapons.held = heldOf('bouclier');
-    sim.weapons.furieLeft = 5;
-    const p = sim.player.pos;
-    for (let i = 0; i < 5; i++) calm(sim, at(i * 72, 40, p));
-    const ev = sim.step(input({ strike: true }));
-    const kos = of(ev, 'ActorKnockedOut');
-    expect(kos.length).toBeGreaterThan(CONFIG.melee.maxTargets);
-    for (const k of kos) expect(k.launch).toBeDefined();
-    expect(sim.weapons.held?.kind).toBe('bouclier');
+    sim.weapons.held = { kind: 'flashball', uses: 6 };
+    sim.weapons.startShield();
+    const ev = sim.step(input({ strike: true, aim: { x: 1, y: 0 } }));
+    expect(of(ev, 'FlashballFired')).toHaveLength(1);
+    expect(sim.weapons.held?.uses).toBe(5);
   });
 
-  test('expires after 20 s of active time (WeaponBroken); pause freezes it', () => {
+  test('expires after 20 s of active time (ShieldEnded), the held weapon stays; pause freezes it; snapshot shield', () => {
     const sim = new Sim(5, { invulnerable: true });
-    sim.weapons.held = heldOf('bouclier');
+    sim.weapons.held = { kind: 'marteau', uses: 3 };
+    sim.weapons.startShield();
     const all: SimEvent[] = [];
     for (let i = 0; i < STEPS(10); i++) all.push(...sim.step(IDLE));
-    const left = sim.snapshot().weapon!.secondsLeft!;
+    const left = sim.snapshot().shield!.secondsLeft;
     expect(left).toBeCloseTo(CONFIG.bouclier.durationSec - 10, 3);
     sim.pause();
     for (let i = 0; i < STEPS(30); i++) sim.step(IDLE);
-    expect(sim.snapshot().weapon!.secondsLeft).toBe(left);
+    expect(sim.snapshot().shield!.secondsLeft).toBe(left);
     sim.resume();
     for (let i = 0; i < STEPS(10) - 2; i++) all.push(...sim.step(IDLE));
-    expect(sim.weapons.held?.kind).toBe('bouclier');
+    expect(sim.weapons.shield()).toBe(true);
     for (let i = 0; i < 4; i++) all.push(...sim.step(IDLE));
-    expect(sim.weapons.held).toBeNull();
-    expect(all).toContainEqual({ type: 'WeaponBroken', kind: 'bouclier' });
+    expect(sim.weapons.shield()).toBe(false);
+    expect(sim.snapshot().shield).toBeNull();
+    expect(of(all, 'ShieldEnded')).toHaveLength(1);
+    expect(of(all, 'WeaponBroken')).toEqual([]);
+    expect(sim.weapons.held).toEqual({ kind: 'marteau', uses: 3 });
+  });
+
+  test('ends when Paul is KO’d', () => {
+    const sim = new Sim(5);
+    sim.weapons.startShield();
+    sim.player.hp = 1;
+    const h = sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { x: sim.player.pos.x + 14, y: sim.player.pos.y } })!;
+    h.state = 'windup';
+    h.stateUntil = 0;
+    h.nextAttackAt = 99;
+    const ev = sim.step(IDLE);
+    expect(sim.player.ko).toBe(true);
+    expect(of(ev, 'ShieldEnded')).toHaveLength(1);
+    expect(sim.weapons.shield()).toBe(false);
+    expect(sim.snapshot().shield).toBeNull();
   });
 });
 
@@ -476,13 +541,13 @@ describe('specials: the bouclier is the only special pickup', () => {
     for (const k of Object.keys(WEAPONS)) expect(isSpecial(k as never)).toBe(false);
   });
 
-  test('dropTwist: a regular weapon before round 3; from round 3 a seeded pick, about half boucliers', () => {
+  test('dropTwist: never a bouclier before round 3; from round 3 a seeded pick, about half boucliers; else a regular weapon or nothing', () => {
     for (const round of [1, 2]) {
       for (let seed = 1; seed <= 20; seed++) {
         const w = new Weapons(grid, rng(seed));
         const { drop, special } = w.dropTwist(DISTRICT.playerSpawn, round);
         expect(special).toBeNull();
-        expect(isSpecial(drop!.kind)).toBe(false);
+        if (drop) expect(isSpecial(drop.kind)).toBe(false);
       }
     }
     for (const round of [3, 4, 5, 8]) {
@@ -491,12 +556,12 @@ describe('specials: the bouclier is the only special pickup', () => {
       for (let seed = 1; seed <= n; seed++) {
         const w = new Weapons(grid, rng(seed));
         const { drop, special } = w.dropTwist(DISTRICT.playerSpawn, round);
-        expect(drop!.expiresAt).toBeCloseTo(CONFIG.weapons.dropLifetime, 6);
+        if (drop) expect(drop.expiresAt).toBeCloseTo(CONFIG.weapons.dropLifetime, 6);
         if (special) {
           expect(special).toBe('bouclier');
           expect(drop!.kind).toBe('bouclier');
           shields++;
-        } else expect(Object.keys(WEAPONS)).toContain(drop!.kind);
+        } else if (drop) expect(Object.keys(WEAPONS)).toContain(drop.kind);
       }
       expect(shields / n).toBeGreaterThan(0.35);
       expect(shields / n).toBeLessThan(0.65);

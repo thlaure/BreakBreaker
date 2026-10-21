@@ -317,6 +317,7 @@ describe('content', () => {
     expect(energy).toMatch(/maintiens C pour charger l’onde d’énergie 1 s/);
     expect(energy).toMatch(/appuie sur R pour le mode furie/);
     expect(RULES.some((r) => /bouclier peut apparaître \(20 s\)/.test(r))).toBe(true);
+    expect(RULES.some((r) => /repousse/.test(r))).toBe(false);
     for (const r of RULES) expect(r).not.toMatch(/saiyan|éclair jaune|ramasse.*(furie|onde)/i);
     expect(CONTROLS).toContainEqual({ action: 'Mode furie', keyboard: 'R (jauge pleine)', touch: 'Bouton Furie' });
     expect(CONTROLS).toContainEqual({ action: 'Onde d’énergie', keyboard: 'Maintenir C (jauge à moitié)', touch: 'Maintenir le bouton Onde' });
@@ -510,19 +511,21 @@ describe('mode furie HUD and audio', () => {
 });
 
 describe('special weapons HUD and audio', () => {
-  test('weapon row: « Bouclier (14 s) » (seconds rounded up); furie suffix kept', () => {
-    expect(weaponValue(snap((x) => { x.weapon = { kind: 'bouclier', uses: 0, secondsLeft: 13.2 }; }))).toBe('Bouclier (14 s)');
-    expect(weaponValue(snap((x) => { x.weapon = { kind: 'bouclier', uses: 0, secondsLeft: 0.01 }; }))).toBe('Bouclier (1 s)');
-    expect(weaponLine(snap((x) => { x.weapon = { kind: 'bouclier', uses: 0, secondsLeft: 4 }; x.furie = { secondsLeft: 3 }; }))).toBe(
-      'Arme : Bouclier (4 s) · Mode furie 3 s',
+  test('weapon row: the held weapon stays, the bouclier time follows (« Bâton (12) · Bouclier 14 s », seconds rounded up); furie suffix kept', () => {
+    expect(weaponValue(snap((x) => { x.weapon = { kind: 'baton', uses: 12 }; x.shield = { secondsLeft: 13.2 }; }))).toBe('Bâton (12) · Bouclier 14 s');
+    expect(weaponValue(snap((x) => { x.weapon = null; x.shield = { secondsLeft: 0.01 }; }))).toBe('Mains nues · Bouclier 1 s');
+    expect(weaponLine(snap((x) => { x.weapon = { kind: 'marteau', uses: 2 }; x.shield = { secondsLeft: 4 }; x.furie = { secondsLeft: 3 }; }))).toBe(
+      'Arme : Marteau (2) · Bouclier 4 s · Mode furie 3 s',
     );
+    expect(weaponValue(snap((x) => { x.weapon = { kind: 'baton', uses: 12 }; x.shield = null; }))).toBe('Bâton (12)');
   });
 
-  test('a bouclier picked up in the sim shows its 20 s in the weapon row', () => {
+  test('a bouclier picked up in the sim shows its 20 s next to the held weapon', () => {
     const sim = new Sim(4);
+    sim.weapons.held = { kind: 'panneau', uses: 6 };
     sim.weapons.ground.push({ id: 78, kind: 'bouclier', pos: { ...sim.player.pos }, expiresAt: null });
     sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false });
-    expect(weaponValue(sim.snapshot())).toBe('Bouclier (20 s)');
+    expect(weaponValue(sim.snapshot())).toBe('Panneau (6) · Bouclier 20 s');
   });
 
   test('charge bar under the health bar: fill follows the charge progress', () => {

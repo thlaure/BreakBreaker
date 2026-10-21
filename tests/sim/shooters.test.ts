@@ -267,7 +267,7 @@ describe('bullets', () => {
 
   test('in the Sim, Paul with the bouclier takes no bullet damage', () => {
     const { sim } = duel();
-    sim.weapons.held = { kind: 'bouclier', uses: 0, secondsLeft: 20 };
+    sim.weapons.startShield();
     const ev = until(sim, (e) => of(e, 'ShooterAimStarted').length > 0);
     for (let i = 0; i < 150; i++) ev.push(...sim.step(IDLE));
     expect(of(ev, 'ShieldBlocked').length).toBe(3);

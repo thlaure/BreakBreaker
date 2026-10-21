@@ -30,8 +30,8 @@ export function streetKinds(round: number): WeaponKind[] {
   return ALL_KINDS.filter((k) => round >= WEAPONS[k].fromRound);
 }
 
-/** Player-facing names of everything Paul can hold. */
-export const HELD_LABELS: Readonly<Record<HeldKind, string>> = {
+/** Player-facing names of everything Paul can pick up (the regular weapons he holds, the bouclier). */
+export const HELD_LABELS: Readonly<Record<PickupKind, string>> = {
   baton: WEAPONS.baton.label,
   marteau: WEAPONS.marteau.label,
   panneau: WEAPONS.panneau.label,
@@ -60,32 +60,33 @@ export interface GroundWeapon {
   expiresAt: number | null;
 }
 
-/** `uses` = strikes left (regular weapons); 0 for the bouclier, which has `secondsLeft` instead. */
+/** The regular weapon in Paul's hands: `uses` = strikes left. */
 export interface HeldWeapon {
   kind: HeldKind;
   uses: number;
-  secondsLeft?: number;
 }
 
 /** A freshly picked held weapon of `kind`. */
 export function heldOf(kind: HeldKind): HeldWeapon {
-  if (kind === 'bouclier') return { kind, uses: 0, secondsLeft: CONFIG.bouclier.durationSec };
   return { kind, uses: WEAPONS[kind].uses };
 }
 
 /**
  * Random weapon pickups. A weapon appears every CONFIG.weapons.spawnEvery seconds (random within the range) on a
- * free spot away from Paul, up to maxGround at once. Walking over one takes it (replacing the current weapon).
+ * free spot away from Paul, up to maxGround at once and never while one lies within clearRadius px of Paul. Walking over one takes it (replacing the current weapon).
  * A strike that hits at least one rioter uses one strike; at 0 the weapon breaks and Paul fights bare-handed.
  * The mode furie (`startFurie`, from the energy gauge) does not touch the weapon: it lasts CONFIG.furie.durationSec;
  * the timer runs with the sim steps (frozen while paused) and `endFurie` cuts it short (Paul KO).
- * The bouclier is held like a weapon and breaks after CONFIG.bouclier.durationSec of steps.
+ * The bouclier never takes the weapon slot: picking it up (re)starts a protection timer of CONFIG.bouclier.durationSec
+ * on top of the held weapon, run like the furie timer (`endShield` cuts it short: Paul KO).
  */
 export class Weapons {
   ground: GroundWeapon[] = [];
   held: HeldWeapon | null = null;
   /** Seconds of mode furie left (0 = off). */
   furieLeft = 0;
+  /** Seconds of bouclier protection left (0 = off). */
+  shieldLeft = 0;
   private nextSpawnAt: number;
   private nextId = 1;
   /** Sim time of the last step (special drops are stamped with it). */
@@ -103,15 +104,28 @@ export class Weapons {
     return this.furieLeft > 0;
   }
 
-  /**
-   * Reach of Paul's strike with the current weapon (bare hands otherwise; the bouclier's bash), ×CONFIG.furie.reachMul
-   * in furie.
-   */
+  /** The bouclier's protection is on. */
+  shield(): boolean {
+    return this.shieldLeft > 0;
+  }
+
+  /** (Re)starts the bouclier's protection for CONFIG.bouclier.durationSec (the held weapon is untouched). */
+  startShield(): void {
+    this.shieldLeft = CONFIG.bouclier.durationSec;
+  }
+
+  /** Ends the bouclier's protection at once (Paul KO); ShieldEnded when it was on. */
+  endShield(): SimEvent[] {
+    if (!this.shield()) return [];
+    this.shieldLeft = 0;
+    return [{ type: 'ShieldEnded' }];
+  }
+
+  /** Reach of Paul's strike with the current weapon (bare hands otherwise), ×CONFIG.furie.reachMul in furie. */
   range(): number {
     const k = this.held?.kind;
     // the gant and the flashball do not swing: in mode furie they strike like bare hands (×reachMul)
-    const base =
-      k === undefined ? CONFIG.melee.range : k === 'bouclier' ? CONFIG.bouclier.bashRange : WEAPONS[k].strike === 'swing' ? WEAPONS[k].range : CONFIG.melee.range;
+    const base = k === undefined || WEAPONS[k].strike !== 'swing' ? CONFIG.melee.range : WEAPONS[k].range;
     return this.furie() ? base * CONFIG.furie.reachMul : base;
   }
 
@@ -139,25 +153,25 @@ export class Weapons {
         ev.push({ type: 'FurieEnded' });
       }
     }
-    const h = this.held;
-    if (h?.kind === 'bouclier' && h.secondsLeft !== undefined) {
-      h.secondsLeft = Math.max(0, h.secondsLeft - dt);
-      if (h.secondsLeft <= 1e-9) {
-        this.held = null;
-        ev.push({ type: 'WeaponBroken', kind: 'bouclier' });
+    if (this.shieldLeft > 0) {
+      this.shieldLeft = Math.max(0, this.shieldLeft - dt);
+      if (this.shieldLeft <= 1e-9) {
+        this.shieldLeft = 0;
+        ev.push({ type: 'ShieldEnded' });
       }
     }
     this.ground = this.ground.filter((g) => g.expiresAt === null || now < g.expiresAt);
     const taken = this.ground.find((g) => dist(g.pos, player.pos) <= CONFIG.weapons.pickupRadius);
     if (taken && !player.ko) {
       this.ground = this.ground.filter((g) => g !== taken);
-      this.held = heldOf(taken.kind);
+      if (isSpecial(taken.kind)) this.startShield();
+      else this.held = heldOf(taken.kind);
       ev.push({ type: 'WeaponPickedUp', kind: taken.kind });
     }
     if (now >= this.nextSpawnAt) {
       const [lo, hi] = CONFIG.weapons.spawnEvery;
       this.nextSpawnAt = now + lo + this.rand() * (hi - lo);
-      if (this.ground.length < CONFIG.weapons.maxGround) {
+      if (this.ground.length < CONFIG.weapons.maxGround && !this.crowded(player.pos)) {
         const pos = this.freeSpot(player.pos);
         if (pos) {
           const kind = this.timedKind(this.rand(), round);
@@ -187,12 +201,19 @@ export class Weapons {
     return kinds[Math.min(kinds.length - 1, Math.floor(u * kinds.length))]!;
   }
 
+  /** A weapon already lies within CONFIG.weapons.clearRadius px of Paul: no new regular weapon is dropped (no piles). */
+  crowded(player: Vec): boolean {
+    return this.ground.some((g) => dist(g.pos, player) <= CONFIG.weapons.clearRadius);
+  }
+
   /**
    * Special drop (round twist / round end): a random weapon (or the given kind, e.g. a bouclier) 160–480 px from Paul
    * right now, outside the timer and the ground cap; it vanishes after CONFIG.weapons.dropLifetime s if nobody takes
-   * it. Null when no free spot was found.
+   * it. Null when no free spot was found, or (a regular weapon only) while a weapon lies within
+   * CONFIG.weapons.clearRadius px of Paul.
    */
   dropSpecial(player: Vec, kindOverride?: PickupKind): GroundWeapon | null {
+    if ((kindOverride === undefined || !isSpecial(kindOverride)) && this.crowded(player)) return null;
     const pos = this.freeSpot(player);
     if (!pos) return null;
     const kind = kindOverride ?? KINDS[Math.floor(this.rand() * KINDS.length)]!;
@@ -202,10 +223,12 @@ export class Weapons {
   }
 
   /**
-   * A regular weapon (picked with this stream) dropped exactly at `pos` (where the Caïd fell), outside the timer and the
-   * ground cap; it vanishes after CONFIG.weapons.dropLifetime s like the other drops.
+   * The Caïd's drop: CONFIG.caid.dropShare of the time (one draw of this stream), a regular weapon dropped exactly at
+   * `pos` (where he fell), outside the timer and the ground cap; it vanishes after CONFIG.weapons.dropLifetime s like
+   * the other drops. Null otherwise, or while a weapon lies within CONFIG.weapons.clearRadius px of Paul (`player`).
    */
-  dropAt(pos: Vec): GroundWeapon {
+  dropAt(pos: Vec, player: Vec): GroundWeapon | null {
+    if (this.rand() >= CONFIG.caid.dropShare || this.crowded(player)) return null;
     const kind = KINDS[Math.min(KINDS.length - 1, Math.floor(this.rand() * KINDS.length))]!;
     const w: GroundWeapon = { id: this.nextId++, kind, pos: { ...pos }, expiresAt: this.now + CONFIG.weapons.dropLifetime };
     this.ground.push(w);
@@ -214,13 +237,15 @@ export class Weapons {
 
   /**
    * The round twist's weapon drop: from CONFIG.bouclier.dropFromRound a bouclier with probability
-   * CONFIG.bouclier.dropShare (one draw of this stream), a regular weapon otherwise (and always before).
-   * `special` = 'bouclier' when it is one (null for a regular weapon).
+   * CONFIG.bouclier.dropShare (one draw of this stream); otherwise (and always before) a regular weapon
+   * CONFIG.weapons.twistRegularShare of the time (a second draw), else nothing. `special` = 'bouclier' when it is one
+   * (null for a regular weapon or no drop).
    */
   dropTwist(player: Vec, round: number): { drop: GroundWeapon | null; special: SpecialKind | null } {
-    if (round < CONFIG.bouclier.dropFromRound || this.rand() >= CONFIG.bouclier.dropShare)
-      return { drop: this.dropSpecial(player), special: null };
-    return { drop: this.dropSpecial(player, 'bouclier'), special: 'bouclier' };
+    if (round >= CONFIG.bouclier.dropFromRound && this.rand() < CONFIG.bouclier.dropShare)
+      return { drop: this.dropSpecial(player, 'bouclier'), special: 'bouclier' };
+    if (this.rand() >= CONFIG.weapons.twistRegularShare) return { drop: null, special: null };
+    return { drop: this.dropSpecial(player), special: null };
   }
 
   /**
@@ -237,13 +262,12 @@ export class Weapons {
 
   /** A flashball shot fired: one shot used whether it hits or not; at 0 it breaks (WeaponBroken). */
   onShot(): SimEvent[] {
-    if (!this.held || this.held.kind === 'bouclier') return [];
     return this.onSwing(1);
   }
 
-  /** Call after each swing with the number of rioters hit (regular weapons only: the specials have no strike count). */
+  /** Call after each swing with the number of rioters hit (no held weapon: nothing to use). */
   onSwing(hits: number): SimEvent[] {
-    if (!this.held || hits === 0 || this.held.kind === 'bouclier') return [];
+    if (!this.held || hits === 0) return [];
     this.held.uses -= 1;
     if (this.held.uses > 0) return [];
     const kind = this.held.kind;

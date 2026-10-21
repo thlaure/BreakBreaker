@@ -35,8 +35,8 @@ const SHINE = 0xffffff;
 const HIT_FLASH_MS = 140;
 
 /**
- * Runtime texture of the special pickup: `weapon_bouclier` (a round blue/steel shield with a highlight; once held it
- * becomes the protection bubble, BubbleView).
+ * Runtime texture of the special pickup: `weapon_bouclier` (a round blue/steel shield with a highlight; once picked
+ * up it becomes the protection bubble, BubbleView).
  */
 export function makeSpecialTextures(scene: Phaser.Scene): void {
   if (scene.textures.exists('weapon_bouclier')) return;
@@ -95,10 +95,10 @@ export class BubbleView {
     return at;
   }
 
-  update(weapon: Snapshot['weapon'], player: Snapshot['player'], body: Phaser.GameObjects.Sprite, nowMs: number): void {
-    const on = weapon?.kind === 'bouclier' && !player.ko;
+  update(shield: Snapshot['shield'], player: Snapshot['player'], body: Phaser.GameObjects.Sprite, nowMs: number): void {
+    const on = shield !== null && !player.ko;
     if (this.held && !on && !player.ko) {
-      // expired (or swapped for another pickup): pop where it was
+      // expired: pop where it was
       this.popAt = nowMs;
       this.pop.x = this.center.x;
       this.pop.y = this.center.y;
@@ -117,7 +117,7 @@ export class BubbleView {
       this.center.y = Math.round(body.y - BUBBLE_LIFT);
       const { x, y } = this.center;
       const r = bubbleRadius(nowMs, this.reducedMotion);
-      const a = bubbleAlpha(weapon.secondsLeft ?? 0, nowMs, this.reducedMotion);
+      const a = bubbleAlpha(shield!.secondsLeft, nowMs, this.reducedMotion);
       const flash = nowMs < this.flashUntil ? 1 : 0;
       // film: faint fill, a slightly denser edge band, the 1-px lighter rim
       f.fillStyle(FILM, 0.1 * a).fillCircle(x, y, r);

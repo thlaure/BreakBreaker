@@ -13,7 +13,7 @@ const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: 
 const view = (lifeId: number, pos: Vec): HostileView => ({ lifeId, pos, r: CONFIG.hostile.radius, active: true });
 
 describe('weapon pickups', () => {
-  test('weapons appear at random over time, at most 2 on the ground, on walkable spots away from Paul', () => {
+  test('weapons appear at random over time, at most 1 on the ground, on walkable spots away from Paul', () => {
     const w = new Weapons(grid, rng(3));
     const paul = createPlayer({ ...DISTRICT.playerSpawn });
     let spawned = 0;
@@ -25,7 +25,7 @@ describe('weapon pickups', () => {
         expect(grid.isGroup(g.pos)).toBe(false);
       }
     }
-    expect(spawned).toBeGreaterThanOrEqual(2);
+    expect(spawned).toBeGreaterThanOrEqual(1);
     expect(new Set(w.ground.map((g) => g.kind)).size).toBeGreaterThanOrEqual(1);
   });
 

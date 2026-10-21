@@ -557,6 +557,7 @@ export class GameAudio {
           break;
         case 'ProjectileLanded':
         case 'WeaponBroken':
+        case 'ShieldEnded':
         case 'FlagSwapped':
           this.play('land');
           break;
