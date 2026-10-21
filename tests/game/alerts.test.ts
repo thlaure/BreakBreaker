@@ -775,6 +775,7 @@ describe('« Le Caïd » alerts', () => {
     maxHp: 6,
     windup: false,
     bottleUp: false,
+    aiming: false,
   });
   const snap = (patch: (s: Snapshot) => void): Snapshot => {
     const s = new Sim(1).snapshot();

@@ -91,6 +91,13 @@ export function bruteCount(round: number): number {
   return n;
 }
 
+/** Shooters in a round's fill (CONFIG.shooter.counts): none before round 6, 1 in rounds 6–7, 2 from round 8, ≤ maxPerRound. */
+export function shooterCount(round: number): number {
+  let n = 0;
+  for (const [from, count] of CONFIG.shooter.counts) if (round >= from) n = count;
+  return Math.min(CONFIG.shooter.maxPerRound, n);
+}
+
 /** Rises one step every 2 rounds and every 30 session KOs, capped. */
 export function pressure(round: number, kos: number): number {
   return Math.min(CONFIG.pressureMax, 1 + Math.floor(round / 2) + Math.floor(kos / 30));
@@ -582,7 +589,8 @@ export class Director {
 
   /**
    * From CONFIG.caid.fromRound the Caïd is the very last fill rioter; bruteCount brutes take contact slots, one per group
-   * from the last group back (never in the pack). A rock thrower or firebomber on the Caïd's slot trades its role with
+   * from the last group back (never in the pack); then shooterCount shooters take contact slots of the last group (the
+   * climax), earlier groups when it has none left. A rock thrower or firebomber on the Caïd's slot trades its role with
    * a contact slot elsewhere, so their counts never change.
    */
   private dress(groups: FillGroup[]): void {
@@ -608,6 +616,14 @@ export class Director {
       }
       if (!placed) break;
     }
+    let shooters = shooterCount(this.round);
+    for (let gi = groups.length - 1; gi >= 0 && shooters > 0; gi--)
+      for (const q of groups[gi]!.reqs) {
+        if (shooters === 0) break;
+        if (q.role !== 'contact') continue;
+        q.role = 'shooter';
+        shooters--;
+      }
   }
 
   /** Fill groups added later (an objective dropped): the Caïd's role moves to the new last fill slot, so he still closes. */

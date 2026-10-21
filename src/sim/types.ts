@@ -31,8 +31,11 @@ export interface InputFrame {
   furie: boolean;
 }
 
-/** Regular street weapons (limited strikes). */
-export type WeaponKind = 'baton' | 'marteau' | 'panneau';
+/**
+ * Regular street weapons (limited strikes): the swung ones, the spring-loaded boxing glove (`gant`, a straight punch) and
+ * the cartoon `flashball` (aimed shots).
+ */
+export type WeaponKind = 'baton' | 'marteau' | 'panneau' | 'gant' | 'flashball';
 /** The one special pickup (the mode furie and the onde d’énergie come from the energy gauge, never from the ground). */
 export type SpecialKind = 'bouclier';
 /** What Paul can hold: a regular weapon or the bouclier. */
@@ -43,8 +46,21 @@ export type PickupKind = HeldKind;
 export type EnergyLevel = 'onde' | 'furie';
 
 export type Variant = 'classic' | 'palestinian' | 'antifa';
-/** 'runner' (fast, fragile), 'brute' (tough, slow, pushes Paul) and 'boss' (« Le Caïd ») fight as contacts. */
-export type Role = 'contact' | 'thrower' | 'degrader' | 'aggressor' | 'molotov' | 'firebomber' | 'runner' | 'brute' | 'boss';
+/**
+ * 'runner' (fast, fragile), 'brute' (tough, slow, pushes Paul) and 'boss' (« Le Caïd ») fight as contacts; 'shooter'
+ * (cartoon AK-47) keeps its distance and fires bursts of bullets along a telegraphed line.
+ */
+export type Role =
+  | 'contact'
+  | 'thrower'
+  | 'degrader'
+  | 'aggressor'
+  | 'molotov'
+  | 'firebomber'
+  | 'runner'
+  | 'brute'
+  | 'boss'
+  | 'shooter';
 export type TargetId = 'school' | 'car1' | 'car2' | 'busStop' | 'shop';
 /** What kind of attack a round's "casse" is (Phase C extends both unions). */
 export type CasseKind = 'school' | 'car' | 'busStop' | 'shop';
@@ -58,7 +74,8 @@ export type MonumentFlag = 'french' | 'palestinian';
 
 export type SimEvent =
   /** `heavy`: the rioter hit is a brute or the Caïd (render / audio: a heavier hit). */
-  | { type: 'HitConfirmed'; targetLifeId: number; damage: number; source: 'melee' | 'rock' | 'beam'; heavy?: boolean }
+  /** `source`: 'gant' = the boxing glove's punch, 'flashball' = a flashball shot. */
+  | { type: 'HitConfirmed'; targetLifeId: number; damage: number; source: 'melee' | 'rock' | 'beam' | 'gant' | 'flashball'; heavy?: boolean }
   | { type: 'EnemyThrowStarted'; from: Vec; to: Vec; until: number }
   /** An enemy rock actually left the thrower's hand (not emitted when the flying cap cancels the throw). */
   | { type: 'EnemyRockThrown'; rockId: number }
@@ -66,6 +83,21 @@ export type SimEvent =
   | { type: 'ProjectilePickedUp'; rockId: number }
   | { type: 'ProjectileReturned'; rockId: number }
   | { type: 'ProtectedGroupBlockedImpact' }
+  /**
+   * A shooter (`lifeId`) starts aiming from `from` at where Paul stands (`to`) until `until`; its burst then follows
+   * that fixed line.
+   */
+  | { type: 'ShooterAimStarted'; lifeId: number; from: Vec; to: Vec; until: number }
+  /** A shooter's bullet left the barrel (not emitted when the flying cap swallows it). */
+  | { type: 'BulletFired'; id: number }
+  /** A bullet or a flashball shot stopped against a solid at `pos` (render: impact spark). */
+  | { type: 'BulletImpact'; pos: Vec; owner: 'enemy' | 'player' }
+  /** Paul fired the flashball (`id` = the shot) from `from` along `dir`; one shot used. */
+  | { type: 'FlashballFired'; id: number; from: Vec; dir: Vec }
+  /** The flashball guaranteed with the session's first shooter lies at `pos` (one-line hint banner). */
+  | { type: 'FlashballDropped'; pos: Vec }
+  /** The boxing glove punched from `from` to `to` (the rioter hit, else the end of its reach); `lifeId` = who it hit. */
+  | { type: 'GlovePunched'; from: Vec; to: Vec; lifeId: number | null }
   /**
    * `launch`: set when Paul's strike KO'd the rioter during the mode furie (render only: the body flies `power` px along
    * `dir` while spinning `spin` turns, signed).
@@ -106,7 +138,7 @@ export type SimEvent =
   | { type: 'WeaponPickedUp'; kind: HeldKind }
   /** The held weapon is gone: no strikes left, or the bouclier's time is up. */
   | { type: 'WeaponBroken'; kind: HeldKind }
-  /** The bouclier's bubble stopped a rock or a firebomb, from any side (`pos` = where it was stopped, on Paul). */
+  /** The bouclier's bubble stopped a rock, a firebomb or a bullet, from any side (`pos` = where it was stopped, on Paul). */
   | { type: 'ShieldBlocked'; pos: Vec }
   /** Paul started charging the onde d’énergie (Onde pressed with enough energy). */
   | { type: 'BeamCharging' }

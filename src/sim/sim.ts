@@ -1,3 +1,4 @@
+import { Bullets } from './bullets';
 import { CONFIG } from './config';
 import { Director, spawnPoints, type RoundPhase, type RoundSummary } from './director';
 import { Energy } from './energy';
@@ -12,9 +13,9 @@ import { moveCircle } from './map/collide';
 import { DISTRICT, type Rect } from './map/district';
 import { FlowField } from './map/flowfield';
 import { Grid } from './map/grid';
-import { len, norm, sub } from './math';
+import { dist, inArc, len, norm, segmentCircleHit, sub } from './math';
 import { Monument, MonumentIncident, type MonumentStage } from './monument';
-import { createPlayer, damagePlayer, stepPlayer, sweep, type Player } from './player';
+import { createPlayer, damagePlayer, readyStrike, stepPlayer, sweep, type Player } from './player';
 import { Rocks, type RockCtx, type RockState } from './projectiles';
 import { rng } from './rng';
 import { Toolboxes, type ToolboxMessage } from './repair';
@@ -22,7 +23,7 @@ import { Rules, type SessionStats } from './rules';
 import { beam } from './specials';
 import { Targets } from './targets';
 import type { CasseKind, InputFrame, Launch, MonumentFlag, Role, SimEvent, TargetId, Variant, Vec } from './types';
-import { Weapons, type HeldKind, type PickupKind } from './weapons';
+import { WEAPONS, Weapons, type HeldKind, type PickupKind } from './weapons';
 
 /** Damage of a weapon strike: enough to KO any rioter (spec: weapons are one-hit KO). */
 const WEAPON_DAMAGE = 99;
@@ -71,9 +72,17 @@ export interface Snapshot {
     windup: boolean;
     /** Holding up a lit bottle (a Molotov or firebomber windup; not a firebomber's melee blow). */
     bottleUp: boolean;
+    /** A shooter aiming or firing its burst (raised rifle, « ! »). */
+    aiming: boolean;
   }[];
   rocks: { id: number; state: RockState; owner: 'enemy' | 'player'; kind: 'caillou' | 'pave' | 'brique'; pos: Vec }[];
   telegraphs: Telegraph[];
+  /** Shooters' aim lines (from the shooter to where Paul stood at aim start) while they aim; gone at a KO. */
+  aims: Telegraph[];
+  /** Shooters' bullets in flight (`dir` unit). */
+  bullets: { id: number; pos: Vec; dir: Vec }[];
+  /** Paul's flashball shots in flight (`dir` unit). */
+  flashballs: { id: number; pos: Vec; dir: Vec }[];
   group: { area: Rect; members: Vec[] };
   victim: Vec | null;
   /** `attacked` = an urgent attack on it; `burning` = on fire with no urgent attack (smouldering until put out). */
@@ -186,7 +195,8 @@ export function segmentRectEntry(a: Vec, b: Vec, r: Rect): number | null {
 
 /**
  * Deterministic session facade driven one fixed step at a time by the Phaser layer.
- * Step order: player move → sweep/return → hostiles → queue entries → rocks → damage → fire patches → KO check → Molotovs routed to
+ * Step order: player move → sweep/punch/shot/return → hostiles → queue entries (the first shooter brings a flashball)
+ * → rocks → bullets → damage → fire patches → KO check → Molotovs routed to
  * the attack on their target → attacks → rescue → toolboxes → heals → weapons (pickups, furie timer) → director.
  * Energy gauge (CONFIG.energy): every KO counted by Rules fills it, except in mode furie and the beam's own KOs.
  * Furie (`input.furie`, full gauge) spends it all on the mode furie (CONFIG.furie: player move, strike and damage
@@ -204,6 +214,8 @@ export class Sim {
   readonly player: Player = createPlayer(DISTRICT.playerSpawn);
   readonly horde = new Horde();
   readonly rocks = new Rocks(this.grid);
+  /** Shooters' bullets and Paul's flashball shots. */
+  readonly bullets = new Bullets(this.grid);
   readonly targets = new Targets();
   /** Every rioter of a round walks in through this line, from the edge points away from Paul. */
   readonly queue = new EntryQueue();
@@ -242,6 +254,9 @@ export class Sim {
   private readonly siteFields = new Map<TargetId, FlowField>();
   private readonly monumentField: FlowField;
   private telegraphs: Telegraph[] = [];
+  private aims: (Telegraph & { lifeId: number })[] = [];
+  /** The flashball guaranteed with the session's first shooter was dropped. */
+  private flashballGiven = false;
   private molotovs: Telegraph[] = [];
   private facings = new Map<number, Vec>();
   private stationMessage: StationMessage = null;
@@ -313,7 +328,10 @@ export class Sim {
     // no swing on the step a charge starts, while it grows, or the step it fires
     if (frozen) this.stepCharge(input, dt, ev);
     else if (chargePressed) this.startCharge(ev);
-    if (!frozen && this.charge === null && input.strike) {
+    const mode = this.strikeMode(furie);
+    if (!frozen && this.charge === null && input.strike && mode === 'shot') this.fireFlashball(input, now, ev);
+    else if (!frozen && this.charge === null && input.strike && mode === 'punch') this.punch(now, ev);
+    else if (!frozen && this.charge === null && input.strike) {
       // Bare hands: 1 damage. A regular weapon: KO in one hit, but CONFIG.toughWeaponDamage on a brute or the Caïd.
       // Mode furie: KO in one hit, more targets, the weapon is not used, every KO is launched. Bouclier: a bash
       // (one-hit KO, knockback, no charge used).
@@ -341,19 +359,23 @@ export class Sim {
       grid: this.grid,
       fields: { player: this.fields.player, victim: victimPos ? this.fields.victim : null },
       rocks: this.rocks,
+      bullets: this.bullets,
       sites: this.sites(),
       victimPos,
       pressure: this.director.pressure(this.rules.kos),
     });
     this.updateFacings(prev);
-    for (const h of this.queue.step(dt, this.horde, spawnPoints(p.pos)))
+    for (const h of this.queue.step(dt, this.horde, spawnPoints(p.pos))) {
       if (h.role === 'boss') ev.push({ type: 'CaidArrived', lifeId: h.lifeId, pos: v(h.pos), round: h.round ?? this.director.round });
+      else if (h.role === 'shooter' && !this.flashballGiven) this.giveFlashball(ev);
+    }
     const rockEv = this.rocks.step(dt, now, this.rockCtx(victimPos));
+    const shots = this.bullets.step(dt, this.bulletCtx(victimPos));
 
     // damage, hits and rock bookkeeping
     const hpBefore = p.hp;
     const molotovs: Extract<SimEvent, { type: 'MolotovThrown' }>[] = [];
-    for (const e of [...hordeEv, ...rockEv]) {
+    for (const e of [...hordeEv, ...rockEv, ...shots.events]) {
       if (e.type === 'PlayerDamaged') {
         const amount = this.weapons.furie() ? e.amount * CONFIG.furie.damageTakenMul : e.amount;
         if (!this.invulnerable && damagePlayer(p, amount, now)) {
@@ -367,12 +389,24 @@ export class Sim {
       if (e.type === 'MolotovThrown') molotovs.push(e);
       else if (e.type === 'FirebombThrown') this.firePatches.throwBottle(e.from, e.to, e.until);
       else if (e.type === 'EnemyThrowStarted') this.telegraphs.push({ from: v(e.from), to: v(e.to), until: e.until });
+      else if (e.type === 'ShooterAimStarted') this.aims.push({ lifeId: e.lifeId, from: v(e.from), to: v(e.to), until: e.until });
       else if (e.type === 'ProjectilePickedUp') this.rules.stats.rocksPicked += 1;
       else if (e.type === 'ProjectileReturned') this.rules.stats.rocksReturned += 1;
       else if (e.type === 'HitConfirmed' && e.source === 'rock') {
         this.rules.stats.rocksHit += 1;
         this.hit(e.targetLifeId, e.damage, ev);
       }
+    }
+    // flashball shots: a weapon hit on the first rioter on their path
+    for (const s of shots.hits) {
+      const tough = this.tough(s.lifeId);
+      const damage = tough ? CONFIG.toughWeaponDamage : WEAPON_DAMAGE;
+      ev.push(
+        tough
+          ? { type: 'HitConfirmed', targetLifeId: s.lifeId, damage, source: 'flashball', heavy: true }
+          : { type: 'HitConfirmed', targetLifeId: s.lifeId, damage, source: 'flashball' },
+      );
+      this.hit(s.lifeId, damage, ev);
     }
     // ground fire: Paul only, through the same damage path (invulnerability frames, mode furie)
     ev.push(
@@ -386,6 +420,8 @@ export class Sim {
     // taking damage (or a KO) cancels the charge: nothing used
     if (this.charge !== null && (p.hp < hpBefore || p.ko)) this.cancelCharge(ev);
     this.telegraphs = this.telegraphs.filter((t) => t.until > now);
+    // an aim line goes with its shooter's KO
+    this.aims = this.aims.filter((t) => t.until > now && this.horde.list.some((h) => h.lifeId === t.lifeId && h.state !== 'ko'));
     this.molotovs = this.molotovs.filter((t) => t.until > now);
 
     if (p.ko) {
@@ -465,6 +501,7 @@ export class Sim {
         maxHp: h.maxHp,
         windup: h.state === 'windup',
         bottleUp: h.state === 'windup' && this.horde.bottleUp(h.lifeId),
+        aiming: h.state === 'windup' && this.horde.aiming(h.lifeId),
       })),
       rocks: [...this.rocks.flying(), ...this.rocks.ground()].map((k) => ({
         id: k.id,
@@ -474,6 +511,9 @@ export class Sim {
         pos: v(k.pos),
       })),
       telegraphs: this.telegraphs.map((t) => ({ from: v(t.from), to: v(t.to), until: t.until })),
+      aims: this.aims.map((t) => ({ from: v(t.from), to: v(t.to), until: t.until })),
+      bullets: this.bullets.enemy().map((b) => ({ id: b.id, pos: v(b.pos), dir: v(b.dir) })),
+      flashballs: this.bullets.player().map((b) => ({ id: b.id, pos: v(b.pos), dir: v(b.dir) })),
       group: { area: { ...DISTRICT.peacefulGroup.area }, members: DISTRICT.peacefulGroup.members.map(v) },
       victim,
       targets: DISTRICT.targets.map((def) => {
@@ -599,7 +639,104 @@ export class Sim {
     };
   }
 
-  /** Paul holds the bouclier: its bubble blocks every rock and firebomb that would hit him, from any side. */
+  private bulletCtx(victimPos: Vec | null) {
+    const p = this.player;
+    const area = DISTRICT.peacefulGroup.area;
+    return {
+      player: { pos: p.pos, r: CONFIG.player.radius, invulnerable: this.invulnerable || p.ko || this.now < p.invulnUntil, shield: this.shield() },
+      hostiles: this.horde.views(),
+      groupBlocks: (a: Vec, b: Vec) => segmentRectEntry(a, b, area),
+      victimPos,
+    };
+  }
+
+  /** How Paul's strike works now: mode furie and the bouclier swing (bash), else the held weapon's own way. */
+  private strikeMode(furie: boolean): 'swing' | 'punch' | 'shot' {
+    const k = this.weapons.held?.kind;
+    if (furie || k === undefined || k === 'bouclier') return 'swing';
+    return WEAPONS[k].strike;
+  }
+
+  /**
+   * Flashball: one shot (strike cooldown as a swing) along the mouse aim; without one, along the facing snapped to the
+   * nearest active rioter within ±assistDeg and assistRange with a clear line. The shot is used whether it hits or not.
+   */
+  private fireFlashball(input: InputFrame, now: number, ev: SimEvent[]): void {
+    const p = this.player;
+    if (!readyStrike(p, now)) return;
+    let dir = norm(input.aim && len(input.aim) > 0 ? input.aim : p.facing);
+    if (!input.aim || len(input.aim) === 0) {
+      const c = CONFIG.flashball;
+      let best: { pos: Vec; d: number; id: number } | null = null;
+      for (const h of this.horde.list) {
+        if (h.state === 'ko') continue;
+        if (!inArc(p.pos, dir, h.pos, c.assistRange, c.assistDeg * 2) || !this.grid.lineClear(p.pos, h.pos)) continue;
+        const d = dist(p.pos, h.pos);
+        if (!best || d < best.d || (d === best.d && h.lifeId < best.id)) best = { pos: h.pos, d, id: h.lifeId };
+      }
+      if (best && best.d > 1e-6) dir = norm(sub(best.pos, p.pos));
+    }
+    p.facing = dir;
+    const shot = this.bullets.shoot(p.pos, dir);
+    ev.push({ type: 'FlashballFired', id: shot.id, from: v(p.pos), dir: v(dir) });
+    ev.push(...this.weapons.onShot());
+  }
+
+  /**
+   * Gant de boxe: a straight punch of CONFIG.gant.reach px along the facing (the aim), cut at the first solid (the
+   * peaceful group included) or the victim. The first active rioter on it takes a weapon hit and is pushed
+   * CONFIG.gant.knockback px along the punch (a KO body is launched); a use is spent only on a hit.
+   */
+  private punch(now: number, ev: SimEvent[]): void {
+    const p = this.player;
+    if (!readyStrike(p, now)) return;
+    const dir = norm(p.facing);
+    const reach = CONFIG.gant.reach;
+    let to = { ...p.pos };
+    for (let s = 2; s <= reach; s += 2) {
+      const q = { x: p.pos.x + dir.x * s, y: p.pos.y + dir.y * s };
+      if (this.grid.isSolidPx(q)) break;
+      to = q;
+    }
+    const vp = this.rescue?.stage === 'threat' ? this.rescue.victimPos : null;
+    const vt = vp ? segmentCircleHit(p.pos, to, vp, 8) : null;
+    if (vt !== null) to = { x: p.pos.x + (to.x - p.pos.x) * vt, y: p.pos.y + (to.y - p.pos.y) * vt };
+    let best: { id: number; t: number } | null = null;
+    for (const h of this.horde.views()) {
+      if (!h.active) continue;
+      const t = segmentCircleHit(p.pos, to, h.pos, h.r);
+      if (t !== null && (!best || t < best.t || (t === best.t && h.lifeId < best.id))) best = { id: h.lifeId, t };
+    }
+    if (!best) {
+      ev.push({ type: 'GlovePunched', from: v(p.pos), to: v(to), lifeId: null });
+      return;
+    }
+    const h = this.horde.list.find((x) => x.lifeId === best!.id)!;
+    ev.push({ type: 'GlovePunched', from: v(p.pos), to: v(h.pos), lifeId: h.lifeId });
+    const tough = isTough(h.role);
+    const damage = tough ? CONFIG.toughWeaponDamage : WEAPON_DAMAGE;
+    ev.push(
+      tough
+        ? { type: 'HitConfirmed', targetLifeId: h.lifeId, damage, source: 'gant', heavy: true }
+        : { type: 'HitConfirmed', targetLifeId: h.lifeId, damage, source: 'gant' },
+    );
+    const k = CONFIG.gant.knockback;
+    h.pos = moveCircle(this.grid, h.pos, { x: dir.x * k, y: dir.y * k }, CONFIG.hostile.radius);
+    this.hit(h.lifeId, damage, ev, 'gant');
+    ev.push(...this.weapons.onSwing(1));
+  }
+
+  /** The session's first shooter walked in: a flashball dropped CONFIG.flashball.dropMin–dropMax px from Paul (once). */
+  private giveFlashball(ev: SimEvent[]): void {
+    const c = CONFIG.flashball;
+    const w = this.weapons.dropNear(this.player.pos, 'flashball', c.dropMin, c.dropMax);
+    if (!w) return;
+    this.flashballGiven = true;
+    ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: v(w.pos) });
+    ev.push({ type: 'FlashballDropped', pos: v(w.pos) });
+  }
+
+  /** Paul holds the bouclier: its bubble blocks every rock, firebomb and bullet that would hit him, from any side. */
   private shield(): boolean {
     return this.weapons.held?.kind === 'bouclier' && !this.player.ko;
   }
@@ -681,26 +818,26 @@ export class Sim {
    * furie: true; the onde d'énergie: its direction) adds the cosmetic launch payload. A KO Rules counts fills the energy
    * gauge, except in mode furie and for the beam's KOs (no chain refills). True on a KO.
    */
-  private hit(lifeId: number, dmg: number, ev: SimEvent[], launched: boolean | Vec = false): boolean {
+  private hit(lifeId: number, dmg: number, ev: SimEvent[], launched: boolean | Vec | 'gant' = false): boolean {
     if (this.horde.applyHit(lifeId, dmg) !== 'ko') return false;
     const h = this.horde.list.find((x) => x.lifeId === lifeId);
     const counted = this.rules.onKnockout(lifeId, h?.pos);
     if (counted && h && !this.weapons.furie() && typeof launched !== 'object') ev.push(...this.energy.gain(h.role));
     if (h?.role === 'boss') this.caidDown(h, ev);
     const along = typeof launched === 'object' ? launched : undefined;
-    ev.push(h && launched ? { type: 'ActorKnockedOut', lifeId, launch: this.launch(h.pos, along) } : { type: 'ActorKnockedOut', lifeId });
+    ev.push(h && launched ? { type: 'ActorKnockedOut', lifeId, launch: this.launch(h.pos, along, launched === 'gant') } : { type: 'ActorKnockedOut', lifeId });
     return true;
   }
 
   /**
-   * Flight of a body knocked out at `at`: mode furie = a 'tumble' away from Paul (his facing when on top of him); onde
-   * d'énergie = a 'satellite' along `along` (the beam), with the kamehame power/spin ranges. Turned by a jitter; always 4
-   * draws from the launch stream.
+   * Flight of a body knocked out at `at`: mode furie = a 'tumble' away from Paul (his facing when on top of him); the
+   * gant = a shorter tumble (CONFIG.gant power/spin); onde d'énergie = a 'satellite' along `along` (the beam), with the
+   * kamehame power/spin ranges. Turned by a jitter; always 4 draws from the launch stream.
    */
-  private launch(at: Vec, along?: Vec): Launch {
+  private launch(at: Vec, along?: Vec, gant = false): Launch {
     const launchJitter = along ? CONFIG.kamehame.satelliteJitter : CONFIG.furie.launchJitter;
-    const launchPower = along ? CONFIG.kamehame.satellitePower : CONFIG.furie.launchPower;
-    const launchSpin = along ? CONFIG.kamehame.satelliteSpin : CONFIG.furie.launchSpin;
+    const launchPower = along ? CONFIG.kamehame.satellitePower : gant ? CONFIG.gant.launchPower : CONFIG.furie.launchPower;
+    const launchSpin = along ? CONFIG.kamehame.satelliteSpin : gant ? CONFIG.gant.launchSpin : CONFIG.furie.launchSpin;
     const r = this.launchRand;
     const jitter = (r() * 2 - 1) * launchJitter;
     const power = launchPower[0] + r() * (launchPower[1] - launchPower[0]);

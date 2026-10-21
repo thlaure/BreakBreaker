@@ -85,6 +85,17 @@ export function sweep(
   return { swingId: p.swingId, hits };
 }
 
+/**
+ * A strike that is not a sweep (the gant's punch, a flashball shot): false within the strike cooldown (or KO);
+ * otherwise a new swing starts (swingId, CONFIG.melee.cooldown) and true.
+ */
+export function readyStrike(p: Player, now: number): boolean {
+  if (p.ko || now < p.strikeReadyAt) return false;
+  p.swingId += 1;
+  p.strikeReadyAt = now + CONFIG.melee.cooldown;
+  return true;
+}
+
 /** Applies damage unless KO or within the invulnerability window. Returns true if damage was applied. */
 export function damagePlayer(p: Player, amount: number, now: number): boolean {
   if (p.ko || now < p.invulnUntil) return false;

@@ -6,19 +6,37 @@ import type { HeldKind, PickupKind, SimEvent, SpecialKind, Vec, WeaponKind } fro
 
 export type { HeldKind, PickupKind, SpecialKind, WeaponKind } from './types';
 
-/** Melee weapons found in the street. Every one KOs a rioter in one hit; reach and strikes differ. */
-export const WEAPONS: Readonly<Record<WeaponKind, { label: string; range: number; uses: number }>> = {
-  baton: { label: 'Bâton', range: 72, uses: 15 },
-  marteau: { label: 'Marteau', range: 64, uses: 8 },
-  panneau: { label: 'Panneau', range: 96, uses: 10 },
+/** How a weapon strikes: a swing all around Paul, a straight punch (gant), an aimed shot (flashball). */
+export type StrikeMode = 'swing' | 'punch' | 'shot';
+
+/**
+ * Regular weapons found in the street. Every one KOs a rioter in one hit (CONFIG.toughWeaponDamage on a brute or the
+ * Caïd); reach, strikes and how they strike differ. `range`: the swing's reach, the punch's length, the shot's assist
+ * range. `fromRound`: first round of the street pool it joins.
+ */
+export const WEAPONS: Readonly<Record<WeaponKind, { label: string; range: number; uses: number; strike: StrikeMode; fromRound: number }>> = {
+  baton: { label: 'Bâton', range: 72, uses: 15, strike: 'swing', fromRound: 1 },
+  marteau: { label: 'Marteau', range: 64, uses: 8, strike: 'swing', fromRound: 1 },
+  panneau: { label: 'Panneau', range: 96, uses: 10, strike: 'swing', fromRound: 1 },
+  gant: { label: 'Gant de boxe', range: CONFIG.gant.reach, uses: 6, strike: 'punch', fromRound: CONFIG.gant.fromRound },
+  flashball: { label: 'Flashball', range: CONFIG.flashball.assistRange, uses: 6, strike: 'shot', fromRound: CONFIG.flashball.fromRound },
 };
-const KINDS = Object.keys(WEAPONS) as WeaponKind[];
+const ALL_KINDS = Object.keys(WEAPONS) as WeaponKind[];
+/** The swung weapons of the start (the drops: twist, round end, the Caïd's). */
+const KINDS = ALL_KINDS.filter((k) => WEAPONS[k].fromRound <= 1);
+
+/** Regular weapons of the timed street spawns at `round` (the gant from round 3, the flashball from round 5). */
+export function streetKinds(round: number): WeaponKind[] {
+  return ALL_KINDS.filter((k) => round >= WEAPONS[k].fromRound);
+}
 
 /** Player-facing names of everything Paul can hold. */
 export const HELD_LABELS: Readonly<Record<HeldKind, string>> = {
   baton: WEAPONS.baton.label,
   marteau: WEAPONS.marteau.label,
   panneau: WEAPONS.panneau.label,
+  gant: WEAPONS.gant.label,
+  flashball: WEAPONS.flashball.label,
   bouclier: 'Bouclier',
 };
 
@@ -91,7 +109,9 @@ export class Weapons {
    */
   range(): number {
     const k = this.held?.kind;
-    const base = k === undefined ? CONFIG.melee.range : k === 'bouclier' ? CONFIG.bouclier.bashRange : WEAPONS[k].range;
+    // the gant and the flashball do not swing: in mode furie they strike like bare hands (×reachMul)
+    const base =
+      k === undefined ? CONFIG.melee.range : k === 'bouclier' ? CONFIG.bouclier.bashRange : WEAPONS[k].strike === 'swing' ? WEAPONS[k].range : CONFIG.melee.range;
     return this.furie() ? base * CONFIG.furie.reachMul : base;
   }
 
@@ -151,7 +171,7 @@ export class Weapons {
   }
 
   /**
-   * Kind of a timed spawn from one draw `r` in [0,1): a weapon (uniform), or each special unlocked at `round`
+   * Kind of a timed spawn from one draw `r` in [0,1): a weapon of the round's street pool (uniform), or each special unlocked at `round`
    * (CONFIG.<kind>.spawnFromRound) with probability CONFIG.<kind>.spawnShare (the rest of the range is rescaled over the
    * weapons; still one draw, so the stream is unchanged).
    */
@@ -163,7 +183,8 @@ export class Weapons {
       lo = hi;
     }
     const u = (r - lo) / (1 - lo);
-    return KINDS[Math.min(KINDS.length - 1, Math.floor(u * KINDS.length))]!;
+    const kinds = streetKinds(round);
+    return kinds[Math.min(kinds.length - 1, Math.floor(u * kinds.length))]!;
   }
 
   /**
@@ -202,6 +223,24 @@ export class Weapons {
     return { drop: this.dropSpecial(player, 'bouclier'), special: 'bouclier' };
   }
 
+  /**
+   * A weapon of `kind` dropped `min`–`max` px from Paul (the flashball of the first shooter), outside the timer and the
+   * ground cap; it never expires. Null when no free spot was found.
+   */
+  dropNear(player: Vec, kind: PickupKind, min: number, max: number): GroundWeapon | null {
+    const pos = this.freeSpot(player, min, max);
+    if (!pos) return null;
+    const w: GroundWeapon = { id: this.nextId++, kind, pos, expiresAt: null };
+    this.ground.push(w);
+    return w;
+  }
+
+  /** A flashball shot fired: one shot used whether it hits or not; at 0 it breaks (WeaponBroken). */
+  onShot(): SimEvent[] {
+    if (!this.held || this.held.kind === 'bouclier') return [];
+    return this.onSwing(1);
+  }
+
   /** Call after each swing with the number of rioters hit (regular weapons only: the specials have no strike count). */
   onSwing(hits: number): SimEvent[] {
     if (!this.held || hits === 0 || this.held.kind === 'bouclier') return [];
@@ -212,9 +251,8 @@ export class Weapons {
     return [{ type: 'WeaponBroken', kind }];
   }
 
-  /** A random walkable tile centre between minDist and maxDist from Paul, outside the peaceful group. */
-  private freeSpot(from: Vec): Vec | null {
-    const { minDist, maxDist } = CONFIG.weapons;
+  /** A random walkable tile centre between minDist and maxDist from Paul (default CONFIG.weapons), outside the peaceful group. */
+  private freeSpot(from: Vec, minDist: number = CONFIG.weapons.minDist, maxDist: number = CONFIG.weapons.maxDist): Vec | null {
     const t = this.grid.tile;
     for (let i = 0; i < 40; i++) {
       const a = this.rand() * Math.PI * 2;

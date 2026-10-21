@@ -158,6 +158,45 @@ export const CONFIG = {
    * every round (last fill rioter). KO'd: +1 as usual, +`bonus` (once per round) and a regular weapon dropped where he fell.
    */
   caid: { speedMul: 0.9, hp: 6, knockback: 40, fromRound: 3, bonus: 5 },
+  /**
+   * Shooters (cartoon AK-47, role 'shooter'): `hp` HP; keep `keepMin`–`keepMax` px from Paul with a clear line (else
+   * walk in); aim `aimSec` at where Paul stands (red aim line, « ! »), then a burst of `burst` bullets `burstGap` s apart
+   * along that fixed line, then reload `reloadSec`. Paul within `fallback` px → they fight as contacts. `counts`: [from
+   * round, shooters per round] (contact slots of the fill, last group first), at most `maxPerRound`.
+   */
+  shooter: {
+    hp: 3,
+    keepMin: 220,
+    keepMax: 300,
+    fallback: 100,
+    aimSec: 0.8,
+    burst: 3,
+    burstGap: 0.12,
+    reloadSec: 3,
+    counts: [[6, 1], [8, 2]] as const,
+    maxPerRound: 3,
+  },
+  /**
+   * Shooters' bullets: `speed` px/s, `damage` to Paul (normal damage path: invulnerability frames, mode furie), `radius`
+   * px, `lifeSec` s; stopped by solids, the peaceful group, the victim and the bouclier's bubble; never hurt rioters; at
+   * most `maxFlying` in flight.
+   */
+  bullet: { speed: 260, damage: 8, radius: 3, lifeSec: 1.6, maxFlying: 30 },
+  /**
+   * Flashball (regular weapon, 6 shots): a strike fires a shot at `speed` px/s for at most `range` px along the mouse aim,
+   * else the facing snapped to the nearest active rioter within ±`assistDeg`° and `assistRange` px (clear line). The first
+   * rioter hit takes a weapon hit (one-hit KO; CONFIG.toughWeaponDamage on a brute or the Caïd); solids, the peaceful group
+   * and the victim stop it. In the street pool from `fromRound`; one is dropped `dropMin`–`dropMax` px from Paul when the
+   * session's first shooter enters (never expires).
+   */
+  flashball: { speed: 420, range: 480, radius: 4, assistDeg: 12, assistRange: 320, fromRound: 5, dropMin: 120, dropMax: 220 },
+  /**
+   * Gant de boxe à ressort (regular weapon, 6 uses): a strike is a straight punch of `reach` px along the facing (the aim);
+   * the first active rioter on it takes a weapon hit and is pushed `knockback` px; a KO body is launched (tumble,
+   * `launchPower` px, `launchSpin` turns). Stopped by the first solid, the peaceful group, the victim. A use is spent
+   * only on a hit. In the street pool from `fromRound`.
+   */
+  gant: { reach: 160, knockback: 32, fromRound: 3, launchPower: [70, 120] as const, launchSpin: [1, 2] as const },
   /** Damage of a held regular weapon's strike on a brute or the Caïd (everyone else: one-hit KO). */
   toughWeaponDamage: 2,
   /**
