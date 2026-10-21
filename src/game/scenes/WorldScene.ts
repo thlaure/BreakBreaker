@@ -22,6 +22,7 @@ import { StationsView, ToolboxView, WorldView, makeRockTextures, makeTextures } 
 import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapons';
 import { ItemLayer, makeItemTextures } from '../render/items';
 import { ShieldView, SpecialFx, makeSpecialTextures } from '../render/specials';
+import { ScorePopups } from '../render/scorePopups';
 
 const HIT_STOP_MS = 60;
 const SHAKE_MS = 120;
@@ -83,6 +84,8 @@ export class WorldScene extends Phaser.Scene {
   private shield!: ShieldView;
   /** Onde d’énergie charge glow and beam, shield block sparks. */
   private specialFx!: SpecialFx;
+  /** Floating « +N » / « −N » score popups where points were won or lost. */
+  private scorePopups!: ScorePopups;
   private reducedMotion = false;
 
   private hitStopUntil = 0;
@@ -210,6 +213,7 @@ export class WorldScene extends Phaser.Scene {
     this.heldWeapon = new HeldWeaponView(this);
     this.shield = new ShieldView(this);
     this.specialFx = new SpecialFx(this);
+    this.scorePopups = new ScorePopups(this, this.reducedMotion);
     this.toolboxes = new ToolboxView(this);
 
     const cam = this.cameras.main;
@@ -252,6 +256,8 @@ export class WorldScene extends Phaser.Scene {
     this.cinematicCamera(snap);
     this.playerPos = snap.player.pos;
     this.react(events, time, snap);
+    // cosmetic, on their own timer (not frozen by the hit-stop or the pause)
+    this.scorePopups.update(time);
     if (time >= this.hitStopUntil) {
       this.render(snap, time, time - this.lastVisual);
       this.lastVisual = time;
@@ -293,8 +299,10 @@ export class WorldScene extends Phaser.Scene {
     let furieHit = false;
     /** Rank of each body satellised by this batch's beam (take-off stagger). */
     let satellites = 0;
+    const scored: Extract<SimEvent, { type: 'ScoreChanged' }>[] = [];
     for (const e of events) {
-      if (e.type === 'HitConfirmed') {
+      if (e.type === 'ScoreChanged') scored.push(e);
+      else if (e.type === 'HitConfirmed') {
         this.hostiles.flash(e.targetLifeId, time);
         this.hitStopUntil = Math.max(this.hitStopUntil, time + HIT_STOP_MS);
         if (snap.furie && e.source === 'melee') {
@@ -325,6 +333,7 @@ export class WorldScene extends Phaser.Scene {
         this.targetViews.onEvent(e, time);
       }
     }
+    if (scored.length > 0) this.scorePopups.spawn(scored, time);
     if (furieHit && !this.reducedMotion) {
       const cam = this.cameras.main;
       cam.shake(FURIE_SHAKE_MS, new Phaser.Math.Vector2(FURIE_SHAKE_PX / cam.width, FURIE_SHAKE_PX / cam.height), false);

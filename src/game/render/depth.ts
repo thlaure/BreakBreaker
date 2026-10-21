@@ -5,6 +5,7 @@ export const DEPTH = {
   roof: 10000,
   foliage: 10001,
   overlay: 20000, // telegraph lines, icons
+  popup: 25000, // floating score popups (above everything in the world)
   edge: 30000, // offscreen indicators
 } as const;
 
