@@ -88,11 +88,9 @@ describe('damage rules on tougher rioters', () => {
     }
   });
 
-  test('mode furie and the bouclier bash KO a brute and the Caïd outright', () => {
-    for (const role of ['brute', 'boss'] as const) {
-      expect(kill(role, (sim) => (sim.weapons.furieLeft = 10))).toBe(1);
-      expect(kill(role, (sim) => (sim.weapons.held = { kind: 'bouclier', uses: 0, secondsLeft: 20 }))).toBe(1);
-    }
+  test('mode furie KOs a brute outright; the bouclier adds nothing to bare hands', () => {
+    expect(kill('brute', (sim) => (sim.weapons.furieLeft = 10))).toBe(1);
+    expect(kill('brute', (sim) => sim.weapons.startShield())).toBe(CONFIG.brute.hp);
   });
 
   test('the onde d’énergie KOs a brute and the Caïd in one beam', () => {

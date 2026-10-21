@@ -3,7 +3,6 @@ import { CONFIG } from '../../src/sim/config';
 import { Energy, energyGain } from '../../src/sim/energy';
 import { Sim } from '../../src/sim/sim';
 import type { InputFrame, Role, SimEvent, Vec } from '../../src/sim/types';
-import { heldOf } from '../../src/sim/weapons';
 import { autopilot, IDLE } from './autopilot';
 
 const input = (o: Partial<InputFrame> = {}): InputFrame => ({ ...IDLE, ...o });
@@ -19,16 +18,15 @@ function calm(sim: Sim, pos: Vec, role: Role = 'contact') {
   return h;
 }
 
-/** One strike at a rioter of `role` 30 px to Paul's right with a one-hit weapon (the bouclier bash). */
-function bashKo(sim: Sim, role: Role = 'contact'): SimEvent[] {
+/** One strike that KOs a rioter of `role` 30 px to Paul's right (bare hands on a rioter left at 1 HP). */
+function strikeKo(sim: Sim, role: Role = 'contact'): SimEvent[] {
   // past the melee cooldown of an earlier strike
   for (let i = 0; i < STEPS(CONFIG.melee.cooldown) + 1; i++) sim.step(IDLE);
-  sim.weapons.held = heldOf('bouclier');
   const p = sim.player.pos;
   const h = calm(sim, { x: p.x + 30, y: p.y }, role);
+  h.hp = 1;
   const ev = sim.step(input({ strike: true }));
   expect(h.state).toBe('ko');
-  sim.weapons.held = null;
   return ev;
 }
 
@@ -56,11 +54,11 @@ describe('energy gauge: filling', () => {
 
   test('a melee KO fills +4; a brute +8; Le Caïd +20 (with a weapon hit counted once)', () => {
     const sim = new Sim(5);
-    bashKo(sim);
+    strikeKo(sim);
     expect(sim.energy.value).toBe(4);
-    bashKo(sim, 'brute');
+    strikeKo(sim, 'brute');
     expect(sim.energy.value).toBe(12);
-    bashKo(sim, 'boss');
+    strikeKo(sim, 'boss');
     expect(sim.energy.value).toBe(32);
     expect(sim.snapshot().energy.value).toBe(32);
   });
@@ -108,23 +106,23 @@ describe('energy gauge: filling', () => {
   test('capped at 100', () => {
     const sim = new Sim(5);
     sim.energy.value = 98;
-    bashKo(sim, 'boss');
+    strikeKo(sim, 'boss');
     expect(sim.energy.value).toBe(100);
   });
 
   test('EnergyReady once per threshold crossing: onde at 50, furie at 100', () => {
     const sim = new Sim(5);
     sim.energy.value = 44;
-    expect(of(bashKo(sim), 'EnergyReady')).toEqual([]);
+    expect(of(strikeKo(sim), 'EnergyReady')).toEqual([]);
     expect(sim.energy.value).toBe(48);
-    expect(of(bashKo(sim), 'EnergyReady')).toEqual([{ type: 'EnergyReady', level: 'onde' }]);
+    expect(of(strikeKo(sim), 'EnergyReady')).toEqual([{ type: 'EnergyReady', level: 'onde' }]);
     expect(sim.snapshot().energy.ready).toEqual({ onde: true, furie: false });
-    expect(of(bashKo(sim), 'EnergyReady')).toEqual([]);
+    expect(of(strikeKo(sim), 'EnergyReady')).toEqual([]);
     sim.energy.value = 96;
-    expect(of(bashKo(sim), 'EnergyReady')).toEqual([{ type: 'EnergyReady', level: 'furie' }]);
+    expect(of(strikeKo(sim), 'EnergyReady')).toEqual([{ type: 'EnergyReady', level: 'furie' }]);
     expect(sim.snapshot().energy.ready).toEqual({ onde: true, furie: true });
     // already full: nothing more
-    expect(of(bashKo(sim), 'EnergyReady')).toEqual([]);
+    expect(of(strikeKo(sim), 'EnergyReady')).toEqual([]);
     // a Caïd KO from 40 crosses 50 once; from 90 it fills the gauge (capped) and announces the furie only
     const e = new Energy();
     e.value = 40;
@@ -232,11 +230,11 @@ describe('energy gauge: Furie (R)', () => {
     const sim = new Sim(5, { invulnerable: true });
     sim.energy.value = 100;
     sim.step(input({ furie: true }));
-    bashKo(sim);
+    strikeKo(sim);
     expect(sim.energy.value).toBe(0);
     for (let i = 0; i < STEPS(CONFIG.furie.durationSec) + 2; i++) sim.step(IDLE);
     expect(sim.snapshot().furie).toBeNull();
-    bashKo(sim);
+    strikeKo(sim);
     expect(sim.energy.value).toBe(4);
   });
 });
@@ -309,19 +307,19 @@ describe('energy gauge: Onde (C held)', () => {
     expect(sim.snapshot().furie).not.toBeNull();
   });
 
-  test('works with the bouclier held (no weapon slot involved)', () => {
+  test('works with the bouclier on (no weapon slot involved)', () => {
     const sim = new Sim(5, { invulnerable: true });
-    sim.weapons.held = heldOf('bouclier');
+    sim.weapons.startShield();
     sim.energy.value = 50;
     expect(of(charge(sim, CONFIG.kamehame.chargeSec), 'BeamFired')).toHaveLength(1);
-    expect(sim.weapons.held?.kind).toBe('bouclier');
+    expect(sim.weapons.shield()).toBe(true);
   });
 
   test('determinism: same seed and inputs, same gauge and events', () => {
     const run = () => {
       const sim = new Sim(11);
       const out: SimEvent[] = [];
-      for (let k = 0; k < 14; k++) out.push(...bashKo(sim));
+      for (let k = 0; k < 14; k++) out.push(...strikeKo(sim));
       out.push(...charge(sim, CONFIG.kamehame.chargeSec));
       return { out, v: sim.energy.value };
     };

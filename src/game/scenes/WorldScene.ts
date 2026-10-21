@@ -361,7 +361,7 @@ export class WorldScene extends Phaser.Scene {
     this.furieAura.update(snap.ended ? null : snap.furie, this.paul.sprite, time);
     this.pows.update(time);
     this.heldWeapon.update(snap.weapon, snap.player, this.struck, time);
-    this.shield.update(snap.weapon, snap.player, this.paul.sprite, time);
+    this.shield.update(snap.shield, snap.player, this.paul.sprite, time);
     this.specialFx.update(snap.ended ? null : snap.charge, snap.player, this.paul.sprite, time);
     this.struck = false;
     this.weaponsOnGround.update(snap.weaponsOnGround, time, snap.now);

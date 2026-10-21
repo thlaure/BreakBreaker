@@ -137,8 +137,10 @@ export interface Snapshot {
   carriedItems: number;
   stations: { id: string; pos: Vec; charged: boolean }[];
   stationMessage: StationMessage;
-  /** Weapon in Paul's hands (null = bare hands): strikes left (regular weapons), or the bouclier's `secondsLeft` (`uses` 0). */
-  weapon: { kind: HeldKind; uses: number; secondsLeft?: number } | null;
+  /** Weapon in Paul's hands (null = bare hands) and its strikes left. */
+  weapon: { kind: HeldKind; uses: number } | null;
+  /** The bouclier's protection bubble on top of the held weapon (seconds left), or null. */
+  shield: { secondsLeft: number } | null;
   /** Onde d’énergie charging: `progress` in [0, 1] of CONFIG.kamehame.chargeSec; null when not charging. */
   charge: { progress: number } | null;
   /** `expiresAt` = sim time a special drop vanishes (null = never). */
@@ -202,8 +204,8 @@ export function segmentRectEntry(a: Vec, b: Vec, r: Rect): number | null {
  * Furie (`input.furie`, full gauge) spends it all on the mode furie (CONFIG.furie: player move, strike and damage
  * taken; a KO ends it). Onde (`input.chargeHeld`, rising edge, >= ondeCost) charges the onde d'énergie (Paul frozen),
  * fires a beam at CONFIG.kamehame.chargeSec and spends ondeCost then; a release, damage, a mode furie started or a KO
- * cancels it at no cost. Too little energy: EnergyRefused. The bouclier (held) is a protection bubble (rocks and
- * firebombs blocked from any side) and bashes on a strike.
+ * cancels it at no cost. Too little energy: EnergyRefused. The bouclier is a protection timer on top of the held
+ * weapon (rocks, firebombs and bullets blocked from any side); it adds no damage and never changes the strike.
  * While the school cinematic is running, only its timer advances. Agir (`input.act`, held) counts only on its rising
  * edge: holding F while walking into range, or while a hostile moves away, never starts a toolbox repair.
  * Every score change of the step (Rules' outbox, KOs included) ends the step's events as one ScoreChanged each.
@@ -333,17 +335,14 @@ export class Sim {
     else if (!frozen && this.charge === null && input.strike && mode === 'punch') this.punch(now, ev);
     else if (!frozen && this.charge === null && input.strike) {
       // Bare hands: 1 damage. A regular weapon: KO in one hit, but CONFIG.toughWeaponDamage on a brute or the Caïd.
-      // Mode furie: KO in one hit, more targets, the weapon is not used, every KO is launched. Bouclier: a bash
-      // (one-hit KO, knockback, no charge used).
-      const bash = this.weapons.held?.kind === 'bouclier';
+      // Mode furie: KO in one hit, more targets, the weapon is not used, every KO is launched. The bouclier changes nothing.
       const maxTargets = furie ? CONFIG.furie.maxTargets : CONFIG.melee.maxTargets;
       const { hits } = sweep(p, now, this.horde.views(), this.grid, this.weapons.range(), maxTargets);
       for (const id of hits) {
         const tough = this.tough(id);
-        const damage = furie ? CONFIG.furie.damage : bash ? WEAPON_DAMAGE : this.weapons.held ? (tough ? CONFIG.toughWeaponDamage : WEAPON_DAMAGE) : 1;
+        const damage = furie ? CONFIG.furie.damage : this.weapons.held ? (tough ? CONFIG.toughWeaponDamage : WEAPON_DAMAGE) : 1;
         ev.push(tough ? { type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee', heavy: true } : { type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee' });
         this.hit(id, damage, ev, furie);
-        if (bash) this.knockback(id);
       }
       if (!furie) ev.push(...this.weapons.onSwing(hits.length));
     }
@@ -426,6 +425,7 @@ export class Sim {
 
     if (p.ko) {
       ev.push(...this.weapons.endFurie());
+      ev.push(...this.weapons.endShield());
       if (!this.koReported) {
         this.koReported = true;
         ev.push({ type: 'PlayerKnockedOut' });
@@ -560,7 +560,8 @@ export class Sim {
       carriedItems: r ? r.carried : 0,
       stations: this.stations.list.map((s) => ({ id: s.id, pos: v(s.pos), charged: s.charged })),
       stationMessage: this.stationMessage,
-      weapon: this.weapons.held ? { ...this.weapons.held } : null,
+      weapon: this.weapons.held ? { kind: this.weapons.held.kind, uses: this.weapons.held.uses } : null,
+      shield: this.weapons.shield() ? { secondsLeft: this.weapons.shieldLeft } : null,
       charge: this.charge ? { progress: Math.min(1, this.charge.t / CONFIG.kamehame.chargeSec) } : null,
       weaponsOnGround: this.weapons.ground.map((w) => ({ id: w.id, kind: w.kind, pos: v(w.pos), expiresAt: w.expiresAt })),
       furie: this.weapons.furie() ? { secondsLeft: this.weapons.furieLeft } : null,
@@ -650,10 +651,10 @@ export class Sim {
     };
   }
 
-  /** How Paul's strike works now: mode furie and the bouclier swing (bash), else the held weapon's own way. */
+  /** How Paul's strike works now: mode furie and bare hands swing, else the held weapon's own way. */
   private strikeMode(furie: boolean): 'swing' | 'punch' | 'shot' {
     const k = this.weapons.held?.kind;
-    if (furie || k === undefined || k === 'bouclier') return 'swing';
+    if (furie || k === undefined) return 'swing';
     return WEAPONS[k].strike;
   }
 
@@ -736,9 +737,9 @@ export class Sim {
     ev.push({ type: 'FlashballDropped', pos: v(w.pos) });
   }
 
-  /** Paul holds the bouclier: its bubble blocks every rock, firebomb and bullet that would hit him, from any side. */
+  /** The bouclier's protection is on: its bubble blocks every rock, firebomb and bullet that would hit Paul, from any side. */
   private shield(): boolean {
-    return this.weapons.held?.kind === 'bouclier' && !this.player.ko;
+    return this.weapons.shield() && !this.player.ko;
   }
 
   /**
@@ -801,16 +802,6 @@ export class Sim {
       if (this.hit(id, damage, ev, dir)) kos += 1;
     }
     ev.push({ type: 'BeamFired', from: v(p.pos), to: v(shot.to), kos });
-  }
-
-  /** A bouclier bash pushes the KO'd body CONFIG.bouclier.knockback px away from Paul (never into a wall). */
-  private knockback(lifeId: number): void {
-    const h = this.horde.list.find((x) => x.lifeId === lifeId);
-    if (!h || h.state !== 'ko') return;
-    const away = sub(h.pos, this.player.pos);
-    const d = len(away) > 1e-6 ? norm(away) : this.player.facing;
-    const k = CONFIG.bouclier.knockback;
-    h.pos = moveCircle(this.grid, h.pos, { x: d.x * k, y: d.y * k }, CONFIG.hostile.radius);
   }
 
   /**

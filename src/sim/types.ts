@@ -39,10 +39,10 @@ export interface InputFrame {
 export type WeaponKind = 'baton' | 'marteau' | 'panneau' | 'gant' | 'flashball';
 /** The one special pickup (the mode furie and the onde d’énergie come from the energy gauge, never from the ground). */
 export type SpecialKind = 'bouclier';
-/** What Paul can hold: a regular weapon or the bouclier. */
-export type HeldKind = WeaponKind | 'bouclier';
-/** What can lie on the ground. */
-export type PickupKind = HeldKind;
+/** What Paul can hold in his hands: a regular weapon (the bouclier is a protection timer on top of it, not held). */
+export type HeldKind = WeaponKind;
+/** What can lie on the ground: a regular weapon or the bouclier. */
+export type PickupKind = WeaponKind | SpecialKind;
 /** The two energy thresholds: the onde d’énergie (CONFIG.energy.ondeCost) and the mode furie (full gauge). */
 export type EnergyLevel = 'onde' | 'furie';
 
@@ -136,9 +136,12 @@ export type SimEvent =
   | { type: 'FurieStarted'; secondsLeft: number }
   /** The mode furie is over (time out, or Paul KO). */
   | { type: 'FurieEnded' }
-  | { type: 'WeaponPickedUp'; kind: HeldKind }
-  /** The held weapon is gone: no strikes left, or the bouclier's time is up. */
+  /** Paul took a pickup: a regular weapon (into his hands) or the bouclier (its protection timer starts / restarts). */
+  | { type: 'WeaponPickedUp'; kind: PickupKind }
+  /** The held weapon is gone: no strikes left. */
   | { type: 'WeaponBroken'; kind: HeldKind }
+  /** The bouclier's protection is over: its time is up, or Paul was KO'd. */
+  | { type: 'ShieldEnded' }
   /** The bouclier's bubble stopped a rock, a firebomb or a bullet, from any side (`pos` = where it was stopped, on Paul). */
   | { type: 'ShieldBlocked'; pos: Vec }
   /** Paul started charging the onde d’énergie (Onde pressed with enough energy). */

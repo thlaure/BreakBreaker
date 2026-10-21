@@ -223,27 +223,29 @@ export function roundValue(s: Snapshot): string {
 }
 
 /**
- * HUD weapon line: weapon name and strikes left, or bare hands; while the mode furie is on, its whole seconds left
- * (rounded up) follow: « Arme : Bâton (12) · Mode furie 9 s ».
+ * HUD weapon line: weapon name and strikes left, or bare hands; while the bouclier protects Paul, its whole seconds left
+ * (rounded up) follow, then the mode furie's: « Arme : Bâton (12) · Bouclier 14 s · Mode furie 9 s ».
  */
 export function weaponLine(s: Snapshot): string {
   return `Arme : ${weaponText(s, 'mains nues')}`;
 }
 
-/** Value of the HUD « ARME » row, same logic as weaponLine: « Bâton (12) », « Mains nues », « … · Mode furie 9 s ». */
+/**
+ * Value of the HUD « ARME » row, same logic as weaponLine: « Bâton (12) », « Mains nues », « … · Bouclier 14 s »,
+ * « … · Mode furie 9 s ».
+ */
 export function weaponValue(s: Snapshot): string {
   return weaponText(s, 'Mains nues');
 }
 
-/** « Bâton (12) » (strikes left), « Bouclier (14 s) » (whole seconds left, rounded up). */
-function heldText(w: NonNullable<Snapshot['weapon']>): string {
-  const n = w.kind === 'bouclier' ? `${Math.max(1, Math.ceil((w.secondsLeft ?? 0) - 1e-9))} s` : `${w.uses}`;
-  return `${HELD_LABELS[w.kind]} (${n})`;
-}
+/** Whole seconds left, rounded up (at least 1 while on). */
+const secs = (t: number): number => Math.max(1, Math.ceil(t - 1e-9));
 
 function weaponText(s: Snapshot, bare: string): string {
-  const arme = s.weapon ? heldText(s.weapon) : bare;
-  return s.furie ? `${arme} · Mode furie ${Math.max(1, Math.ceil(s.furie.secondsLeft - 1e-9))} s` : arme;
+  let out = s.weapon ? `${HELD_LABELS[s.weapon.kind]} (${s.weapon.uses})` : bare;
+  if (s.shield) out += ` · ${HELD_LABELS.bouclier} ${secs(s.shield.secondsLeft)} s`;
+  if (s.furie) out += ` · Mode furie ${secs(s.furie.secondsLeft)} s`;
+  return out;
 }
 
 
