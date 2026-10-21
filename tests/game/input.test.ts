@@ -183,6 +183,52 @@ describe('energy activations: Onde held (charge) and Furie (press)', () => {
     kb.dispose?.();
   });
 
+  test('a C tap shorter than one read is latched: chargeHeld reads true once, then false; repeats ignored', () => {
+    const { kb } = setupKeyboard();
+    key('keydown', 'KeyC');
+    key('keyup', 'KeyC');
+    expect(kb.read().chargeHeld).toBe(true);
+    expect(kb.read().chargeHeld).toBe(false);
+    key('keydown', 'KeyC');
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyC', repeat: true }));
+    key('keyup', 'KeyC');
+    expect(kb.read().chargeHeld).toBe(true);
+    expect(kb.read().chargeHeld).toBe(false);
+    kb.dispose?.();
+  });
+
+  test('a touch Onde tap released before the read still reads chargeHeld once; releaseAll drops it', () => {
+    const { touch, onde } = setupTouch();
+    ptr(onde, 'pointerdown', 9, 500, 300);
+    ptr(window, 'pointerup', 9, 500, 300);
+    expect(touch.read().chargeHeld).toBe(true);
+    expect(touch.read().chargeHeld).toBe(false);
+    ptr(onde, 'pointerdown', 10, 500, 300);
+    ptr(window, 'pointerup', 10, 500, 300);
+    touch.releaseAll();
+    expect(touch.read().chargeHeld).toBe(false);
+  });
+
+  test('a latched C tap reaches the sim: a charge starts (then is cancelled at no cost), or « Énergie insuffisante » under 50', async () => {
+    const { Sim } = await import('../../src/sim/sim');
+    const { CONFIG } = await import('../../src/sim/config');
+    const { merge } = await import('../../src/game/input/merge');
+    const { kb } = setupKeyboard();
+    const frame = merge(kb);
+    const low = new Sim(1);
+    key('keydown', 'KeyC');
+    key('keyup', 'KeyC');
+    expect(low.step(frame()).some((e) => e.type === 'EnergyRefused')).toBe(true);
+    const full = new Sim(1);
+    full.energy.value = CONFIG.energy.max;
+    key('keydown', 'KeyC');
+    key('keyup', 'KeyC');
+    expect(full.step(frame()).some((e) => e.type === 'BeamCharging')).toBe(true);
+    expect(full.step(frame()).some((e) => e.type === 'BeamCancelled')).toBe(true);
+    expect(full.energy.value).toBe(CONFIG.energy.max);
+    kb.dispose?.();
+  });
+
   test('blur releases chargeHeld and a pending Furie (RC-40)', () => {
     const { kb } = setupKeyboard();
     key('keydown', 'KeyC');

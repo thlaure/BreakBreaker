@@ -85,7 +85,7 @@ export const CONFIG = {
   },
   /**
    * Bouclier (the one special pickup, held): a protection bubble around Paul; lasts `durationSec` of active sim time,
-   * then breaks; no strike counter. Every rock and firebomb that would hit Paul is blocked, from any side (360°); ground
+   * then breaks; no strike counter. Every rock, firebomb and shooter's bullet that would hit Paul is blocked, from any side (360°); ground
    * fire and contact blows are not. A strike is a bash: reach `bashRange`, one-hit KO, `knockback` px away from Paul, no
    * charge used. From `dropFromRound` the twist weapon drop is a bouclier with probability `dropShare` (a regular weapon
    * otherwise); from `spawnFromRound` a timed street spawn is one with probability `spawnShare`.

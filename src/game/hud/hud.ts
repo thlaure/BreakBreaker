@@ -153,7 +153,7 @@ export class Hud {
   private readonly wave = statRow('wave', 'MANCHE');
   private readonly rocks = statRow('rocks minor', 'PIERRES');
   private readonly weapon = statRow('weapon minor', 'ARME');
-  /** The energy gauge: a segmented pixel bar (ticks at 50 % and 100 %) and what it allows (« ONDE · C », « FURIE · R »). */
+  /** The energy gauge: a segmented pixel bar (a tick at 50 %; the bar's end is 100 %) and what it allows (« ONDE · C », « FURIE · R »). */
   private readonly energy = statRow('energy minor', 'ÉNERGIE');
   private readonly energyBar = el('span', 'ebar');
   private readonly energyFill = el('span', 'efill');

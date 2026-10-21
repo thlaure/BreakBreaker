@@ -24,6 +24,8 @@ export function createKeyboard(
   let furie = false;
   /** F went down since the last read: a tap shorter than one sim step still reaches one read as `act`. */
   let actTap = false;
+  /** C went down since the last read: a tap shorter than one sim step still reaches one read as `chargeHeld`. */
+  let chargeTap = false;
   let mouseUntil = -Infinity;
   let mouse: { x: number; y: number } | null = null;
 
@@ -34,6 +36,7 @@ export function createKeyboard(
       else if (e.code === 'KeyE') throwRock = true;
       else if (e.code === 'KeyF') actTap = true;
       else if (e.code === 'KeyR') furie = true;
+      else if (e.code === 'KeyC') chargeTap = true;
       else if (e.code === 'Escape') opts.onPause?.();
     }
     held.add(e.code);
@@ -63,6 +66,7 @@ export function createKeyboard(
     strike = false;
     throwRock = false;
     actTap = false;
+    chargeTap = false;
     furie = false;
   };
 
@@ -97,7 +101,7 @@ export function createKeyboard(
         aim,
         run: any('ShiftLeft', 'ShiftRight'),
         strike,
-        chargeHeld: held.has('KeyC'),
+        chargeHeld: held.has('KeyC') || chargeTap,
         throwRock,
         act: held.has('KeyF') || actTap,
         furie,
@@ -105,6 +109,7 @@ export function createKeyboard(
       strike = false;
       throwRock = false;
       actTap = false;
+      chargeTap = false;
       furie = false;
       return frame;
     },

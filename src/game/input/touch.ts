@@ -33,6 +33,8 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
   let actId: number | null = null;
   /** Pointer holding Onde (charges the onde d'énergie). */
   let ondeId: number | null = null;
+  /** Onde went down since the last read: a tap shorter than one sim step still reads `chargeHeld` once. */
+  let ondeTap = false;
   let rock: Tracked | null = null;
   let strike = false;
   /** Furie went down since the last read. */
@@ -95,6 +97,7 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
     else if (furieEl?.contains(t)) furie = true;
     else if (ondeEl?.contains(t)) {
       if (ondeId === null) ondeId = e.pointerId;
+      ondeTap = true;
     } else if (throwEl?.contains(t)) {
       if (!rock) {
         rock = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY };
@@ -153,6 +156,7 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
     stick = null;
     actId = null;
     ondeId = null;
+    ondeTap = false;
     rock = null;
     strike = false;
     furie = false;
@@ -187,7 +191,7 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
         aim,
         run: Math.hypot(m.x, m.y) > RUN_AT,
         strike,
-        chargeHeld: ondeId !== null,
+        chargeHeld: ondeId !== null || ondeTap,
         throwRock,
         act: actId !== null || actTap,
         furie,
@@ -197,6 +201,7 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
       furie = false;
       throwRock = false;
       actTap = false;
+      ondeTap = false;
       pendingAim = null;
       return frame;
     },

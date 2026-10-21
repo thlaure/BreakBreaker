@@ -16,7 +16,8 @@ export interface Launch {
 
 /**
  * strike/throwRock/furie are edge-triggered presses; act and chargeHeld are held. The Sim only acts on the rising edge
- * of `act` (a fresh press of Agir) and of `chargeHeld`; the input layer latches a tap so it lasts one read.
+ * of `act` (a fresh press of Agir) and of `chargeHeld`; the input layer latches a tap of either so it lasts one read
+ * (a C tap starts a charge that the next step cancels at no cost, or is refused under the onde cost).
  */
 export interface InputFrame {
   move: Vec;
