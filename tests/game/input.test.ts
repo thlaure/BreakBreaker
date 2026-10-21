@@ -47,11 +47,13 @@ function setupTouch(onPause = vi.fn()) {
     <button data-action="strike">Frapper</button>
     <button data-action="throw">Renvoyer</button>
     <button data-action="act">Agir</button>
+    <button data-action="furie">Furie</button>
+    <button data-action="onde">Onde</button>
     <button data-action="pause">Pause</button></div>`;
   const root = document.getElementById('touch-ui') as HTMLElement;
   const touch = createTouch(root, { onPause });
   const q = (s: string) => root.querySelector(s) as HTMLElement;
-  return { touch, root, stick: q('[data-zone=stick]'), strike: q('[data-action=strike]'), rock: q('[data-action=throw]'), act: q('[data-action=act]'), pause: q('[data-action=pause]'), onPause };
+  return { touch, root, stick: q('[data-zone=stick]'), strike: q('[data-action=strike]'), rock: q('[data-action=throw]'), act: q('[data-action=act]'), furie: q('[data-action=furie]'), onde: q('[data-action=onde]'), pause: q('[data-action=pause]'), onPause };
 }
 
 describe('keyboard', () => {
@@ -155,60 +157,120 @@ describe('keyboard', () => {
   });
 });
 
-describe('held strike (onde d’énergie charge)', () => {
-  test('strikeHeld stays true while Space is down; strike is true only on the first read', () => {
+describe('energy activations: Onde held (charge) and Furie (press)', () => {
+  test('C held: chargeHeld stays true while C is down; Space is only a strike', () => {
     const { kb } = setupKeyboard();
+    key('keydown', 'KeyC');
+    expect(kb.read()).toMatchObject({ chargeHeld: true, strike: false });
+    expect(kb.read().chargeHeld).toBe(true);
+    key('keyup', 'KeyC');
+    expect(kb.read().chargeHeld).toBe(false);
     key('keydown', 'Space');
-    const first = kb.read();
-    expect(first.strike).toBe(true);
-    expect(first.strikeHeld).toBe(true);
-    const second = kb.read();
-    expect(second.strike).toBe(false);
-    expect(second.strikeHeld).toBe(true);
-    key('keyup', 'Space');
-    expect(kb.read().strikeHeld).toBe(false);
+    expect(kb.read()).toMatchObject({ strike: true, chargeHeld: false });
     kb.dispose?.();
   });
 
-  test('left mouse held keeps strikeHeld until released (even off the canvas)', () => {
-    const { kb, canvas } = setupKeyboard();
-    ptr(canvas, 'pointerdown', 1, 10, 10, 'mouse', 0);
-    expect(kb.read()).toMatchObject({ strike: true, strikeHeld: true });
-    expect(kb.read()).toMatchObject({ strike: false, strikeHeld: true });
-    ptr(window, 'pointerup', 1, 900, 900, 'mouse', 0);
-    expect(kb.read().strikeHeld).toBe(false);
+  test('R is edge-triggered: one read per press, a tap released before the read still counts once; repeats ignored', () => {
+    const { kb } = setupKeyboard();
+    key('keydown', 'KeyR');
+    key('keyup', 'KeyR');
+    expect(kb.read().furie).toBe(true);
+    expect(kb.read().furie).toBe(false);
+    key('keydown', 'KeyR');
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyR', repeat: true }));
+    expect(kb.read().furie).toBe(true);
+    expect(kb.read().furie).toBe(false);
     kb.dispose?.();
   });
 
-  test('blur releases strikeHeld (RC-40)', () => {
-    const { kb, canvas } = setupKeyboard();
-    key('keydown', 'Space');
-    ptr(canvas, 'pointerdown', 1, 10, 10, 'mouse', 0);
+  test('a C tap shorter than one read is latched: chargeHeld reads true once, then false; repeats ignored', () => {
+    const { kb } = setupKeyboard();
+    key('keydown', 'KeyC');
+    key('keyup', 'KeyC');
+    expect(kb.read().chargeHeld).toBe(true);
+    expect(kb.read().chargeHeld).toBe(false);
+    key('keydown', 'KeyC');
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyC', repeat: true }));
+    key('keyup', 'KeyC');
+    expect(kb.read().chargeHeld).toBe(true);
+    expect(kb.read().chargeHeld).toBe(false);
+    kb.dispose?.();
+  });
+
+  test('a touch Onde tap released before the read still reads chargeHeld once; releaseAll drops it', () => {
+    const { touch, onde } = setupTouch();
+    ptr(onde, 'pointerdown', 9, 500, 300);
+    ptr(window, 'pointerup', 9, 500, 300);
+    expect(touch.read().chargeHeld).toBe(true);
+    expect(touch.read().chargeHeld).toBe(false);
+    ptr(onde, 'pointerdown', 10, 500, 300);
+    ptr(window, 'pointerup', 10, 500, 300);
+    touch.releaseAll();
+    expect(touch.read().chargeHeld).toBe(false);
+  });
+
+  test('a latched C tap reaches the sim: a charge starts (then is cancelled at no cost), or « Énergie insuffisante » under 50', async () => {
+    const { Sim } = await import('../../src/sim/sim');
+    const { CONFIG } = await import('../../src/sim/config');
+    const { merge } = await import('../../src/game/input/merge');
+    const { kb } = setupKeyboard();
+    const frame = merge(kb);
+    const low = new Sim(1);
+    key('keydown', 'KeyC');
+    key('keyup', 'KeyC');
+    expect(low.step(frame()).some((e) => e.type === 'EnergyRefused')).toBe(true);
+    const full = new Sim(1);
+    full.energy.value = CONFIG.energy.max;
+    key('keydown', 'KeyC');
+    key('keyup', 'KeyC');
+    expect(full.step(frame()).some((e) => e.type === 'BeamCharging')).toBe(true);
+    expect(full.step(frame()).some((e) => e.type === 'BeamCancelled')).toBe(true);
+    expect(full.energy.value).toBe(CONFIG.energy.max);
+    kb.dispose?.();
+  });
+
+  test('blur releases chargeHeld and a pending Furie (RC-40)', () => {
+    const { kb } = setupKeyboard();
+    key('keydown', 'KeyC');
+    key('keydown', 'KeyR');
     window.dispatchEvent(new Event('blur'));
-    expect(kb.read().strikeHeld).toBe(false);
+    expect(kb.read()).toMatchObject({ chargeHeld: false, furie: false });
     kb.dispose?.();
   });
 
-  test('Frapper held by its own pointer keeps strikeHeld while the joystick moves', () => {
-    const { touch, stick, strike } = setupTouch();
-    ptr(strike, 'pointerdown', 7, 500, 300);
-    expect(touch.read()).toMatchObject({ strike: true, strikeHeld: true });
+  test('touch Onde held by its own pointer keeps chargeHeld while the joystick moves; releaseAll clears it', () => {
+    const { touch, stick, onde } = setupTouch();
+    ptr(onde, 'pointerdown', 7, 500, 300);
+    expect(touch.read()).toMatchObject({ chargeHeld: true, strike: false });
     ptr(stick, 'pointerdown', 1, 100, 300);
     ptr(window, 'pointermove', 1, 130, 300);
     ptr(window, 'pointerup', 1, 130, 300);
-    expect(touch.read()).toMatchObject({ strike: false, strikeHeld: true });
+    expect(touch.read().chargeHeld).toBe(true);
     ptr(window, 'pointerup', 7, 500, 300);
-    expect(touch.read().strikeHeld).toBe(false);
-    ptr(strike, 'pointerdown', 8, 500, 300);
+    expect(touch.read().chargeHeld).toBe(false);
+    ptr(onde, 'pointerdown', 8, 500, 300);
     touch.releaseAll();
-    expect(touch.read().strikeHeld).toBe(false);
+    expect(touch.read().chargeHeld).toBe(false);
   });
 
-  test('merge ORs strikeHeld', () => {
-    const a = { read: () => ({ strikeHeld: false }), releaseAll() {} };
-    const b = { read: () => ({ strikeHeld: true }), releaseAll() {} };
-    expect(merge(a, b)().strikeHeld).toBe(true);
-    expect(merge(a)().strikeHeld).toBe(false);
+  test('touch Furie: a tap reads once; releaseAll drops a pending one; Frapper no longer charges', () => {
+    const { touch, furie, strike } = setupTouch();
+    ptr(furie, 'pointerdown', 3, 500, 200);
+    ptr(window, 'pointerup', 3, 500, 200);
+    expect(touch.read().furie).toBe(true);
+    expect(touch.read().furie).toBe(false);
+    ptr(furie, 'pointerdown', 4, 500, 200);
+    touch.releaseAll();
+    expect(touch.read().furie).toBe(false);
+    ptr(strike, 'pointerdown', 5, 500, 300);
+    expect(touch.read()).toMatchObject({ strike: true, chargeHeld: false });
+  });
+
+  test('merge ORs chargeHeld and furie', () => {
+    const a = { read: () => ({ chargeHeld: false, furie: true }), releaseAll() {} };
+    const b = { read: () => ({ chargeHeld: true }), releaseAll() {} };
+    expect(merge(a, b)()).toMatchObject({ chargeHeld: true, furie: true });
+    expect(merge(b)()).toMatchObject({ chargeHeld: true, furie: false });
   });
 });
 

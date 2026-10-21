@@ -84,6 +84,20 @@ const TARGETS_OF: Readonly<Record<CasseKind, TargetId[]>> = {
 };
 const EPS = 1e-9;
 
+/** Brutes in a round's fill (CONFIG.brute.counts): none before round 4, 1, 2 from round 6, 3 from round 8. */
+export function bruteCount(round: number): number {
+  let n = 0;
+  for (const [from, count] of CONFIG.brute.counts) if (round >= from) n = count;
+  return n;
+}
+
+/** Shooters in a round's fill (CONFIG.shooter.counts): none before round 6, 1 in rounds 6–7, 2 from round 8, ≤ maxPerRound. */
+export function shooterCount(round: number): number {
+  let n = 0;
+  for (const [from, count] of CONFIG.shooter.counts) if (round >= from) n = count;
+  return Math.min(CONFIG.shooter.maxPerRound, n);
+}
+
 /** Rises one step every 2 rounds and every 30 session KOs, capped. */
 export function pressure(round: number, kos: number): number {
   return Math.min(CONFIG.pressureMax, 1 + Math.floor(round / 2) + Math.floor(kos / 30));
@@ -112,8 +126,8 @@ export interface MonumentPlan {
  * car, bus stop, weight 2, or 1 if it was `last` round's headline (it may repeat, rarely; nothing is forced). Second
  * beat: the rescue; from round CONFIG.monument.fromRound the monument occupation instead when the flag is French and
  * last round's second beat was not the monument (they alternate; never while the flag is Palestinian). Twists: from
- * round 2 always a weapon drop (a special pickup once one is unlocked: bouclier from round 3, furie from 4, kamehame
- * from 5; a regular weapon before), and on odd rounds from r3 a second urgency as well (when the urgency cap allows).
+ * round 2 always a weapon drop (from round 3 a bouclier half the time, a regular weapon otherwise; regular in round 2),
+ * and on odd rounds from r3 a second urgency as well (when the urgency cap allows).
  * No free target → the second beat alone (its kind is the headline).
  */
 export function roundPlan(
@@ -201,6 +215,8 @@ interface FillGroup {
   id: string;
   reqs: SpawnRequest[];
   climax: boolean;
+  /** A runner pack: it enters in a tight bunch (CONFIG.round.climaxInterval apart). */
+  pack: boolean;
   seen: Set<number>;
 }
 
@@ -240,6 +256,11 @@ export class Director {
   private variantCursor = 0;
   /** Fill firebombers handed out this round (CONFIG.firebomber.maxPerRound at most). */
   private firebombers = 0;
+
+  /** The round's fill groups in entry order (tests, diagnostics): size, runner pack, climax (the last one). */
+  fillPlan(): { id: string; size: number; pack: boolean; climax: boolean }[] {
+    return this.fill.map((g) => ({ id: g.id, size: g.reqs.length, pack: g.pack, climax: g.climax }));
+  }
 
   /** Pressure for the current round and session KOs. */
   pressure(kos: number): number {
@@ -316,7 +337,9 @@ export class Director {
     const objective = this.beats.reduce((n, b) => n + b.reduce((m, o) => m + o.count, 0), 0);
     this.total = Math.max(tableTotal(this.round), objective);
     this.fill = [];
-    this.fill = this.fillGroups(this.total - objective);
+    // no fill to close the round: the Caïd comes alone after the objectives, one more rioter in the roster
+    if (this.total === objective && this.round >= CONFIG.caid.fromRound) this.total += 1;
+    this.fill = this.roundFill(this.total - objective);
     this.nextFill = 0;
     const headlineRescue = plan.headline === 'rescue' ? this.beats[0]?.find((o) => o.rescue)?.rescue : undefined;
     ev.push(
@@ -420,6 +443,7 @@ export class Director {
         // the flag was swapped meanwhile: the planned occupiers come as fill instead
         o.dropped = true;
         this.fill.push(...this.fillGroups(o.count, `round#${this.round}:${m.id}`));
+        this.caidLast();
         return;
       }
       host.occupations.push(m);
@@ -444,6 +468,7 @@ export class Director {
       // its target fell meanwhile: the planned rioters come as fill instead
       o.dropped = true;
       this.fill.push(...this.fillGroups(o.count, `round#${this.round}:${a.id}`));
+      this.caidLast();
       return;
     }
     host.attacks.push(a);
@@ -501,7 +526,8 @@ export class Director {
     const base = Math.floor(n / groups);
     const extra = n - base * groups;
     const share = this.round >= 2 ? THROWER_SHARE : 0;
-    const first = this.fill.reduce((m, g) => m + g.reqs.length, 0);
+    // the runner pack is not part of the fill the throwers and firebombers are drawn over
+    const first = this.fill.reduce((m, g) => m + (g.pack ? 0 : g.reqs.length), 0);
     const out: FillGroup[] = [];
     const fb = CONFIG.firebomber;
     const fbWanted =
@@ -522,16 +548,101 @@ export class Director {
         }
         reqs.push({ variant: this.variant(), role, round: this.round, incidentId: `${prefix}#${this.fill.length + g + 1}` });
       }
-      out.push({ id: reqs[0]!.incidentId!, reqs, climax: false, seen: new Set() });
+      out.push({ id: reqs[0]!.incidentId!, reqs, climax: false, pack: false, seen: new Set() });
     }
     out[out.length - 1]!.climax = true;
     if (this.fill.length > 0) for (const g of this.fill) g.climax = false;
     return out;
   }
 
+  /**
+   * The round's fill (`n` rioters, the roster never changes). From CONFIG.runner.fromRound a runner pack is carved out
+   * first: 4 + (round mod 3) runners (4–6; fewer extra when the rest of the fill would lack room for the Caïd and the
+   * brutes; none when the fill has less than 4 + the Caïd), one group of its own, the round's second fill group when
+   * the rest makes two groups or more (else the first). The rest is split by fillGroups (throwers and firebombers are
+   * drawn over it), then dressed: the Caïd and the brutes (see `dress`).
+   */
+  private roundFill(n: number): FillGroup[] {
+    const [lo, hi] = CONFIG.runner.pack;
+    const boss = this.round >= CONFIG.caid.fromRound ? 1 : 0;
+    let p = 0;
+    if (this.round >= CONFIG.runner.fromRound && n >= lo + boss) {
+      const room = boss + bruteCount(this.round);
+      p = Math.min(hi, lo + (this.round % (hi - lo + 1)));
+      if (n - p < room) p = Math.max(lo, n - room);
+    }
+    const rest = this.fillGroups(n - p);
+    if (p > 0) {
+      const reqs: SpawnRequest[] = [];
+      for (let k = 0; k < p; k++) reqs.push({ variant: this.variant(), role: 'runner', round: this.round });
+      const pack: FillGroup = { id: '', reqs, climax: rest.length === 0, pack: true, seen: new Set() };
+      rest.splice(rest.length >= 2 ? 1 : 0, 0, pack);
+      // group ids follow the entry order
+      rest.forEach((g, i) => {
+        g.id = `round#${this.round}:fill#${i + 1}`;
+        for (const q of g.reqs) q.incidentId = g.id;
+      });
+    }
+    this.dress(rest);
+    return rest;
+  }
+
+  /**
+   * From CONFIG.caid.fromRound the Caïd is the very last fill rioter; bruteCount brutes take contact slots, one per group
+   * from the last group back (never in the pack); then shooterCount shooters take contact slots of the last group (the
+   * climax), earlier groups when it has none left. A rock thrower or firebomber on the Caïd's slot trades its role with
+   * a contact slot elsewhere, so their counts never change.
+   */
+  private dress(groups: FillGroup[]): void {
+    const last = groups[groups.length - 1];
+    if (!last) return;
+    if (this.round >= CONFIG.caid.fromRound) {
+      const boss = last.reqs[last.reqs.length - 1]!;
+      if (boss.role !== 'contact') {
+        const spare = groups.flatMap((g) => g.reqs).find((r) => r.role === 'contact' && r !== boss);
+        if (spare) spare.role = boss.role;
+      }
+      boss.role = 'boss';
+    }
+    let brutes = bruteCount(this.round);
+    while (brutes > 0) {
+      let placed = false;
+      for (let gi = groups.length - 1; gi >= 0 && brutes > 0; gi--) {
+        const q = groups[gi]!.reqs.find((r) => r.role === 'contact');
+        if (!q) continue;
+        q.role = 'brute';
+        brutes--;
+        placed = true;
+      }
+      if (!placed) break;
+    }
+    let shooters = shooterCount(this.round);
+    for (let gi = groups.length - 1; gi >= 0 && shooters > 0; gi--)
+      for (const q of groups[gi]!.reqs) {
+        if (shooters === 0) break;
+        if (q.role !== 'contact') continue;
+        q.role = 'shooter';
+        shooters--;
+      }
+  }
+
+  /** Fill groups added later (an objective dropped): the Caïd's role moves to the new last fill slot, so he still closes. */
+  private caidLast(): void {
+    const last = this.fill[this.fill.length - 1];
+    if (!last) return;
+    for (let gi = this.nextFill; gi < this.fill.length - 1; gi++) {
+      const g = this.fill[gi]!;
+      const q = g.reqs.find((r) => r.role === 'boss');
+      if (!q) continue;
+      const tail = last.reqs[last.reqs.length - 1]!;
+      q.role = tail.role;
+      tail.role = 'boss';
+    }
+  }
+
   private queueFill(host: DirectorHost, now: boolean): void {
     const g = this.fill[this.nextFill++]!;
-    const interval = g.climax ? CONFIG.round.climaxInterval : CONFIG.round.interval;
+    const interval = g.climax || g.pack ? CONFIG.round.climaxInterval : CONFIG.round.interval;
     host.queue.request(g.reqs, { interval, firstDelay: now ? 0 : undefined });
   }
 
@@ -575,8 +686,8 @@ export class Director {
   }
 
   /**
-   * The weapon drop (every round from 2): a special unlocked at this round (bouclier, furie, kamehame:
-   * CONFIG.<kind>.dropFromRound), a regular weapon before any is.
+   * The weapon drop (every round from 2): a bouclier (from CONFIG.bouclier.dropFromRound, CONFIG.bouclier.dropShare of
+   * the time) or a regular weapon (`special` set only for the bouclier).
    */
   private weaponDrop(host: DirectorHost, ev: SimEvent[]): void {
     const { drop: w, special } = host.weapons.dropTwist(host.player.pos, this.round);

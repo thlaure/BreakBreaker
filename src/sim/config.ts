@@ -60,11 +60,17 @@ export const CONFIG = {
   heal: { amount: 25 },
   weapons: { firstSpawn: 10, spawnEvery: [15, 25] as const, maxGround: 2, pickupRadius: 20, minDist: 160, maxDist: 480, dropLifetime: 15 },
   /**
-   * Mode furie (power-up pickup): lasts `durationSec` (a second pickup resets it). While active Paul moves `speedMul`
-   * faster, strikes `reachMul` farther at up to `maxTargets` rioters, every strike KOs (`damage`) without using the
-   * weapon, and he takes `damageTakenMul` of the damage. The twist weapon drop is a furie from `dropFromRound`; from
-   * `spawnFromRound` a timed spawn is a furie with probability `spawnShare`. Every rioter KO'd by Paul's strike is
-   * launched (cosmetic): `launchPower` px, `launchSpin` turns, direction away from Paul ± `launchJitter` rad.
+   * Energy gauge (« mana », 0..`max`): every rioter KO counted by Rules fills it by `gain` (`boss` for Le Caïd, `brute`
+   * for a brute, `rioter` for anyone else), except while the mode furie is on and for the onde d’énergie's own KOs. It
+   * is kept across rounds (a new session starts at 0) and never decays. Full (`furieCost` = `max`): Furie (R) spends it
+   * all on the mode furie. At `ondeCost` or more: Onde (C held) charges the beam, which spends `ondeCost` when it fires.
+   */
+  energy: { max: 100, ondeCost: 50, furieCost: 100, gain: { rioter: 4, brute: 8, boss: 20 } },
+  /**
+   * Mode furie (from a full energy gauge): lasts `durationSec`. While active Paul moves `speedMul` faster, strikes
+   * `reachMul` farther at up to `maxTargets` rioters, every strike KOs (`damage`) without using the weapon, and he
+   * takes `damageTakenMul` of the damage. Every rioter KO'd by Paul's strike is launched (cosmetic): `launchPower` px,
+   * `launchSpin` turns, direction away from Paul ± `launchJitter` rad.
    */
   furie: {
     durationSec: 12,
@@ -73,42 +79,35 @@ export const CONFIG = {
     maxTargets: 8,
     damage: 99,
     damageTakenMul: 0.5,
-    dropFromRound: 4,
-    spawnFromRound: 6,
-    spawnShare: 1 / 6,
     launchPower: [220, 420] as const,
     launchSpin: [2, 5] as const,
     launchJitter: 0.35,
   },
   /**
-   * Bouclier (special weapon, held): a protection bubble around Paul; lasts `durationSec` of active sim time, then
-   * breaks; no strike counter. Every rock and firebomb that would hit Paul is blocked, from any side (360°); ground fire
-   * and contact blows are not. A strike is a bash: reach
-   * `bashRange`, one-hit KO, `knockback` px away from Paul, no charge used. Twist drop from `dropFromRound`, timed spawn
-   * from `spawnFromRound` with weight `spawnShare` (same rule as the furie).
+   * Bouclier (the one special pickup, held): a protection bubble around Paul; lasts `durationSec` of active sim time,
+   * then breaks; no strike counter. Every rock, firebomb and shooter's bullet that would hit Paul is blocked, from any side (360°); ground
+   * fire and contact blows are not. A strike is a bash: reach `bashRange`, one-hit KO, `knockback` px away from Paul, no
+   * charge used. From `dropFromRound` the twist weapon drop is a bouclier with probability `dropShare` (a regular weapon
+   * otherwise); from `spawnFromRound` a timed street spawn is one with probability `spawnShare`.
    */
   bouclier: {
     durationSec: 20,
     bashRange: 64,
     knockback: 24,
     dropFromRound: 3,
+    dropShare: 0.5,
     spawnFromRound: 5,
     spawnShare: 1 / 6,
   },
   /**
-   * Kamehame (« Onde d’énergie », special weapon, held): `uses` beams. Holding Frapper charges `chargeSec` (Paul cannot
-   * move), then a beam `length` px long KOs every active rioter within `halfWidth` + its radius of the line, which stops
-   * at the first solid (buildings, props, trunks, plinth, the peaceful group). Twist drop from `dropFromRound`, timed
-   * spawn from `spawnFromRound` with weight `spawnShare`.
+   * Kamehame (« Onde d’énergie », from the energy gauge): holding Onde charges `chargeSec` (Paul cannot move), then a
+   * beam `length` px long KOs every active rioter within `halfWidth` + its radius of the line, which stops at the first
+   * solid (buildings, props, trunks, plinth, the peaceful group).
    */
   kamehame: {
-    uses: 2,
     chargeSec: 1,
     length: 320,
     halfWidth: 16,
-    dropFromRound: 5,
-    spawnFromRound: 7,
-    spawnShare: 1 / 6,
     /**
      * Cosmetic « satellisation » of the beam's KOs: `satellitePower` px along the beam ± `satelliteJitter` rad,
      * `satelliteSpin` turns.
@@ -143,6 +142,63 @@ export const CONFIG = {
     fillEvery: 8,
     maxPerRound: 3,
   },
+  /**
+   * Runners (§12.14): contact rioters at `speedMul` × the hostile speed with `hp` HP. From `fromRound`, one fill group
+   * of each round becomes a pack of `pack` rioters (4–6, never added to the roster), entering CONFIG.round.climaxInterval
+   * apart, without a banner.
+   */
+  runner: { speedMul: 1.6, hp: 1, fromRound: 3, pack: [4, 6] as const },
+  /**
+   * Brutes: contact rioters at `speedMul` × speed with `hp` HP; a blow that lands pushes Paul `knockback` px away
+   * (blocked by solids, no extra damage). `counts`: [from round, brutes per round] (replacing contact slots of the fill).
+   */
+  brute: { speedMul: 0.75, hp: 4, knockback: 28, counts: [[4, 1], [6, 2], [8, 3]] as const },
+  /**
+   * « Le Caïd » (mini-boss, role 'boss'): `hp` HP, `speedMul` × speed, `knockback` px push; from `fromRound` he closes
+   * every round (last fill rioter). KO'd: +1 as usual, +`bonus` (once per round) and a regular weapon dropped where he fell.
+   */
+  caid: { speedMul: 0.9, hp: 6, knockback: 40, fromRound: 3, bonus: 5 },
+  /**
+   * Shooters (cartoon AK-47, role 'shooter'): `hp` HP; keep `keepMin`–`keepMax` px from Paul with a clear line (else
+   * walk in); aim `aimSec` at where Paul stands (red aim line, « ! »), then a burst of `burst` bullets `burstGap` s apart
+   * along that fixed line, then reload `reloadSec`. Paul within `fallback` px → they fight as contacts. `counts`: [from
+   * round, shooters per round] (contact slots of the fill, last group first), at most `maxPerRound`.
+   */
+  shooter: {
+    hp: 3,
+    keepMin: 220,
+    keepMax: 300,
+    fallback: 100,
+    aimSec: 0.8,
+    burst: 3,
+    burstGap: 0.12,
+    reloadSec: 3,
+    counts: [[6, 1], [8, 2]] as const,
+    maxPerRound: 3,
+  },
+  /**
+   * Shooters' bullets: `speed` px/s, `damage` to Paul (normal damage path: invulnerability frames, mode furie), `radius`
+   * px, `lifeSec` s; stopped by solids, the peaceful group, the victim and the bouclier's bubble; never hurt rioters; at
+   * most `maxFlying` in flight.
+   */
+  bullet: { speed: 260, damage: 8, radius: 3, lifeSec: 1.6, maxFlying: 30 },
+  /**
+   * Flashball (regular weapon, 6 shots): a strike fires a shot at `speed` px/s for at most `range` px along the mouse aim,
+   * else the facing snapped to the nearest active rioter within ±`assistDeg`° and `assistRange` px (clear line). The first
+   * rioter hit takes a weapon hit (one-hit KO; CONFIG.toughWeaponDamage on a brute or the Caïd); solids, the peaceful group
+   * and the victim stop it. In the street pool from `fromRound`; one is dropped `dropMin`–`dropMax` px from Paul when the
+   * session's first shooter enters (never expires).
+   */
+  flashball: { speed: 420, range: 480, radius: 4, assistDeg: 12, assistRange: 320, fromRound: 5, dropMin: 120, dropMax: 220 },
+  /**
+   * Gant de boxe à ressort (regular weapon, 6 uses): a strike is a straight punch of `reach` px along the facing (the aim);
+   * the first active rioter on it takes a weapon hit and is pushed `knockback` px; a KO body is launched (tumble,
+   * `launchPower` px, `launchSpin` turns). Stopped by the first solid, the peaceful group, the victim. A use is spent
+   * only on a hit. In the street pool from `fromRound`.
+   */
+  gant: { reach: 160, knockback: 32, fromRound: 3, launchPower: [70, 120] as const, launchSpin: [1, 2] as const },
+  /** Damage of a held regular weapon's strike on a brute or the Caïd (everyone else: one-hit KO). */
+  toughWeaponDamage: 2,
   /**
    * Ground fire left by a firebomb: `radius` px, `lifeSec` s, at most `maxAlive` (a new one pushes the oldest out).
    * Paul standing inside takes `damage` every `tickSec` s through the normal damage path (invulnerability frames and

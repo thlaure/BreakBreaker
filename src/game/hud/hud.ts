@@ -9,6 +9,7 @@ import {
   bearingDeg,
   edgePosition,
   formatMeters,
+  hintIds,
   incidentAlert,
   incidentLook,
   pixelSvg,
@@ -19,7 +20,9 @@ import {
 } from './alerts';
 import {
   DEFAULT_ACT_LABEL,
+  ENERGY_REFUSED_HINT,
   contextPrompt,
+  energyView,
   hpLabel,
   incidentLines,
   itemsLine,
@@ -46,7 +49,9 @@ const EDGE_HALF: Vec = { x: 66, y: 20 };
 const EDGE_PAD = 8;
 /** Touch buttons in the bottom-right corner (see jouer/index.html), kept clear of the edge indicators. */
 const TOUCH_PAD_W = 200;
-const TOUCH_PAD_H = 210;
+const TOUCH_PAD_H = 250;
+/** How long « Énergie insuffisante » stays after a refused Furie / Onde. */
+export const ENERGY_HINT_MS = 1200;
 /** How far the score list's stepped border and drop shadow (box-shadow, see hud.css) reach past its box. */
 const PANEL_SHADOW = { right: 8, bottom: 8 };
 const SLOTS = CONFIG.rock.maxCarried;
@@ -148,6 +153,16 @@ export class Hud {
   private readonly wave = statRow('wave', 'MANCHE');
   private readonly rocks = statRow('rocks minor', 'PIERRES');
   private readonly weapon = statRow('weapon minor', 'ARME');
+  /** The energy gauge: a segmented pixel bar (a tick at 50 %; the bar's end is 100 %) and what it allows (« ONDE · C », « FURIE · R »). */
+  private readonly energy = statRow('energy minor', 'ÉNERGIE');
+  private readonly energyBar = el('span', 'ebar');
+  private readonly energyFill = el('span', 'efill');
+  private readonly energyTag = el('span', 'etag');
+  /** Gauge value last shown (the bar pops when it goes up). */
+  private lastEnergy = Number.NaN;
+  /** « Énergie insuffisante » is showing (a refused Furie / Onde), until its timer clears it. */
+  private refused = false;
+  private refusedTimer: ReturnType<typeof setTimeout> | null = null;
   /** Belongings Paul carries back to the rescue victim (hidden when none). */
   private readonly items = statRow('items minor', 'OBJETS');
   private readonly slots: HTMLElement[] = [];
@@ -162,6 +177,9 @@ export class Hud {
   private readonly banner = el('div', 'bb-banner');
   private readonly bannerHint = el('span', 'hint');
   private readonly actBtn: HTMLElement | null;
+  /** Touch Furie / Onde buttons: dim until available, glowing when ready. */
+  private readonly furieBtn: HTMLElement | null;
+  private readonly ondeBtn: HTMLElement | null;
   private readonly touchRoot: HTMLElement | null;
   /** Cached `.bb-top` / `.bb-tools` boxes (indicators and banner keep clear of them); refreshed on resize and card changes. */
   private topBox: Box | null = null;
@@ -200,8 +218,12 @@ export class Hud {
     }
     this.items.li.hidden = true;
     this.score.val.addEventListener('animationend', () => this.score.val.classList.remove('pop'));
+    this.energyBar.setAttribute('aria-hidden', 'true');
+    this.energyBar.append(this.energyFill, el('i', 'tick t50'));
+    this.energyBar.addEventListener('animationend', () => this.energyBar.classList.remove('pop'));
+    this.energy.val.append(this.energyBar, this.energyTag);
     this.stats.setAttribute('aria-label', 'Score');
-    this.stats.append(...[this.score, this.kos, this.wave, this.rocks, this.weapon, this.items].map((r) => r.li));
+    this.stats.append(...[this.score, this.kos, this.wave, this.rocks, this.weapon, this.energy, this.items].map((r) => r.li));
     top.append(hp, this.stats, this.cardsEl);
     this.round = this.makeRound();
     this.prompt.hidden = true;
@@ -221,6 +243,8 @@ export class Hud {
     this.touchRoot = touchRoot;
     this.actBtn = touchRoot?.querySelector<HTMLElement>('[data-action=act]') ?? null;
     if (this.actBtn) this.actBtn.style.display = 'none';
+    this.furieBtn = touchRoot?.querySelector<HTMLElement>('[data-action=furie]') ?? null;
+    this.ondeBtn = touchRoot?.querySelector<HTMLElement>('[data-action=onde]') ?? null;
     window.addEventListener('resize', this.onResize);
   }
 
@@ -229,12 +253,23 @@ export class Hud {
     this.onResize();
   }
 
-  /** Sim events of the frame: a new incident or round pops the alert banner. */
+  /** Sim events of the frame: a new incident or round pops the alert banner; a refused Furie / Onde shows its hint. */
   onEvents(events: SimEvent[]): void {
     for (const e of events) {
+      if (e.type === 'EnergyRefused') this.showRefused();
       const inc = alertFromEvent(e);
       if (inc) this.alert.push(inc);
     }
+  }
+
+  /** « Énergie insuffisante » in the ÉNERGIE row for ENERGY_HINT_MS (a new refusal restarts it). */
+  private showRefused(): void {
+    this.refused = true;
+    if (this.refusedTimer !== null) clearTimeout(this.refusedTimer);
+    this.refusedTimer = setTimeout(() => {
+      this.refused = false;
+      this.refusedTimer = null;
+    }, ENERGY_HINT_MS);
   }
 
   /**
@@ -290,6 +325,8 @@ export class Hud {
   destroy(): void {
     this.hideIntro();
     this.alert.destroy();
+    if (this.refusedTimer !== null) clearTimeout(this.refusedTimer);
+    for (const b of [this.furieBtn, this.ondeBtn]) b?.classList.remove('ready', 'dim');
     window.removeEventListener('resize', this.onResize);
     this.root.remove();
     if (this.actBtn) {
@@ -300,13 +337,14 @@ export class Hud {
 
   update(s: Snapshot, view: CameraView): void {
     const c = this.c;
+    const touch = this.touchRoot?.classList.contains('visible') ?? false;
     this.updateHp(s);
     this.updateStats(s);
+    this.updateEnergy(s, touch);
 
     this.trackRescue(s);
     this.updateCards(incidentLines(s, this.rescueDrain), s);
 
-    const touch = this.touchRoot?.classList.contains('visible') ?? false;
     const cinematic = s.school.stage === 'cinematic' && !s.ended;
     this.banner.hidden = !cinematic;
     if (cinematic) c.text(this.bannerHint, touch ? 'Touchez l’écran pour passer' : 'Espace ou F pour passer');
@@ -322,7 +360,7 @@ export class Hud {
 
     const active = s.ended ? [] : activeIncidents(s);
     if (s.ended) this.alert.clear();
-    else this.alert.prune(new Set(active.map((i) => i.id)));
+    else this.alert.prune(new Set([...active.map((i) => i.id), ...hintIds(s)]));
     this.alert.track(s.player.pos);
     this.placeAlert();
     this.updateRound(roundPanel(s));
@@ -363,6 +401,37 @@ export class Hud {
     const items = itemsLine(s);
     this.items.li.hidden = items === null;
     c.text(this.items.val, String(s.carriedItems));
+  }
+
+  /**
+   * The ÉNERGIE row (bar width, a pop when it fills, the state class: soft blink at the onde, gold blink when full, the
+   * drain in mode furie; the refusal hint) and the touch Furie / Onde buttons (dim until available, `ready` glow).
+   */
+  private updateEnergy(s: Snapshot, touch: boolean): void {
+    const c = this.c;
+    const v = energyView(s, touch);
+    c.style(this.energyFill, `width:${v.pct.toFixed(1)}%`);
+    c.cls(this.energy.li, `row energy minor st-${v.state}${this.refused ? ' refused' : ''}`);
+    c.text(this.energyTag, this.refused ? ENERGY_REFUSED_HINT : v.tag);
+    aria(this.energy.li, v.aria);
+    if (s.energy.value !== this.lastEnergy) {
+      const up = s.energy.value > this.lastEnergy; // false on the first frame (NaN)
+      this.lastEnergy = s.energy.value;
+      if (up) {
+        this.energyBar.classList.remove('pop');
+        void this.energyBar.offsetWidth;
+        this.energyBar.classList.add('pop');
+      }
+    }
+    const btn = (b: HTMLElement | null, ready: boolean, label: string): void => {
+      if (!b) return;
+      b.classList.toggle('ready', ready);
+      b.classList.toggle('dim', !ready);
+      const a = ready ? `${label} : disponible` : `${label} : énergie insuffisante`;
+      if (b.getAttribute('aria-label') !== a) b.setAttribute('aria-label', a);
+    };
+    btn(this.furieBtn, s.energy.ready.furie && !s.furie && !s.player.ko, 'Furie');
+    btn(this.ondeBtn, s.energy.ready.onde && !s.player.ko, 'Onde');
   }
 
   /** « Santé 85 sur 100 » for screen readers (progressbar, visually hidden). */

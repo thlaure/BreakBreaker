@@ -35,9 +35,8 @@ const SHINE = 0xffffff;
 const HIT_FLASH_MS = 140;
 
 /**
- * Runtime textures of the two special weapons: `weapon_bouclier` (the pickup only: a round blue/steel shield with a
- * highlight; once held it becomes the protection bubble, BubbleView) and `weapon_kamehame` (pickup: a glowing blue
- * orb with a spark).
+ * Runtime texture of the special pickup: `weapon_bouclier` (a round blue/steel shield with a highlight; once held it
+ * becomes the protection bubble, BubbleView).
  */
 export function makeSpecialTextures(scene: Phaser.Scene): void {
   if (scene.textures.exists('weapon_bouclier')) return;
@@ -50,14 +49,6 @@ export function makeSpecialTextures(scene: Phaser.Scene): void {
   g.fillStyle(STEEL_LIGHT, 1).fillRect(5, 5, 3, 2).fillRect(4, 7, 2, 2);
   g.fillStyle(INK, 1).fillRect(8, 9, 2, 2);
   g.generateTexture('weapon_bouclier', 18, 20);
-  g.clear();
-  // energy orb 18×20: ink rim, blue shell, light-blue body, white core, a spark on the top right
-  g.fillStyle(INK, 1).fillCircle(8, 11, 8);
-  g.fillStyle(BLUE, 1).fillCircle(8, 11, 7);
-  g.fillStyle(ENERGY, 1).fillCircle(8, 11, 5);
-  g.fillStyle(ENERGY_CORE, 1).fillCircle(7, 10, 2);
-  g.fillStyle(ENERGY_CORE, 1).fillRect(15, 0, 1, 5).fillRect(13, 2, 5, 1);
-  g.generateTexture('weapon_kamehame', 18, 20);
   g.destroy();
 }
 

@@ -1,9 +1,11 @@
+import { Bullets } from './bullets';
 import { CONFIG } from './config';
 import { Director, spawnPoints, type RoundPhase, type RoundSummary } from './director';
+import { Energy } from './energy';
 import { EntryQueue, type Spawner } from './entry';
 import { FirePatches } from './firepatch';
 import { Stations, type StationMessage } from './healing';
-import { Horde, type Hostile, type HordeCtx } from './hostiles';
+import { Horde, isTough, type Hostile, type HordeCtx } from './hostiles';
 import type { ItemState, RescueIncident, RescueKind, RescueStage } from './incidents/rescue';
 import { SchoolIncident, type SchoolStage } from './incidents/school';
 import type { TargetAttack } from './incidents/targetAttack';
@@ -11,9 +13,9 @@ import { moveCircle } from './map/collide';
 import { DISTRICT, type Rect } from './map/district';
 import { FlowField } from './map/flowfield';
 import { Grid } from './map/grid';
-import { len, norm, sub } from './math';
+import { dist, inArc, len, norm, segmentCircleHit, sub } from './math';
 import { Monument, MonumentIncident, type MonumentStage } from './monument';
-import { createPlayer, damagePlayer, stepPlayer, sweep, type Player } from './player';
+import { createPlayer, damagePlayer, readyStrike, stepPlayer, sweep, type Player } from './player';
 import { Rocks, type RockCtx, type RockState } from './projectiles';
 import { rng } from './rng';
 import { Toolboxes, type ToolboxMessage } from './repair';
@@ -21,7 +23,7 @@ import { Rules, type SessionStats } from './rules';
 import { beam } from './specials';
 import { Targets } from './targets';
 import type { CasseKind, InputFrame, Launch, MonumentFlag, Role, SimEvent, TargetId, Variant, Vec } from './types';
-import { Weapons, type HeldKind, type PickupKind } from './weapons';
+import { WEAPONS, Weapons, type HeldKind, type PickupKind } from './weapons';
 
 /** Damage of a weapon strike: enough to KO any rioter (spec: weapons are one-hit KO). */
 const WEAPON_DAMAGE = 99;
@@ -64,13 +66,23 @@ export interface Snapshot {
     variant: Variant;
     role: Role;
     hp: number;
+    /** Starting HP (bars: a brute once damaged, the Caïd always). */
+    maxHp: number;
     /** Winding up a blow, a throw or a Molotov. */
     windup: boolean;
     /** Holding up a lit bottle (a Molotov or firebomber windup; not a firebomber's melee blow). */
     bottleUp: boolean;
+    /** A shooter aiming or firing its burst (raised rifle, « ! »). */
+    aiming: boolean;
   }[];
   rocks: { id: number; state: RockState; owner: 'enemy' | 'player'; kind: 'caillou' | 'pave' | 'brique'; pos: Vec }[];
   telegraphs: Telegraph[];
+  /** Shooters' aim lines (from the shooter to where Paul stood at aim start) while they aim; gone at a KO. */
+  aims: Telegraph[];
+  /** Shooters' bullets in flight (`dir` unit). */
+  bullets: { id: number; pos: Vec; dir: Vec }[];
+  /** Paul's flashball shots in flight (`dir` unit). */
+  flashballs: { id: number; pos: Vec; dir: Vec }[];
   group: { area: Rect; members: Vec[] };
   victim: Vec | null;
   /** `attacked` = an urgent attack on it; `burning` = on fire with no urgent attack (smouldering until put out). */
@@ -125,17 +137,19 @@ export interface Snapshot {
   carriedItems: number;
   stations: { id: string; pos: Vec; charged: boolean }[];
   stationMessage: StationMessage;
-  /**
-   * Weapon in Paul's hands (null = bare hands): strikes left (regular weapons), beams left (kamehame), or the bouclier's
-   * `secondsLeft` (its `uses` is 0).
-   */
+  /** Weapon in Paul's hands (null = bare hands): strikes left (regular weapons), or the bouclier's `secondsLeft` (`uses` 0). */
   weapon: { kind: HeldKind; uses: number; secondsLeft?: number } | null;
   /** Onde d’énergie charging: `progress` in [0, 1] of CONFIG.kamehame.chargeSec; null when not charging. */
   charge: { progress: number } | null;
-  /** `expiresAt` = sim time a special drop vanishes (null = never); `kind: 'furie'` = the mode furie power-up. */
+  /** `expiresAt` = sim time a special drop vanishes (null = never). */
   weaponsOnGround: { id: number; kind: PickupKind; pos: Vec; expiresAt: number | null }[];
   /** Mode furie on (seconds left), or null. */
   furie: { secondsLeft: number } | null;
+  /**
+   * The energy gauge (0..max, kept across rounds): `ready.onde` = the onde d’énergie can be charged (>= ondeCost),
+   * `ready.furie` = the mode furie can start (full).
+   */
+  energy: { value: number; max: number; ready: { onde: boolean; furie: boolean } };
   /**
    * The equestrian monument: its flag; `occupation` = the latest occupation's stage and swap timer (null before the
    * first); capture the flag (`capture` seconds of `captureSec`, Paul `inZone`, `contested` by a hostile inside).
@@ -181,12 +195,15 @@ export function segmentRectEntry(a: Vec, b: Vec, r: Rect): number | null {
 
 /**
  * Deterministic session facade driven one fixed step at a time by the Phaser layer.
- * Step order: player move → sweep/return → hostiles → queue entries → rocks → damage → fire patches → KO check → Molotovs routed to
+ * Step order: player move → sweep/punch/shot/return → hostiles → queue entries (the first shooter brings a flashball)
+ * → rocks → bullets → damage → fire patches → KO check → Molotovs routed to
  * the attack on their target → attacks → rescue → toolboxes → heals → weapons (pickups, furie timer) → director.
- * Mode furie (CONFIG.furie) changes the player move, the strike and the damage taken; a KO ends it.
- * Held specials: the bouclier is a protection bubble (rocks and firebombs blocked from any side) and bashes on a strike; the onde d'énergie (kamehame)
- * charges while Frapper is held (Paul frozen), fires a beam at CONFIG.kamehame.chargeSec, and is cancelled by a release,
- * damage, the weapon lost or a KO.
+ * Energy gauge (CONFIG.energy): every KO counted by Rules fills it, except in mode furie and the beam's own KOs.
+ * Furie (`input.furie`, full gauge) spends it all on the mode furie (CONFIG.furie: player move, strike and damage
+ * taken; a KO ends it). Onde (`input.chargeHeld`, rising edge, >= ondeCost) charges the onde d'énergie (Paul frozen),
+ * fires a beam at CONFIG.kamehame.chargeSec and spends ondeCost then; a release, damage, a mode furie started or a KO
+ * cancels it at no cost. Too little energy: EnergyRefused. The bouclier (held) is a protection bubble (rocks and
+ * firebombs blocked from any side) and bashes on a strike.
  * While the school cinematic is running, only its timer advances. Agir (`input.act`, held) counts only on its rising
  * edge: holding F while walking into range, or while a hostile moves away, never starts a toolbox repair.
  * Every score change of the step (Rules' outbox, KOs included) ends the step's events as one ScoreChanged each.
@@ -197,6 +214,8 @@ export class Sim {
   readonly player: Player = createPlayer(DISTRICT.playerSpawn);
   readonly horde = new Horde();
   readonly rocks = new Rocks(this.grid);
+  /** Shooters' bullets and Paul's flashball shots. */
+  readonly bullets = new Bullets(this.grid);
   readonly targets = new Targets();
   /** Every rioter of a round walks in through this line, from the edge points away from Paul. */
   readonly queue = new EntryQueue();
@@ -220,6 +239,8 @@ export class Sim {
   private lastOccupation: MonumentIncident | null = null;
   readonly director = new Director();
   readonly weapons: Weapons;
+  /** The energy gauge: fed by KOs, spent by the mode furie and the onde d'énergie; kept across rounds. */
+  readonly energy = new Energy();
   readonly rand: () => number;
   /** Own stream for the cosmetic furie launches, so they never shift any other random sequence. */
   private readonly launchRand: () => number;
@@ -233,6 +254,9 @@ export class Sim {
   private readonly siteFields = new Map<TargetId, FlowField>();
   private readonly monumentField: FlowField;
   private telegraphs: Telegraph[] = [];
+  private aims: (Telegraph & { lifeId: number })[] = [];
+  /** The flashball guaranteed with the session's first shooter was dropped. */
+  private flashballGiven = false;
   private molotovs: Telegraph[] = [];
   private facings = new Map<number, Vec>();
   private stationMessage: StationMessage = null;
@@ -240,8 +264,12 @@ export class Sim {
   private koReported = false;
   /** Onde d'énergie charge under way: seconds held so far. */
   private charge: { t: number } | null = null;
+  /** Caïds whose KO was already rewarded (bonus + weapon drop). */
+  private readonly caidsDown = new Set<number>();
   /** Agir (F / touch Agir) was down on the previous step: the toolbox only reacts to a fresh press (rising edge). */
   private prevAct = false;
+  /** Onde (C / touch Onde) was down on the previous step: a charge only starts on a fresh press. */
+  private prevCharge = false;
 
   constructor(seed: number, opts: { invulnerable?: boolean } = {}) {
     this.rand = rng(seed);
@@ -276,6 +304,8 @@ export class Sim {
     // Agir is a press, not a hold: only its rising edge counts (tracked on every step the sim sees, paused ones included)
     const actPressed = input.act && !this.prevAct;
     this.prevAct = input.act;
+    const chargePressed = input.chargeHeld && !this.prevCharge;
+    this.prevCharge = input.chargeHeld;
     if (this.paused || this.rules.ended) return [];
     const dt = CONFIG.step;
     const ev: SimEvent[] = [];
@@ -290,20 +320,28 @@ export class Sim {
     const now = this.now;
     const p = this.player;
 
+    if (input.furie) this.activateFurie(ev);
     const furie = this.weapons.furie();
     // charging the onde d'énergie: movement ignored (aim still turns Paul)
     const frozen = this.charge !== null;
     stepPlayer(p, frozen ? { ...input, move: { x: 0, y: 0 } } : input, dt, now, this.grid, furie ? CONFIG.furie.speedMul : 1);
-    if (this.charge !== null || this.weapons.held?.kind === 'kamehame') this.stepCharge(input, dt, ev);
-    else if (input.strike) {
-      // Bare hands: 1 damage (2 hits to KO). Any weapon: KO in one hit. Mode furie: KO in one hit, more targets, the
-      // weapon is not used, every KO is launched. Bouclier: a bash (one-hit KO, knockback, no charge used).
+    // no swing on the step a charge starts, while it grows, or the step it fires
+    if (frozen) this.stepCharge(input, dt, ev);
+    else if (chargePressed) this.startCharge(ev);
+    const mode = this.strikeMode(furie);
+    if (!frozen && this.charge === null && input.strike && mode === 'shot') this.fireFlashball(input, now, ev);
+    else if (!frozen && this.charge === null && input.strike && mode === 'punch') this.punch(now, ev);
+    else if (!frozen && this.charge === null && input.strike) {
+      // Bare hands: 1 damage. A regular weapon: KO in one hit, but CONFIG.toughWeaponDamage on a brute or the Caïd.
+      // Mode furie: KO in one hit, more targets, the weapon is not used, every KO is launched. Bouclier: a bash
+      // (one-hit KO, knockback, no charge used).
       const bash = this.weapons.held?.kind === 'bouclier';
-      const damage = furie ? CONFIG.furie.damage : this.weapons.held ? WEAPON_DAMAGE : 1;
       const maxTargets = furie ? CONFIG.furie.maxTargets : CONFIG.melee.maxTargets;
       const { hits } = sweep(p, now, this.horde.views(), this.grid, this.weapons.range(), maxTargets);
       for (const id of hits) {
-        ev.push({ type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee' });
+        const tough = this.tough(id);
+        const damage = furie ? CONFIG.furie.damage : bash ? WEAPON_DAMAGE : this.weapons.held ? (tough ? CONFIG.toughWeaponDamage : WEAPON_DAMAGE) : 1;
+        ev.push(tough ? { type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee', heavy: true } : { type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee' });
         this.hit(id, damage, ev, furie);
         if (bash) this.knockback(id);
       }
@@ -321,33 +359,54 @@ export class Sim {
       grid: this.grid,
       fields: { player: this.fields.player, victim: victimPos ? this.fields.victim : null },
       rocks: this.rocks,
+      bullets: this.bullets,
       sites: this.sites(),
       victimPos,
       pressure: this.director.pressure(this.rules.kos),
     });
     this.updateFacings(prev);
-    this.queue.step(dt, this.horde, spawnPoints(p.pos));
+    for (const h of this.queue.step(dt, this.horde, spawnPoints(p.pos))) {
+      if (h.role === 'boss') ev.push({ type: 'CaidArrived', lifeId: h.lifeId, pos: v(h.pos), round: h.round ?? this.director.round });
+      else if (h.role === 'shooter' && !this.flashballGiven) this.giveFlashball(ev);
+    }
     const rockEv = this.rocks.step(dt, now, this.rockCtx(victimPos));
+    const shots = this.bullets.step(dt, this.bulletCtx(victimPos));
 
     // damage, hits and rock bookkeeping
     const hpBefore = p.hp;
     const molotovs: Extract<SimEvent, { type: 'MolotovThrown' }>[] = [];
-    for (const e of [...hordeEv, ...rockEv]) {
+    for (const e of [...hordeEv, ...rockEv, ...shots.events]) {
       if (e.type === 'PlayerDamaged') {
         const amount = this.weapons.furie() ? e.amount * CONFIG.furie.damageTakenMul : e.amount;
-        if (!this.invulnerable && damagePlayer(p, amount, now)) ev.push({ ...e, amount });
+        if (!this.invulnerable && damagePlayer(p, amount, now)) {
+          ev.push({ ...e, amount });
+          // a brute's or the Caïd's blow: Paul is pushed through the player move (solids block it)
+          if (e.push && !p.ko) p.pos = moveCircle(this.grid, p.pos, e.push, CONFIG.player.radius);
+        }
         continue;
       }
       ev.push(e);
       if (e.type === 'MolotovThrown') molotovs.push(e);
       else if (e.type === 'FirebombThrown') this.firePatches.throwBottle(e.from, e.to, e.until);
       else if (e.type === 'EnemyThrowStarted') this.telegraphs.push({ from: v(e.from), to: v(e.to), until: e.until });
+      else if (e.type === 'ShooterAimStarted') this.aims.push({ lifeId: e.lifeId, from: v(e.from), to: v(e.to), until: e.until });
       else if (e.type === 'ProjectilePickedUp') this.rules.stats.rocksPicked += 1;
       else if (e.type === 'ProjectileReturned') this.rules.stats.rocksReturned += 1;
       else if (e.type === 'HitConfirmed' && e.source === 'rock') {
         this.rules.stats.rocksHit += 1;
         this.hit(e.targetLifeId, e.damage, ev);
       }
+    }
+    // flashball shots: a weapon hit on the first rioter on their path
+    for (const s of shots.hits) {
+      const tough = this.tough(s.lifeId);
+      const damage = tough ? CONFIG.toughWeaponDamage : WEAPON_DAMAGE;
+      ev.push(
+        tough
+          ? { type: 'HitConfirmed', targetLifeId: s.lifeId, damage, source: 'flashball', heavy: true }
+          : { type: 'HitConfirmed', targetLifeId: s.lifeId, damage, source: 'flashball' },
+      );
+      this.hit(s.lifeId, damage, ev);
     }
     // ground fire: Paul only, through the same damage path (invulnerability frames, mode furie)
     ev.push(
@@ -361,6 +420,8 @@ export class Sim {
     // taking damage (or a KO) cancels the charge: nothing used
     if (this.charge !== null && (p.hp < hpBefore || p.ko)) this.cancelCharge(ev);
     this.telegraphs = this.telegraphs.filter((t) => t.until > now);
+    // an aim line goes with its shooter's KO
+    this.aims = this.aims.filter((t) => t.until > now && this.horde.list.some((h) => h.lifeId === t.lifeId && h.state !== 'ko'));
     this.molotovs = this.molotovs.filter((t) => t.until > now);
 
     if (p.ko) {
@@ -396,6 +457,8 @@ export class Sim {
     ev.push(...heal.events);
     this.stationMessage = heal.message;
     ev.push(...this.weapons.step(dt, now, p, this.director.round));
+    // a Caïd knocked out by any path (rocks, the beam, a test's direct hit) gets his bonus and drop before the round closes
+    for (const h of this.horde.list) if (h.role === 'boss' && h.state === 'ko') this.caidDown(h, ev);
 
     ev.push(...this.director.step(dt, this));
     this.tally(ev);
@@ -435,8 +498,10 @@ export class Sim {
         variant: h.variant,
         role: h.role,
         hp: h.hp,
+        maxHp: h.maxHp,
         windup: h.state === 'windup',
         bottleUp: h.state === 'windup' && this.horde.bottleUp(h.lifeId),
+        aiming: h.state === 'windup' && this.horde.aiming(h.lifeId),
       })),
       rocks: [...this.rocks.flying(), ...this.rocks.ground()].map((k) => ({
         id: k.id,
@@ -446,6 +511,9 @@ export class Sim {
         pos: v(k.pos),
       })),
       telegraphs: this.telegraphs.map((t) => ({ from: v(t.from), to: v(t.to), until: t.until })),
+      aims: this.aims.map((t) => ({ from: v(t.from), to: v(t.to), until: t.until })),
+      bullets: this.bullets.enemy().map((b) => ({ id: b.id, pos: v(b.pos), dir: v(b.dir) })),
+      flashballs: this.bullets.player().map((b) => ({ id: b.id, pos: v(b.pos), dir: v(b.dir) })),
       group: { area: { ...DISTRICT.peacefulGroup.area }, members: DISTRICT.peacefulGroup.members.map(v) },
       victim,
       targets: DISTRICT.targets.map((def) => {
@@ -496,6 +564,7 @@ export class Sim {
       charge: this.charge ? { progress: Math.min(1, this.charge.t / CONFIG.kamehame.chargeSec) } : null,
       weaponsOnGround: this.weapons.ground.map((w) => ({ id: w.id, kind: w.kind, pos: v(w.pos), expiresAt: w.expiresAt })),
       furie: this.weapons.furie() ? { secondsLeft: this.weapons.furieLeft } : null,
+      energy: { value: this.energy.value, max: CONFIG.energy.max, ready: this.energy.ready() },
       monument: this.monumentView(),
       stats: { ...this.rules.stats },
     };
@@ -570,32 +639,148 @@ export class Sim {
     };
   }
 
-  /** Paul holds the bouclier: its bubble blocks every rock and firebomb that would hit him, from any side. */
+  private bulletCtx(victimPos: Vec | null) {
+    const p = this.player;
+    const area = DISTRICT.peacefulGroup.area;
+    return {
+      player: { pos: p.pos, r: CONFIG.player.radius, invulnerable: this.invulnerable || p.ko || this.now < p.invulnUntil, shield: this.shield() },
+      hostiles: this.horde.views(),
+      groupBlocks: (a: Vec, b: Vec) => segmentRectEntry(a, b, area),
+      victimPos,
+    };
+  }
+
+  /** How Paul's strike works now: mode furie and the bouclier swing (bash), else the held weapon's own way. */
+  private strikeMode(furie: boolean): 'swing' | 'punch' | 'shot' {
+    const k = this.weapons.held?.kind;
+    if (furie || k === undefined || k === 'bouclier') return 'swing';
+    return WEAPONS[k].strike;
+  }
+
+  /**
+   * Flashball: one shot (strike cooldown as a swing) along the mouse aim; without one, along the facing snapped to the
+   * nearest active rioter within ±assistDeg and assistRange with a clear line. The shot is used whether it hits or not.
+   */
+  private fireFlashball(input: InputFrame, now: number, ev: SimEvent[]): void {
+    const p = this.player;
+    if (!readyStrike(p, now)) return;
+    let dir = norm(input.aim && len(input.aim) > 0 ? input.aim : p.facing);
+    if (!input.aim || len(input.aim) === 0) {
+      const c = CONFIG.flashball;
+      let best: { pos: Vec; d: number; id: number } | null = null;
+      for (const h of this.horde.list) {
+        if (h.state === 'ko') continue;
+        if (!inArc(p.pos, dir, h.pos, c.assistRange, c.assistDeg * 2) || !this.grid.lineClear(p.pos, h.pos)) continue;
+        const d = dist(p.pos, h.pos);
+        if (!best || d < best.d || (d === best.d && h.lifeId < best.id)) best = { pos: h.pos, d, id: h.lifeId };
+      }
+      if (best && best.d > 1e-6) dir = norm(sub(best.pos, p.pos));
+    }
+    p.facing = dir;
+    const shot = this.bullets.shoot(p.pos, dir);
+    ev.push({ type: 'FlashballFired', id: shot.id, from: v(p.pos), dir: v(dir) });
+    ev.push(...this.weapons.onShot());
+  }
+
+  /**
+   * Gant de boxe: a straight punch of CONFIG.gant.reach px along the facing (the aim), cut at the first solid (the
+   * peaceful group included) or the victim. The first active rioter on it takes a weapon hit and is pushed
+   * CONFIG.gant.knockback px along the punch (a KO body is launched); a use is spent only on a hit.
+   */
+  private punch(now: number, ev: SimEvent[]): void {
+    const p = this.player;
+    if (!readyStrike(p, now)) return;
+    const dir = norm(p.facing);
+    const reach = CONFIG.gant.reach;
+    let to = { ...p.pos };
+    for (let s = 2; s <= reach; s += 2) {
+      const q = { x: p.pos.x + dir.x * s, y: p.pos.y + dir.y * s };
+      if (this.grid.isSolidPx(q)) break;
+      to = q;
+    }
+    const vp = this.rescue?.stage === 'threat' ? this.rescue.victimPos : null;
+    const vt = vp ? segmentCircleHit(p.pos, to, vp, 8) : null;
+    if (vt !== null) to = { x: p.pos.x + (to.x - p.pos.x) * vt, y: p.pos.y + (to.y - p.pos.y) * vt };
+    let best: { id: number; t: number } | null = null;
+    for (const h of this.horde.views()) {
+      if (!h.active) continue;
+      const t = segmentCircleHit(p.pos, to, h.pos, h.r);
+      if (t !== null && (!best || t < best.t || (t === best.t && h.lifeId < best.id))) best = { id: h.lifeId, t };
+    }
+    if (!best) {
+      ev.push({ type: 'GlovePunched', from: v(p.pos), to: v(to), lifeId: null });
+      return;
+    }
+    const h = this.horde.list.find((x) => x.lifeId === best!.id)!;
+    ev.push({ type: 'GlovePunched', from: v(p.pos), to: v(h.pos), lifeId: h.lifeId });
+    const tough = isTough(h.role);
+    const damage = tough ? CONFIG.toughWeaponDamage : WEAPON_DAMAGE;
+    ev.push(
+      tough
+        ? { type: 'HitConfirmed', targetLifeId: h.lifeId, damage, source: 'gant', heavy: true }
+        : { type: 'HitConfirmed', targetLifeId: h.lifeId, damage, source: 'gant' },
+    );
+    const k = CONFIG.gant.knockback;
+    h.pos = moveCircle(this.grid, h.pos, { x: dir.x * k, y: dir.y * k }, CONFIG.hostile.radius);
+    this.hit(h.lifeId, damage, ev, 'gant');
+    ev.push(...this.weapons.onSwing(1));
+  }
+
+  /** The session's first shooter walked in: a flashball dropped CONFIG.flashball.dropMin–dropMax px from Paul (once). */
+  private giveFlashball(ev: SimEvent[]): void {
+    const c = CONFIG.flashball;
+    const w = this.weapons.dropNear(this.player.pos, 'flashball', c.dropMin, c.dropMax);
+    if (!w) return;
+    this.flashballGiven = true;
+    ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: v(w.pos) });
+    ev.push({ type: 'FlashballDropped', pos: v(w.pos) });
+  }
+
+  /** Paul holds the bouclier: its bubble blocks every rock, firebomb and bullet that would hit him, from any side. */
   private shield(): boolean {
     return this.weapons.held?.kind === 'bouclier' && !this.player.ko;
   }
 
   /**
-   * The onde d'énergie (kamehame held): a Frapper press starts the charge (BeamCharging); while Frapper stays held it
-   * grows, and at CONFIG.kamehame.chargeSec the beam fires on its own. Released, or the weapon gone: cancelled.
+   * Furie pressed: with a full gauge (and Paul up, no mode furie already on) the whole gauge is spent and the mode
+   * starts (a charge under way is cancelled at no cost); with less: EnergyRefused.
    */
-  private stepCharge(input: InputFrame, dt: number, ev: SimEvent[]): void {
-    const p = this.player;
-    const armed = this.weapons.held?.kind === 'kamehame' && !p.ko;
-    if (this.charge === null) {
-      if (armed && input.strike) {
-        this.charge = { t: 0 };
-        ev.push({ type: 'BeamCharging' });
-      }
+  private activateFurie(ev: SimEvent[]): void {
+    if (this.player.ko || this.weapons.furie()) return;
+    const cost = CONFIG.energy.furieCost;
+    if (!this.energy.spend(cost)) {
+      ev.push({ type: 'EnergyRefused', need: cost });
       return;
     }
-    if (!armed || !input.strikeHeld) {
+    if (this.charge !== null) this.cancelCharge(ev);
+    ev.push(...this.weapons.startFurie());
+  }
+
+  /** Onde pressed: with at least ondeCost energy (and Paul up) the charge starts (BeamCharging); else EnergyRefused. */
+  private startCharge(ev: SimEvent[]): void {
+    if (this.player.ko) return;
+    if (this.energy.value < CONFIG.energy.ondeCost) {
+      ev.push({ type: 'EnergyRefused', need: CONFIG.energy.ondeCost });
+      return;
+    }
+    this.charge = { t: 0 };
+    ev.push({ type: 'BeamCharging' });
+  }
+
+  /**
+   * The charge grows while Onde stays held; at CONFIG.kamehame.chargeSec the beam fires on its own and the energy is
+   * spent. Released (or not enough energy left): cancelled, nothing spent.
+   */
+  private stepCharge(input: InputFrame, dt: number, ev: SimEvent[]): void {
+    if (this.charge === null) return;
+    if (!input.chargeHeld || this.player.ko || this.energy.value < CONFIG.energy.ondeCost) {
       this.cancelCharge(ev);
       return;
     }
     this.charge.t += dt;
     if (this.charge.t + 1e-9 < CONFIG.kamehame.chargeSec) return;
     this.charge = null;
+    this.energy.spend(CONFIG.energy.ondeCost);
     this.fireBeam(ev);
   }
 
@@ -604,7 +789,7 @@ export class Sim {
     ev.push({ type: 'BeamCancelled' });
   }
 
-  /** The beam along Paul's facing: every rioter on it is KO'd (+1 each) and launched along the beam; one use. */
+  /** The beam along Paul's facing: every rioter on it is KO'd (+1 each, no energy) and launched along the beam. */
   private fireBeam(ev: SimEvent[]): void {
     const p = this.player;
     const dir = norm(p.facing);
@@ -616,7 +801,6 @@ export class Sim {
       if (this.hit(id, damage, ev, dir)) kos += 1;
     }
     ev.push({ type: 'BeamFired', from: v(p.pos), to: v(shot.to), kos });
-    ev.push(...this.weapons.onBeam());
   }
 
   /** A bouclier bash pushes the KO'd body CONFIG.bouclier.knockback px away from Paul (never into a wall). */
@@ -631,26 +815,29 @@ export class Sim {
 
   /**
    * Every 'ko' from applyHit scores +1 (deduped by Rules) and emits ActorKnockedOut; `launched` (Paul's strike in mode
-   * furie: true; the onde d'énergie: its direction) adds the cosmetic launch payload. True on a KO.
+   * furie: true; the onde d'énergie: its direction) adds the cosmetic launch payload. A KO Rules counts fills the energy
+   * gauge, except in mode furie and for the beam's KOs (no chain refills). True on a KO.
    */
-  private hit(lifeId: number, dmg: number, ev: SimEvent[], launched: boolean | Vec = false): boolean {
+  private hit(lifeId: number, dmg: number, ev: SimEvent[], launched: boolean | Vec | 'gant' = false): boolean {
     if (this.horde.applyHit(lifeId, dmg) !== 'ko') return false;
     const h = this.horde.list.find((x) => x.lifeId === lifeId);
-    this.rules.onKnockout(lifeId, h?.pos);
+    const counted = this.rules.onKnockout(lifeId, h?.pos);
+    if (counted && h && !this.weapons.furie() && typeof launched !== 'object') ev.push(...this.energy.gain(h.role));
+    if (h?.role === 'boss') this.caidDown(h, ev);
     const along = typeof launched === 'object' ? launched : undefined;
-    ev.push(h && launched ? { type: 'ActorKnockedOut', lifeId, launch: this.launch(h.pos, along) } : { type: 'ActorKnockedOut', lifeId });
+    ev.push(h && launched ? { type: 'ActorKnockedOut', lifeId, launch: this.launch(h.pos, along, launched === 'gant') } : { type: 'ActorKnockedOut', lifeId });
     return true;
   }
 
   /**
-   * Flight of a body knocked out at `at`: mode furie = a 'tumble' away from Paul (his facing when on top of him); onde
-   * d'énergie = a 'satellite' along `along` (the beam), with the kamehame power/spin ranges. Turned by a jitter; always 4
-   * draws from the launch stream.
+   * Flight of a body knocked out at `at`: mode furie = a 'tumble' away from Paul (his facing when on top of him); the
+   * gant = a shorter tumble (CONFIG.gant power/spin); onde d'énergie = a 'satellite' along `along` (the beam), with the
+   * kamehame power/spin ranges. Turned by a jitter; always 4 draws from the launch stream.
    */
-  private launch(at: Vec, along?: Vec): Launch {
+  private launch(at: Vec, along?: Vec, gant = false): Launch {
     const launchJitter = along ? CONFIG.kamehame.satelliteJitter : CONFIG.furie.launchJitter;
-    const launchPower = along ? CONFIG.kamehame.satellitePower : CONFIG.furie.launchPower;
-    const launchSpin = along ? CONFIG.kamehame.satelliteSpin : CONFIG.furie.launchSpin;
+    const launchPower = along ? CONFIG.kamehame.satellitePower : gant ? CONFIG.gant.launchPower : CONFIG.furie.launchPower;
+    const launchSpin = along ? CONFIG.kamehame.satelliteSpin : gant ? CONFIG.gant.launchSpin : CONFIG.furie.launchSpin;
     const r = this.launchRand;
     const jitter = (r() * 2 - 1) * launchJitter;
     const power = launchPower[0] + r() * (launchPower[1] - launchPower[0]);
@@ -662,10 +849,33 @@ export class Sim {
     return { dir: { x: Math.cos(a), y: Math.sin(a) }, power, spin: sign * turns, kind: along ? 'satellite' : 'tumble' };
   }
 
-  /** Hostile facing = last movement direction, else toward Paul. */
+  /** A brute or the Caïd (heavier hits, CONFIG.toughWeaponDamage from a held weapon). */
+  private tough(lifeId: number): boolean {
+    const h = this.horde.list.find((x) => x.lifeId === lifeId);
+    return h !== undefined && isTough(h.role);
+  }
+
+  /**
+   * « Le Caïd » KO'd (once per life): +CONFIG.caid.bonus with the occurrence key `caid#<round>` at his position (the
+   * KO's +1 is scored as for anyone), and a regular weapon dropped where he fell (WeaponSpawned, no indicator).
+   */
+  private caidDown(h: Hostile, ev: SimEvent[]): void {
+    if (this.caidsDown.has(h.lifeId)) return;
+    this.caidsDown.add(h.lifeId);
+    this.rules.award(`caid#${h.round ?? this.director.round}`, CONFIG.caid.bonus, h.pos);
+    const w = this.weapons.dropAt(h.pos);
+    ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: v(w.pos) });
+  }
+
+  /** Hostile facing = along its aim line while a shooter aims or fires, else last movement direction, else toward Paul. */
   private updateFacings(prev: Map<number, Vec>): void {
     const next = new Map<number, Vec>();
     for (const h of this.horde.list) {
+      const aim = h.role === 'shooter' && h.state === 'windup' ? this.horde.aimLine(h.lifeId) : null;
+      if (aim) {
+        next.set(h.lifeId, aim);
+        continue;
+      }
       const before = prev.get(h.lifeId);
       const moved = before ? sub(h.pos, before) : { x: 0, y: 0 };
       const old = this.facings.get(h.lifeId);

@@ -11,7 +11,7 @@ import { createKeyboard } from '../input/keyboard';
 import { guardLifecycle, merge, type InputSource } from '../input/merge';
 import { createTouch } from '../input/touch';
 import { Grid } from '../../sim/map/grid';
-import { HostileLayer, PaulView } from '../render/actors';
+import { HostileLayer, PaulView, makeRoleTextures } from '../render/actors';
 import { PaulHealthBar } from '../render/healthBar';
 import { FurieAura, PowBubbles, makeFurieTextures } from '../render/furie';
 import { GroupView, VictimView } from '../render/crowd';
@@ -23,6 +23,7 @@ import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapo
 import { ItemLayer, makeItemTextures } from '../render/items';
 import { BubbleView, SpecialFx, makeSpecialTextures } from '../render/specials';
 import { ScorePopups } from '../render/scorePopups';
+import { BulletLayer, GloveFx } from '../render/guns';
 
 const HIT_STOP_MS = 60;
 const SHAKE_MS = 120;
@@ -52,7 +53,7 @@ export class WorldScene extends Phaser.Scene {
   private stress = 0;
   private stressState = { n: 0 };
   private clock!: FixedClock;
-  private input$: () => InputFrame = () => ({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false });
+  private input$: () => InputFrame = () => ({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false });
   private disposeInput: (() => void) | null = null;
   private ui: GameUi | null = null;
   private sources: InputSource[] = [];
@@ -86,6 +87,10 @@ export class WorldScene extends Phaser.Scene {
   private specialFx!: SpecialFx;
   /** Floating « +N » / « −N » score popups where points were won or lost. */
   private scorePopups!: ScorePopups;
+  /** Shooters' bullets, flashball shots, muzzle puffs and impact sparks. */
+  private bullets!: BulletLayer;
+  /** The spring-loaded glove's punch. */
+  private glove!: GloveFx;
   private reducedMotion = false;
 
   private hitStopUntil = 0;
@@ -183,6 +188,7 @@ export class WorldScene extends Phaser.Scene {
     makeFurieTextures(this);
     makeSpecialTextures(this);
     makeMonumentTextures(this);
+    makeRoleTextures(this);
     this.reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.world = new WorldView(this);
     this.targetViews = new TargetsLayer(this, this.world.buildingParts);
@@ -214,6 +220,8 @@ export class WorldScene extends Phaser.Scene {
     this.shield = new BubbleView(this, this.reducedMotion);
     this.specialFx = new SpecialFx(this);
     this.scorePopups = new ScorePopups(this, this.reducedMotion);
+    this.bullets = new BulletLayer(this);
+    this.glove = new GloveFx(this);
     this.toolboxes = new ToolboxView(this);
 
     const cam = this.cameras.main;
@@ -325,6 +333,9 @@ export class WorldScene extends Phaser.Scene {
           const cam = this.cameras.main;
           cam.shake(BEAM_SHAKE_MS, new Phaser.Math.Vector2(BEAM_SHAKE_PX / cam.width, BEAM_SHAKE_PX / cam.height), false);
         }
+      } else if (e.type === 'GlovePunched') {
+        this.glove.punch(e.from, e.to, time);
+        if (e.lifeId !== null) this.pows.spawn(e.to.x, e.to.y, time, 'BOING !');
       } else if (e.type === 'ToolboxPickedUp') {
         this.toolboxes.picked(time);
       } else if (e.type === 'FlagCaptured') {
@@ -334,6 +345,7 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     if (scored.length > 0) this.scorePopups.spawn(scored, time);
+    this.bullets.onEvents(events, snap);
     if (furieHit && !this.reducedMotion) {
       const cam = this.cameras.main;
       cam.shake(FURIE_SHAKE_MS, new Phaser.Math.Vector2(FURIE_SHAKE_PX / cam.width, FURIE_SHAKE_PX / cam.height), false);
@@ -342,8 +354,8 @@ export class WorldScene extends Phaser.Scene {
 
   private render(snap: Snapshot, time: number, dtMs: number): void {
     const flying = new Map(this.sim.rocks.flying().map((r) => [r.id, r.t]));
-    // a Frapper press with the onde d’énergie starts a charge, not a swing
-    if (snap.weapon?.kind === 'kamehame' || snap.charge) this.struck = false;
+    // no swing while the onde d’énergie charges
+    if (snap.charge) this.struck = false;
     this.paul.update(snap.player, this.struck, time, dtMs, snap.furie !== null);
     this.healthBar.update(snap, this.paul.sprite, time);
     this.furieAura.update(snap.ended ? null : snap.furie, this.paul.sprite, time);
@@ -356,6 +368,8 @@ export class WorldScene extends Phaser.Scene {
     this.hostiles.update(snap.hostiles, time);
     this.rocks.update(snap.rocks, (id) => flying.get(id) ?? 0, time);
     this.telegraphs.update(snap, this.cameras.main.worldView, time);
+    this.bullets.update(snap);
+    this.glove.update(time);
     this.group.update(time);
     this.victim.update(snap.rescue, time);
     this.items.update(snap.rescue, snap.player, time);

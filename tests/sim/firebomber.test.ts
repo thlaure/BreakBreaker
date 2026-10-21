@@ -14,7 +14,7 @@ import { autopilot } from './autopilot';
 const grid = new Grid(DISTRICT);
 const DT = 1 / 60;
 const FB = CONFIG.firebomber;
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false };
+const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
 type Ev<T extends SimEvent['type']> = Extract<SimEvent, { type: T }>;
 const of = <T extends SimEvent['type']>(ev: SimEvent[], type: T): Ev<T>[] => ev.filter((e): e is Ev<T> => e.type === type);
 
@@ -215,7 +215,7 @@ describe('fire patches in the sim', () => {
 
   test('mode furie halves the patch damage', () => {
     const sim = withFirebomber();
-    sim.weapons.ground.push({ id: 900, kind: 'furie', pos: { ...sim.player.pos }, expiresAt: null });
+    sim.weapons.startFurie();
     const ev: SimEvent[] = [];
     for (let i = 0; i < Math.round(2.6 / DT); i++) ev.push(...sim.step(IDLE));
     const dmg = of(ev, 'PlayerDamaged');
@@ -280,7 +280,7 @@ describe('who throws at Paul', () => {
       }
   });
 
-  test('fill: no firebomber in rounds 1–2; from round 3 at least 1 (fill >= 4), at most 3 per round; throwers unchanged', () => {
+  test('fill: no firebomber in rounds 1–2; from round 3 at least 1 (fill >= 4 besides the runner pack), at most 3 per round; throwers unchanged', () => {
     const sim = new Sim(4, { invulnerable: true });
     const seen = new Map<number, { round: number | null; role: Role; fill: boolean }>();
     for (let i = 0; i < 60 * 900 && sim.director.round <= 6; i++) {
@@ -293,7 +293,8 @@ describe('who throws at Paul', () => {
     const all = [...seen.values()];
     for (const round of [1, 2]) expect(all.filter((r) => r.round === round && r.role === 'firebomber')).toEqual([]);
     for (const round of [3, 4, 5]) {
-      const fill = all.filter((r) => r.round === round && r.fill);
+      // drawn over the fill outside the runner pack
+      const fill = all.filter((r) => r.round === round && r.fill && r.role !== 'runner');
       const fb = fill.filter((r) => r.role === 'firebomber').length;
       if (fill.length >= 4) expect(fb).toBeGreaterThanOrEqual(1);
       expect(fb).toBeLessThanOrEqual(FB.maxPerRound);

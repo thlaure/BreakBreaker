@@ -116,7 +116,7 @@ describe('formatSummary', () => {
     inc.items[0]!.state = 'carried';
     sim.rescue = inc;
     sim.player.pos = { ...site };
-    const ev = sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false });
+    const ev = sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false });
     expect(ev.filter((e) => e.type === 'ItemReturned')).toHaveLength(1);
     expect(sim.snapshot().stats.itemsReturned).toBe(1);
     expect(rows(sim.snapshot(), null)['Objets rendus']).toBe('1');
@@ -236,7 +236,7 @@ describe('incidentLines', () => {
     const s = new Sim(21, { invulnerable: true });
     for (let i = 0; i < 60 * 30 && s.school.stage !== 'cinematic'; i++) {
       for (const h of s.horde.active()) s.horde.applyHit(h.lifeId, 99);
-      s.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false });
+      s.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false });
     }
     const [school] = incidentLines(s.snapshot(), 'en cours');
     expect(school).toMatchObject({ key: 'school', status: 'renforts' });
@@ -308,21 +308,25 @@ describe('renderMarkdown', () => {
 });
 
 describe('content', () => {
-  test('4-6 rules (the specials one included) and a controls table', () => {
+  test('4-7 rules (the energy gauge and the bouclier included) and a controls table', () => {
     expect(RULES.length).toBeGreaterThanOrEqual(4);
-    expect(RULES.length).toBeLessThanOrEqual(6);
-    const specials = RULES.find((r) => r.includes('mode furie'))!;
-    expect(specials).toMatch(/éclair jaune.*mode furie/);
-    // the two special weapons and the hold-to-charge ability
-    expect(specials).toMatch(/bouclier \(20 s\)/);
-    expect(specials).toMatch(/onde d’énergie se charge en gardant Frapper enfoncé 1 s/);
-    for (const r of RULES) expect(r).not.toMatch(/saiyan/i);
+    expect(RULES.length).toBeLessThanOrEqual(7);
+    const energy = RULES.find((r) => r.includes('jauge d’énergie'))!;
+    // every KO fills the gauge; half of it charges the onde (C held), a full one starts the mode furie (R)
+    expect(energy).toMatch(/Chaque casseur mis KO remplit la jauge d’énergie/);
+    expect(energy).toMatch(/maintiens C pour charger l’onde d’énergie 1 s/);
+    expect(energy).toMatch(/appuie sur R pour le mode furie/);
+    expect(RULES.some((r) => /bouclier peut apparaître \(20 s\)/.test(r))).toBe(true);
+    for (const r of RULES) expect(r).not.toMatch(/saiyan|éclair jaune|ramasse.*(furie|onde)/i);
+    expect(CONTROLS).toContainEqual({ action: 'Mode furie', keyboard: 'R (jauge pleine)', touch: 'Bouton Furie' });
+    expect(CONTROLS).toContainEqual({ action: 'Onde d’énergie', keyboard: 'Maintenir C (jauge à moitié)', touch: 'Maintenir le bouton Onde' });
     expect(CONTROLS.some((c) => c.action === 'Pause' && c.keyboard === 'Échap')).toBe(true);
   });
 
   test('F / Agir repairs or puts out a fire with a toolbox (a press, never held); rescuing needs no key', () => {
     expect(CONTROLS).toContainEqual({ action: 'Réparer / éteindre (caisse à outils)', keyboard: 'F', touch: 'Bouton Agir (près d’un lieu à réparer)' });
-    expect(CONTROLS.some((c) => /aider/i.test(c.action) || /maintenir/.test(c.keyboard))).toBe(false);
+    // only the onde d’énergie is held (C); nothing else, and never to help or repair
+    expect(CONTROLS.some((c) => /aider/i.test(c.action) || (/maintenir/i.test(c.keyboard) && c.action !== 'Onde d’énergie'))).toBe(false);
     for (const r of RULES) expect(r).not.toMatch(/maintenir|reste à côté/);
     expect(RULES.some((r) => r.includes('passe sur une caisse à outils, va près du lieu en ruine ou en feu et appuie sur F'))).toBe(true);
   });
@@ -474,13 +478,13 @@ describe('mode furie HUD and audio', () => {
     expect(weaponLine(snap((x) => { x.weapon = null; x.furie = null; }))).toBe('Arme : mains nues');
   });
 
-  test('a furie picked up in the sim shows in the snapshot and the weapon line', () => {
+  test('a furie started in the sim (full gauge, R) shows in the snapshot and the weapon line', () => {
     const sim = new Sim(4);
     sim.weapons.held = { kind: 'panneau', uses: 3 };
-    sim.weapons.ground.push({ id: 77, kind: 'furie', pos: { ...sim.player.pos }, expiresAt: null });
-    sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false });
+    sim.energy.value = 100;
+    sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: true });
     const s = sim.snapshot();
-    expect(s.furie).toEqual({ secondsLeft: 12 });
+    expect(s.furie!.secondsLeft).toBeCloseTo(12 - 1 / 60, 6);
     expect(weaponLine(s)).toBe('Arme : Panneau (3) · Mode furie 12 s');
   });
 
@@ -506,19 +510,18 @@ describe('mode furie HUD and audio', () => {
 });
 
 describe('special weapons HUD and audio', () => {
-  test('weapon row: « Bouclier (14 s) » (seconds rounded up), « Onde d’énergie (2) »; furie suffix kept', () => {
+  test('weapon row: « Bouclier (14 s) » (seconds rounded up); furie suffix kept', () => {
     expect(weaponValue(snap((x) => { x.weapon = { kind: 'bouclier', uses: 0, secondsLeft: 13.2 }; }))).toBe('Bouclier (14 s)');
     expect(weaponValue(snap((x) => { x.weapon = { kind: 'bouclier', uses: 0, secondsLeft: 0.01 }; }))).toBe('Bouclier (1 s)');
-    expect(weaponValue(snap((x) => { x.weapon = { kind: 'kamehame', uses: 2 }; }))).toBe('Onde d’énergie (2)');
-    expect(weaponLine(snap((x) => { x.weapon = { kind: 'kamehame', uses: 1 }; x.furie = { secondsLeft: 3 }; }))).toBe(
-      'Arme : Onde d’énergie (1) · Mode furie 3 s',
+    expect(weaponLine(snap((x) => { x.weapon = { kind: 'bouclier', uses: 0, secondsLeft: 4 }; x.furie = { secondsLeft: 3 }; }))).toBe(
+      'Arme : Bouclier (4 s) · Mode furie 3 s',
     );
   });
 
   test('a bouclier picked up in the sim shows its 20 s in the weapon row', () => {
     const sim = new Sim(4);
     sim.weapons.ground.push({ id: 78, kind: 'bouclier', pos: { ...sim.player.pos }, expiresAt: null });
-    sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false });
+    sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false });
     expect(weaponValue(sim.snapshot())).toBe('Bouclier (20 s)');
   });
 

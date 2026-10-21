@@ -34,6 +34,9 @@ export function threatLevel(s: Snapshot): number {
  * Raw WebAudio. The AudioContext is created only by `unlock()` (called from the Commencer click).
  * Any failure leaves the game silent but running. Groups: sfx and ambience gains feed a master gain (mute).
  */
+/** Playback rate of the heavier hits (brute, Caïd). */
+export const HEAVY_RATE = 0.7;
+
 export class GameAudio {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -201,6 +204,123 @@ export class GameAudio {
       osc.connect(g).connect(out);
       osc.start(t);
       osc.stop(t + 0.25);
+      return osc;
+    });
+  }
+
+  /**
+   * Energy gauge reached a threshold: a soft sine ping (988 Hz, 0.25 s) when the onde becomes available, a brighter
+   * triangle arpeggio (784 → 1175 → 1568 Hz) when it is full (furie available).
+   */
+  energyReady(level: 'onde' | 'furie'): void {
+    this.voice((ctx, out, t) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      if (level === 'onde') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(988, t);
+        g.gain.exponentialRampToValueAtTime(0.3, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+      } else {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(784, t);
+        osc.frequency.setValueAtTime(1175, t + 0.08);
+        osc.frequency.setValueAtTime(1568, t + 0.16);
+        g.gain.exponentialRampToValueAtTime(0.45, t + 0.01);
+        g.gain.setValueAtTime(0.45, t + 0.22);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+      }
+      osc.connect(g).connect(out);
+      osc.start(t);
+      osc.stop(t + 0.42);
+      return osc;
+    });
+  }
+
+  /** Furie / Onde refused (too little energy): a dull 0.08 s low square « tock » (220 → 110 Hz, low-passed). */
+  tock(): void {
+    this.voice((ctx, out, t) => {
+      const osc = ctx.createOscillator();
+      const lp = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(220, t);
+      osc.frequency.exponentialRampToValueAtTime(110, t + 0.07);
+      lp.type = 'lowpass';
+      lp.frequency.value = 700;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.35, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+      osc.connect(lp).connect(g).connect(out);
+      osc.start(t);
+      osc.stop(t + 0.09);
+      return osc;
+    });
+  }
+
+  /** A shooter's bullet: a tiny cartoon « pop » (0.06 s noise click through a band-pass, quiet: bursts of 3). */
+  pop(): void {
+    this.voice((ctx, out, t) => {
+      const len = Math.floor(ctx.sampleRate * 0.06);
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 1500;
+      bp.Q.value = 1.4;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.28, t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+      src.connect(bp).connect(g).connect(out);
+      src.start(t);
+      return src;
+    });
+  }
+
+  /** Flashball shot: a low « thump » (sine 150 → 55 Hz, 0.16 s) with a soft click on top. */
+  thump(): void {
+    this.voice((ctx, out, t) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(150, t);
+      osc.frequency.exponentialRampToValueAtTime(55, t + 0.15);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.6, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      osc.connect(g).connect(out);
+      osc.start(t);
+      osc.stop(t + 0.17);
+      return osc;
+    });
+  }
+
+  /** The glove lands: a springy « boing » (triangle wobbling 220 ↔ 330 Hz at 18 Hz, falling, 0.3 s). */
+  boing(): void {
+    this.voice((ctx, out, t) => {
+      const osc = ctx.createOscillator();
+      const lfo = ctx.createOscillator();
+      const depth = ctx.createGain();
+      const g = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(330, t);
+      osc.frequency.exponentialRampToValueAtTime(180, t + 0.28);
+      lfo.frequency.value = 18;
+      depth.gain.value = 60;
+      lfo.connect(depth).connect(osc.frequency);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.45, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+      osc.connect(g).connect(out);
+      osc.start(t);
+      lfo.start(t);
+      osc.stop(t + 0.31);
+      lfo.stop(t + 0.31);
       return osc;
     });
   }
@@ -428,7 +548,8 @@ export class GameAudio {
     for (const e of events) {
       switch (e.type) {
         case 'HitConfirmed':
-          this.play(`hit${1 + Math.floor(Math.random() * 3)}` as Sfx);
+          // a brute or the Caïd: the same impact, pitched down (heavier)
+          this.play(`hit${1 + Math.floor(Math.random() * 3)}` as Sfx, 0, e.heavy ? HEAVY_RATE : 1);
           break;
         case 'EnemyRockThrown':
         case 'ProjectileReturned':
@@ -471,6 +592,23 @@ export class GameAudio {
         case 'ShieldBlocked':
           this.clank();
           break;
+        case 'BulletFired':
+          this.pop();
+          break;
+        case 'FlashballFired':
+          this.thump();
+          break;
+        case 'GlovePunched':
+          // the spring's « boing » on a hit; a punch in the air only whooshes
+          if (e.lifeId !== null) this.boing();
+          else this.play('throw');
+          break;
+        case 'EnergyReady':
+          this.energyReady(e.level);
+          break;
+        case 'EnergyRefused':
+          this.tock();
+          break;
         case 'TargetSaved':
         case 'TargetRepaired':
         case 'RoundCompleted':
@@ -482,7 +620,11 @@ export class GameAudio {
           chimed = true;
           break;
         case 'PlayerDamaged':
-          this.play('hurt');
+          // a brute's or the Caïd's push: a lower « hurt » plus a dull thud
+          if (e.push) {
+            this.play('hurt', 0, HEAVY_RATE);
+            this.play('land', 0, HEAVY_RATE);
+          } else this.play('hurt');
           break;
         // alarm = fire: it marks the bottle setting a target on fire (not the attack start nor the first hp lost, so
         // it is not used up before the fire); the fire loop then follows burning targets (threatLevel, every frame)

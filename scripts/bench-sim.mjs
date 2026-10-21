@@ -1,4 +1,5 @@
-// Sim step cost in Node: 40 hostiles (30 % throwers, 10 % firebombers) + 24 rocks in flight, 10 simulated minutes.
+// Sim step cost in Node: 40 hostiles (30 % throwers, 10 % firebombers, 10 % shooters) + 24 rocks and 30 bullets in
+// flight, 10 simulated minutes.
 // Usage: npm run bench   (loads TS sources through Vite's SSR loader)
 import { createServer } from 'vite';
 
@@ -10,15 +11,16 @@ try {
   const STEPS = MIN * 60 * 60;
   const sim = new Sim(12345, { invulnerable: true });
   const st = { n: 0 };
-  const idle = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false };
+  const idle = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
   const times = new Float64Array(STEPS);
   let maxHostiles = 0;
   let maxFly = 0;
   let maxGround = 0;
+  let maxBullets = 0;
   for (let i = 0; i < STEPS; i++) {
     // Paul wanders in a slow loop and swings every 1.5 s (strikes rarely connect, so the crowd stays at 40).
     const a = (i / 60) * 0.5;
-    const input = { ...idle, move: { x: Math.cos(a), y: Math.sin(a) }, strike: i % 90 === 0, strikeHeld: false, throwRock: i % 120 === 0, act: false };
+    const input = { ...idle, move: { x: Math.cos(a), y: Math.sin(a) }, strike: i % 90 === 0, chargeHeld: false, throwRock: i % 120 === 0, act: false };
     topUp(sim, 40, st);
     const t0 = performance.now();
     sim.step(input);
@@ -27,6 +29,7 @@ try {
       maxHostiles = Math.max(maxHostiles, sim.horde.active().length);
       maxFly = Math.max(maxFly, sim.rocks.flying().length);
       maxGround = Math.max(maxGround, sim.rocks.ground().length);
+      maxBullets = Math.max(maxBullets, sim.bullets.enemy().length);
     }
   }
   const stats = (arr) => {
@@ -42,7 +45,7 @@ try {
   }
   const f = (n) => n.toFixed(4);
   const row = (name, s) => console.log(`${name.padEnd(18)} mean ${f(s.mean)}  p50 ${f(s.p50)}  p95 ${f(s.p95)}  p99 ${f(s.p99)}  max ${f(s.max)}  (ms)`);
-  console.log(`Simulated ${MIN} min = ${STEPS} steps; peak active hostiles ${maxHostiles}, flying rocks ${maxFly}, ground rocks ${maxGround}; KOs ${sim.rules.kos}, ended=${sim.rules.ended}`);
+  console.log(`Simulated ${MIN} min = ${STEPS} steps; peak active hostiles ${maxHostiles}, flying rocks ${maxFly}, ground rocks ${maxGround}, bullets ${maxBullets}, shooters ${sim.horde.active().filter((h) => h.role === 'shooter').length}; KOs ${sim.rules.kos}, ended=${sim.rules.ended}`);
   row('per step', stats(times));
   row('per 60-step frame', stats(frames));
 } finally {

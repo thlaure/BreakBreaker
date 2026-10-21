@@ -1,14 +1,19 @@
 import Phaser from 'phaser';
 import type { Snapshot } from '../../sim/sim';
 import { isSpecial, type HeldKind } from '../../sim/weapons';
+import { makeGunTextures } from './guns';
 
 /** Strike spin duration (ms) of the weapon in Paul's hands — matches the circular strike. */
 const SPIN_MS = 220;
 /** A special drop blinks during its last seconds on the ground (faster in the very last one). */
 const BLINK_SEC = 3;
 
-/** `weapon_<kind>` textures drawn at runtime: stick, hammer, road sign (no image files needed). */
+/**
+ * `weapon_<kind>` textures drawn at runtime: stick, hammer, road sign (no image files needed); the glove, the flashball
+ * and the shooters' rifle come from render/guns.ts.
+ */
 export function makeWeaponTextures(scene: Phaser.Scene): void {
+  makeGunTextures(scene);
   if (scene.textures.exists('weapon_baton')) return;
   const g = scene.make.graphics({}, false);
   const outline = 0x14121c;
@@ -35,12 +40,11 @@ export function makeWeaponTextures(scene: Phaser.Scene): void {
 }
 
 /** Additive glow under a special pickup. */
-const SPECIAL_GLOW: Readonly<Record<string, number>> = { furie: 0xfff09a, bouclier: 0x7bb4ff, kamehame: 0x8fd3ff };
+const SPECIAL_GLOW: Readonly<Record<string, number>> = { bouclier: 0x7bb4ff };
 
 /**
- * Weapons lying in the street: bob, gentle sway and a pulsing glow so they read as pickups. The special pickups (mode
- * furie `weapon_furie`, see render/furie.ts; bouclier and onde d’énergie, see render/specials.ts) float higher, pulse
- * in size and have a bigger additive glow in their own colour.
+ * Weapons lying in the street: bob, gentle sway and a pulsing glow so they read as pickups. The special pickup (the
+ * bouclier, see render/specials.ts) floats higher, pulses in size and has a bigger additive glow in its own colour.
  */
 export class WeaponLayer {
   private readonly items = new Map<number, { glow: Phaser.GameObjects.Ellipse; sprite: Phaser.GameObjects.Image }>();
@@ -111,16 +115,30 @@ export class HeldWeaponView {
       this.kind = weapon.kind;
       this.sprite.setTexture(`weapon_${weapon.kind}`);
     }
-    const orb = weapon.kind === 'kamehame';
-    if (struck && !orb) this.spinUntil = nowMs + SPIN_MS;
     const side = player.facing.x < 0 ? -1 : 1;
-    let angle = orb ? 0 : side * 35;
+    // the flashball is held pointing where Paul aims; the gant waits at his side (render/guns.ts draws the punch)
+    if (weapon.kind === 'flashball' || weapon.kind === 'gant') {
+      const aim = weapon.kind === 'flashball';
+      this.sprite
+        .setVisible(true)
+        .setOrigin(0.3, 0.5)
+        .setPosition(Math.round(player.pos.x + side * (aim ? 6 : 9)), Math.round(player.pos.y - (aim ? 16 : 12)))
+        .setAngle(aim ? (Math.atan2(player.facing.y, player.facing.x) * 180) / Math.PI : 0)
+        .setFlipY(aim && side < 0)
+        .setFlipX(!aim && side < 0)
+        .setScale(1)
+        .setDepth(player.pos.y + (player.facing.y < 0 ? -0.5 : 0.5));
+      return;
+    }
+    this.sprite.setOrigin(0.5, 0.9).setFlipX(false).setFlipY(false);
+    if (struck) this.spinUntil = nowMs + SPIN_MS;
+    let angle = side * 35;
     if (nowMs < this.spinUntil) angle += (1 - (this.spinUntil - nowMs) / SPIN_MS) * 360 * side;
     this.sprite
       .setVisible(true)
       .setPosition(Math.round(player.pos.x + side * 9), Math.round(player.pos.y - 14))
       .setAngle(angle)
-      .setScale(orb ? 0.6 : 1)
+      .setScale(1)
       .setDepth(player.pos.y + (player.facing.y < 0 ? -0.5 : 0.5));
   }
 }

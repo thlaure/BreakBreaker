@@ -6,13 +6,6 @@ import { auraAlpha } from './furieMath';
 
 const INK = 0x14121c;
 
-/** Polygon points from flat [x0, y0, x1, y1, …] (texture building only). */
-function poly(xy: number[]): Phaser.Math.Vector2[] {
-  const out: Phaser.Math.Vector2[] = [];
-  for (let i = 0; i + 1 < xy.length; i += 2) out.push(new Phaser.Math.Vector2(xy[i]!, xy[i + 1]!));
-  return out;
-}
-
 /** Spiky closed outline around (cx, cy): `n` points alternating long/short, flames longer on the top half. */
 function spikes(cx: number, cy: number, rx: number, ry: number, n: number, inner: number, up: number): Phaser.Math.Vector2[] {
   const pts: Phaser.Math.Vector2[] = [];
@@ -27,8 +20,7 @@ function spikes(cx: number, cy: number, rx: number, ry: number, n: number, inner
 
 /**
  * Runtime textures of the mode furie (original pixel art, no image files): `furie_aura` (spiky yellow-white glow drawn
- * additively behind Paul), `weapon_furie` (the pickup: a glowing orb with a lightning bolt) and `pow_burst` (the comic
- * burst behind « POW ! » / « BOUM ! »).
+ * additively behind Paul) and `pow_burst` (the comic burst behind « POW ! » / « BOUM ! »).
  */
 export function makeFurieTextures(scene: Phaser.Scene): void {
   if (scene.textures.exists('furie_aura')) return;
@@ -38,15 +30,6 @@ export function makeFurieTextures(scene: Phaser.Scene): void {
   g.fillStyle(0xffe066, 0.6).fillPoints(spikes(20, 39, 13, 16, 14, 0.75, 0.5), true);
   g.fillStyle(0xfff6d0, 0.7).fillPoints(spikes(20, 40, 8, 11, 10, 0.8, 0.4), true);
   g.generateTexture('furie_aura', 40, 60);
-  g.clear();
-  // pickup orb 18×20: dark outline, yellow body, white core, bolt
-  g.fillStyle(INK, 1).fillCircle(9, 10, 9);
-  g.fillStyle(0xffc21a, 1).fillCircle(9, 10, 8);
-  g.fillStyle(0xffe066, 1).fillCircle(9, 9, 6);
-  g.fillStyle(0xfff6d0, 1).fillCircle(7, 7, 2);
-  g.fillStyle(INK, 1).fillPoints(poly([10, 3, 5, 11, 9, 11, 7, 17, 13, 8, 9, 8, 11, 3]), true);
-  g.fillStyle(0xffffff, 1).fillPoints(poly([10, 5, 7, 10, 10, 10, 9, 14, 12, 9, 10, 9]), true);
-  g.generateTexture('weapon_furie', 18, 20);
   g.clear();
   // comic burst 40×24
   g.fillStyle(INK, 1).fillPoints(spikes(20, 12, 20, 12, 16, 0.62, 0), true);
@@ -166,10 +149,11 @@ export class PowBubbles {
     }
   }
 
-  spawn(x: number, y: number, nowMs: number): void {
+  /** `word`: a given word (the gant's « BOING ! »), else the next of POW_WORDS. */
+  spawn(x: number, y: number, nowMs: number, word: string = POW_WORDS[this.count % POW_WORDS.length]!): void {
     let p = this.pool[0]!;
     for (const q of this.pool) if (q.born < p.born) p = q;
-    const word = POW_WORDS[this.count++ % POW_WORDS.length]!;
+    this.count++;
     if (word !== p.word) {
       p.word = word;
       p.text.setText(word);

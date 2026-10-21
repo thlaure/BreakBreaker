@@ -4,6 +4,7 @@ import type { FlowField } from './map/flowfield';
 import type { Grid } from './map/grid';
 import { dist, norm, sub } from './math';
 import type { HostileView, Player } from './player';
+import type { Bullets } from './bullets';
 import type { Rocks } from './projectiles';
 import { SpatialHash } from './spatial';
 import type { Role, SimEvent, SiteId, TargetId, Variant, Vec } from './types';
@@ -40,6 +41,8 @@ export interface HordeCtx {
   grid: Grid;
   fields: { player: FlowField; victim: FlowField | null };
   rocks: Rocks;
+  /** Where shooters' bullets go (absent: shooters aim but fire nothing). */
+  bullets?: Bullets;
   sites: Partial<Record<SiteId, HordeSite>>;
   victimPos: Vec | null;
   pressure: number;
@@ -47,8 +50,16 @@ export interface HordeCtx {
 
 /** Per-hostile AI bookkeeping kept out of the public Hostile shape. */
 interface Aux {
-  /** 'bottle' = a firebomber's Molotov aimed at Paul (counts in the throw windup cap like a rock). */
-  windKind: 'contact' | 'throw' | 'molotov' | 'bottle' | null;
+  /**
+   * 'bottle' = a firebomber's Molotov aimed at Paul (counts in the throw windup cap like a rock); 'aim' / 'burst' = a
+   * shooter aiming, then firing its burst (no windup cap: shooters are few).
+   */
+  windKind: 'contact' | 'throw' | 'molotov' | 'bottle' | 'aim' | 'burst' | null;
+  /** Shooter: the fixed line of the current aim (from its position at aim start toward where Paul stood). */
+  aimFrom: Vec | null;
+  /** Shooter: bullets left in the burst and when the next one leaves. */
+  shotsLeft: number;
+  nextShotAt: number;
   /** A Molotov marked so turns into this role once its bottle hit its site (then it goes for Paul). */
   afterThrow: 'firebomber' | null;
   throwTo: Vec | null;
@@ -86,6 +97,33 @@ const ZERO: Vec = { x: 0, y: 0 };
 
 const isZero = (v: Vec): boolean => v.x === 0 && v.y === 0;
 
+/** Starting HP of a rioter of `role`: runner, brute and Caïd have their own (CONFIG.runner / brute / caid). */
+export function roleHp(role: Role): number {
+  if (role === 'runner') return CONFIG.runner.hp;
+  if (role === 'brute') return CONFIG.brute.hp;
+  if (role === 'boss') return CONFIG.caid.hp;
+  if (role === 'shooter') return CONFIG.shooter.hp;
+  return CONFIG.hostile.baseHp;
+}
+
+/** Speed factor of `role` over CONFIG.hostile.speed. */
+export function roleSpeedMul(role: Role): number {
+  if (role === 'runner') return CONFIG.runner.speedMul;
+  if (role === 'brute') return CONFIG.brute.speedMul;
+  if (role === 'boss') return CONFIG.caid.speedMul;
+  return 1;
+}
+
+/** Px a landed blow of `role` pushes Paul (0 = none). */
+export function roleKnockback(role: Role): number {
+  return role === 'brute' ? CONFIG.brute.knockback : role === 'boss' ? CONFIG.caid.knockback : 0;
+}
+
+/** A brute or the Caïd: a held weapon's strike does CONFIG.toughWeaponDamage instead of a one-hit KO. */
+export function isTough(role: Role): boolean {
+  return role === 'brute' || role === 'boss';
+}
+
 export class Horde {
   list: Hostile[] = [];
   private aux = new Map<number, Aux>();
@@ -114,7 +152,7 @@ export class Horde {
     afterThrow?: 'firebomber';
   }): Hostile | null {
     if (this.active().length >= CONFIG.caps.hostiles) return null;
-    const maxHp = opts.maxHp ?? CONFIG.hostile.baseHp;
+    const maxHp = opts.maxHp ?? roleHp(opts.role);
     const defTarget: Hostile['target'] =
       opts.role === 'degrader' || opts.role === 'molotov' ? 'facade' : opts.role === 'aggressor' ? 'victim' : 'player';
     const h: Hostile = {
@@ -137,6 +175,9 @@ export class Horde {
       windKind: null,
       afterThrow: opts.afterThrow ?? null,
       throwTo: null,
+      aimFrom: null,
+      shotsLeft: 0,
+      nextShotAt: 0,
       pointIdx: null,
       progressPos: { ...h.pos },
       progressAt: -Infinity,
@@ -215,8 +256,9 @@ export class Horde {
       if (a.postAt === null && (h.state === 'degrade' || h.state === 'threaten')) a.postAt = now;
       const delta = this.separation(h, ctx.player.pos);
       if (!isZero(want)) {
-        delta.x += want.x * CONFIG.hostile.speed * dt;
-        delta.y += want.y * CONFIG.hostile.speed * dt;
+        const speed = CONFIG.hostile.speed * roleSpeedMul(h.role);
+        delta.x += want.x * speed * dt;
+        delta.y += want.y * speed * dt;
       }
       if (!isZero(delta)) h.pos = moveCircle(ctx.grid, h.pos, delta, R);
       this.trackProgress(h, a, !isZero(want), this.crowded(h), now, ctx);
@@ -262,6 +304,7 @@ export class Horde {
     }
     if (h.role === 'thrower') return this.thrower(h, a, now, ctx, ev);
     if (h.role === 'firebomber') return this.firebomber(h, a, now, ctx, ev);
+    if (h.role === 'shooter') return this.shooter(h, a, now, ctx, ev);
     return this.contact(h, a, now, ctx, ev);
   }
 
@@ -300,7 +343,13 @@ export class Horde {
     const d = dist(h.pos, p.pos);
     if (h.state === 'windup') {
       if (now < h.stateUntil - EPS) return ZERO;
-      if (d <= HIT_REACH && !p.ko) ev.push({ type: 'PlayerDamaged', amount: this.damage });
+      if (d <= HIT_REACH && !p.ko) {
+        // a brute or the Caïd also pushes Paul away (straight away from the rioter; its facing toward him when on top)
+        const k = roleKnockback(h.role);
+        const away = norm(sub(p.pos, h.pos));
+        const dir = isZero(away) ? { x: 1, y: 0 } : away;
+        ev.push(k > 0 ? { type: 'PlayerDamaged', amount: this.damage, push: { x: dir.x * k, y: dir.y * k } } : { type: 'PlayerDamaged', amount: this.damage });
+      }
       a.windKind = null;
       this.wc--;
       h.state = 'recover';
@@ -390,6 +439,67 @@ export class Horde {
       ev.push({ type: 'EnemyThrowStarted', from: { ...h.pos }, to: { ...to }, until: h.stateUntil });
     }
     return ZERO;
+  }
+
+  /**
+   * Cartoon AK-47 (CONFIG.shooter): keeps keepMin–keepMax px from Paul with a clear line (else walks in, or backs off
+   * when too close), aims aimSec at where Paul stands now (ShooterAimStarted: the red aim line), then fires `burst`
+   * bullets burstGap s apart along that fixed line (BulletFired each; a moving Paul dodges), then reloads reloadSec.
+   * Paul within `fallback` px → a contact. KO'd while aiming: nothing is fired (KO hostiles are not stepped).
+   */
+  private shooter(h: Hostile, a: Aux, now: number, ctx: HordeCtx, ev: SimEvent[]): Vec {
+    const p = ctx.player;
+    const c = CONFIG.shooter;
+    if (h.state === 'windup' && a.windKind === 'aim') {
+      if (now < h.stateUntil - EPS) return ZERO;
+      a.windKind = 'burst';
+      a.shotsLeft = c.burst;
+      a.nextShotAt = now;
+    }
+    if (h.state === 'windup' && a.windKind === 'burst') {
+      if (now >= a.nextShotAt - EPS && a.shotsLeft > 0) {
+        const from = a.aimFrom!;
+        const b = ctx.bullets?.fire(from, sub(a.throwTo!, from));
+        if (b) ev.push({ type: 'BulletFired', id: b.id });
+        a.shotsLeft -= 1;
+        a.nextShotAt = now + c.burstGap;
+      }
+      if (a.shotsLeft > 0) return ZERO;
+      a.windKind = null;
+      a.aimFrom = null;
+      a.throwTo = null;
+      h.state = 'recover';
+      h.stateUntil = now + c.reloadSec;
+      h.nextAttackAt = now + c.reloadSec;
+      return ZERO;
+    }
+    const d = dist(h.pos, p.pos);
+    if (d < c.fallback || (h.state === 'windup' && a.windKind === 'contact')) return this.contact(h, a, now, ctx, ev);
+    if (d > c.keepMax || !ctx.grid.lineClear(h.pos, p.pos)) return this.steer(h, a, p.pos, ctx.fields.player, now, ctx);
+    if (d < c.keepMin) return norm(sub(h.pos, p.pos));
+    if (h.state === 'approach' && now >= h.nextAttackAt - EPS && !p.ko) {
+      h.state = 'windup';
+      h.stateUntil = now + c.aimSec;
+      a.windKind = 'aim';
+      a.aimFrom = { ...h.pos };
+      a.throwTo = { ...p.pos };
+      ev.push({ type: 'ShooterAimStarted', lifeId: h.lifeId, from: { ...h.pos }, to: { ...p.pos }, until: h.stateUntil });
+    }
+    return ZERO;
+  }
+
+  /** Unit direction of a shooter's current aim line (aiming or firing), else null. */
+  aimLine(lifeId: number): Vec | null {
+    const a = this.aux.get(lifeId);
+    if (!a || (a.windKind !== 'aim' && a.windKind !== 'burst') || !a.aimFrom || !a.throwTo) return null;
+    const d = norm(sub(a.throwTo, a.aimFrom));
+    return d.x === 0 && d.y === 0 ? null : d;
+  }
+
+  /** A shooter aiming or firing its burst right now (render: raised rifle and "!"). */
+  aiming(lifeId: number): boolean {
+    const k = this.aux.get(lifeId)?.windKind;
+    return k === 'aim' || k === 'burst';
   }
 
   /** A Molotov or firebomber holding up a lit bottle right now (render: raised bottle and "!"). */

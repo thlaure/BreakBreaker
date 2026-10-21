@@ -9,7 +9,7 @@ import type { InputFrame, Vec } from '../../src/sim/types';
 import { WEAPONS, Weapons } from '../../src/sim/weapons';
 
 const grid = new Grid(DISTRICT);
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false };
+const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
 const view = (lifeId: number, pos: Vec): HostileView => ({ lifeId, pos, r: CONFIG.hostile.radius, active: true });
 
 describe('weapon pickups', () => {

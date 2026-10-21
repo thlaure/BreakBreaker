@@ -238,7 +238,7 @@ describe('toolboxes', () => {
 });
 
 describe('Agir is a press, not a hold (rising edge tracked by the Sim)', () => {
-  const IDLE = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, strikeHeld: false, throwRock: false, act: false };
+  const IDLE = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
   const HOLD = { ...IDLE, act: true };
   function ruinedBusStop() {
     const sim = new Sim(12, { invulnerable: true });
