@@ -513,7 +513,23 @@ describe('specials: unlocks and drops', () => {
     }
   });
 
-  test('in a session: twist drops are regular before round 3 and the announced special after; deterministic', () => {
+  test('the onde d’énergie can be the round-5 twist drop (odd round: drop and second urgency together)', () => {
+    const r5: string[] = [];
+    for (let seed = 1; seed <= 6; seed++) {
+      const sim = new Sim(seed, { invulnerable: true });
+      for (let i = 0; i < 60 * 1500 && sim.director.round <= 5; i++) {
+        const ev = sim.step(autopilot(sim));
+        if (sim.director.round !== 5) continue;
+        const t = of(ev, 'TwistStarted').find((e) => e.kind === 'weaponDrop');
+        if (t) r5.push(t.special!);
+      }
+    }
+    expect(r5).toHaveLength(6);
+    for (const k of r5) expect(dropSpecials(5)).toContain(k);
+    expect(r5).toContain('kamehame');
+  });
+
+  test('in a session: a weapon-drop twist every round; regular before round 3, the announced special after; deterministic', () => {
     const run = () => {
       const sim = new Sim(3, { invulnerable: true });
       const twists: { round: number; special: string | undefined; kind: string | undefined }[] = [];
@@ -537,7 +553,9 @@ describe('specials: unlocks and drops', () => {
         if (t.kind) expect(t.kind).toBe(t.special);
       }
     }
-    expect(a.some((t) => t.round >= 3)).toBe(true);
+    // one weapon-drop twist every round from 2, odd rounds included: the bouclier and the onde show up on time
+    expect(a.map((t) => t.round)).toEqual([2, 3, 4, 5, 6]);
+    expect(a.find((t) => t.round === 3)!.special).toBe('bouclier');
     expect(run()).toEqual(a);
   });
 });
