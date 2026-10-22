@@ -1,7 +1,7 @@
 # BreakBreaker — Slice 2 « Fun » design
 
-Date: 2026-10-20. Status: approved in chat by the user ("ça me plaît bien, tu peux implémenter"). Supersedes the parts of
-`docs/superpowers/plans/2026-10-20-slice-2.md` it contradicts; everything else in that plan still stands.
+Date: 2026-10-20. Status: approved in chat by the user ("ça me plaît bien, tu peux implémenter"). Historical design record: the delivered state
+is described in the `docs/SPECS - *.md` files, which win over this document.
 
 ## 1. Why
 
