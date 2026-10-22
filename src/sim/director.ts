@@ -75,13 +75,22 @@ export const THROWER_SHARE = 0.2;
 /** Aggressors of every rescue from round 2 (round 1 keeps the random CONFIG.rescue.aggressors range). */
 export const RESCUE_COUNT = 3;
 const VARIANTS: Variant[] = ['classic', 'palestinian', 'antifa'];
-const CASSE_KINDS: CasseKind[] = ['school', 'car', 'busStop', 'shop'];
+const CASSE_KINDS: CasseKind[] = ['school', 'car', 'busStop', 'shop', 'nursery', 'kiosk', 'townHall', 'library'];
 const TARGETS_OF: Readonly<Record<CasseKind, TargetId[]>> = {
   school: ['school'],
   car: ['car1', 'car2'],
   busStop: ['busStop'],
   shop: ['shop'],
+  nursery: ['nursery'],
+  kiosk: ['kiosk'],
+  townHall: ['townHall'],
+  library: ['library'],
 };
+
+/** A kind of casse can be attacked in `round` (CONFIG.casse.fromRound: the nursery and the kiosk from 5, the town hall from 7, the library from 9). */
+export function casseOpen(kind: CasseKind, round: number): boolean {
+  return round >= CONFIG.casse.fromRound[kind];
+}
 const EPS = 1e-9;
 
 /** Brutes in a round's fill (CONFIG.brute.counts): none before round 4, 1, 2 from round 6, 3 from round 8. */
@@ -122,8 +131,8 @@ export interface MonumentPlan {
 
 /**
  * The round catalogue. r1: the school (tutorial: first Molotov, cinematic, reinforcements) then rescue. From r2 the
- * headline casse is a seeded random draw among every kind with a free target (standing, not burning): school, shop,
- * car, bus stop, weight 2, or 1 if it was `last` round's headline (it may repeat, rarely; nothing is forced). Second
+ * headline casse is a seeded random draw among every kind open this round (casseOpen: school, shop, car, bus stop from
+ * r2, nursery and kiosk from r5, town hall from r7, library from r9) with a free target (standing, not burning), weight 2, or 1 if it was `last` round's headline (it may repeat, rarely; nothing is forced). Second
  * beat: the rescue; from round CONFIG.monument.fromRound the monument occupation instead when the flag is French and
  * last round's second beat was not the monument (they alternate; never while the flag is Palestinian). Twists: from
  * round 2 always a weapon drop (from round 3 a bouclier half the time; otherwise a regular weapon one time in two, else
@@ -144,7 +153,7 @@ export function roundPlan(
   let first: CasseKind | null = null;
   if (round === 1) first = intact('school') ? 'school' : null;
   else {
-    const kinds = CASSE_KINDS.filter(intact);
+    const kinds = CASSE_KINDS.filter((k) => casseOpen(k, round) && intact(k));
     const weights = kinds.map((k) => (k === last ? 1 : 2));
     let r = rand() * weights.reduce((a, b) => a + b, 0);
     for (let i = 0; i < kinds.length && first === null; i++) {
@@ -253,7 +262,18 @@ export class Director {
   private lastHeadline: CasseKind | null = null;
   /** Last round's plan had the monument occupation (the monument and the rescue alternate). */
   private lastMonument = false;
-  private readonly counters: Record<BeatKind, number> = { school: 0, car: 0, busStop: 0, shop: 0, rescue: 0, monument: 0 };
+  private readonly counters: Record<BeatKind, number> = {
+    school: 0,
+    car: 0,
+    busStop: 0,
+    shop: 0,
+    nursery: 0,
+    kiosk: 0,
+    townHall: 0,
+    library: 0,
+    rescue: 0,
+    monument: 0,
+  };
   private variantCursor = 0;
   /** Fill firebombers handed out this round (CONFIG.firebomber.maxPerRound at most). */
   private firebombers = 0;
@@ -664,14 +684,14 @@ export class Director {
   }
 
   /**
-   * The second urgency (odd rounds from 3, with the weapon drop): another free target attacked at once, when the urgency
+   * The second urgency (odd rounds from 3, with the weapon drop): another free target of a kind open this round attacked at once, when the urgency
    * cap allows and one is free (preferably one not attacked yet this round); otherwise nothing more happens.
    */
   private secondUrgency(host: DirectorHost, ev: SimEvent[]): void {
     if (this.urgent(host) >= urgentCap(this.round)) return;
     const reserved = new Set<TargetId>();
     for (const b of this.beats) for (const o of b) if (o.attack && !o.launched) reserved.add(o.attack.target);
-    const open = DISTRICT.targets.filter((t) => this.free(t.id, host) && !reserved.has(t.id));
+    const open = DISTRICT.targets.filter((t) => casseOpen(t.kind, this.round) && this.free(t.id, host) && !reserved.has(t.id));
     // variety: a target already attacked this round only when no other one is free
     const attacked = new Set(this.objectives.flatMap((o) => (o.attack ? [o.attack.target] : [])));
     const fresh = open.filter((t) => !attacked.has(t.id));

@@ -18,7 +18,7 @@ export interface TargetDef {
   footprint: Rect;
   attackPoints: Vec[];
   door: Vec;
-  /** Props (cars, bus stop) are solid obstacles outside `buildings`. */
+  /** Props (cars, bus stop, kiosk) are solid obstacles outside `buildings`. */
   prop: boolean;
   maxHp: number;
 }
@@ -65,11 +65,16 @@ function prop(id: TargetId, kind: CasseKind, footprint: Rect, attackPoints: Vec[
   };
 }
 
+/** A 100 hp building target on one of DISTRICT.buildings (its footprint), attacked from the street in front of `door`. */
+function building(id: TargetId, kind: CasseKind, footprint: Rect, attackPoints: Vec[], door: Vec): TargetDef {
+  return { id, kind, footprint, attackPoints, door, prop: false, maxHp: 100 };
+}
+
 export const DISTRICT: District = {
   tiles: 48,
   buildings: [
     R(4, 4, 8, 5), // 0: school (north-west)
-    R(15, 3, 6, 4),
+    R(15, 3, 6, 4), // 1: town hall (north)
     R(26, 4, 7, 5),
     R(36, 3, 8, 5),
     R(4, 14, 6, 5),
@@ -77,8 +82,8 @@ export const DISTRICT: District = {
     R(14, 26, 6, 5),
     R(30, 28, 7, 5),
     R(38, 16, 6, 6),
-    R(6, 30, 7, 6),
-    R(22, 38, 8, 5),
+    R(6, 30, 7, 6), // 9: nursery school (south-west)
+    R(22, 38, 8, 5), // 10: library (south)
     R(38, 36, 6, 6),
   ],
   trunks: [
@@ -135,6 +140,12 @@ export const DISTRICT: District = {
       prop: false,
       maxHp: 100,
     },
+    // Phase C places (§12.2): open from round 5 (nursery, kiosk), 7 (town hall), 9 (library), CONFIG.casse.fromRound
+    building('nursery', 'nursery', R(6, 30, 7, 6), [C(7, 36), C(8, 36), C(10, 36), C(11, 36)], C(9, 36)),
+    // the newspaper kiosk on the open ground south of building 7, a free tile all around it
+    prop('kiosk', 'kiosk', R(34, 40, 2, 1), [C(33, 40), C(36, 40), C(34, 41), C(35, 41)]),
+    building('townHall', 'townHall', R(15, 3, 6, 4), [C(16, 7), C(17, 7), C(19, 7), C(20, 7)], C(18, 7)),
+    building('library', 'library', R(22, 38, 8, 5), [C(24, 37), C(25, 37), C(27, 37), C(28, 37)], C(26, 37)),
   ],
   kitSites: [C(18, 12), C(28, 25), C(8, 26), C(36, 44)],
   monument: {

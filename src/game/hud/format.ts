@@ -112,6 +112,10 @@ export const TARGET_NAMES: Readonly<Record<CasseKind, string>> = {
   car: 'Voiture',
   busStop: 'Abribus',
   shop: 'Boutique',
+  nursery: 'Maternelle',
+  kiosk: 'Kiosque',
+  townHall: 'Mairie',
+  library: 'Bibliothèque',
 };
 const OBJECTIVE_NAMES: Readonly<Record<RoundHeadline, string>> = { ...TARGET_NAMES, rescue: 'Secours', monument: 'Monument' };
 

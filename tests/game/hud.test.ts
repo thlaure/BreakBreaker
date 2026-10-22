@@ -278,6 +278,22 @@ describe('incidentLines', () => {
     expect(incidentLines(f, 'en cours')[0]).toMatchObject({ key: 'shop', name: 'Boutique', status: 'en feu' });
   });
 
+  test('the Phase C places have their cards (Maternelle, Kiosque, Mairie, Bibliothèque)', () => {
+    const s = snap((x) => {
+      calm(x);
+      attacked(x, 'nursery', 50);
+      attacked(x, 'kiosk', 30, true);
+      attacked(x, 'townHall', 99.2);
+      attacked(x, 'library', 10, true);
+    });
+    expect(incidentLines(s, 'en cours')).toEqual([
+      expect.objectContaining({ key: 'nursery', kind: 'nursery', name: 'Maternelle', time: '50 %', status: 'attaquée' }),
+      expect.objectContaining({ key: 'kiosk', kind: 'kiosk', name: 'Kiosque', time: '50 %', status: 'en feu' }),
+      expect.objectContaining({ key: 'townHall', kind: 'townHall', name: 'Mairie', time: '100 %', status: 'attaquée' }),
+      expect.objectContaining({ key: 'library', kind: 'library', name: 'Bibliothèque', time: '10 %', status: 'en feu' }),
+    ]);
+  });
+
   test('resolved incidents have no card (rescue: once its thanks beat is over); rescue status derives from stage and drain', () => {
     const s = snap((x) => {
       calm(x);

@@ -90,9 +90,9 @@ export type Role =
   | 'brute'
   | 'boss'
   | 'shooter';
-export type TargetId = 'school' | 'car1' | 'car2' | 'busStop' | 'shop';
+export type TargetId = 'school' | 'car1' | 'car2' | 'busStop' | 'shop' | 'nursery' | 'kiosk' | 'townHall' | 'library';
 /** What kind of attack a round's "casse" is (Phase C extends both unions). */
-export type CasseKind = 'school' | 'car' | 'busStop' | 'shop';
+export type CasseKind = 'school' | 'car' | 'busStop' | 'shop' | 'nursery' | 'kiosk' | 'townHall' | 'library';
 /**
  * Where a site-bound rioter (degrader) goes: a target, or the equestrian monument's plinth. The monument has no hp and
  * is not a target: it only shares the horde's site mechanism (attack points, flow field).

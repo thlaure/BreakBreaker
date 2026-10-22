@@ -275,7 +275,21 @@ export const CONFIG = {
     twistAt: 0.5,
     bonus: 5,
   },
-  casse: { scores: { school: [8, -3, 5], car: [4, -2, 3], busStop: [4, -2, 3], shop: [6, -2, 4] } },
+  casse: {
+    /** [saved, lost, repaired] points of each kind. */
+    scores: {
+      school: [8, -3, 5],
+      car: [4, -2, 3],
+      busStop: [4, -2, 3],
+      shop: [6, -2, 4],
+      nursery: [8, -3, 5],
+      kiosk: [4, -2, 3],
+      townHall: [8, -3, 5],
+      library: [8, -3, 5],
+    },
+    /** First round a kind can be attacked (headline draw and second urgency; round 1 is always the school). */
+    fromRound: { school: 1, car: 2, busStop: 2, shop: 2, nursery: 5, kiosk: 5, townHall: 7, library: 9 },
+  },
   pressureMax: 12,
   rulesVersion: 'slice-0.2.0',
 } as const;
