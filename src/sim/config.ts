@@ -329,9 +329,10 @@ export const CONFIG = {
    * bursts out at its door. `guards` guards (the police's brain and stats, CONFIG.services.police, but a Caïd's hp for the
    * round, at least CONFIG.caid.hp, and bare-hands blows: 1 hp, damageFrom.hands on the Caïd) each hold a post: they only
    * go for rioters within `postRadius` px of it and never step out of that circle; one knocked out comes back in the
-   * breather unless the prison is ruined.
+   * breather unless the prison is ruined. A jailed Caïd's KO body is carried off by the jail van `pickupSec` s after his
+   * KO (it leaves the horde; the render's van picks it up just before: prisonMath.VAN_PICKUP_DELAY_MS + the drive-in + the hop).
    */
-  prison: { hp: 400, guards: 5, postRadius: 160, fromRound: 4, repairShare: 0.6 },
+  prison: { hp: 400, guards: 5, postRadius: 160, fromRound: 4, repairShare: 0.6, pickupSec: 1.6 },
   pressureMax: 12,
   rulesVersion: 'slice-0.2.0',
 } as const;

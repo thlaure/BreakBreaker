@@ -529,7 +529,7 @@ export class Sim {
     );
     this.syncServices();
     // the prison fell this step (by any path): every jailed Caïd out at its door, in the roster
-    ev.push(...this.prison.step({ targets: this.targets, horde: this.horde, extend: (n, e) => this.director.extend(n, e) }));
+    ev.push(...this.prison.step({ targets: this.targets, horde: this.horde, dt, extend: (n, e) => this.director.extend(n, e) }));
     const heal = this.stations.step({ player: p, rules: this.rules });
     ev.push(...heal.events);
     this.stationMessage = heal.message;
@@ -1074,7 +1074,7 @@ export class Sim {
     const w = this.weapons.dropAt(h.pos, this.player.pos);
     if (w) ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: v(w.pos) });
     // the jail van takes him to the prison, while it stands
-    ev.push(...this.prison.jail(h, this.targets));
+    ev.push(...this.prison.jail(h, this.targets, this.director.round));
   }
 
   /** Hostile facing = along its aim line while a shooter aims or fires, else last movement direction, else toward Paul. */

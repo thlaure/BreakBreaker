@@ -254,6 +254,16 @@ export class Horde {
     return 'ko';
   }
 
+  /** Takes a KO body off the map (the jail van carried it away); false if `lifeId` is not a KO body here. */
+  removeBody(lifeId: number): boolean {
+    const h = this.list.find((x) => x.lifeId === lifeId);
+    if (!h || h.state !== 'ko') return false;
+    this.list = this.list.filter((x) => x.lifeId !== lifeId);
+    this.koOrder = this.koOrder.filter((id) => id !== lifeId);
+    this.aux.delete(lifeId);
+    return true;
+  }
+
   /** Removes the active hostiles matching `pred` from the map (they leave: no KO, no score); returns how many. */
   dismiss(pred: (h: Hostile) => boolean): number {
     const gone = this.list.filter((h) => h.state !== 'ko' && pred(h));
