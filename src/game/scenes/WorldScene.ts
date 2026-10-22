@@ -18,6 +18,8 @@ import { GroupView, VictimView } from '../render/crowd';
 import { FirePatchLayer, MolotovFx, RockLayer, TelegraphLayer } from '../render/fx';
 import { MonumentView, makeMonumentTextures } from '../render/monument';
 import { TargetsLayer, makeTargetTextures } from '../render/targets';
+import { BoothsLayer } from '../render/booths';
+import { ServicesLayer, makeServiceTextures } from '../render/services';
 import { FieldHealView, StationsView, ToolboxView, WorldView, makeRockTextures, makeTextures } from '../render/world';
 import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapons';
 import { ItemLayer, makeItemTextures } from '../render/items';
@@ -62,6 +64,10 @@ export class WorldScene extends Phaser.Scene {
 
   private world!: WorldView;
   private targetViews!: TargetsLayer;
+  /** The phone booths' call pills, « ! » hint and call / refusal lines. */
+  private booths!: BoothsLayer;
+  /** The fire truck, its water and the police officers. */
+  private services!: ServicesLayer;
   private monument!: MonumentView;
   private toolboxes!: ToolboxView;
   private molotovFx!: MolotovFx;
@@ -197,9 +203,11 @@ export class WorldScene extends Phaser.Scene {
     makeSpecialTextures(this);
     makeMonumentTextures(this);
     makeRoleTextures(this);
+    makeServiceTextures(this);
     this.reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.world = new WorldView(this);
     this.targetViews = new TargetsLayer(this, this.world.buildingParts);
+    this.booths = new BoothsLayer(this, this.targetViews);
     this.monument = new MonumentView(this);
     this.stations = new StationsView(this);
     this.fieldHeals = new FieldHealView(this);
@@ -233,6 +241,7 @@ export class WorldScene extends Phaser.Scene {
     this.bullets = new BulletLayer(this);
     this.glove = new GloveFx(this);
     this.toolboxes = new ToolboxView(this);
+    this.services = new ServicesLayer(this, (x, y, t) => this.pows.spawn(x, y, t, 'PAF !'));
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.world.width, this.world.height);
@@ -388,6 +397,8 @@ export class WorldScene extends Phaser.Scene {
     }
     if (scored.length > 0) this.scorePopups.spawn(scored, time);
     this.bullets.onEvents(events, snap);
+    this.booths.onEvents(events, time);
+    this.services.onEvents(events);
     if (furieHit) this.shake(FURIE_SHAKE, time);
   }
 
@@ -413,6 +424,8 @@ export class WorldScene extends Phaser.Scene {
     this.victim.update(snap.rescue, time);
     this.items.update(snap.rescue, snap.player, time);
     this.targetViews.update(snap, time, dtMs);
+    this.booths.update(snap, time);
+    this.services.update(snap, time, dtMs);
     this.monument.update(snap.monument, time);
     this.molotovFx.update(snap.molotovs, snap.now, time);
     this.firePatches.update(snap.firePatches, time);

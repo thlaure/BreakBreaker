@@ -13,13 +13,19 @@ type BuildingParts = WorldView['buildingParts'];
 const OUTLINE = 0x14121c;
 /** Props are drawn from 1-px logical textures scaled ×2, like the city tiles. */
 const PX = 2;
-type PropKind = 'car' | 'busStop' | 'kiosk';
+type PropKind = 'car' | 'busStop' | 'kiosk' | 'booth';
 /** World px a prop texture rises above its footprint (it is anchored on the footprint's bottom edge). */
-const PROP_RISE: Record<PropKind, number> = { car: 10, busStop: 16, kiosk: 16 };
-/** The look of a prop target: cars, the bus shelter and the newspaper kiosk. */
+export const PROP_RISE: Record<PropKind, number> = { car: 10, busStop: 16, kiosk: 16, booth: 24 };
+/** The look of a prop target: cars, the bus shelter, the newspaper kiosk and the phone booths. */
 function propKind(kind: TargetDef['kind']): PropKind {
-  return kind === 'busStop' || kind === 'kiosk' ? kind : 'car';
+  return kind === 'busStop' || kind === 'kiosk' || kind === 'booth' ? kind : 'car';
 }
+/** Phone booth textures by target: intact, ruined; `booth_spent` (grey) once its calls are used up. */
+const BOOTH_TEXTURES: Readonly<Partial<Record<TargetId, { intact: string; ruined: string }>>> = {
+  boothRed: { intact: 'booth_red', ruined: 'booth_red_broken' },
+  boothBlue: { intact: 'booth_blue', ruined: 'booth_blue_broken' },
+};
+export const BOOTH_SPENT = 'booth_spent';
 const FLASH_MS = 120;
 /** Extra flare of a target already burning hit by another bottle. */
 const FLARE_MS = 350;
@@ -31,7 +37,8 @@ const TRAIL_PER_SEC = 0.3;
 
 /**
  * Runtime prop textures (1 px logical, drawn ×2): `car_a` / `car_b` (3/4 side-view compact, red / blue) and `car_burnt`,
- * `busstop` / `busstop_broken`, `kiosk` / `kiosk_broken` (green newspaper stand), plus the `toolbox` pickup, the
+ * `busstop` / `busstop_broken`, `kiosk` / `kiosk_broken` (green newspaper stand), `booth_red` / `booth_blue` /
+ * `booth_spent` and their `_broken` wrecks (phone booths), plus the `toolbox` pickup, the
  * Molotov `bottle`, its `flame` and the `bang` mark.
  */
 export function makeTargetTextures(scene: Phaser.Scene): void {
@@ -245,6 +252,68 @@ export function makeTargetTextures(scene: Phaser.Scene): void {
   kiosk('kiosk', false);
   kiosk('kiosk_broken', true);
 
+  // phone booth, front view (16 × 28): a coloured cabin with a sign band and a lamp on the roof, glass door with the
+  // handset on the back wall; wrecked: smashed panes, sign hanging, door off its hinge, scorch marks
+  const booth = (key: string, c: { body: number; hi: number; lo: number }, broken: boolean): void => {
+    g.clear();
+    const glass = broken ? 0x1d1a24 : 0x9fd8ef;
+    // cabin
+    r(OUTLINE, 0, 3, 16, 25);
+    r(c.body, 1, 4, 14, 23);
+    r(c.hi, 1, 4, 1, 23);
+    r(c.lo, 14, 4, 1, 23);
+    // roof cap and lamp
+    r(OUTLINE, 1, 1, 14, 3);
+    r(c.hi, 2, 2, 12, 1);
+    r(OUTLINE, 6, 0, 4, 2);
+    r(broken ? 0x6d6a72 : 0xfff6d0, 7, 0, 2, 1);
+    // sign band « TEL » (white strip, dark marks)
+    if (!broken) {
+      r(0xf4f4f0, 2, 5, 12, 3);
+      r(OUTLINE, 4, 6, 2, 1);
+      r(OUTLINE, 7, 6, 2, 1);
+      r(OUTLINE, 10, 6, 2, 1);
+    } else {
+      r(0xb8b4a8, 2, 6, 7, 2); // half the sign hangs crooked
+      r(0xb8b4a8, 9, 7, 4, 1);
+      r(OUTLINE, 4, 7, 2, 1);
+    }
+    // door: glass panes split by a bar, the handset and its box seen through
+    r(OUTLINE, 2, 9, 12, 16);
+    r(glass, 3, 10, 10, 14);
+    r(OUTLINE, 3, 16, 10, 1);
+    if (!broken) {
+      r(0x3a3438, 9, 11, 3, 4); // phone box
+      r(0x14121c, 10, 12, 1, 2); // handset
+      r(0xe6f7ff, 4, 11, 1, 3); // glints
+      r(0xe6f7ff, 5, 10, 1, 1);
+      r(0xe6f7ff, 4, 18, 1, 2);
+      r(c.hi, 3, 20, 1, 1); // door handle
+    } else {
+      // shards left in the frame
+      r(0x8fcfe8, 3, 10, 3, 1);
+      r(0x8fcfe8, 3, 11, 2, 1);
+      r(0x8fcfe8, 3, 12, 1, 2);
+      r(0x8fcfe8, 10, 23, 3, 1);
+      r(0x8fcfe8, 12, 21, 1, 2);
+      r(0x8fcfe8, 9, 17, 2, 1);
+      r(0x3a3438, 9, 12, 3, 2); // phone box, handset ripped off
+      r(OUTLINE, 10, 14, 1, 4); // the dangling cord
+      r(0x14121c, 1, 12, 3, 5, 0.6); // soot
+      r(0x14121c, 11, 4, 4, 6, 0.6);
+      r(0xff7a1f, 5, 24, 1, 1); // embers
+    }
+    // base
+    r(OUTLINE, 0, 25, 16, 3);
+    r(c.lo, 1, 26, 14, 1);
+    g.generateTexture(key, 16, 28);
+  };
+  booth('booth_red', { body: 0xd23b3b, hi: 0xf27a6a, lo: 0x9c2a2a }, false);
+  booth('booth_blue', { body: 0x3b6fd2, hi: 0x7aa8f2, lo: 0x2a4f9c }, false);
+  booth('booth_spent', { body: 0x8a8690, hi: 0xaeaab4, lo: 0x625e68 }, false);
+  booth('booth_red_broken', { body: 0x6e2a2a, hi: 0x8a3a36, lo: 0x4a1c1c }, true);
+  booth('booth_blue_broken', { body: 0x2a3e6e, hi: 0x3a548a, lo: 0x1c2a4a }, true);
+
   // toolbox: red-orange case, grey handle, yellow latch
   g.clear();
   r(OUTLINE, 3, 0, 6, 3);
@@ -292,7 +361,7 @@ export function makeTargetTextures(scene: Phaser.Scene): void {
 }
 
 /** Pixel hp bar: hidden at full hp when not attacked; green > 50 %, yellow > 25 %, red; white flash on damage. */
-class HpBar {
+export class HpBar {
   private readonly g: Phaser.GameObjects.Graphics;
   private last = -1;
   private trail = 1;
@@ -306,6 +375,11 @@ class HpBar {
       .setPosition(Math.round(cx - w / 2), Math.round(top))
       .setDepth(DEPTH.overlay - 1)
       .setVisible(false);
+  }
+
+  /** Moves the bar (a moving ally's): centred on `cx`, top at `top`, on whole pixels. */
+  moveTo(cx: number, top: number): void {
+    this.g.setPosition(Math.round(cx - this.w / 2), Math.round(top));
   }
 
   update(frac: number, visible: boolean, nowMs: number, dtMs: number): void {
@@ -369,7 +443,7 @@ class TargetView {
   private readonly sprite: Phaser.GameObjects.Image | null = null;
   private readonly mast: Phaser.GameObjects.Container | null = null;
   private readonly smokeFreq: { burning: number; wisps: number };
-  private readonly textures: { intact: string; ruined: string } | null = null;
+  private textures: { intact: string; ruined: string } | null = null;
   private burning = false;
 
   /** Whether the flames are currently shown. */
@@ -395,7 +469,9 @@ class TargetView {
     if (prop) {
       const kind = propKind(def.kind);
       this.textures =
-        kind === 'busStop'
+        kind === 'booth'
+          ? { ...(BOOTH_TEXTURES[def.id] ?? { intact: 'booth_red', ruined: 'booth_red_broken' }) }
+          : kind === 'busStop'
           ? { intact: 'busstop', ruined: 'busstop_broken' }
           : kind === 'kiosk'
             ? { intact: 'kiosk', ruined: 'kiosk_broken' }
@@ -407,7 +483,9 @@ class TargetView {
         .setScale(PX)
         .setDepth(bottom);
       const rise = PROP_RISE[kind];
-      this.zone = new Phaser.Geom.Rectangle(f.x + 8, f.y - rise, f.w - 16, f.h - 8 + rise);
+      // a booth is narrow: its flames fill its whole width
+      const inset = kind === 'booth' ? 4 : 8;
+      this.zone = new Phaser.Geom.Rectangle(f.x + inset, f.y - rise, f.w - inset * 2, f.h - 8 + rise);
     } else {
       this.zone = new Phaser.Geom.Rectangle(f.x + 16, bottom - FACADE_H - 40, f.w - 32, 40);
     }
@@ -499,6 +577,13 @@ class TargetView {
     this.flareUntil = nowMs + FLARE_MS;
   }
 
+  /** Swaps the standing look of a prop (a phone booth goes grey once its calls are spent); the wreck stays. */
+  setIntact(key: string): void {
+    if (!this.textures || this.textures.intact === key) return;
+    this.textures.intact = key;
+    if (!this.ruined) this.sprite?.setTexture(key);
+  }
+
   /** Short white flash of the prop (repair). */
   flash(nowMs: number): void {
     if (!this.sprite) return;
@@ -541,6 +626,8 @@ class TargetView {
         ? [0x8fcfe8, 0xe6f7ff, 0x8fcfe8, 0x6d6a72]
         : this.def.kind === 'kiosk'
           ? [0xf4ecd8, 0xff4f6d, 0xf4ecd8, 0x2f8a4a] // newspapers and torn magazines
+          : this.def.kind === 'booth'
+            ? [0x8fcfe8, 0xe6f7ff, this.def.id === 'boothBlue' ? 0x3b6fd2 : 0xd23b3b, 0x3a3438] // glass, paint chips
           : [0x3a3438, 0x6d6a72, 0x8a4a2b, 0x9fd8ef];
     for (let k = 0; k < 18; k++) {
       const a = rnd() * Math.PI * 2;
@@ -619,6 +706,16 @@ export class TargetsLayer {
       const held = !v.isBurning && snap.molotovs.some((m) => m.to.x === door.x && m.to.y === door.y);
       v.update(t, t.burning && !held, nowMs, dtMs);
     }
+  }
+
+  /** A prop's standing look (the booths' grey once spent): see TargetView.setIntact. */
+  setIntact(id: TargetId, key: string): void {
+    this.views.get(id)?.setIntact(key);
+  }
+
+  /** The standing texture a booth starts with (its colour). */
+  static boothIntact(id: TargetId): string {
+    return BOOTH_TEXTURES[id]?.intact ?? 'booth_red';
   }
 
   onEvent(e: SimEvent, nowMs: number): void {

@@ -73,7 +73,8 @@ export interface AlliesCtx {
 /** What the render reads (Snapshot.allies). */
 export interface AlliesView {
   truck: { pos: Vec; hp: number; maxHp: number; state: TruckState; target: TargetId | null } | null;
-  police: { id: number; pos: Vec; hp: number; maxHp: number; state: FighterState }[];
+  /** Foot officers; `role` picks their look (a later prison 'guard' would get its own list or share this shape). */
+  police: { id: number; role: FighterRole; pos: Vec; hp: number; maxHp: number; state: FighterState }[];
 }
 
 const EPS = 1e-9;
@@ -238,7 +239,7 @@ export class Allies {
       truck: t ? { pos: v(t.pos), hp: t.hp, maxHp: t.maxHp, state: t.state, target: t.target } : null,
       police: this.fighters
         .filter((f) => f.role === 'police')
-        .map((f) => ({ id: f.id, pos: v(f.pos), hp: f.hp, maxHp: f.maxHp, state: f.state })),
+        .map((f) => ({ id: f.id, role: f.role, pos: v(f.pos), hp: f.hp, maxHp: f.maxHp, state: f.state })),
     };
   }
 

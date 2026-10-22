@@ -1,6 +1,8 @@
 import { CONFIG } from '../../sim/config';
+import { DISTRICT } from '../../sim/map/district';
+import { BOOTH_OF } from '../../sim/services';
 import type { Snapshot } from '../../sim/sim';
-import type { CasseKind, TargetId, Vec } from '../../sim/types';
+import type { CasseKind, ServiceKind, TargetId, Vec } from '../../sim/types';
 import { HELD_LABELS } from '../../sim/weapons';
 import { casseurs, type IncidentKind, type RoundHeadline } from './alerts';
 
@@ -93,11 +95,24 @@ export const DEFAULT_ACT_LABEL = 'Agir';
 /**
  * Contextual prompt under Paul. With a toolbox next to a ruin or a burning target and no hostile close, an actionable
  * prompt: « F — Réparer » / « F — Éteindre le feu » (touch: no key, the Agir button takes the label). Informational
- * ones (no button): the repair in progress, the toolbox messages, the heal stations.
+ * ones (no button): the repair in progress, the toolbox messages, the heal stations. Next to a standing phone booth
+ * (door within CONFIG.services.callRange): « F — Appeler les pompiers » / « F — Appeler la police », label « Appeler »,
+ * when it is what a press would do (the sim's Agir priority: the nearest wins, a repair on a tie, red before blue); a
+ * ruined booth: « Cabine hors service » (no button).
  */
 export function contextPrompt(s: Snapshot, touch = false): Prompt | null {
   const kit = s.toolboxes;
   if (kit.repairTarget && kit.started) return { text: 'Réparation…', label: null };
+  const booth = nearestBooth(s);
+  if (booth) {
+    const repairDoor = kit.repairTarget && kit.canRepair ? DISTRICT.targets.find((t) => t.id === kit.repairTarget)?.door : undefined;
+    const repairD = repairDoor ? Math.hypot(repairDoor.x - s.player.pos.x, repairDoor.y - s.player.pos.y) : Infinity;
+    if (booth.d < repairD - 1e-9) {
+      if (booth.ruined) return { text: 'Cabine hors service', label: null };
+      const text = BOOTH_PROMPTS[booth.kind];
+      return { text: touch ? text : `F — ${text}`, label: 'Appeler' };
+    }
+  }
   if (kit.message) return { text: kit.message, label: null };
   if (kit.repairTarget && kit.canRepair) {
     const [text, label] = kit.repairKind === 'fire' ? ['Éteindre le feu', 'Éteindre'] : ['Réparer', 'Réparer'];
@@ -105,6 +120,22 @@ export function contextPrompt(s: Snapshot, touch = false): Prompt | null {
   }
   if (s.stationMessage) return { text: s.stationMessage, label: null };
   return null;
+}
+
+const BOOTH_PROMPTS: Readonly<Record<ServiceKind, string>> = { fire: 'Appeler les pompiers', police: 'Appeler la police' };
+
+/** The booth whose door is nearest Paul within callRange (red first on a tie; a ruin still takes the press), or null. */
+function nearestBooth(s: Snapshot): { kind: ServiceKind; d: number; ruined: boolean } | null {
+  let best: { kind: ServiceKind; d: number; ruined: boolean } | null = null;
+  for (const kind of ['fire', 'police'] as const) {
+    const id = BOOTH_OF[kind];
+    const ruined = s.targets.find((t) => t.id === id)?.state === 'ruined';
+    const door = DISTRICT.targets.find((t) => t.id === id)?.door;
+    if (!door) continue;
+    const d = Math.hypot(door.x - s.player.pos.x, door.y - s.player.pos.y);
+    if (d <= CONFIG.services.callRange && (!best || d < best.d - 1e-9)) best = { kind, d, ruined };
+  }
+  return best;
 }
 
 export const TARGET_NAMES: Readonly<Record<CasseKind, string>> = {

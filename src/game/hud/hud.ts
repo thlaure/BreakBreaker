@@ -2,6 +2,7 @@ import { CONFIG } from '../../sim/config';
 import type { Snapshot } from '../../sim/sim';
 import type { SimEvent, Vec } from '../../sim/types';
 import { CONTROLS, INTRO_ACTIONS, INTRO_GOAL } from '../../content/controls';
+import { BOOTH_TEXT_MS } from '../render/serviceMath';
 import {
   AlertBanner,
   activeIncidents,
@@ -162,6 +163,8 @@ export class Hud {
   private lastEnergy = Number.NaN;
   /** « Énergie insuffisante » is showing (a refused Furie / Onde), until its timer clears it. */
   private refused = false;
+  /** Until when (performance.now) a booth's call / refusal line shows under it: the prompt text steps aside. */
+  private boothLineUntil = 0;
   private refusedTimer: ReturnType<typeof setTimeout> | null = null;
   /** Belongings Paul carries back to the rescue victim (hidden when none). */
   private readonly items = statRow('items minor', 'OBJETS');
@@ -257,6 +260,7 @@ export class Hud {
   onEvents(events: SimEvent[]): void {
     for (const e of events) {
       if (e.type === 'EnergyRefused') this.showRefused();
+      if (e.type === 'ServiceCalled' || e.type === 'ServiceRefused') this.boothLineUntil = performance.now() + BOOTH_TEXT_MS;
       const inc = alertFromEvent(e);
       if (inc) this.alert.push(inc);
     }
@@ -350,7 +354,8 @@ export class Hud {
     if (cinematic) c.text(this.bannerHint, touch ? 'Touchez l’écran pour passer' : 'Espace ou F pour passer');
 
     const p = cinematic ? null : contextPrompt(s, touch);
-    this.prompt.hidden = !p;
+    // the booth's own line (under the booth, in the world) replaces the prompt text for a moment; Agir stays
+    this.prompt.hidden = !p || performance.now() < this.boothLineUntil;
     c.text(this.prompt, p?.text ?? '');
     if (this.actBtn) {
       // Only an actionable prompt (repair / put out a fire) shows the touch Agir button, labelled with the action.
