@@ -25,8 +25,8 @@ export interface AttackCtx {
 
 const VARIANTS: Variant[] = ['classic', 'palestinian', 'antifa'];
 
-/** Buildings (school, retro video-game shop, nursery, town hall, library), as opposed to props (cars, bus stop, kiosk, phone booths). */
-const BUILDING_KINDS: ReadonlySet<CasseKind> = new Set<CasseKind>(['school', 'shop', 'nursery', 'townHall', 'library']);
+/** Buildings (school, retro video-game shop, nursery, town hall, library, prison), as opposed to props (cars, bus stop, kiosk, phone booths). */
+const BUILDING_KINDS: ReadonlySet<CasseKind> = new Set<CasseKind>(['school', 'shop', 'nursery', 'townHall', 'library', 'prison']);
 
 /** Molotov throwers of an attack in `round`: min(4, 1 + floor(round / 2)) on a building, at most 2 on a prop (car, bus stop, kiosk, phone booth). */
 export function molotovCount(kind: CasseKind, round: number): number {

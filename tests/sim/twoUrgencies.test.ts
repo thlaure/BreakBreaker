@@ -53,14 +53,14 @@ describe('two urgencies at once from round 5 (plan)', () => {
       const p = roundPlan(10, rng(s), t, ['school', 'shop']);
       for (const k of p.beats[0]!) n[k] = (n[k] ?? 0) + 1;
     }
-    // 8 kinds, two of them at half weight: each favoured kind appears far more often
-    for (const k of ['car', 'busStop', 'nursery', 'kiosk', 'townHall', 'library']) expect(n[k]!).toBeGreaterThan(n.school! * 1.4);
+    // 10 kinds (booths and prison included), two of them at half weight: each favoured kind appears far more often
+    for (const k of ['car', 'busStop', 'nursery', 'kiosk', 'townHall', 'library', 'booth', 'prison']) expect(n[k]!).toBeGreaterThan(n.school! * 1.4);
     expect(n.shop!).toBeLessThan(n.car! / 1.4);
   });
 
   test('never a ruined or burning target, never the same target twice; one free target → one attack; none → the second beat alone', () => {
     const t = new Targets();
-    for (const id of ['school', 'shop', 'nursery', 'kiosk', 'townHall', 'library', 'busStop', 'boothRed', 'boothBlue'] as const) t.ruin(id, `${id}#x`);
+    for (const id of ['school', 'shop', 'nursery', 'kiosk', 'townHall', 'library', 'busStop', 'boothRed', 'boothBlue', 'prison'] as const) t.ruin(id, `${id}#x`);
     // only the two cars are free: car + car (two distinct targets)
     for (let s = 1; s <= 20; s++) expect(roundPlan(9, rng(s), t).beats[0]).toEqual(['car', 'car']);
     t.ignite('car1', 'car#x');

@@ -295,9 +295,10 @@ export const CONFIG = {
       townHall: [8, -3, 5],
       library: [8, -3, 5],
       booth: [4, -2, 3],
+      prison: [8, -3, 5],
     },
     /** First round a kind can be attacked (headline draw and second urgency; round 1 is always the school). */
-    fromRound: { school: 1, car: 2, busStop: 2, shop: 2, nursery: 5, kiosk: 5, townHall: 7, library: 9, booth: 3 },
+    fromRound: { school: 1, car: 2, busStop: 2, shop: 2, nursery: 5, kiosk: 5, townHall: 7, library: 9, booth: 3, prison: 4 },
   },
   /**
    * Emergency services (phone booths): `calls` fire calls and as many police calls per session; Paul calls within
@@ -322,6 +323,15 @@ export const CONFIG = {
     truck: { hp: 60, speed: 160, radius: 7, reach: 16, sprayRadius: 80, sprayRate: 0.5, maxStaySec: 60 },
     police: { count: 5, hp: 1, speed: 150, staySec: 40, reach: 18, hitRange: 26, windup: 0.3, cooldown: 0.8, downSec: 3 },
   },
+  /**
+   * The prison (south-east block): a `hp` building target attacked from `fromRound` (CONFIG.casse.fromRound.prison),
+   * rebuilt by a toolbox to `repairShare` of its hp. A Caïd KO'd while it stands is jailed; at 0 hp every jailed Caïd
+   * bursts out at its door. `guards` guards (the police's brain and stats, CONFIG.services.police, but a Caïd's hp for the
+   * round, at least CONFIG.caid.hp, and bare-hands blows: 1 hp, damageFrom.hands on the Caïd) each hold a post: they only
+   * go for rioters within `postRadius` px of it and never step out of that circle; one knocked out comes back in the
+   * breather unless the prison is ruined.
+   */
+  prison: { hp: 400, guards: 5, postRadius: 160, fromRound: 4, repairShare: 0.6 },
   pressureMax: 12,
   rulesVersion: 'slice-0.2.0',
 } as const;

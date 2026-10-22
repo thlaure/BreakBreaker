@@ -284,7 +284,7 @@ describe('the police', () => {
 
   test('stays CONFIG.services.police.staySec (40 s) when nobody knocks them out', () => {
     const { sim, press, run } = quiet(BLUE_FRONT);
-    crowd(sim, 8, C(44, 44));
+    crowd(sim, 8, C(14, 44));
     press();
     const t0 = sim.now;
     // the rioters are KO'd quickly or not, the group stays its time
@@ -296,9 +296,10 @@ describe('the police', () => {
 
   test('rioters knock officers out (PoliceDown); all down, the group is gone and police can be called again', () => {
     const { sim, press, run } = quiet(BLUE_FRONT);
-    crowd(sim, 8, C(44, 44));
+    crowd(sim, 8, C(14, 44));
     press();
-    const ids = sim.allies.fighters.map((f) => f.id);
+    // the officers (the prison guards are fighters too)
+    const ids = sim.allies.fighters.filter((f) => f.role === 'police').map((f) => f.id);
     let downs: number[] = [];
     // every officer takes a blow (as from a rioter)
     const ev: SimEvent[] = [];
@@ -314,9 +315,9 @@ describe('the police', () => {
 
   test('a rioter’s blow in play knocks an officer out', () => {
     const { sim, press, run } = quiet(BLUE_FRONT);
-    crowd(sim, 8, C(44, 44));
+    crowd(sim, 8, C(14, 44));
     press();
-    const o = sim.allies.fighters[0]!;
+    const o = sim.allies.fighters.find((f) => f.role === 'police')!;
     // brutes take two baton blows: they strike back
     for (let i = 0; i < 3; i++) sim.horde.spawn({ variant: 'classic', role: 'brute', pos: { x: o.pos.x + 12, y: o.pos.y + i * 6 } });
     const ev = run(10, (e) => of(e, 'PoliceDown').length > 0);

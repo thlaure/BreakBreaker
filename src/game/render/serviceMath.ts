@@ -83,6 +83,17 @@ export const ALLY_LOOKS: Readonly<Record<FighterRole, AllyLook>> = {
     band: 0xf4f4f0,
     baton: 0x14121c,
   },
+  // the prison guards: a placeholder look (grey uniform, navy beret) until the prison render task polishes it
+  guard: {
+    uniform: 0x6e7480,
+    uniformHi: 0x9aa0aa,
+    uniformLo: 0x4c515a,
+    trousers: 0x23262e,
+    cap: 'beret',
+    capColor: 0x1f2a4a,
+    band: 0xd8c24a,
+    baton: 0x14121c,
+  },
 };
 
 /** Officer frames, by name: two walk steps, the baton raised (strike windup), lying knocked out. */

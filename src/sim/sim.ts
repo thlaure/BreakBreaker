@@ -20,6 +20,7 @@ import { dist, inArc, len, norm, segmentCircleHit, sub } from './math';
 import { Monument, MonumentIncident, type MonumentStage } from './monument';
 import { createPlayer, damagePlayer, readyStrike, stepPlayer, sweep, type Player } from './player';
 import { Rocks, type RockCtx, type RockState } from './projectiles';
+import { Prison, type PrisonView } from './prison';
 import { rng } from './rng';
 import { Toolboxes, type ToolboxMessage } from './repair';
 import { Rules, type SessionStats } from './rules';
@@ -182,6 +183,8 @@ export interface Snapshot {
    * the police officers (`down` = knocked out, carried off a few seconds later).
    */
   allies: AlliesView;
+  /** The prison: Caïds jailed, its guards (by post), whether it stands. */
+  prison: PrisonView;
 }
 
 const SERVICE_KINDS: readonly ServiceKind[] = ['fire', 'police'];
@@ -255,6 +258,8 @@ export class Sim {
   readonly services = new Services();
   /** The fire truck and the police group on the map (own random stream for their entry point). */
   readonly allies: Allies;
+  /** The prison's cells (jailed Caïds, breakout) and its guards (allies of role 'guard'). */
+  readonly prison: Prison;
   readonly firePatches = new FirePatches();
   /** The equestrian monument's flag and capture the flag (persists across rounds). */
   readonly monument = new Monument();
@@ -309,6 +314,7 @@ export class Sim {
     this.fallRand = rng((seed ^ 0x9e3779b1) >>> 0);
     this.fieldHeals = new FieldHeals(this.grid, rng((seed ^ 0xc2b2ae35) >>> 0));
     this.allies = new Allies(this.grid, rng((seed ^ 0x27d4eb2f) >>> 0));
+    this.prison = new Prison(this.allies, this.grid);
     this.invulnerable = opts.invulnerable ?? false;
     this.fields = { player: new FlowField(this.grid), victim: new FlowField(this.grid) };
     for (const t of DISTRICT.targets) this.siteFields.set(t.id, new FlowField(this.grid));
@@ -495,17 +501,19 @@ export class Sim {
     const kit = this.toolboxes.step(dt, { player: p, horde: this.horde, targets: this.targets, rules: this.rules, act: kitAct });
     ev.push(...kit.events);
     this.toolboxMessage = kit.message;
-    // the truck and the police: drive, spray, fight (an officer's KO scores +1 like any KO, without energy)
+    // the truck, the police and the prison guards: drive, spray, fight (their KOs score +1 like any KO, without energy)
     ev.push(
       ...this.allies.step(dt, {
         now,
         horde: this.horde,
         targets: this.targets,
         rules: this.rules,
-        strike: (lifeId, from) => this.policeStrike(lifeId, from, ev),
+        strike: (lifeId, from, role) => this.policeStrike(lifeId, from, ev, role === 'guard' ? 'hands' : 'weapon'),
       }),
     );
     this.syncServices();
+    // the prison fell this step (by any path): every jailed Caïd out at its door, in the roster
+    ev.push(...this.prison.step({ targets: this.targets, horde: this.horde, extend: (n, e) => this.director.extend(n, e) }));
     const heal = this.stations.step({ player: p, rules: this.rules });
     ev.push(...heal.events);
     this.stationMessage = heal.message;
@@ -513,7 +521,10 @@ export class Sim {
     // a Caïd knocked out by any path (rocks, the beam, a test's direct hit) gets his bonus and drop before the round closes
     for (const h of this.horde.list) if (h.role === 'boss' && h.state === 'ko') this.caidDown(h, ev);
 
-    ev.push(...this.director.step(dt, this));
+    const dirEv = this.director.step(dt, this);
+    ev.push(...dirEv);
+    // the round is over: the prison's guards come back (while it stands) with the coming round's hp
+    if (dirEv.some((e) => e.type === 'RoundCompleted')) ev.push(...this.prison.onBreather(this.director.round, this.targets));
     this.feedFieldHeals();
     ev.push(...this.fieldHeals.step(now, { player: p, rules: this.rules }));
     this.tally(ev);
@@ -625,6 +636,7 @@ export class Sim {
       monument: this.monumentView(),
       stats: { ...this.rules.stats },
       allies: this.allies.view(),
+      prison: this.prison.view(this.targets),
       services: {
         calls: { ...this.services.calls },
         hint: { fire: this.services.check('fire', this.callCtx('fire')).ok, police: this.services.check('police', this.callCtx('police')).ok },
@@ -680,14 +692,15 @@ export class Sim {
   }
 
   /**
-   * An officer's baton blow from `from`: a weapon hit (KO but for a brute or the Caïd, damageOn), the KO scored +1 by
+   * An officer's baton blow from `from`: a weapon hit (KO but for a brute or the Caïd, damageOn; a prison guard's is a
+   * bare-hands hit, `source` 'hands', so guards alone do not make the prison untouchable), the KO scored +1 by
    * Rules like any (a Caïd's bonus too), falling away from the officer; it never fills the energy gauge.
    */
-  private policeStrike(lifeId: number, from: Vec, ev: SimEvent[]): void {
+  private policeStrike(lifeId: number, from: Vec, ev: SimEvent[], source: DamageSource = 'weapon'): void {
     const h = this.horde.list.find((x) => x.lifeId === lifeId);
     if (!h || h.state === 'ko') return;
     const away = sub(h.pos, from);
-    this.hit(lifeId, this.damageTo(lifeId, 'weapon'), ev, 'baton', undefined, len(away) > 1e-6 ? norm(away) : undefined, false);
+    this.hit(lifeId, this.damageTo(lifeId, source), ev, 'baton', undefined, len(away) > 1e-6 ? norm(away) : undefined, false);
   }
 
   private monumentView(): Snapshot['monument'] {
@@ -1002,7 +1015,8 @@ export class Sim {
   /**
    * « Le Caïd » KO'd (once per life): +CONFIG.caid.bonus with the occurrence key `caid#<round>` at his position (the
    * KO's +1 is scored as for anyone), and CONFIG.caid.dropShare of the time a regular weapon dropped where he fell
-   * (WeaponSpawned, no indicator; none while a weapon lies within CONFIG.weapons.clearRadius px of Paul).
+   * (WeaponSpawned, no indicator; none while a weapon lies within CONFIG.weapons.clearRadius px of Paul); jailed while
+   * the prison stands (CaidJailed).
    */
   private caidDown(h: Hostile, ev: SimEvent[]): void {
     if (this.caidsDown.has(h.lifeId)) return;
@@ -1010,6 +1024,8 @@ export class Sim {
     this.rules.award(`caid#${h.round ?? this.director.round}`, CONFIG.caid.bonus, h.pos);
     const w = this.weapons.dropAt(h.pos, this.player.pos);
     if (w) ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: v(w.pos) });
+    // the jail van takes him to the prison, while it stands
+    ev.push(...this.prison.jail(h, this.targets));
   }
 
   /** Hostile facing = along its aim line while a shooter aims or fires, else last movement direction, else toward Paul. */

@@ -10,10 +10,10 @@ import type { Targets } from './targets';
 import type { ServiceKind, SimEvent, TargetId, Vec } from './types';
 
 /**
- * What an ally is. 'truck' = the fire truck; 'police' = an officer of the police group. Foot units ("fighters") share
- * one brain, so a later role (e.g. the prison's 'guard', held to a post) only adds its name here and its own group.
+ * What an ally is. 'truck' = the fire truck; 'police' = an officer of the police group; 'guard' = a prison guard, held
+ * to a post (src/sim/prison.ts owns them). Foot units ("fighters") share one brain.
  */
-export type AllyRole = 'truck' | 'police';
+export type AllyRole = 'truck' | 'police' | 'guard';
 /** The roles that fight on foot (every role but the truck). */
 export type FighterRole = Exclude<AllyRole, 'truck'>;
 
@@ -66,14 +66,14 @@ export interface AlliesCtx {
   horde: Horde;
   targets: Targets;
   rules: Rules;
-  /** An officer's baton blow lands on rioter `lifeId` from `from` (the Sim applies the hit and scores the KO). */
-  strike(lifeId: number, from: Vec): void;
+  /** A fighter's (`role`) baton blow lands on rioter `lifeId` from `from` (the Sim applies the hit and scores the KO). */
+  strike(lifeId: number, from: Vec, role: FighterRole): void;
 }
 
 /** What the render reads (Snapshot.allies). */
 export interface AlliesView {
   truck: { pos: Vec; hp: number; maxHp: number; state: TruckState; target: TargetId | null } | null;
-  /** Foot officers; `role` picks their look (a later prison 'guard' would get its own list or share this shape). */
+  /** The police group's officers (the prison guards are in Snapshot.prison); `role` picks their look. */
   police: { id: number; role: FighterRole; pos: Vec; hp: number; maxHp: number; state: FighterState }[];
 }
 
@@ -100,7 +100,7 @@ const v = (p: Vec): Vec => ({ x: p.x, y: p.y });
  * the map): it leaves by the entry point nearest by path (TruckLeft). 0 hp: TruckDestroyed, gone.
  * Fighters: each goes for the nearest active rioter not already taken by an earlier fighter (else the nearest), winds
  * its baton up within reach and strikes; a held one keeps to its post. A blow takes their hp (police: one blow) → down
- * (PoliceDown), removed after downSec. The police group leaves after staySec, or once every officer is gone (PoliceLeft).
+ * (PoliceDown; a guard GuardDown), removed after downSec. The police group leaves after staySec, or once every officer is gone (PoliceLeft).
  */
 export class Allies {
   truck: Truck | null = null;
@@ -184,6 +184,11 @@ export class Allies {
     return f;
   }
 
+  /** Takes fighter `id` off the map at once (a prison guard replaced at its post). */
+  removeFighter(id: number): void {
+    this.removeFighters((f) => f.id === id);
+  }
+
   /** The allies rioters can fight: the truck and every fighter still up. */
   targetsFor(): AllyTarget[] {
     const out: AllyTarget[] = [];
@@ -208,7 +213,7 @@ export class Allies {
     f.state = 'down';
     f.downAt = this.now;
     f.quarry = null;
-    return [{ type: 'PoliceDown', id: f.id }];
+    return [f.role === 'guard' ? { type: 'GuardDown', id: f.id } : { type: 'PoliceDown', id: f.id }];
   }
 
   step(dt: number, ctx: AlliesCtx): SimEvent[] {
@@ -379,7 +384,7 @@ export class Allies {
         if (now < f.strikeUntil - EPS) continue;
         f.state = 'run';
         const q = active.find((h) => h.lifeId === f.quarry);
-        if (q && q.state !== 'ko' && dist(f.pos, q.pos) <= c.hitRange) ctx.strike(q.lifeId, v(f.pos));
+        if (q && q.state !== 'ko' && dist(f.pos, q.pos) <= c.hitRange) ctx.strike(q.lifeId, v(f.pos), f.role);
         continue;
       }
       const q = this.quarryOf(f, active, taken);

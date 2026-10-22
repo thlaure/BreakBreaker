@@ -33,10 +33,10 @@ function simAt(pos: Vec, seed = 7) {
   return { sim, press };
 }
 
-/** `n` active rioters parked far from Paul (they never strike). */
+/** `n` active rioters parked far from Paul and the prison guards (they never strike). */
 function crowd(sim: Sim, n: number): void {
   for (let i = 0; i < n; i++) {
-    const h = sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { x: 1300 + (i % 4) * 20, y: 1300 + Math.floor(i / 4) * 20 } })!;
+    const h = sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { x: 400 + (i % 4) * 20, y: 1400 + Math.floor(i / 4) * 20 } })!;
     h.nextAttackAt = 1e9;
   }
 }
