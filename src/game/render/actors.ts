@@ -763,6 +763,8 @@ export function makeFallTextures(scene: Phaser.Scene): void {
  */
 export class HostileLayer {
   private readonly views = new Map<number, HostileView>();
+  /** Bodies the jail van loaded (lifeIds): not drawn while the sim still lists them. */
+  private readonly carried = new Set<number>();
   private readonly ctx: LaunchCtx;
 
   private readonly twinkles: Twinkles;
@@ -839,10 +841,34 @@ export class HostileLayer {
     return this.ctx.falls.active;
   }
 
+  /**
+   * Where the body of `lifeId` is drawn right now (after a fall's travel or a furie flight), or null when it has no
+   * view (never drawn, satellite gone, carried off).
+   */
+  bodyPos(lifeId: number): Vec | null {
+    const v = this.views.get(lifeId);
+    if (!v || v.removed) return null;
+    return { x: v.view.sprite.x, y: v.view.sprite.y };
+  }
+
+  /**
+   * The jail van loads the body of `lifeId`: its view is destroyed now and never drawn again, even while the sim still
+   * lists the KO body (it takes it off the map CONFIG.prison.pickupSec after the KO).
+   */
+  carry(lifeId: number): void {
+    this.carried.add(lifeId);
+    const v = this.views.get(lifeId);
+    if (v) {
+      v.destroy(this.ctx);
+      this.views.delete(lifeId);
+    }
+  }
+
   update(list: Snapshot['hostiles'], nowMs: number): void {
     const seen = new Set<number>();
     for (const h of list) {
       seen.add(h.lifeId);
+      if (this.carried.has(h.lifeId)) continue;
       let view = this.views.get(h.lifeId);
       if (!view) {
         view = new HostileView(this.scene, h);
@@ -856,6 +882,7 @@ export class HostileLayer {
       view.destroy(this.ctx);
       this.views.delete(id);
     }
+    for (const id of this.carried) if (!seen.has(id)) this.carried.delete(id);
   }
 
   flash(lifeId: number, nowMs: number): void {

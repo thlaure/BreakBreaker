@@ -11,7 +11,7 @@ const N = DISTRICT.tiles;
 import { FACADE_H } from './geometry';
 export { FACADE_H };
 /** Roofs overhang the street behind the building so actors there are hidden (and the roof fades). */
-const ROOF_OVERHANG = 24;
+export const ROOF_OVERHANG = 24;
 const ROOF_FADED = 0.35;
 
 interface Roof {
@@ -62,7 +62,7 @@ const TOWN = { stone: 0xe8e0cc, stoneLo: 0xb8ad94, glass: 0x4a6a9a, wood: 0x6a3f
 /** Library colours: lamp-lit windows, green door. */
 const LIBRARY = { light: 0xffd27a, door: 0x2a5a3a } as const;
 /** Prison colours: cold concrete, steel, dark cells behind the bars. */
-const PRISON = {
+export const PRISON = {
   concrete: 0x7c818a,
   concreteHi: 0xa8adb6,
   concreteLo: 0x5a5e66,
@@ -498,7 +498,8 @@ export class WorldView {
 
   /**
    * The prison: a grey concrete wall under a coping of barbed wire, small barred cell windows, a riveted steel gate with
-   * a barred hatch under a lamp, a « PRISON » sign with a barred window on the roof edge, and on the roof's front-left
+   * a barred hatch under a lamp, roof vents around the exercise yard (drawn by PrisonLayer), a « PRISON » sign with a
+   * barred window on the roof edge, and on the roof's front-left
    * corner a watchtower (concrete shaft, glazed cabin, searchlight) flying the French flag. Ruined (TargetView): the
    * parts named 'intact' (the tower) hide and the ones named 'ruin' show (the tower's stump, the gate burst open, bent
    * bars), the rest dims like any ruin.
@@ -565,7 +566,7 @@ export class WorldView {
     for (const [x, y] of [[b.x + 30, top + 4], [b.x + 130, top + 2], [b.x + 170, top + 10]] as const)
       for (let k = 0; k < 5; k++) w(SHOP.outline, x + (k % 2) + Math.floor(k / 2), y + k * 3, 1, 3);
 
-    // a flat concrete roof over the tiles: slab seams, vents, a barred skylight over the cells (it fades with the roof)
+    // a flat concrete roof over the tiles: slab seams, vents (it fades with the roof)
     const slab = s.add.graphics();
     const q: Paint = (c, x, y, ww, h, a = 1) => {
       slab.fillStyle(c, a).fillRect(x, y, ww, h);
@@ -577,15 +578,12 @@ export class WorldView {
     q(PRISON.concreteLo, 0, rh - 6, b.w, 2);
     for (let x = 32; x < b.w; x += 32) q(PRISON.concreteLo, x, 2, 1, rh - 8, 0.6);
     for (let y = 40; y < rh - 8; y += 40) q(PRISON.concreteLo, 0, y, b.w, 1, 0.6);
-    for (const [x, y] of [[132, 18], [160, 62], [140, 110]] as const) {
+    // vents clear of the exercise yard in the middle (PrisonLayer draws it and its inmates, prisonMath.YARD)
+    for (const [x, y] of [[150, 16], [162, 62], [148, 112]] as const) {
       q(SHOP.outline, x, y, 12, 10);
       q(PRISON.steelHi, x + 1, y + 1, 10, 8);
       q(PRISON.steel, x + 1, y + 6, 10, 3);
     }
-    q(SHOP.outline, 64, 40, 52, 28);
-    q(PRISON.cell, 66, 42, 48, 24);
-    q(0x8fcfe8, 66, 42, 48, 24, 0.25);
-    for (let x = 70; x < 114; x += 6) q(PRISON.bars, x, 42, 2, 24);
     const slabBox = s.add.container(b.x, ry, [slab]).setDepth(DEPTH.roof + 0.1);
     roofParts.push(slabBox);
 
