@@ -145,7 +145,7 @@ export const DISTRICT: District = {
     // the newspaper kiosk on the open ground south of building 7, a free tile all around it
     prop('kiosk', 'kiosk', R(34, 40, 2, 1), [C(33, 40), C(36, 40), C(34, 41), C(35, 41)]),
     building('townHall', 'townHall', R(15, 3, 6, 4), [C(16, 7), C(17, 7), C(19, 7), C(20, 7)], C(18, 7)),
-    building('library', 'library', R(22, 38, 8, 5), [C(24, 37), C(25, 37), C(27, 37), C(28, 37)], C(26, 37)),
+    building('library', 'library', R(22, 38, 8, 5), [C(24, 43), C(25, 43), C(27, 43), C(28, 43)], C(26, 43)),
   ],
   kitSites: [C(18, 12), C(28, 25), C(8, 26), C(36, 44)],
   monument: {

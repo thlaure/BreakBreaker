@@ -38,10 +38,21 @@ describe('the Phase C places (nursery, kiosk, town hall, library)', () => {
     expect(def('nursery').door).toEqual(C(9, 36));
     expect(def('townHall').attackPoints).toEqual([C(16, 7), C(17, 7), C(19, 7), C(20, 7)]);
     expect(def('townHall').door).toEqual(C(18, 7));
-    expect(def('library').attackPoints).toEqual([C(24, 37), C(25, 37), C(27, 37), C(28, 37)]);
-    expect(def('library').door).toEqual(C(26, 37));
+    expect(def('library').attackPoints).toEqual([C(24, 43), C(25, 43), C(27, 43), C(28, 43)]);
+    expect(def('library').door).toEqual(C(26, 43));
     expect(def('kiosk').footprint).toEqual(R(34, 40, 2, 1));
     expect(def('kiosk').attackPoints).toEqual([C(33, 40), C(36, 40), C(34, 41), C(35, 41)]);
+  });
+
+  test('every building target is attacked from the street just below its front wall (the side the renderer draws)', () => {
+    for (const d of DISTRICT.targets.filter((t) => !t.prop)) {
+      const row = d.footprint.y + d.footprint.h + 16;
+      for (const q of [d.door, ...d.attackPoints]) {
+        expect(q.y).toBe(row);
+        expect(q.x).toBeGreaterThan(d.footprint.x);
+        expect(q.x).toBeLessThan(d.footprint.x + d.footprint.w);
+      }
+    }
   });
 
   test('attack points (and building doors) are walkable and reachable from the spawn', () => {
