@@ -340,5 +340,5 @@ export const CONFIG = {
    */
   prison: { hp: 400, guards: 5, postRadius: 160, fromRound: 4, repairShare: 0.6, pickupSec: 1.6 },
   pressureMax: 12,
-  rulesVersion: 'slice-0.2.0',
+  rulesVersion: '1.0.0',
 } as const;

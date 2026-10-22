@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Places, Monument and Services
 
 > **Purpose of this file:** threatened buildings, defence, repair and the monument objective.  
-> Part of the BreakBreaker specifications (version 1.9.25), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.0.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 10. Threatened buildings, defence and repair
 
