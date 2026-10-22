@@ -15,6 +15,34 @@ export interface Launch {
 }
 
 /**
+ * How a knocked-out body falls (render only, but for 'domino'). By source: bare hands 'crumple' / 'spin'; panneau and
+ * bâton 'flyspin'; marteau 'pancake'; gant 'bounce'; flashball 'backflip'; a returned rock 'wobble'; mode furie and
+ * the beam 'flyspin' (the render plays their `launch` instead). The rare WTF falls (`wtf` true): 'tripleflip',
+ * 'helicopter', 'faceplant', 'trashcan', 'domino' (the body knocks 1–2 neighbours down: DominoTriggered).
+ * 'knocked' = a rioter toppled by a domino. `dir`: unit, away from the blow.
+ */
+export type FallKind =
+  | 'crumple'
+  | 'spin'
+  | 'flyspin'
+  | 'pancake'
+  | 'bounce'
+  | 'backflip'
+  | 'wobble'
+  | 'tripleflip'
+  | 'helicopter'
+  | 'faceplant'
+  | 'trashcan'
+  | 'domino'
+  | 'knocked';
+export interface Fall {
+  kind: FallKind;
+  wtf: boolean;
+  /** Unit, away from the blow. */
+  dir: Vec;
+}
+
+/**
  * strike/throwRock/furie are edge-triggered presses; act and chargeHeld are held. The Sim only acts on the rising edge
  * of `act` (a fresh press of Agir) and of `chargeHeld`; the input layer latches a tap of either so it lasts one read
  * (a C tap starts a charge that the next step cancels at no cost, or is refused under the onde cost).
@@ -100,10 +128,15 @@ export type SimEvent =
   /** The boxing glove punched from `from` to `to` (the rioter hit, else the end of its reach); `lifeId` = who it hit. */
   | { type: 'GlovePunched'; from: Vec; to: Vec; lifeId: number | null }
   /**
-   * `launch`: set when Paul's strike KO'd the rioter during the mode furie (render only: the body flies `power` px along
-   * `dir` while spinning `spin` turns, signed).
+   * `launch`: set when Paul's strike KO'd the rioter during the mode furie, with the gant or the beam (render only: the
+   * body flies `power` px along `dir` while spinning `spin` turns, signed). `fall`: always set (see Fall).
    */
-  | { type: 'ActorKnockedOut'; lifeId: number; launch?: Launch }
+  | { type: 'ActorKnockedOut'; lifeId: number; launch?: Launch; fall: Fall }
+  /**
+   * A WTF 'domino' fall (right after its ActorKnockedOut): the body at `from` knocked down `lifeIds` (nearest first),
+   * each KO'd through the normal path (+1, ActorKnockedOut with a 'knocked' fall).
+   */
+  | { type: 'DominoTriggered'; from: Vec; lifeIds: number[] }
   /**
    * `push`: the blow of a brute or the Caïd also pushes Paul by this vector (its length = the role's knockback); the Sim
    * moves him through the map's solids when the damage is applied.

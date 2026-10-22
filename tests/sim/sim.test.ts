@@ -182,7 +182,7 @@ describe('Sim facade', () => {
     const h = sim.horde.spawn({ variant: 'antifa', role: 'contact', pos: { x: p.x + 20, y: p.y }, maxHp: 1 })!;
     const ev = sim.step(input({ aim: { x: 1, y: 0 }, strike: true }));
     expect(ev).toContainEqual({ type: 'HitConfirmed', targetLifeId: h.lifeId, damage: 1, source: 'melee' });
-    expect(ev).toContainEqual({ type: 'ActorKnockedOut', lifeId: h.lifeId });
+    expect(ev).toContainEqual(expect.objectContaining({ type: 'ActorKnockedOut', lifeId: h.lifeId }));
     expect(sim.rules.score).toBe(1);
     expect(sim.rules.kos).toBe(1);
   });
@@ -195,7 +195,7 @@ describe('Sim facade', () => {
     const all: SimEvent[] = [];
     all.push(...sim.step(input({ aim: { x: 1, y: 0 }, throwRock: true })));
     for (let i = 0; i < 30; i++) all.push(...sim.step(IDLE));
-    expect(all).toContainEqual({ type: 'ActorKnockedOut', lifeId: h.lifeId });
+    expect(all).toContainEqual(expect.objectContaining({ type: 'ActorKnockedOut', lifeId: h.lifeId }));
     expect(sim.rules.stats.rocksHit).toBe(1);
     expect(sim.rules.stats.rocksReturned).toBe(1);
     expect(sim.rules.score).toBe(1);

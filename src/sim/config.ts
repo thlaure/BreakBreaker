@@ -232,6 +232,12 @@ export const CONFIG = {
    * only on a hit. In the street pool from `fromRound`.
    */
   gant: { reach: 160, knockback: 32, fromRound: 3, launchPower: [70, 120] as const, launchSpin: [1, 2] as const },
+  /**
+   * KO falls (cosmetic, picked by the Sim on its own stream): `wtfChance` of the KOs get a rare WTF fall (never the
+   * Caïd, never a launched body). The WTF 'domino' knocks down up to `dominoMax` living non-boss rioters within
+   * `dominoRadius` px of the body (real KOs, +1 each); none there: 'faceplant' instead.
+   */
+  falls: { wtfChance: 0.1, dominoRadius: 56, dominoMax: 2 },
   /** Damage of a held regular weapon's strike on a brute or the Caïd (everyone else: one-hit KO). */
   toughWeaponDamage: 2,
   /**
