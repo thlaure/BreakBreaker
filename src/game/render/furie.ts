@@ -121,19 +121,25 @@ export class FurieAura {
 }
 
 const POW_MS = 450;
-const POW_POOL = 8;
+const POW_POOL = 10;
 const POW_WORDS = ['POW !', 'BOUM !'] as const;
 
 interface Pow {
   root: Phaser.GameObjects.Container;
+  burst: Phaser.GameObjects.Image;
   text: Phaser.GameObjects.Text;
+  /** Size multiplier (1.5 for the WTF words, 1 otherwise). */
+  size: number;
   word: string;
   born: number;
   x: number;
   y: number;
 }
 
-/** Short pixel « POW ! » / « BOUM ! » bursts on rioters hit during the mode furie (a pool of POW_POOL, oldest reused). */
+/**
+ * Short pixel onomatopoeia bursts (« POW ! », « BONK ! », « SPLOTCH ! », « WTF !? »…) on hits and KO falls (a pool of
+ * POW_POOL, oldest reused; the burst stretches to the word).
+ */
 export class PowBubbles {
   private readonly pool: Pow[] = [];
   private count = 0;
@@ -144,13 +150,14 @@ export class PowBubbles {
       const text = scene.add
         .text(0, 0, '', { fontFamily: '"Press Start 2P", ui-monospace, monospace', fontSize: '8px', color: '#c4372b' })
         .setOrigin(0.5, 0.5);
-      const root = scene.add.container(0, 0, [burst, text]).setDepth(DEPTH.overlay - 1).setVisible(false);
-      this.pool.push({ root, text, word: '', born: -Infinity, x: 0, y: 0 });
+      // over Paul's health bar (a body lies next to him)
+      const root = scene.add.container(0, 0, [burst, text]).setDepth(DEPTH.overlay + 1).setVisible(false);
+      this.pool.push({ root, burst, text, size: 1, word: '', born: -Infinity, x: 0, y: 0 });
     }
   }
 
-  /** `word`: a given word (the gant's « BOING ! »), else the next of POW_WORDS. */
-  spawn(x: number, y: number, nowMs: number, word: string = POW_WORDS[this.count % POW_WORDS.length]!): void {
+  /** `word`: a given word (the gant's « BOING ! »), else the next of POW_WORDS; `big`: ×1.5 (WTF falls, domino). */
+  spawn(x: number, y: number, nowMs: number, word: string = POW_WORDS[this.count % POW_WORDS.length]!, big = false): void {
     let p = this.pool[0]!;
     for (const q of this.pool) if (q.born < p.born) p = q;
     this.count++;
@@ -158,10 +165,12 @@ export class PowBubbles {
       p.word = word;
       p.text.setText(word);
       p.text.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+      p.burst.setScale(Math.max(1, (p.text.width + 22) / 40), 1);
     }
+    p.size = big ? 1.5 : 1;
     p.born = nowMs;
     p.x = Math.round(x + ((this.count * 7) % 13) - 6);
-    p.y = Math.round(y - 40);
+    p.y = Math.round(y - (big ? 52 : 40));
     p.root.setVisible(true);
   }
 
@@ -169,7 +178,8 @@ export class PowBubbles {
     for (const p of this.pool) {
       if (!p.root.visible) continue;
       const age = nowMs - p.born;
-      if (age >= POW_MS) {
+      const life = p.size > 1 ? POW_MS * 1.8 : POW_MS;
+      if (age >= life) {
         p.root.setVisible(false);
         continue;
       }
@@ -177,8 +187,8 @@ export class PowBubbles {
       const s = age < 90 ? 0.5 + (age / 90) * 0.7 : age < 150 ? 1.2 - ((age - 90) / 60) * 0.2 : 1;
       p.root
         .setPosition(p.x, p.y - Math.round(age / 40))
-        .setScale(Math.round(s * 4) / 4)
-        .setAlpha(age > POW_MS - 100 ? (POW_MS - age) / 100 : 1);
+        .setScale((Math.round(s * 4) / 4) * p.size)
+        .setAlpha(age > life - 100 ? (life - age) / 100 : 1);
     }
   }
 }

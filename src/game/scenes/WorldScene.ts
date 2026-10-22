@@ -24,13 +24,13 @@ import { ItemLayer, makeItemTextures } from '../render/items';
 import { BubbleView, SpecialFx, makeSpecialTextures } from '../render/specials';
 import { ScorePopups } from '../render/scorePopups';
 import { BulletLayer, GloveFx } from '../render/guns';
+import { SHAKE_BIG, dominoWord, hitShake, hitStopMs, hitWordKind, koShake, koWordKind, pickWord, type Shake } from '../render/fallMath';
 
 const HIT_STOP_MS = 60;
 const SHAKE_MS = 120;
 const SHAKE_PX = 2;
 /** Tiny shake on a strike that hits in mode furie (none under prefers-reduced-motion). */
-const FURIE_SHAKE_MS = 90;
-const FURIE_SHAKE_PX = 1.5;
+const FURIE_SHAKE: Shake = { ms: 90, px: 1.5 };
 /** Small shake when the onde d’énergie fires (none under prefers-reduced-motion). */
 const BEAM_SHAKE_MS = 160;
 const BEAM_SHAKE_PX = 2;
@@ -94,6 +94,10 @@ export class WorldScene extends Phaser.Scene {
   private reducedMotion = false;
 
   private hitStopUntil = 0;
+  /** The camera shake running: until when, how strong (a weaker one never cuts a stronger one). */
+  private shakeUntil = 0;
+  private shakePx = 0;
+  private readonly shakeVec = new Phaser.Math.Vector2();
   private struck = false;
   private lastVisual = 0;
   /** Camera is showing the school door for the cinematic (follow suspended). */
@@ -167,6 +171,8 @@ export class WorldScene extends Phaser.Scene {
     this.sim = new Sim(data?.seed ?? Date.now() >>> 0, { invulnerable: this.stress > 0 });
     this.clock = new FixedClock(CONFIG.step, CONFIG.maxCatchUpSteps);
     this.hitStopUntil = 0;
+    this.shakeUntil = 0;
+    this.shakePx = 0;
     this.struck = false;
     this.lastVisual = 0;
     this.cinematicCam = false;
@@ -203,6 +209,7 @@ export class WorldScene extends Phaser.Scene {
       world: { width: this.world.width, height: this.world.height },
       blocked: (p) => grid.circleBlocked(p, 6) || grid.isGroup(p),
       reducedMotion: this.reducedMotion,
+      pow: (x, y, t, word, big) => this.pows.spawn(x, y, t, word, big),
     });
     this.rocks = new RockLayer(this);
     this.weaponsOnGround = new WeaponLayer(this);
@@ -303,25 +310,55 @@ export class WorldScene extends Phaser.Scene {
     return f;
   }
 
+  /** Camera shake, unless reduced motion; a weaker shake never cuts a stronger one still running. */
+  private shake(sh: Shake | null, time: number): void {
+    if (!sh || this.reducedMotion) return;
+    if (time < this.shakeUntil && sh.px < this.shakePx) return;
+    this.shakeUntil = time + sh.ms;
+    this.shakePx = sh.px;
+    const cam = this.cameras.main;
+    cam.shake(sh.ms, this.shakeVec.set(sh.px / cam.width, sh.px / cam.height), true);
+  }
+
   private react(events: SimEvent[], time: number, snap: Snapshot): void {
     let furieHit = false;
     /** Rank of each body satellised by this batch's beam (take-off stagger). */
     let satellites = 0;
     const scored: Extract<SimEvent, { type: 'ScoreChanged' }>[] = [];
+    const held = snap.weapon?.kind ?? null;
+    // a hit that KOs says its fall's word, not the hit's
+    let kos: Set<number> | null = null;
+    for (const e of events) if (e.type === 'ActorKnockedOut') (kos ??= new Set()).add(e.lifeId);
     for (const e of events) {
       if (e.type === 'ScoreChanged') scored.push(e);
       else if (e.type === 'HitConfirmed') {
         this.hostiles.flash(e.targetLifeId, time);
-        this.hitStopUntil = Math.max(this.hitStopUntil, time + HIT_STOP_MS);
-        if (snap.furie && e.source === 'melee') {
-          furieHit = true;
+        this.hitStopUntil = Math.max(this.hitStopUntil, time + hitStopMs(HIT_STOP_MS, false, this.reducedMotion));
+        if (snap.furie && e.source === 'melee') furieHit = true;
+        else this.shake(hitShake(e.source, held, this.reducedMotion), time);
+        const word = kos?.has(e.targetLifeId) ? null : hitWordKind(e.source, snap.furie ? null : held);
+        if (word) {
           const h = snap.hostiles.find((x) => x.lifeId === e.targetLifeId);
-          if (h) this.pows.spawn(h.pos.x, h.pos.y, time);
+          if (h) this.pows.spawn(h.pos.x, h.pos.y, time, pickWord(word, Math.random()));
         }
-      } else if (e.type === 'ActorKnockedOut' && e.launch) {
+      } else if (e.type === 'ActorKnockedOut') {
         const h = snap.hostiles.find((x) => x.lifeId === e.lifeId);
-        const index = e.launch.kind === 'satellite' ? satellites++ : 0;
-        if (h) this.hostiles.launch(e.lifeId, h.pos, e.launch, time, index);
+        if (!h) continue;
+        if (e.fall.wtf) this.hitStopUntil = Math.max(this.hitStopUntil, time + hitStopMs(HIT_STOP_MS, true, this.reducedMotion));
+        // the fall starts when the freeze ends
+        const start = Math.max(time, this.hitStopUntil);
+        const boss = h.role === 'boss';
+        if (e.launch) {
+          const index = e.launch.kind === 'satellite' ? satellites++ : 0;
+          this.hostiles.launch(e.lifeId, h.pos, e.launch, start, index, e.fall.kind === 'bounce');
+        } else this.hostiles.fall(e.lifeId, h.pos, e.fall, start);
+        const word = koWordKind(e.fall, !!e.launch);
+        // the gant's BOING comes with the punch and the landing
+        if (word && word !== 'glove') this.pows.spawn(h.pos.x, h.pos.y, time, pickWord(word, Math.random()), e.fall.wtf);
+        this.shake(koShake(e.fall, boss, this.reducedMotion), time);
+      } else if (e.type === 'DominoTriggered') {
+        this.pows.spawn(e.from.x, e.from.y - 44, time, dominoWord(e.lifeIds.length), true);
+        this.shake(SHAKE_BIG, time);
       } else if (e.type === 'PlayerDamaged') {
         const cam = this.cameras.main;
         cam.shake(SHAKE_MS, new Phaser.Math.Vector2(SHAKE_PX / cam.width, SHAKE_PX / cam.height), true);
@@ -335,7 +372,7 @@ export class WorldScene extends Phaser.Scene {
         }
       } else if (e.type === 'GlovePunched') {
         this.glove.punch(e.from, e.to, time);
-        if (e.lifeId !== null) this.pows.spawn(e.to.x, e.to.y, time, 'BOING !');
+        if (e.lifeId !== null) this.pows.spawn(e.to.x, e.to.y, time, pickWord('glove', Math.random()));
       } else if (e.type === 'ToolboxPickedUp') {
         this.toolboxes.picked(time);
       } else if (e.type === 'FlagCaptured') {
@@ -346,10 +383,7 @@ export class WorldScene extends Phaser.Scene {
     }
     if (scored.length > 0) this.scorePopups.spawn(scored, time);
     this.bullets.onEvents(events, snap);
-    if (furieHit && !this.reducedMotion) {
-      const cam = this.cameras.main;
-      cam.shake(FURIE_SHAKE_MS, new Phaser.Math.Vector2(FURIE_SHAKE_PX / cam.width, FURIE_SHAKE_PX / cam.height), false);
-    }
+    if (furieHit) this.shake(FURIE_SHAKE, time);
   }
 
   private render(snap: Snapshot, time: number, dtMs: number): void {
