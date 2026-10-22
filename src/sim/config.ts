@@ -222,7 +222,7 @@ export const CONFIG = {
     burst: 3,
     burstGap: 0.12,
     reloadSec: 3,
-    counts: [[6, 1], [8, 2]] as const,
+    counts: [[6, 1], [8, 2], [10, 3]] as const,
     maxPerRound: 3,
   },
   /**

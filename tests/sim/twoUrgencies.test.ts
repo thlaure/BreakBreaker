@@ -175,7 +175,7 @@ describe('two urgencies at once from round 5 (sim)', () => {
     expect(fillReserve(6)).toBeGreaterThanOrEqual(CONFIG.runner.pack[0] + 1 + bruteCount(6) + shooterCount(6));
     const sim = new Sim(5, { invulnerable: true });
     const seen = new Map<number, { round: number | null; role: string }>();
-    for (let i = 0; i < 60 * 3000 && sim.director.round <= 9; i++) {
+    for (let i = 0; i < 60 * 3600 && sim.director.round <= 10; i++) {
       const ev = sim.step(autopilot(sim));
       for (const h of sim.horde.list) if (!seen.has(h.lifeId)) seen.set(h.lifeId, { round: h.round, role: h.role });
       const rs = of(ev, 'RoundStarted')[0];
@@ -184,7 +184,8 @@ describe('two urgencies at once from round 5 (sim)', () => {
         expect(rs.total).toBeGreaterThanOrEqual(objective + fillReserve(rs.index));
       }
     }
-    for (let r = 5; r <= 9; r++) {
+    expect(sim.director.round).toBeGreaterThan(10);
+    for (let r = 5; r <= 10; r++) {
       const roles = [...seen.values()].filter((x) => x.round === r).map((x) => x.role);
       expect(roles.filter((x) => x === 'shooter').length, `round ${r}`).toBe(shooterCount(r));
       expect(roles.filter((x) => x === 'brute').length, `round ${r}`).toBe(bruteCount(r));

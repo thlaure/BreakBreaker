@@ -102,7 +102,7 @@ export function bruteCount(round: number): number {
   return n;
 }
 
-/** Shooters in a round's fill (CONFIG.shooter.counts): none before round 6, 1 in rounds 6–7, 2 from round 8, ≤ maxPerRound. */
+/** Shooters in a round's fill (CONFIG.shooter.counts): none before round 6, 1 in rounds 6–7, 2 in rounds 8–9, 3 from round 10, ≤ maxPerRound. */
 export function shooterCount(round: number): number {
   let n = 0;
   for (const [from, count] of CONFIG.shooter.counts) if (round >= from) n = count;
