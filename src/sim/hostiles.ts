@@ -36,6 +36,16 @@ export interface HordeSite {
   field: FlowField;
 }
 
+/**
+ * An ally on the map as the horde sees it (the fire truck, a police officer): rioters after Paul may fight it instead.
+ * `r` = its body for the blows' reach (Paul's radius = the usual reach).
+ */
+export interface AllyTarget {
+  id: number;
+  pos: Vec;
+  r: number;
+}
+
 export interface HordeCtx {
   player: Player;
   grid: Grid;
@@ -46,15 +56,23 @@ export interface HordeCtx {
   sites: Partial<Record<SiteId, HordeSite>>;
   victimPos: Vec | null;
   pressure: number;
+  /**
+   * The allies standing on the map and how a rioter's blow reaches one (`hit` takes `amount` off its hp). Absent or
+   * empty: every rioter after Paul goes for Paul.
+   */
+  allies?: { list: readonly AllyTarget[]; hit(id: number, amount: number): void };
 }
 
 /** Per-hostile AI bookkeeping kept out of the public Hostile shape. */
 interface Aux {
   /**
    * 'bottle' = a firebomber's Molotov aimed at Paul (counts in the throw windup cap like a rock); 'aim' / 'burst' = a
-   * shooter aiming, then firing its burst (no windup cap: shooters are few).
+   * shooter aiming, then firing its burst (no windup cap: shooters are few). 'brawl' = a blow at an ally (`foe`; no
+   * windup cap: the cap keeps Paul's fights fair, not the allies').
    */
-  windKind: 'contact' | 'throw' | 'molotov' | 'bottle' | 'aim' | 'burst' | null;
+  windKind: 'contact' | 'throw' | 'molotov' | 'bottle' | 'aim' | 'burst' | 'brawl' | null;
+  /** The ally a 'brawl' windup is aimed at (null otherwise). */
+  foe: number | null;
   /** Shooter: the fixed line of the current aim (from its position at aim start toward where Paul stood). */
   aimFrom: Vec | null;
   /** Shooter: bullets left in the burst and when the next one leaves. */
@@ -203,6 +221,7 @@ export class Horde {
     this.list.push(h);
     this.aux.set(h.lifeId, {
       windKind: null,
+      foe: null,
       afterThrow: opts.afterThrow ?? null,
       throwTo: null,
       aimFrom: null,
@@ -332,6 +351,8 @@ export class Horde {
       if (h.state === 'threaten') h.state = 'approach';
       return this.steer(h, a, goal, ctx.fields.victim, now, ctx);
     }
+    const foe = this.foeOf(h, a, ctx);
+    if (foe) return this.brawl(h, a, foe, now, ctx);
     if (h.role === 'thrower') return this.thrower(h, a, now, ctx, ev);
     if (h.role === 'firebomber') return this.firebomber(h, a, now, ctx, ev);
     if (h.role === 'shooter') return this.shooter(h, a, now, ctx, ev);
@@ -359,13 +380,78 @@ export class Horde {
       if (d <= CONFIG.hostile.aggroRadius && !p.ko && ctx.grid.lineClear(h.pos, p.pos)) h.target = 'player';
     } else if (d > CONFIG.hostile.aggroRelease) {
       h.target = a.home;
-      // a contact windup in progress is dropped: it goes back to its post
-      if (h.state === 'windup' && a.windKind === 'contact') {
+      // a contact windup (at Paul or at an ally) in progress is dropped: it goes back to its post
+      if (h.state === 'windup' && (a.windKind === 'contact' || a.windKind === 'brawl')) {
+        if (a.windKind === 'contact') this.wc--;
         a.windKind = null;
-        this.wc--;
+        a.foe = null;
         h.state = 'approach';
       }
     }
+  }
+
+  /**
+   * The ally a rioter after Paul fights instead of him (CONFIG.services.hostileTargetRadius): the nearest of Paul and
+   * the allies within that radius with a clear line (ties: Paul); null = Paul. Never while another windup (a throw, a
+   * bottle, an aim, a blow at Paul) runs; during a blow at an ally, that ally (gone: the blow is dropped, Paul again).
+   */
+  private foeOf(h: Hostile, a: Aux, ctx: HordeCtx): AllyTarget | null {
+    const list = ctx.allies?.list ?? [];
+    if (h.state === 'windup') {
+      if (a.windKind !== 'brawl') return null;
+      const foe = list.find((x) => x.id === a.foe);
+      if (foe) return foe;
+      a.windKind = null;
+      a.foe = null;
+      h.state = 'approach';
+      return null;
+    }
+    if (list.length === 0) return null;
+    const p = ctx.player;
+    let bestD = p.ko ? Infinity : dist(h.pos, p.pos);
+    let best: AllyTarget | null = null;
+    for (const x of list) {
+      const d = dist(h.pos, x.pos);
+      if (d > CONFIG.services.hostileTargetRadius || d >= bestD) continue;
+      if (!ctx.grid.lineClear(h.pos, x.pos)) continue;
+      best = x;
+      bestD = d;
+    }
+    return best;
+  }
+
+  /**
+   * A rioter fighting an ally (the truck, an officer) in melee, whatever its role: it walks straight at it (the line is
+   * clear), winds up CONFIG.hostile.windup within reach (its body `r` added) and its blow, still within reach, takes
+   * the contact damage (the Caïd's × damageMul) off the ally's hp. No windup cap, no push.
+   */
+  private brawl(h: Hostile, a: Aux, foe: AllyTarget, now: number, ctx: HordeCtx): Vec {
+    const extra = Math.max(0, foe.r - CONFIG.player.radius);
+    const d = dist(h.pos, foe.pos);
+    if (h.state === 'windup') {
+      if (now < h.stateUntil - EPS) return ZERO;
+      if (d <= HIT_REACH + extra) ctx.allies!.hit(foe.id, this.blow(h));
+      a.windKind = null;
+      a.foe = null;
+      h.state = 'recover';
+      h.stateUntil = h.nextAttackAt;
+      return ZERO;
+    }
+    if (h.state === 'approach' && d <= STRIKE_REACH + extra && now >= h.nextAttackAt - EPS) {
+      h.state = 'windup';
+      h.stateUntil = now + CONFIG.hostile.windup;
+      h.nextAttackAt = now + CONFIG.hostile.attackInterval * (h.role === 'boss' ? CONFIG.caid.attackIntervalMul : 1);
+      a.windKind = 'brawl';
+      a.foe = foe.id;
+      return ZERO;
+    }
+    if (d <= STOP_DIST + extra) return ZERO;
+    return this.steer(h, a, foe.pos, null, now, ctx);
+  }
+
+  /** A landed blow's damage: the pressure's contact damage, the Caïd's × CONFIG.caid.damageMul (rounded). */
+  private blow(h: Hostile): number {
+    return h.role === 'boss' ? Math.round(this.damage * CONFIG.caid.damageMul) : this.damage;
   }
 
   private contact(h: Hostile, a: Aux, now: number, ctx: HordeCtx, ev: SimEvent[]): Vec {
@@ -379,7 +465,7 @@ export class Horde {
         const away = norm(sub(p.pos, h.pos));
         const dir = isZero(away) ? { x: 1, y: 0 } : away;
         // the Caïd hits harder (CONFIG.caid.damageMul, rounded)
-        const amount = h.role === 'boss' ? Math.round(this.damage * CONFIG.caid.damageMul) : this.damage;
+        const amount = this.blow(h);
         ev.push(k > 0 ? { type: 'PlayerDamaged', amount, push: { x: dir.x * k, y: dir.y * k } } : { type: 'PlayerDamaged', amount });
       }
       a.windKind = null;

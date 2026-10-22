@@ -90,9 +90,25 @@ export type Role =
   | 'brute'
   | 'boss'
   | 'shooter';
-export type TargetId = 'school' | 'car1' | 'car2' | 'busStop' | 'shop' | 'nursery' | 'kiosk' | 'townHall' | 'library';
-/** What kind of attack a round's "casse" is (Phase C extends both unions). */
-export type CasseKind = 'school' | 'car' | 'busStop' | 'shop' | 'nursery' | 'kiosk' | 'townHall' | 'library';
+export type TargetId =
+  | 'school'
+  | 'car1'
+  | 'car2'
+  | 'busStop'
+  | 'shop'
+  | 'nursery'
+  | 'kiosk'
+  | 'townHall'
+  | 'library'
+  | 'boothRed'
+  | 'boothBlue'
+  | 'prison';
+/** What kind of attack a round's "casse" is (Phase C extends both unions; 'booth' = the two phone booths). */
+export type CasseKind = 'school' | 'car' | 'busStop' | 'shop' | 'nursery' | 'kiosk' | 'townHall' | 'library' | 'booth' | 'prison';
+/** The emergency services a phone booth calls: the red one the fire truck, the blue one the police. */
+export type ServiceKind = 'fire' | 'police';
+/** Why a booth call was refused (nothing spent). */
+export type ServiceRefusal = 'noFire' | 'fewRioters' | 'noCalls' | 'busy' | 'ruined';
 /**
  * Where a site-bound rioter (degrader) goes: a target, or the equestrian monument's plinth. The monument has no hp and
  * is not a target: it only shares the horde's site mechanism (attack points, flow field).
@@ -206,6 +222,32 @@ export type SimEvent =
   | { type: 'FireOut'; target: TargetId }
   | { type: 'TargetSaved'; incidentId: string; target: TargetId }
   | { type: 'TargetRepaired'; target: TargetId; incidentId: string }
+  /** Paul called the fire truck (red booth) or the police (blue booth): one call of that kind spent. */
+  | { type: 'ServiceCalled'; kind: ServiceKind }
+  /** A booth call was refused (nothing spent): see ServiceRefusal. */
+  | { type: 'ServiceRefused'; kind: ServiceKind; reason: ServiceRefusal }
+  /** The fire truck came in at the entry point `from` (siren). */
+  | { type: 'TruckArrived'; from: Vec }
+  /** The parked truck started spraying `target` (water); its FireOut follows when the fire is out. */
+  | { type: 'TruckSprayed'; target: TargetId }
+  /** Rioters brought the truck's hp to 0 at `pos`: it is gone (smoke), the call stays spent. */
+  | { type: 'TruckDestroyed'; pos: Vec }
+  /** The truck drove off the map (nothing left burning, or its time is up). */
+  | { type: 'TruckLeft' }
+  /** `count` police officers came in at the entry point `from` (siren). */
+  | { type: 'PoliceArrived'; from: Vec; count: number }
+  /** A rioter knocked officer `id` out (stun stars; it is lost). */
+  | { type: 'PoliceDown'; id: number }
+  /** The police group left (its time is up, or every officer was knocked out). */
+  | { type: 'PoliceLeft' }
+  /** A KO'd Caïd (`lifeId`) was taken to the standing prison (jail van): one more Caïd jailed. */
+  | { type: 'CaidJailed'; lifeId: number }
+  /** The prison fell: `count` jailed Caïds (>= 1) burst out at its door `pos`, added to the round's roster. */
+  | { type: 'PrisonBreakout'; count: number; pos: Vec }
+  /** A rioter knocked prison guard `id` out (stun stars; back in the breather while the prison stands). */
+  | { type: 'GuardDown'; id: number }
+  /** Missing prison guards came back to their posts (breather, prison standing). */
+  | { type: 'GuardsBack' }
   | { type: 'ToolboxSpawned'; id: number; pos: Vec }
   | { type: 'ToolboxPickedUp'; id: number }
   /** `rescueKind`: set when the headline is the rescue (its variant, drawn at round start; RescueStarted has the same). */

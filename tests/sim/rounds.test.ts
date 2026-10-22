@@ -77,8 +77,9 @@ describe('round catalogue', () => {
 
   test('the draw only picks targets the given free() accepts (an unresolved attack makes a target unavailable)', () => {
     const t = new Targets();
-    const busy = new Set(['school', 'car1', 'car2', 'shop']);
-    // rounds 2-4: the Phase C places (nursery, kiosk from round 5…) are not open yet
+    const busy = new Set(['school', 'car1', 'car2', 'shop', 'boothRed', 'boothBlue', 'prison']);
+    // rounds 2-4: the Phase C places (nursery, kiosk from round 5…) are not open yet (the booths, open from 3, and the
+    // prison, open from 4, are busy)
     for (let s = 1; s <= 30; s++) expect(roundPlan(2 + (s % 3), rng(s), t, null, null, (id) => !busy.has(id)).headline).toBe('busStop');
     busy.add('busStop');
     expect(roundPlan(4, rng(1), t, null, null, (id) => !busy.has(id)).beats).toEqual([['rescue']]);
@@ -98,7 +99,7 @@ describe('round catalogue', () => {
     for (let r = 2; r <= 3; r++) expect(roundPlan(r, rng(r), t, null, { french: true, lastWasMonument: false }).beats[1]).toEqual(['rescue']);
     for (let r = 4; r <= 9; r++) expect(roundPlan(r, rng(r), t, null, { french: false, lastWasMonument: false }).beats[1]).toEqual(['rescue']);
     // nothing free: the monument alone is the round's headline
-    for (const id of ['school', 'car1', 'car2', 'busStop', 'shop'] as const) t.ruin(id, `${id}#x`);
+    for (const id of ['school', 'car1', 'car2', 'busStop', 'shop', 'boothRed', 'boothBlue', 'prison'] as const) t.ruin(id, `${id}#x`);
     expect(roundPlan(4, rng(1), t, null, { french: true, lastWasMonument: false })).toEqual({
       headline: 'monument',
       beats: [['monument']],
@@ -416,7 +417,7 @@ describe('rounds in the sim', () => {
 
   test('a ruined target is never drawn again until repaired; its planned rioters join the fill', () => {
     const t = new Targets();
-    for (const id of ['car1', 'car2', 'busStop', 'shop'] as const) t.ruin(id, `${id}#x`);
+    for (const id of ['car1', 'car2', 'busStop', 'shop', 'boothRed', 'boothBlue', 'prison'] as const) t.ruin(id, `${id}#x`);
     for (let s = 1; s <= 40; s++) expect(roundPlan(2 + (s % 3), rng(s), t).beats[0]).toEqual(['school']);
     t.ruin('school', 'school#x');
     expect(roundPlan(2, rng(1), t)).toEqual({ headline: 'rescue', beats: [['rescue']], twists: ['weaponDrop'] });
@@ -651,6 +652,9 @@ describe('a burning target stays so until put out (no fire going out by itself)'
     t.ignite('car1', 'car#1');
     t.ignite('car2', 'car#2');
     t.ignite('shop', 'shop#1');
+    t.ignite('boothRed', 'boothRed#1');
+    t.ignite('boothBlue', 'boothBlue#1');
+    t.ignite('prison', 'prison#1');
     for (let s = 1; s <= 30; s++) expect(roundPlan(2 + (s % 3), rng(s), t).headline).toBe('busStop');
     t.ignite('busStop', 'busStop#1');
     for (let s = 1; s <= 30; s++) expect(roundPlan(2 + (s % 3), rng(s), t).headline).toBe('rescue');

@@ -75,7 +75,7 @@ export const THROWER_SHARE = 0.2;
 /** Aggressors of every rescue from round 2 (round 1 keeps the random CONFIG.rescue.aggressors range). */
 export const RESCUE_COUNT = 3;
 const VARIANTS: Variant[] = ['classic', 'palestinian', 'antifa'];
-const CASSE_KINDS: CasseKind[] = ['school', 'car', 'busStop', 'shop', 'nursery', 'kiosk', 'townHall', 'library'];
+const CASSE_KINDS: CasseKind[] = ['school', 'car', 'busStop', 'shop', 'nursery', 'kiosk', 'townHall', 'library', 'booth', 'prison'];
 const TARGETS_OF: Readonly<Record<CasseKind, TargetId[]>> = {
   school: ['school'],
   car: ['car1', 'car2'],
@@ -85,9 +85,11 @@ const TARGETS_OF: Readonly<Record<CasseKind, TargetId[]>> = {
   kiosk: ['kiosk'],
   townHall: ['townHall'],
   library: ['library'],
+  booth: ['boothRed', 'boothBlue'],
+  prison: ['prison'],
 };
 
-/** A kind of casse can be attacked in `round` (CONFIG.casse.fromRound: the nursery and the kiosk from 5, the town hall from 7, the library from 9). */
+/** A kind of casse can be attacked in `round` (CONFIG.casse.fromRound: the phone booths from 3, the prison from 4, the nursery and the kiosk from 5, the town hall from 7, the library from 9). */
 export function casseOpen(kind: CasseKind, round: number): boolean {
   return round >= CONFIG.casse.fromRound[kind];
 }
@@ -152,7 +154,7 @@ export const TWO_URGENCIES_FROM = 5;
 /**
  * The round catalogue. r1: the school (tutorial: first Molotov, cinematic, reinforcements) then rescue. From r2 the
  * headline casse is a seeded random draw among every kind open this round (casseOpen: school, shop, car, bus stop from
- * r2, nursery and kiosk from r5, town hall from r7, library from r9) with a free target (standing, not burning), weight
+ * r2, the phone booths from r3, nursery and kiosk from r5, town hall from r7, library from r9) with a free target (standing, not burning), weight
  * 2, or 1 if it was in `last` round's first beat (it may repeat, rarely; nothing is forced). From round
  * TWO_URGENCIES_FROM the first beat holds two casses on distinct targets, started together: the kinds opening this very
  * round first (round 5 nursery then kiosk, round 7 the town hall, round 9 the library), then the same weighted draw
@@ -312,10 +314,14 @@ export class Director {
     kiosk: 0,
     townHall: 0,
     library: 0,
+    booth: 0,
+    prison: 0,
     rescue: 0,
     monument: 0,
   };
   private variantCursor = 0;
+  /** Rioters added outside the plan while no round is played (a prison breakout in the breather): the next round's. */
+  private extra = 0;
   /** Fill firebombers handed out this round (CONFIG.firebomber.maxPerRound at most). */
   private firebombers = 0;
 
@@ -338,6 +344,21 @@ export class Director {
     let alive = 0;
     for (const h of host.horde.list) if (h.round === this.round && h.state !== 'ko' && this.roster.has(h.lifeId)) alive++;
     return Math.min(this.total, Math.max(0, this.roster.size - alive));
+  }
+
+  /**
+   * `n` rioters joining the roster outside the plan (the Caïds of a prison breakout); returns the round to tag them
+   * with. While a round is played: its T grows at once (RoundTotalChanged). In the intro or the breather: they belong to
+   * the round about to start and count in its T.
+   */
+  extend(n: number, ev: SimEvent[]): number {
+    if (this.phase === 'play') {
+      this.total += n;
+      ev.push({ type: 'RoundTotalChanged', index: this.round, total: this.total });
+      return this.round;
+    }
+    this.extra += n;
+    return this.phase === 'breather' ? this.round + 1 : this.round;
   }
 
   /** Records every round-tagged hostile on the map (called each step, after this step's spawns). */
@@ -405,6 +426,9 @@ export class Director {
     // no fill to close the round: the Caïd comes alone after the objectives, one more rioter in the roster
     if (this.total === objective && this.round >= CONFIG.caid.fromRound) this.total += 1;
     this.fill = this.roundFill(this.total - objective);
+    // rioters already out for this round (a breakout in the breather) join its roster, not its fill
+    this.total += this.extra;
+    this.extra = 0;
     this.nextFill = 0;
     const headlineRescue = plan.headline === 'rescue' ? this.beats[0]?.find((o) => o.rescue)?.rescue : undefined;
     ev.push(

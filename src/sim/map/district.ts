@@ -1,3 +1,4 @@
+import { CONFIG } from '../config';
 import type { CasseKind, TargetId, Vec } from '../types';
 
 export interface Rect {
@@ -18,9 +19,11 @@ export interface TargetDef {
   footprint: Rect;
   attackPoints: Vec[];
   door: Vec;
-  /** Props (cars, bus stop, kiosk) are solid obstacles outside `buildings`. */
+  /** Props (cars, bus stop, kiosk, phone booths) are solid obstacles outside `buildings`. */
   prop: boolean;
   maxHp: number;
+  /** Share of maxHp a toolbox rebuild gives back (absent: all of it). */
+  repairShare?: number;
 }
 
 export interface District {
@@ -84,7 +87,7 @@ export const DISTRICT: District = {
     R(38, 16, 6, 6),
     R(6, 30, 7, 6), // 9: nursery school (south-west)
     R(22, 38, 8, 5), // 10: library (south)
-    R(38, 36, 6, 6),
+    R(38, 36, 6, 6), // 11: prison (south-east)
   ],
   trunks: [
     { ...C(10, 11), r: 6 },
@@ -146,6 +149,18 @@ export const DISTRICT: District = {
     prop('kiosk', 'kiosk', R(34, 40, 2, 1), [C(33, 40), C(36, 40), C(34, 41), C(35, 41)]),
     building('townHall', 'townHall', R(15, 3, 6, 4), [C(16, 7), C(17, 7), C(19, 7), C(20, 7)], C(18, 7)),
     building('library', 'library', R(22, 38, 8, 5), [C(24, 43), C(25, 43), C(27, 43), C(28, 43)], C(26, 43)),
+    // the two phone booths side by side on the centre-west plaza (red: fire truck, blue: police), a free tile all
+    // around the island; open to attacks from round 3 (CONFIG.casse.fromRound.booth). Paul calls from the street row
+    // in front (row 23), within CONFIG.services.callRange of the booth's door (its centre).
+    prop('boothRed', 'booth', R(4, 22, 1, 1), [C(3, 22), C(4, 23), C(4, 21)]),
+    prop('boothBlue', 'booth', R(5, 22, 1, 1), [C(6, 22), C(5, 23), C(5, 21)]),
+    // the prison on the south-east block (building 11): CONFIG.prison.hp, open from round 4, rebuilt to 60 % of its hp;
+    // its door on the street row below (row 42), its guards' posts in src/sim/prison.ts
+    {
+      ...building('prison', 'prison', R(38, 36, 6, 6), [C(39, 42), C(40, 42), C(42, 42), C(43, 42)], C(41, 42)),
+      maxHp: CONFIG.prison.hp,
+      repairShare: CONFIG.prison.repairShare,
+    },
   ],
   kitSites: [C(18, 12), C(28, 25), C(8, 26), C(36, 44)],
   monument: {

@@ -90,6 +90,8 @@ describe('pure helpers', () => {
       ['townHall', 7, { title: 'MAIRIE ATTAQUÉE !', sub: 'Défends la mairie', label: 'MAIRIE', tone: 'fire', icon: 'flame' }, 'Mairie menacée'],
       ['library', 9, { title: 'BIBLIOTHÈQUE EN FEU !', sub: 'Sauve les livres', label: 'BIBLIOTHÈQUE', tone: 'fire', icon: 'flame' }, 'Bibliothèque menacée'],
     ] as const;
+    expect(incidentAlert('booth', 3)).toMatchObject({ title: 'CABINE SACCAGÉE !', sub: 'Protège la cabine', label: 'CABINE', tone: 'warn', icon: 'glass', meta: 'Manche 3' });
+    expect(incidentAlert('round', 3, 18, 'booth').sub).toBe('Cabine menacée · 18 casseurs');
     for (const [id, round, spec, headline] of cases) {
       expect(incidentAlert(id, round)).toMatchObject({ ...spec, meta: `Manche ${round}`, positioned: true });
       expect(incidentAlert('round', round, 26, id).sub).toBe(`${headline} · 26 casseurs`);
@@ -686,7 +688,7 @@ describe('Hud alerts and edge indicators', () => {
     expect(btn.style.display).toBe('none');
     hud.update(snap((x) => { x.toolboxes.carried = true; x.toolboxes.message = 'Abords non sécurisés'; }), view);
     expect(prompt().textContent).toBe('Abords non sécurisés');
-    hud.update(snap((x) => { x.toolboxes.carried = true; x.toolboxes.repairTarget = 'car1'; x.toolboxes.canRepair = true; x.toolboxes.repairKind = 'ruin'; }), view);
+    hud.update(snap((x) => { x.toolboxes.carried = true; x.toolboxes.repairTarget = 'car1'; x.toolboxes.canRepair = true; x.toolboxes.repairKind = 'ruin'; x.actionHint = { kind: 'repair', target: 'car1', at: { x: 0, y: 0 }, toolbox: null }; }), view);
     // touch: no key in the text, the Agir button shows with the action's label
     expect(prompt().textContent).toBe('Réparer');
     expect(btn.style.display).toBe('');

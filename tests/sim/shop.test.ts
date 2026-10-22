@@ -133,7 +133,8 @@ describe('the shop in the round plan', () => {
     const t = new Targets();
     const seen = new Set<string>();
     for (let s = 1; s <= 200; s++) seen.add(roundPlan(2 + (s % 3), rng(s), t, 'car').headline);
-    expect([...seen].sort()).toEqual(['busStop', 'car', 'school', 'shop']);
+    // rounds 2-4: the phone booths join the draw from round 3, the prison from round 4
+    expect([...seen].sort()).toEqual(['booth', 'busStop', 'car', 'prison', 'school', 'shop']);
   });
 
   test('round 4+: the last headline is drawn half as often (weights 1 / 2 / 2 / 2)', () => {
@@ -143,10 +144,10 @@ describe('the shop in the round plan', () => {
       const h = roundPlan(4, rng(s), t, 'shop').headline;
       n[h] = (n[h] ?? 0) + 1;
     }
-    // 1 / 7 ≈ 14 %, the others 2 / 7 ≈ 29 %
-    expect(n.shop! / 1400).toBeGreaterThan(0.09);
-    expect(n.shop! / 1400).toBeLessThan(0.2);
-    for (const k of ['school', 'car', 'busStop']) expect(n[k]! / 1400).toBeGreaterThan(0.22);
+    // 6 kinds (booths and prison included): 1 / 11 ≈ 9 %, the others 2 / 11 ≈ 18 %
+    expect(n.shop! / 1400).toBeGreaterThan(0.06);
+    expect(n.shop! / 1400).toBeLessThan(0.13);
+    for (const k of ['school', 'car', 'busStop', 'booth', 'prison']) expect(n[k]! / 1400).toBeGreaterThan(0.15);
   });
 
   test('a ruined or burning shop is never drawn', () => {

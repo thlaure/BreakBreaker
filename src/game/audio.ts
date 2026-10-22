@@ -542,6 +542,32 @@ export class GameAudio {
     });
   }
 
+  /**
+   * A call answered: a two-tone siren on the sfx bus. Fire truck: the French « pin-pon » (triangle 435 / 580 Hz,
+   * 0.32 s per note, 4 notes); police: a quicker, higher pair (square 660 / 880 Hz through a low-pass, 0.18 s, 6 notes).
+   */
+  siren(kind: 'fire' | 'police'): void {
+    this.voice((ctx, out, t) => {
+      const [lo, hi, note, notes, type] = kind === 'fire' ? [435, 580, 0.32, 4, 'triangle' as const] : [660, 880, 0.18, 6, 'square' as const];
+      const osc = ctx.createOscillator();
+      const lp = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      osc.type = type;
+      for (let i = 0; i < notes; i++) osc.frequency.setValueAtTime(i % 2 === 0 ? hi : lo, t + i * note);
+      lp.type = 'lowpass';
+      lp.frequency.value = 2200;
+      const end = t + notes * note;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.28, t + 0.03);
+      g.gain.setValueAtTime(0.28, end - 0.06);
+      g.gain.exponentialRampToValueAtTime(0.0001, end);
+      osc.connect(lp).connect(g).connect(out);
+      osc.start(t);
+      osc.stop(end + 0.01);
+      return osc;
+    });
+  }
+
   /** Maps sim events to sounds (a thrown enemy rock sounds when it actually spawns: EnemyRockThrown). */
   onEvents(events: SimEvent[]): void {
     let chimed = false;
@@ -609,7 +635,27 @@ export class GameAudio {
           this.energyReady(e.level);
           break;
         case 'EnergyRefused':
+        case 'ServiceRefused':
           this.tock();
+          break;
+        case 'ServiceCalled':
+          this.siren(e.kind);
+          break;
+        case 'TruckDestroyed':
+          this.play('land', 0, HEAVY_RATE);
+          break;
+        case 'CaidArrived':
+          // his banner comes with the alarm, like any danger
+          this.play('alarm');
+          break;
+        case 'CaidJailed':
+          // the jail van's siren
+          this.siren('police');
+          break;
+        case 'PrisonBreakout':
+          // the wall gives way, the alarm rings
+          this.play('land', 0, HEAVY_RATE);
+          this.play('alarm');
           break;
         case 'TargetSaved':
         case 'TargetRepaired':

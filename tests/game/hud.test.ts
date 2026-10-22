@@ -169,20 +169,34 @@ describe('contextPrompt', () => {
 });
 
 describe('contextPrompt: toolboxes', () => {
-  const ready = (kind: 'ruin' | 'fire') => (x: Snapshot): void => {
+  const at = { x: 0, y: 0 };
+  const ready = (kind: 'repair' | 'extinguish') => (x: Snapshot): void => {
     x.toolboxes.carried = true;
     x.toolboxes.repairTarget = 'busStop';
     x.toolboxes.canRepair = true;
-    x.toolboxes.repairKind = kind;
+    x.toolboxes.repairKind = kind === 'repair' ? 'ruin' : 'fire';
+    x.actionHint = { kind, target: 'busStop', at, toolbox: null };
   };
 
-  test('with a toolbox next to a ruin or a fire, safe: an actionable F prompt (touch: no key, Agir labelled)', () => {
-    expect(contextPrompt(snap(ready('ruin')))).toEqual({ text: 'F — Réparer', label: 'Réparer' });
-    expect(contextPrompt(snap(ready('ruin')), true)).toEqual({ text: 'Réparer', label: 'Réparer' });
-    expect(contextPrompt(snap(ready('fire')))).toEqual({ text: 'F — Éteindre le feu', label: 'Éteindre' });
-    expect(contextPrompt(snap(ready('fire')), true)).toEqual({ text: 'Éteindre le feu', label: 'Éteindre' });
+  test('with a toolbox next to a ruin or a fire, safe: an actionable F prompt (touch: no key, Agir labelled), drawn in the world', () => {
+    expect(contextPrompt(snap(ready('repair')))).toEqual({ text: 'F — Réparer', label: 'Réparer', inWorld: true });
+    expect(contextPrompt(snap(ready('repair')), true)).toEqual({ text: 'Réparer', label: 'Réparer', inWorld: true });
+    expect(contextPrompt(snap(ready('extinguish')))).toEqual({ text: 'F — Éteindre le feu', label: 'Éteindre', inWorld: true });
+    expect(contextPrompt(snap(ready('extinguish')), true)).toEqual({ text: 'Éteindre le feu', label: 'Éteindre', inWorld: true });
     // started: progress shown, no button
-    expect(contextPrompt(snap((x) => { ready('ruin')(x); x.toolboxes.started = true; x.toolboxes.progress = 0.3; }))).toEqual({ text: 'Réparation…', label: null });
+    expect(contextPrompt(snap((x) => { ready('repair')(x); x.toolboxes.started = true; x.toolboxes.progress = 0.3; }))).toEqual({ text: 'Réparation…', label: null, inWorld: true });
+  });
+
+  test('the prompt follows actionHint, not the raw toolbox fields (it never promises what the press would not do)', () => {
+    expect(contextPrompt(snap((x) => { x.toolboxes.carried = true; x.toolboxes.repairTarget = 'busStop'; x.toolboxes.canRepair = true; x.toolboxes.repairKind = 'ruin'; }))).toBeNull();
+  });
+
+  test('needToolbox: « Il faut une caisse à outils », informational, in the world', () => {
+    const s = snap((x) => {
+      x.toolboxes.message = 'Caisse à outils requise';
+      x.actionHint = { kind: 'needToolbox', target: 'busStop', at, toolbox: null };
+    });
+    expect(contextPrompt(s)).toEqual({ text: 'Il faut une caisse à outils', label: null, inWorld: true });
   });
 
   test('toolbox messages and the repair in progress are informational (no Agir label)', () => {
@@ -195,7 +209,7 @@ describe('contextPrompt: toolboxes', () => {
       x.toolboxes.repairTarget = 'busStop';
       x.stationMessage = 'Santé au maximum';
     });
-    expect(contextPrompt(repairing)).toEqual({ text: 'Réparation…', label: null });
+    expect(contextPrompt(repairing)).toEqual({ text: 'Réparation…', label: null, inWorld: true });
   });
 });
 
@@ -276,6 +290,18 @@ describe('incidentLines', () => {
       attacked(x, 'shop', 80, true);
     });
     expect(incidentLines(f, 'en cours')[0]).toMatchObject({ key: 'shop', name: 'Boutique', status: 'en feu' });
+  });
+
+  test('the phone booths have their own cards (Cabine rouge, Cabine bleue)', () => {
+    const s = snap((x) => {
+      calm(x);
+      attacked(x, 'boothRed', 30, true);
+      attacked(x, 'boothBlue', 45);
+    });
+    expect(incidentLines(s, 'en cours')).toEqual([
+      expect.objectContaining({ key: 'boothRed', kind: 'booth', name: 'Cabine rouge', time: '50 %', status: 'en feu' }),
+      expect.objectContaining({ key: 'boothBlue', kind: 'booth', name: 'Cabine bleue', time: '75 %', status: 'attaquée' }),
+    ]);
   });
 
   test('the Phase C places have their cards (Maternelle, Kiosque, Mairie, Bibliothèque)', () => {

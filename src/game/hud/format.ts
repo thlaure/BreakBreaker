@@ -1,8 +1,12 @@
 import { CONFIG } from '../../sim/config';
+import { DISTRICT } from '../../sim/map/district';
+import { BOOTH_OF } from '../../sim/services';
 import type { Snapshot } from '../../sim/sim';
-import type { CasseKind, Vec } from '../../sim/types';
+import type { CasseKind, ServiceKind, TargetId, Vec } from '../../sim/types';
 import { HELD_LABELS } from '../../sim/weapons';
 import { casseurs, type IncidentKind, type RoundHeadline } from './alerts';
+import { jailedText } from '../render/prisonMath';
+import { ACTION_WORDS, REPAIRING_VERB } from '../render/actionHintMath';
 
 /**
  * Rescue: 'en cours' | 'interrompu' | 'sécurisé'. Attacked target: 'en feu' | 'attaquée' |
@@ -86,25 +90,50 @@ export interface Prompt {
   text: string;
   /** Short label for the touch Agir button; null for an informational prompt (the button stays hidden). */
   label: string | null;
+  /**
+   * The in-world bubble above the target already says it (Snapshot.actionHint, or the repair running): the line under
+   * Paul steps aside, the touch Agir button keeps the label.
+   */
+  inWorld?: boolean;
 }
 
 export const DEFAULT_ACT_LABEL = 'Agir';
 
 /**
- * Contextual prompt under Paul. With a toolbox next to a ruin or a burning target and no hostile close, an actionable
- * prompt: « F — Réparer » / « F — Éteindre le feu » (touch: no key, the Agir button takes the label). Informational
- * ones (no button): the repair in progress, the toolbox messages, the heal stations.
+ * Contextual prompt. The actionable ones come from Snapshot.actionHint (the sim's own Agir rules, so it never lies):
+ * « F — Réparer » / « F — Éteindre le feu » / « F — Appeler les pompiers » / « F — Appeler la police » (touch: no key,
+ * the Agir button takes the label), and « Il faut une caisse à outils » next to a ruin or a fire without one (no
+ * button); all of them, and the repair in progress (« Réparation… »), are drawn in the world above the target
+ * (`inWorld`). Informational ones under Paul (no button): a ruined booth in call range (« Cabine hors service »), the
+ * toolbox messages, the heal stations.
  */
 export function contextPrompt(s: Snapshot, touch = false): Prompt | null {
   const kit = s.toolboxes;
-  if (kit.repairTarget && kit.started) return { text: 'Réparation…', label: null };
-  if (kit.message) return { text: kit.message, label: null };
-  if (kit.repairTarget && kit.canRepair) {
-    const [text, label] = kit.repairKind === 'fire' ? ['Éteindre le feu', 'Éteindre'] : ['Réparer', 'Réparer'];
-    return { text: touch ? text : `F — ${text}`, label };
+  if (kit.repairTarget && kit.started) return { text: REPAIRING_VERB, label: null, inWorld: true };
+  const h = s.actionHint;
+  if (h) {
+    const w = ACTION_WORDS[h.kind];
+    if (w.button === null) return { text: w.line, label: null, inWorld: true };
+    return { text: touch ? w.line : `F — ${w.line}`, label: w.button, inWorld: true };
   }
+  if (nearestBooth(s)?.ruined) return { text: 'Cabine hors service', label: null };
+  if (kit.message) return { text: kit.message, label: null };
   if (s.stationMessage) return { text: s.stationMessage, label: null };
   return null;
+}
+
+/** The booth whose door is nearest Paul within callRange (red first on a tie), or null. */
+function nearestBooth(s: Snapshot): { kind: ServiceKind; d: number; ruined: boolean } | null {
+  let best: { kind: ServiceKind; d: number; ruined: boolean } | null = null;
+  for (const kind of ['fire', 'police'] as const) {
+    const id = BOOTH_OF[kind];
+    const ruined = s.targets.find((t) => t.id === id)?.state === 'ruined';
+    const door = DISTRICT.targets.find((t) => t.id === id)?.door;
+    if (!door) continue;
+    const d = Math.hypot(door.x - s.player.pos.x, door.y - s.player.pos.y);
+    if (d <= CONFIG.services.callRange && (!best || d < best.d - 1e-9)) best = { kind, d, ruined };
+  }
+  return best;
 }
 
 export const TARGET_NAMES: Readonly<Record<CasseKind, string>> = {
@@ -116,7 +145,11 @@ export const TARGET_NAMES: Readonly<Record<CasseKind, string>> = {
   kiosk: 'Kiosque',
   townHall: 'Mairie',
   library: 'Bibliothèque',
+  booth: 'Cabine',
+  prison: 'Prison',
 };
+/** Card names of the targets a kind's name does not tell apart: the two phone booths. */
+const TARGET_CARD_NAMES: Readonly<Partial<Record<TargetId, string>>> = { boothRed: 'Cabine rouge', boothBlue: 'Cabine bleue' };
 const OBJECTIVE_NAMES: Readonly<Record<RoundHeadline, string>> = { ...TARGET_NAMES, rescue: 'Secours', monument: 'Monument' };
 
 export interface IncidentLine {
@@ -146,7 +179,9 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
     if (t.state !== 'attacked' && t.state !== 'burning') continue;
     const hp = Math.max(0, Math.min(100, (100 * t.hp) / t.maxHp));
     const status: IncidentStatus = t.id === 'school' && s.school.stage === 'cinematic' ? 'renforts' : t.burning ? 'en feu' : 'attaquée';
-    out.push({ key: t.id, kind: t.kind, name: TARGET_NAMES[t.kind], time: `${Math.ceil(hp - 1e-9)} %`, hp, status, target: t.door, items: null });
+    // the prison's card tells what is at stake: the Caïds who would walk out
+    const items = t.id === 'prison' && s.prison.jailed > 0 ? jailedText(s.prison.jailed) : null;
+    out.push({ key: t.id, kind: t.kind, name: TARGET_CARD_NAMES[t.id] ?? TARGET_NAMES[t.kind], time: `${Math.ceil(hp - 1e-9)} %`, hp, status, target: t.door, items });
   }
   const r = s.rescue;
   if (r && (r.stage === 'threat' || r.stage === 'secured')) {

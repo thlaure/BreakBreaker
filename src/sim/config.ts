@@ -294,10 +294,44 @@ export const CONFIG = {
       kiosk: [4, -2, 3],
       townHall: [8, -3, 5],
       library: [8, -3, 5],
+      booth: [4, -2, 3],
+      prison: [8, -3, 5],
     },
     /** First round a kind can be attacked (headline draw and second urgency; round 1 is always the school). */
-    fromRound: { school: 1, car: 2, busStop: 2, shop: 2, nursery: 5, kiosk: 5, townHall: 7, library: 9 },
+    fromRound: { school: 1, car: 2, busStop: 2, shop: 2, nursery: 5, kiosk: 5, townHall: 7, library: 9, booth: 3, prison: 4 },
   },
+  /**
+   * Emergency services (phone booths): `calls` fire calls and as many police calls per session; Paul calls within
+   * `callRange` px of a booth's door; the police come only with `policeMinHostiles` active rioters or more (the entry
+   * line not counted), the fire truck only while a target burns. At most one truck and one police group on the map at
+   * a time; both come in from one of the rioters' entry points (own random stream) and are allies outside the hostile
+   * cap. A rioter after Paul (no place to attack) goes for the nearest of Paul, the truck and an officer within
+   * `hostileTargetRadius` px with a clear line; its blows take their damage off the ally's hp.
+   * `truck`: `hp`, `speed` px/s along the street graph, collision `radius` against solids only (Paul and rioters go
+   * through it), `reach` = its body for the rioters' blows; parked within `sprayRadius` px of a burning target's door it
+   * puts out `sprayRate` of the fire per second (every door in that radius at once), never repairs, keeps the hp left;
+   * it leaves by the nearest entry point when nothing burns, or after `maxStaySec` s.
+   * `police`: `count` officers of `hp` (one blow knocks one out: down, gone after `downSec` s), `speed` px/s; within
+   * `reach` px of a rioter it winds up `windup` s and hits (a weapon hit: KO but for a brute or the Caïd) if still within
+   * `hitRange` px, every `cooldown` s; the group leaves after `staySec` s, or once every officer is gone.
+   */
+  services: {
+    calls: 3,
+    callRange: 40,
+    policeMinHostiles: 8,
+    hostileTargetRadius: 160,
+    truck: { hp: 60, speed: 160, radius: 7, reach: 16, sprayRadius: 80, sprayRate: 0.5, maxStaySec: 60 },
+    police: { count: 5, hp: 1, speed: 150, staySec: 40, reach: 18, hitRange: 26, windup: 0.3, cooldown: 0.8, downSec: 3 },
+  },
+  /**
+   * The prison (south-east block): a `hp` building target attacked from `fromRound` (CONFIG.casse.fromRound.prison),
+   * rebuilt by a toolbox to `repairShare` of its hp. A Caïd KO'd while it stands is jailed; at 0 hp every jailed Caïd
+   * bursts out at its door. `guards` guards (the police's brain and stats, CONFIG.services.police, but a Caïd's hp for the
+   * round, at least CONFIG.caid.hp, and bare-hands blows: 1 hp, damageFrom.hands on the Caïd) each hold a post: they only
+   * go for rioters within `postRadius` px of it and never step out of that circle; one knocked out comes back in the
+   * breather unless the prison is ruined.
+   */
+  prison: { hp: 400, guards: 5, postRadius: 160, fromRound: 4, repairShare: 0.6 },
   pressureMax: 12,
   rulesVersion: 'slice-0.2.0',
 } as const;

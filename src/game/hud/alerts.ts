@@ -1,6 +1,7 @@
 import { CONFIG } from '../../sim/config';
 import type { Snapshot } from '../../sim/sim';
 import type { CasseKind, PickupKind, SimEvent, SpecialKind, Vec } from '../../sim/types';
+import { releasedText } from '../render/prisonMath';
 
 /**
  * Incident alerts: a pixel banner when a target is set on fire, a rescue, a round or a special drop starts, and one
@@ -19,11 +20,11 @@ export type IncidentKind = CasseKind | 'groupHarassed' | 'elderlyRobbed' | 'monu
 export type DropKind = 'bouclierDrop';
 /**
  * Everything the banner can announce: positioned incidents and drops, and position-less round starts and mode furie
- * starts (`furie`).
+ * starts (`furie`); `breakout` = the prison fell and its Caïds burst out (pointing at its gate).
  */
-export type AlertKind = IncidentKind | 'round' | DropKind | 'furie' | 'flagCaptured' | 'flashball';
+export type AlertKind = IncidentKind | 'round' | DropKind | 'furie' | 'flagCaptured' | 'flashball' | 'breakout';
 export type AlertTone = 'fire' | 'warn' | 'round' | 'drop' | 'furie' | 'win';
-export type AlertIcon = 'flame' | 'alert' | 'horde' | 'glass' | 'bolt' | 'flag' | 'shield' | 'crown' | 'flashball';
+export type AlertIcon = 'flame' | 'alert' | 'horde' | 'glass' | 'bolt' | 'flag' | 'shield' | 'crown' | 'flashball' | 'bars';
 /** What a round is about (its first beat), shown under « MANCHE N ! ». */
 export type RoundHeadline = CasseKind | 'rescue' | 'monument';
 /** A round headline as the banner words it: a rescue headline names its variant when known. */
@@ -49,6 +50,8 @@ export const INCIDENT_ALERTS: Readonly<Record<IncidentKind, AlertSpec>> = {
   kiosk: { title: 'KIOSQUE SACCAGÉ !', sub: 'Protège le kiosque', label: 'KIOSQUE', tone: 'warn', icon: 'glass' },
   townHall: { title: 'MAIRIE ATTAQUÉE !', sub: 'Défends la mairie', label: 'MAIRIE', tone: 'fire', icon: 'flame' },
   library: { title: 'BIBLIOTHÈQUE EN FEU !', sub: 'Sauve les livres', label: 'BIBLIOTHÈQUE', tone: 'fire', icon: 'flame' },
+  booth: { title: 'CABINE SACCAGÉE !', sub: 'Protège la cabine', label: 'CABINE', tone: 'warn', icon: 'glass' },
+  prison: { title: 'PRISON ATTAQUÉE !', sub: 'Défends la prison', label: 'PRISON', tone: 'fire', icon: 'flame' },
   groupHarassed: { title: 'AGRESSION EN COURS !', sub: 'Une personne est menacée', label: 'AGRESSION', tone: 'warn', icon: 'alert' },
   elderlyRobbed: { title: 'VOL EN COURS !', sub: 'Une personne âgée est menacée', label: 'VOL', tone: 'warn', icon: 'alert' },
   monument: { title: 'MONUMENT ATTAQUÉ !', sub: 'Défends le drapeau', label: 'MONUMENT', tone: 'warn', icon: 'flag' },
@@ -71,10 +74,15 @@ function isDrop(kind: AlertKind): kind is DropKind {
 }
 /** How long the position-less « MODE FURIE ! » banner stays (short: Paul is busy hitting). */
 export const FURIE_ALERT_MS = 2200;
+/** The shortest a warning banner stays on screen (its alarm rang: give the player time to read it). */
+export const ALERT_MIN_MS = 3500;
 /** How long the short « DRAPEAU RÉCUPÉRÉ ! » banner stays. */
-export const FLAG_ALERT_MS = 2600;
+export const FLAG_ALERT_MS = ALERT_MIN_MS;
 /** How long the short, position-less « LE CAÏD ARRIVE ! » banner stays. */
-export const CAID_ALERT_MS = 2600;
+export const CAID_ALERT_MS = ALERT_MIN_MS;
+
+/** How long the « ÉVASION ! » banner stays. */
+export const BREAKOUT_ALERT_MS = 3600;
 
 /** How long the one-line « FLASHBALL AU SOL » hint stays. */
 export const FLASHBALL_ALERT_MS = 3200;
@@ -107,6 +115,8 @@ export const ROUND_HEADLINES: Readonly<Record<BannerHeadline, string>> = {
   kiosk: 'Kiosque menacé',
   townHall: 'Mairie menacée',
   library: 'Bibliothèque menacée',
+  booth: 'Cabine menacée',
+  prison: 'Prison menacée',
   rescue: 'Agression en cours',
   groupHarassed: 'Agression en cours',
   elderlyRobbed: 'Vol en cours',
@@ -170,6 +180,18 @@ export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: 
       ms: FLAG_ALERT_MS,
     };
   if (kind === 'caid') return { ...INCIDENT_ALERTS.caid, meta: '', positioned: false, ms: CAID_ALERT_MS };
+  // the prison fell: `total` = the Caïds released, the arrow points at its gate
+  if (kind === 'breakout')
+    return {
+      title: 'ÉVASION !',
+      sub: releasedText(total),
+      label: 'ÉVASION',
+      tone: 'round',
+      icon: 'bars',
+      meta: '',
+      positioned: true,
+      ms: BREAKOUT_ALERT_MS,
+    };
   // the flashball guaranteed with the first shooter: one line, with the arrow and distance to it (no edge indicator)
   if (kind === 'flashball')
     return { title: 'FLASHBALL AU SOL', sub: '', label: 'FLASHBALL', tone: 'drop', icon: 'flashball', meta: '', positioned: true, ms: FLASHBALL_ALERT_MS };
@@ -256,6 +278,9 @@ export function alertFromEvent(e: SimEvent): Alert | null {
     const id = flashballHintId(e.pos);
     return { id, kind: 'flashball', pos: { ...e.pos }, wave: 0, total: 0, incident: id };
   }
+  // the prison fell with Caïds inside (they send no CaidArrived: each gets the Caïd's edge indicator from activeIncidents)
+  if (e.type === 'PrisonBreakout')
+    return { id: `breakout@${e.pos.x},${e.pos.y}#${e.count}`, kind: 'breakout', pos: { ...e.pos }, wave: 0, total: e.count };
   // the Caïd walks in: short banner without arrow, dropped once he is KO
   if (e.type === 'CaidArrived') {
     const id = caidId(e.lifeId);
@@ -290,6 +315,36 @@ export function activeIncidents(s: Snapshot): Incident[] {
   // « Le Caïd » while he stands (his indicator follows him)
   for (const h of s.hostiles) if (h.role === 'boss' && h.state !== 'ko') out.push({ id: caidId(h.lifeId), kind: 'caid', pos: { ...h.pos } });
   return out;
+}
+
+export type GuideKind = 'ruin' | 'toolbox';
+export type GuideIcon = 'wrench' | 'toolbox';
+/** A repair-guidance edge indicator: a ruin to rebuild, or a toolbox to fetch. */
+export interface GuideMark {
+  id: string;
+  kind: GuideKind;
+  pos: Vec;
+}
+export const GUIDE_LOOK: Readonly<Record<GuideKind, { label: string; icon: GuideIcon }>> = {
+  ruin: { label: 'RÉPARER', icon: 'wrench' },
+  toolbox: { label: 'OUTILS', icon: 'toolbox' },
+};
+
+/**
+ * Repair guidance: Paul carrying a toolbox, every ruin (at its door); without one, while at least one ruin waits,
+ * every toolbox on the ground. Nothing once the session ended.
+ */
+export function guideMarks(s: Snapshot): GuideMark[] {
+  if (s.ended) return [];
+  const ruins = s.targets.filter((t) => t.state === 'ruined');
+  if (ruins.length === 0) return [];
+  if (s.toolboxes.carried) return ruins.map((t) => ({ id: `ruin:${t.id}`, kind: 'ruin', pos: { ...t.door } }));
+  return s.toolboxes.ground.map((g) => ({ id: `toolbox:${g.id}`, kind: 'toolbox', pos: { ...g.pos } }));
+}
+
+/** Events that start a new danger: the red edge glow flashes once (several in one frame: once). */
+export function isNewAttack(e: SimEvent): boolean {
+  return e.type === 'CasseStarted' || e.type === 'SchoolStarted' || e.type === 'TargetIgnited' || e.type === 'RescueStarted' || e.type === 'MonumentAttacked';
 }
 
 /** Distance in metres (1 tile = 32 px = 1 m), rounded. */
@@ -371,7 +426,7 @@ const PALETTE: Record<string, string> = {
   C: 'currentColor',
 };
 
-type Sprite = AlertIcon | 'arrow' | 'arrowDiag';
+type Sprite = AlertIcon | GuideIcon | 'arrow' | 'arrowDiag';
 
 const SPRITES: Record<Sprite, string[]> = {
   flame: [
@@ -477,6 +532,19 @@ const SPRITES: Record<Sprite, string[]> = {
     'KOOOOOOOK.',
     'KKKKKKKKK.',
   ],
+  // prison bars bent apart: the breakout
+  bars: [
+    'KKKKKKKKKK',
+    'KSKSK.KSKK',
+    'KSKSK..KSK',
+    'KSKK....SK',
+    'KSK.....SK',
+    'KSK.....SK',
+    'KSKK...KSK',
+    'KSKSK.KSKK',
+    'KSKSK.KSKK',
+    'KKKKKKKKKK',
+  ],
   // the cartoon flashball launcher: grey body, orange muzzle
   flashball: [
     '..........',
@@ -489,6 +557,31 @@ const SPRITES: Record<Sprite, string[]> = {
     '..KSSK....',
     '.KSSSK....',
     '.KKKKK....',
+  ],
+  // a gold wrench: a ruin to repair
+  wrench: [
+    '..KKK.....',
+    '.KYYK.....',
+    'KYK.K.....',
+    'KYYKKK....',
+    '.KKYYYK...',
+    '...KYYYK..',
+    '....KYYYK.',
+    '.....KYYYK',
+    '......KYYK',
+    '.......KK.',
+  ],
+  // a red toolbox with its handle: a toolbox on the ground
+  toolbox: [
+    '...KKKK...',
+    '...K..K...',
+    'KKKKKKKKKK',
+    'KRRRRRRRRK',
+    'KRRRRRRRRK',
+    'KKKKYYKKKK',
+    'KRRRYYRRRK',
+    'KRRRRRRRRK',
+    'KKKKKKKKKK',
   ],
   // points right (0°); rotated toward the target
   arrow: ['....C...', '....CC..', 'CCCCCCC.', 'CCCCCCCC', 'CCCCCCC.', '....CC..', '....C...'],
@@ -642,7 +735,9 @@ export class AlertBanner {
   private show(incident: Alert): void {
     const spec = incidentAlert(incident.kind, incident.wave, incident.total, incident.headline);
     this.current = incident;
-    this.el.className = `bb-alert tone-${spec.tone}`;
+    // a danger shakes once on entry (CSS, off under prefers-reduced-motion)
+    const danger = spec.tone === 'fire' || spec.tone === 'warn';
+    this.el.className = `bb-alert tone-${spec.tone}${danger ? ' shake' : ''}`;
     this.ico.innerHTML = pixelSvg(spec.icon, 3);
     this.title.textContent = spec.title;
     this.sub.textContent = spec.sub;

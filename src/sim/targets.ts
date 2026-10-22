@@ -16,10 +16,14 @@ export interface TargetState {
 /** Health, fire and ruin state of every destructible target (school, cars, bus stop). */
 export class Targets {
   private readonly st = new Map<TargetId, TargetState>();
+  /** Share of maxHp a rebuild gives back (TargetDef.repairShare: the prison's 60 %; others all of it). */
+  private readonly repairShare = new Map<TargetId, number>();
 
   constructor(defs: readonly TargetDef[] = DISTRICT.targets) {
-    for (const d of defs)
+    for (const d of defs) {
       this.st.set(d.id, { hp: d.maxHp, maxHp: d.maxHp, burning: false, state: 'intact', lostIncidentId: null, fireIncidentId: null });
+      this.repairShare.set(d.id, d.repairShare ?? 1);
+    }
   }
 
   get(id: TargetId): TargetState {
@@ -57,6 +61,16 @@ export class Targets {
     return incident;
   }
 
+  /** Puts the fire out and keeps the hp left (the fire truck: it never repairs); returns the incident that set it. */
+  douse(id: TargetId): string | null {
+    const s = this.get(id);
+    if (!s.burning) return null;
+    const incident = s.fireIncidentId;
+    s.burning = false;
+    s.fireIncidentId = null;
+    return incident;
+  }
+
   ruin(id: TargetId, incidentId: string): void {
     const s = this.get(id);
     s.hp = 0;
@@ -66,14 +80,14 @@ export class Targets {
     s.lostIncidentId = incidentId;
   }
 
-  /** Returns the lost incident id (once) and restores full health; null if not ruined. */
+  /** Returns the lost incident id (once) and restores its health (all of it, the prison's repairShare); null if not ruined. */
   repair(id: TargetId): string | null {
     const s = this.get(id);
     if (s.state !== 'ruined') return null;
     const lost = s.lostIncidentId;
     s.state = 'intact';
     s.lostIncidentId = null;
-    s.hp = s.maxHp;
+    s.hp = Math.round(s.maxHp * (this.repairShare.get(id) ?? 1));
     return lost;
   }
 

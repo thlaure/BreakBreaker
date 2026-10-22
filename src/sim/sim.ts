@@ -1,3 +1,4 @@
+import { Allies, type AlliesView } from './allies';
 import { Bullets } from './bullets';
 import { CONFIG } from './config';
 import { Director, spawnPoints, type RoundPhase, type RoundSummary } from './director';
@@ -19,16 +20,28 @@ import { dist, inArc, len, norm, segmentCircleHit, sub } from './math';
 import { Monument, MonumentIncident, type MonumentStage } from './monument';
 import { createPlayer, damagePlayer, readyStrike, stepPlayer, sweep, type Player } from './player';
 import { Rocks, type RockCtx, type RockState } from './projectiles';
+import { Prison, type PrisonView } from './prison';
 import { rng } from './rng';
 import { Toolboxes, type ToolboxMessage } from './repair';
 import { Rules, type SessionStats } from './rules';
+import { BOOTH_OF, Services, type CallCtx } from './services';
 import { beam } from './specials';
 import { Targets } from './targets';
-import type { CasseKind, InputFrame, Launch, MonumentFlag, Role, SimEvent, TargetId, Variant, Vec } from './types';
+import type { CasseKind, InputFrame, Launch, MonumentFlag, Role, ServiceKind, SimEvent, TargetId, Variant, Vec } from './types';
 import { WEAPONS, Weapons, type HeldKind, type PickupKind } from './weapons';
 
 /** How long a thrown bottle is drawn in flight (render only; the fire starts on the throw). */
 export const MOLOTOV_FLIGHT_SEC = 0.6;
+
+/** What a fresh Agir press does (or what it lacks) right now: the in-world prompt above `at` (a target's door). */
+export type ActionHintKind = 'repair' | 'extinguish' | 'callFire' | 'callPolice' | 'needToolbox';
+export interface ActionHint {
+  kind: ActionHintKind;
+  target: TargetId;
+  at: Vec;
+  /** needToolbox: the nearest toolbox on the ground (null when none, or for the other kinds). */
+  toolbox: Vec | null;
+}
 
 export interface Telegraph {
   from: Vec;
@@ -170,7 +183,27 @@ export interface Snapshot {
     zone: { x: number; y: number; r: number };
   };
   stats: SessionStats;
+  /**
+   * Emergency calls left (3 + 3 per session) and `hint`: a call of that kind would be accepted right now (booth
+   * standing, a call left, no help of that kind on the map, a fire burning / enough rioters).
+   */
+  services: { calls: { fire: number; police: number }; hint: { fire: boolean; police: boolean } };
+  /**
+   * The emergency services on the map: the fire truck (null when none; `target` = the fire it drives to or sprays) and
+   * the police officers (`down` = knocked out, carried off a few seconds later).
+   */
+  allies: AlliesView;
+  /** The prison: Caïds jailed, its guards (by post), whether it stands. */
+  prison: PrisonView;
+  /**
+   * What a fresh Agir press would do now, by the same rules as the press itself (Sim.agirChoice): a repair or an
+   * extinguish that would start, a booth call that would be accepted; or `needToolbox` next to a ruin or a fire without
+   * a toolbox. Null otherwise (nothing in reach, a rioter too close, a call that would be refused, cinematic, KO, end).
+   */
+  actionHint: ActionHint | null;
 }
+
+const SERVICE_KINDS: readonly ServiceKind[] = ['fire', 'police'];
 
 const v = (p: Vec): Vec => ({ x: p.x, y: p.y });
 
@@ -237,6 +270,12 @@ export class Sim {
   /** Small field heals dropped near Paul every CONFIG.fieldHeal.every eligible KOs. */
   readonly fieldHeals: FieldHeals;
   readonly toolboxes = new Toolboxes();
+  /** Phone booth calls (fire truck, police): counters and acceptance. */
+  readonly services = new Services();
+  /** The fire truck and the police group on the map (own random stream for their entry point). */
+  readonly allies: Allies;
+  /** The prison's cells (jailed Caïds, breakout) and its guards (allies of role 'guard'). */
+  readonly prison: Prison;
   readonly firePatches = new FirePatches();
   /** The equestrian monument's flag and capture the flag (persists across rounds). */
   readonly monument = new Monument();
@@ -290,6 +329,8 @@ export class Sim {
     this.launchRand = rng((seed ^ 0x85ebca6b) >>> 0);
     this.fallRand = rng((seed ^ 0x9e3779b1) >>> 0);
     this.fieldHeals = new FieldHeals(this.grid, rng((seed ^ 0xc2b2ae35) >>> 0));
+    this.allies = new Allies(this.grid, rng((seed ^ 0x27d4eb2f) >>> 0));
+    this.prison = new Prison(this.allies, this.grid);
     this.invulnerable = opts.invulnerable ?? false;
     this.fields = { player: new FlowField(this.grid), victim: new FlowField(this.grid) };
     for (const t of DISTRICT.targets) this.siteFields.set(t.id, new FlowField(this.grid));
@@ -377,7 +418,9 @@ export class Sim {
       sites: this.sites(),
       victimPos,
       pressure: this.director.pressure(this.rules.kos),
+      allies: { list: this.allies.targetsFor(), hit: (id, amount) => ev.push(...this.allies.damage(id, amount)) },
     });
+    this.syncServices();
     this.updateFacings(prev);
     for (const h of this.queue.step(dt, this.horde, spawnPoints(p.pos))) {
       if (h.role === 'boss') ev.push({ type: 'CaidArrived', lifeId: h.lifeId, pos: v(h.pos), round: h.round ?? this.director.round });
@@ -469,9 +512,24 @@ export class Sim {
     ev.push(...this.monument.step(dt, { player: p, horde: this.horde, rules: this.rules }));
     if (this.rescue) ev.push(...this.rescue.step(dt, { horde: this.horde, rules: this.rules, player: p, spawner: this.objectiveSpawner }));
 
-    const kit = this.toolboxes.step(dt, { player: p, horde: this.horde, targets: this.targets, rules: this.rules, act: actPressed });
+    // a fresh Agir press goes to the nearest of the startable repair and the booths in call range (ties: repair > red > blue)
+    const kitAct = actPressed && this.agirAtBooth(ev) === null;
+    const kit = this.toolboxes.step(dt, { player: p, horde: this.horde, targets: this.targets, rules: this.rules, act: kitAct });
     ev.push(...kit.events);
     this.toolboxMessage = kit.message;
+    // the truck, the police and the prison guards: drive, spray, fight (their KOs score +1 like any KO, without energy)
+    ev.push(
+      ...this.allies.step(dt, {
+        now,
+        horde: this.horde,
+        targets: this.targets,
+        rules: this.rules,
+        strike: (lifeId, from, role) => this.policeStrike(lifeId, from, ev, role === 'guard' ? 'hands' : 'weapon'),
+      }),
+    );
+    this.syncServices();
+    // the prison fell this step (by any path): every jailed Caïd out at its door, in the roster
+    ev.push(...this.prison.step({ targets: this.targets, horde: this.horde, extend: (n, e) => this.director.extend(n, e) }));
     const heal = this.stations.step({ player: p, rules: this.rules });
     ev.push(...heal.events);
     this.stationMessage = heal.message;
@@ -479,7 +537,10 @@ export class Sim {
     // a Caïd knocked out by any path (rocks, the beam, a test's direct hit) gets his bonus and drop before the round closes
     for (const h of this.horde.list) if (h.role === 'boss' && h.state === 'ko') this.caidDown(h, ev);
 
-    ev.push(...this.director.step(dt, this));
+    const dirEv = this.director.step(dt, this);
+    ev.push(...dirEv);
+    // the round is over: the prison's guards come back (while it stands) with the coming round's hp
+    if (dirEv.some((e) => e.type === 'RoundCompleted')) ev.push(...this.prison.onBreather(this.director.round, this.targets));
     this.feedFieldHeals();
     ev.push(...this.fieldHeals.step(now, { player: p, rules: this.rules }));
     this.tally(ev);
@@ -590,7 +651,105 @@ export class Sim {
       energy: { value: this.energy.value, max: CONFIG.energy.max, ready: this.energy.ready() },
       monument: this.monumentView(),
       stats: { ...this.rules.stats },
+      allies: this.allies.view(),
+      prison: this.prison.view(this.targets),
+      services: {
+        calls: { ...this.services.calls },
+        hint: { fire: this.services.check('fire', this.callCtx('fire')).ok, police: this.services.check('police', this.callCtx('police')).ok },
+      },
+      actionHint: this.actionHint(),
     };
+  }
+
+  /** Snapshot.actionHint: the press's own choice (agirChoice), then the toolbox it lacks. */
+  private actionHint(): ActionHint | null {
+    if (this.rules.ended || this.player.ko || this.school.suspended()) return null;
+    const p = this.player.pos;
+    const doorOf = (id: TargetId): Vec => v(DISTRICT.targets.find((t) => t.id === id)!.door);
+    const choice = this.agirChoice();
+    if (choice?.kind === 'repair') {
+      const kind = this.targets.get(choice.target).state === 'ruined' ? 'repair' : 'extinguish';
+      return { kind, target: choice.target, at: doorOf(choice.target), toolbox: null };
+    }
+    if (choice?.kind === 'booth' && this.services.check(choice.service, this.callCtx(choice.service)).ok) {
+      const target = BOOTH_OF[choice.service];
+      return { kind: choice.service === 'fire' ? 'callFire' : 'callPolice', target, at: doorOf(target), toolbox: null };
+    }
+    if (this.toolboxes.carried) return null;
+    const target = this.toolboxes.repairTarget(p, this.targets);
+    if (target === null) return null;
+    let toolbox: Vec | null = null;
+    for (const g of this.toolboxes.ground) if (!toolbox || dist(p, g.pos) < dist(p, toolbox)) toolbox = g.pos;
+    return { kind: 'needToolbox', target, at: doorOf(target), toolbox: toolbox ? v(toolbox) : null };
+  }
+
+  /** What a call of `kind` from its booth would weigh now. */
+  private callCtx(kind: ServiceKind): CallCtx {
+    let burning = 0;
+    for (const t of DISTRICT.targets) if (this.targets.get(t.id).burning) burning++;
+    return {
+      burning,
+      activeHostiles: this.horde.active().length,
+      boothStanding: this.targets.standing(BOOTH_OF[kind]),
+      // kept in step with the allies (syncServices)
+      busy: this.services.active[kind],
+    };
+  }
+
+  /**
+   * What a fresh Agir press goes to: the nearest of a repair that would start (Toolboxes.startable, at its target's
+   * door) and the booths whose door is within CONFIG.services.callRange of Paul; ties go to the repair, then red, then
+   * blue. Null: nothing in reach.
+   */
+  private agirChoice(): { kind: 'booth'; service: ServiceKind } | { kind: 'repair'; target: TargetId } | null {
+    const p = this.player.pos;
+    const repair = this.toolboxes.startable(p, this.horde, this.targets);
+    let best: ServiceKind | null = null;
+    let bestD = repair === null ? Infinity : dist(p, DISTRICT.targets.find((t) => t.id === repair)!.door);
+    for (const kind of SERVICE_KINDS) {
+      const d = dist(p, DISTRICT.targets.find((t) => t.id === BOOTH_OF[kind])!.door);
+      // strictly nearer by more than a rounding error: equal distances keep the earlier candidate
+      if (d <= CONFIG.services.callRange && d < bestD - 1e-9) {
+        best = kind;
+        bestD = d;
+      }
+    }
+    if (best !== null) return { kind: 'booth', service: best };
+    return repair === null ? null : { kind: 'repair', target: repair };
+  }
+
+  /**
+   * A fresh Agir press (agirChoice): a booth that wins makes the call (ServiceCalled, or ServiceRefused with the
+   * reason) and returns its kind; null leaves the press to the toolbox.
+   */
+  private agirAtBooth(ev: SimEvent[]): ServiceKind | null {
+    const choice = this.agirChoice();
+    if (choice?.kind !== 'booth') return null;
+    const best = choice.service;
+    const r = this.services.tryCall(best, this.callCtx(best));
+    if (r.ok) {
+      ev.push({ type: 'ServiceCalled', kind: best });
+      ev.push(...this.allies.call(best, this.now));
+      this.syncServices();
+    } else ev.push({ type: 'ServiceRefused', kind: best, reason: r.reason });
+    return best;
+  }
+
+  /** Services.active follows the allies: a truck / a police group on the map makes a new call of that kind 'busy'. */
+  private syncServices(): void {
+    for (const kind of SERVICE_KINDS) this.services.active[kind] = this.allies.onMap(kind);
+  }
+
+  /**
+   * An officer's baton blow from `from`: a weapon hit (KO but for a brute or the Caïd, damageOn; a prison guard's is a
+   * bare-hands hit, `source` 'hands', so guards alone do not make the prison untouchable), the KO scored +1 by
+   * Rules like any (a Caïd's bonus too), falling away from the officer; it never fills the energy gauge.
+   */
+  private policeStrike(lifeId: number, from: Vec, ev: SimEvent[], source: DamageSource = 'weapon'): void {
+    const h = this.horde.list.find((x) => x.lifeId === lifeId);
+    if (!h || h.state === 'ko') return;
+    const away = sub(h.pos, from);
+    this.hit(lifeId, this.damageTo(lifeId, source), ev, 'baton', undefined, len(away) > 1e-6 ? norm(away) : undefined, false);
   }
 
   private monumentView(): Snapshot['monument'] {
@@ -836,11 +995,11 @@ export class Sim {
    * (no chain refills). A WTF 'domino' then knocks its neighbours down (dominoVictims) through this same path, as
    * 'knocked' (which never chains); none: 'faceplant'. True on a KO.
    */
-  private hit(lifeId: number, dmg: number, ev: SimEvent[], source: FallSource, along?: Vec, dir?: Vec): boolean {
+  private hit(lifeId: number, dmg: number, ev: SimEvent[], source: FallSource, along?: Vec, dir?: Vec, energy = true): boolean {
     if (this.horde.applyHit(lifeId, dmg) !== 'ko') return false;
     const h = this.horde.list.find((x) => x.lifeId === lifeId);
     const counted = this.rules.onKnockout(lifeId, h?.pos);
-    if (counted && h && !this.weapons.furie() && source !== 'beam') ev.push(...this.energy.gain(h.role));
+    if (counted && h && energy && !this.weapons.furie() && source !== 'beam') ev.push(...this.energy.gain(h.role));
     if (h?.role === 'boss') this.caidDown(h, ev);
     const launched = source === 'furie' || source === 'gant' || source === 'beam';
     const launch = h && launched ? this.launch(h.pos, along, source === 'gant') : undefined;
@@ -852,7 +1011,7 @@ export class Sim {
     ev.push(launch ? { type: 'ActorKnockedOut', lifeId, launch, fall } : { type: 'ActorKnockedOut', lifeId, fall });
     if (victims.length > 0) {
       ev.push({ type: 'DominoTriggered', from: v(h!.pos), lifeIds: victims.map((x) => x.lifeId) });
-      for (const x of victims) this.hit(x.lifeId, KO_DAMAGE, ev, 'knocked', undefined, fall.dir);
+      for (const x of victims) this.hit(x.lifeId, KO_DAMAGE, ev, 'knocked', undefined, fall.dir, energy);
     }
     return true;
   }
@@ -905,7 +1064,8 @@ export class Sim {
   /**
    * « Le Caïd » KO'd (once per life): +CONFIG.caid.bonus with the occurrence key `caid#<round>` at his position (the
    * KO's +1 is scored as for anyone), and CONFIG.caid.dropShare of the time a regular weapon dropped where he fell
-   * (WeaponSpawned, no indicator; none while a weapon lies within CONFIG.weapons.clearRadius px of Paul).
+   * (WeaponSpawned, no indicator; none while a weapon lies within CONFIG.weapons.clearRadius px of Paul); jailed while
+   * the prison stands (CaidJailed).
    */
   private caidDown(h: Hostile, ev: SimEvent[]): void {
     if (this.caidsDown.has(h.lifeId)) return;
@@ -913,6 +1073,8 @@ export class Sim {
     this.rules.award(`caid#${h.round ?? this.director.round}`, CONFIG.caid.bonus, h.pos);
     const w = this.weapons.dropAt(h.pos, this.player.pos);
     if (w) ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: v(w.pos) });
+    // the jail van takes him to the prison, while it stands
+    ev.push(...this.prison.jail(h, this.targets));
   }
 
   /** Hostile facing = along its aim line while a shooter aims or fires, else last movement direction, else toward Paul. */
