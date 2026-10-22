@@ -539,6 +539,64 @@ export class StationsView {
   }
 }
 
+/** A field heal blinks during its last seconds on the ground (faster in the very last one), like the special drops. */
+const FIELD_HEAL_BLINK_SEC = 3;
+
+/**
+ * Small field heals: the station's heal kit at a smaller size, bobbing over a green glow, with a « +10 » tag; it
+ * blinks during its last FIELD_HEAL_BLINK_SEC s on the ground.
+ */
+export class FieldHealView {
+  private readonly items = new Map<
+    number,
+    { icon: Phaser.GameObjects.Image; tag: Phaser.GameObjects.Text; glow: Phaser.GameObjects.Ellipse }
+  >();
+
+  constructor(private readonly scene: Phaser.Scene) {}
+
+  update(list: Snapshot['fieldHeals'], nowMs: number, simNow: number): void {
+    const seen = new Set<number>();
+    for (const h of list) {
+      seen.add(h.id);
+      let it = this.items.get(h.id);
+      if (!it) {
+        const glow = this.scene.add.ellipse(h.pos.x, h.pos.y + 6, 20, 8, 0x5ee07a, 0.3).setDepth(h.pos.y - 1);
+        const icon = this.scene.add.image(h.pos.x, h.pos.y, 'station').setScale(0.625).setDepth(h.pos.y);
+        const tag = this.scene.add
+          .text(h.pos.x, h.pos.y - 10, `+${CONFIG.fieldHeal.amount}`, {
+            fontFamily: 'monospace',
+            fontSize: '8px',
+            color: '#7bd88f',
+            stroke: '#14121c',
+            strokeThickness: 2,
+          })
+          .setOrigin(0.5, 1)
+          .setDepth(h.pos.y + 0.1);
+        it = { icon, tag, glow };
+        this.items.set(h.id, it);
+      }
+      const phase = nowMs / 1000 + h.id;
+      const bob = Math.round(2 * Math.sin(phase * 3));
+      const pulse = 0.5 + 0.5 * Math.sin(phase * 4);
+      it.icon.setY(h.pos.y - 2 - bob);
+      it.tag.setY(h.pos.y - 10 - bob);
+      it.glow.setAlpha(0.15 + 0.3 * pulse);
+      const left = h.expiresAt - simNow;
+      const off = left < FIELD_HEAL_BLINK_SEC && Math.floor(nowMs / (left < 1 ? 70 : 140)) % 2 === 0;
+      it.icon.setAlpha(off ? 0.2 : 1);
+      it.tag.setAlpha(off ? 0.2 : 1);
+      if (off) it.glow.setAlpha(0.05);
+    }
+    for (const [id, it] of this.items) {
+      if (seen.has(id)) continue;
+      it.icon.destroy();
+      it.tag.destroy();
+      it.glow.destroy();
+      this.items.delete(id);
+    }
+  }
+}
+
 const TOOLBOX_POP_MS = 250;
 /** Repair ring around Paul's body (radius, centre height above his feet). */
 const RING_R = 20;

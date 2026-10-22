@@ -18,11 +18,12 @@ import { GroupView, VictimView } from '../render/crowd';
 import { FirePatchLayer, MolotovFx, RockLayer, TelegraphLayer } from '../render/fx';
 import { MonumentView, makeMonumentTextures } from '../render/monument';
 import { TargetsLayer, makeTargetTextures } from '../render/targets';
-import { StationsView, ToolboxView, WorldView, makeRockTextures, makeTextures } from '../render/world';
+import { FieldHealView, StationsView, ToolboxView, WorldView, makeRockTextures, makeTextures } from '../render/world';
 import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapons';
 import { ItemLayer, makeItemTextures } from '../render/items';
 import { BubbleView, SpecialFx, makeSpecialTextures } from '../render/specials';
 import { ScorePopups } from '../render/scorePopups';
+import { POPUP_GAIN } from '../render/scorePopupMath';
 import { BulletLayer, GloveFx } from '../render/guns';
 import { SHAKE_BIG, dominoWord, hitShake, hitStopMs, hitWordKind, koShake, koWordKind, pickWord, type Shake } from '../render/fallMath';
 
@@ -68,6 +69,7 @@ export class WorldScene extends Phaser.Scene {
   private firebombFx!: MolotovFx;
   private firePatches!: FirePatchLayer;
   private stations!: StationsView;
+  private fieldHeals!: FieldHealView;
   private group!: GroupView;
   private victim!: VictimView;
   private items!: ItemLayer;
@@ -200,6 +202,7 @@ export class WorldScene extends Phaser.Scene {
     this.targetViews = new TargetsLayer(this, this.world.buildingParts);
     this.monument = new MonumentView(this);
     this.stations = new StationsView(this);
+    this.fieldHeals = new FieldHealView(this);
     this.group = new GroupView(this);
     this.victim = new VictimView(this);
     this.items = new ItemLayer(this);
@@ -373,6 +376,8 @@ export class WorldScene extends Phaser.Scene {
       } else if (e.type === 'GlovePunched') {
         this.glove.punch(e.from, e.to, time);
         if (e.lifeId !== null) this.pows.spawn(e.to.x, e.to.y, time, pickWord('glove', Math.random()));
+      } else if (e.type === 'SmallHealPicked') {
+        this.scorePopups.spawnLabel(`+${e.amount} PV`, POPUP_GAIN, snap.player.pos, time);
       } else if (e.type === 'ToolboxPickedUp') {
         this.toolboxes.picked(time);
       } else if (e.type === 'FlagCaptured') {
@@ -414,6 +419,7 @@ export class WorldScene extends Phaser.Scene {
     this.firebombFx.update(snap.firebombs, snap.now, time);
     this.toolboxes.update(snap.toolboxes, snap.player, time);
     this.stations.update(snap.stations, time);
+    this.fieldHeals.update(snap.fieldHeals, time, snap.now);
     this.world.update(snap.player.pos);
   }
 }
