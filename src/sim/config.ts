@@ -89,9 +89,10 @@ export const CONFIG = {
    * Energy gauge (« mana », 0..`max`): every rioter KO counted by Rules fills it by `gain` (`boss` for Le Caïd, `brute`
    * for a brute, `rioter` for anyone else), except while the mode furie is on and for the onde d’énergie's own KOs. It
    * is kept across rounds (a new session starts at 0) and never decays. Full (`furieCost` = `max`): Furie (R) spends it
-   * all on the mode furie. At `ondeCost` or more: Onde (C held) charges the beam, which spends `ondeCost` when it fires.
+   * all on the mode furie. At `ondeCost` or more: an Onde press (a C tap) starts the beam's charge, which spends
+   * `ondeCost` only when it fires.
    */
-  energy: { max: 100, ondeCost: 50, furieCost: 100, gain: { rioter: 4, brute: 8, boss: 20 } },
+  energy: { max: 100, ondeCost: 50, furieCost: 100, gain: { rioter: 6, brute: 10, boss: 25 } },
   /**
    * Mode furie (from a full energy gauge): lasts `durationSec`. While active Paul moves `speedMul` faster, strikes
    * `reachMul` farther at up to `maxTargets` rioters, every strike KOs (`damage`) without using the weapon, and he
@@ -99,7 +100,7 @@ export const CONFIG = {
    * `launchSpin` turns, direction away from Paul ± `launchJitter` rad.
    */
   furie: {
-    durationSec: 12,
+    durationSec: 18,
     speedMul: 1.35,
     reachMul: 1.5,
     maxTargets: 8,
@@ -125,12 +126,13 @@ export const CONFIG = {
     spawnShare: 1 / 6,
   },
   /**
-   * Kamehame (« Onde d’énergie », from the energy gauge): holding Onde charges `chargeSec` (Paul cannot move), then a
-   * beam `length` px long KOs every active rioter within `halfWidth` + its radius of the line, which stops at the first
-   * solid (buildings, props, trunks, plinth, the peaceful group).
+   * Kamehame (« Onde d’énergie », from the energy gauge): one Onde press (a C tap, the key need not stay down) starts a
+   * charge of `chargeSec` that completes on its own (Paul cannot move; only his KO or a mode furie started cancels it,
+   * damage does not), then a beam `length` px long KOs every active rioter within `halfWidth` + its radius of the line,
+   * which stops at the first solid (buildings, props, trunks, plinth, the peaceful group).
    */
   kamehame: {
-    chargeSec: 1,
+    chargeSec: 0.7,
     length: 320,
     halfWidth: 16,
     /**

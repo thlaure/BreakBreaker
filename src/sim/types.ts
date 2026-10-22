@@ -45,14 +45,17 @@ export interface Fall {
 /**
  * strike/throwRock/furie are edge-triggered presses; act and chargeHeld are held. The Sim only acts on the rising edge
  * of `act` (a fresh press of Agir) and of `chargeHeld`; the input layer latches a tap of either so it lasts one read
- * (a C tap starts a charge that the next step cancels at no cost, or is refused under the onde cost).
+ * (a C tap starts a charge that then completes on its own, or is refused under the onde cost).
  */
 export interface InputFrame {
   move: Vec;
   aim: Vec | null;
   run: boolean;
   strike: boolean;
-  /** Onde held down (C / touch Onde): charges the onde d’énergie from the energy gauge (CONFIG.energy.ondeCost). */
+  /**
+   * Onde down (C / touch Onde): its rising edge starts the onde d’énergie's charge from the energy gauge
+   * (CONFIG.energy.ondeCost); holding it longer changes nothing.
+   */
   chargeHeld: boolean;
   throwRock: boolean;
   act: boolean;
@@ -201,7 +204,7 @@ export type SimEvent =
   | { type: 'BeamCharging' }
   /** The onde d’énergie fired from `from` to `to` (truncated at the first solid), knocked out `kos` rioters, cost paid. */
   | { type: 'BeamFired'; from: Vec; to: Vec; kos: number }
-  /** The charge stopped before firing (released, damage, a mode furie started, KO): no energy spent. */
+  /** The charge stopped before firing (a mode furie started, or Paul KO): no energy spent. */
   | { type: 'BeamCancelled' }
   /** The energy gauge just rose to a threshold: the onde d’énergie (`onde`) or the mode furie (`furie`) is available. */
   | { type: 'EnergyReady'; level: EnergyLevel }

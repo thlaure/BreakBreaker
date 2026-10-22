@@ -23,7 +23,8 @@ function pickFurie(sim: Sim): SimEvent[] {
 }
 
 describe('mode furie from the energy gauge', () => {
-  test('Furie with a full gauge activates the mode for 12 s and keeps the held weapon', () => {
+  test('Furie with a full gauge activates the mode for 18 s and keeps the held weapon', () => {
+    expect(CONFIG.furie.durationSec).toBe(18);
     const sim = new Sim(5);
     sim.weapons.held = { kind: 'baton', uses: 7 };
     const ev = pickFurie(sim);
@@ -35,7 +36,7 @@ describe('mode furie from the energy gauge', () => {
     expect(s.weapon).toEqual({ kind: 'baton', uses: 7 });
   });
 
-  test('the timer runs out after 12 s (FurieEnded)', () => {
+  test('the timer runs out after 18 s (FurieEnded)', () => {
     const sim = new Sim(5);
     const all: SimEvent[] = [...pickFurie(sim)];
     for (let i = 0; i < STEPS(6); i++) all.push(...sim.step(IDLE));

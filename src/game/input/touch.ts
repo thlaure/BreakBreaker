@@ -20,8 +20,9 @@ interface Tracked {
 
 /**
  * Touch controls over the HTML in `root` (#touch-ui): `[data-zone=stick]` (dynamic-origin joystick),
- * `[data-action=strike|throw|act|furie|onde|pause]` buttons. Each control tracks its own pointerId. Onde is held (charges
- * the onde d’énergie); Furie is a press.
+ * `[data-action=strike|throw|act|furie|onde|pause]` buttons. Each control tracks its own pointerId. Onde and Furie are
+ * presses: one tap of Onde starts the onde d’énergie's charge, which completes on its own (the button need not stay
+ * down; `chargeHeld` still reports it so the sim can see the rising edge).
  */
 export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSource {
   const q = (s: string): HTMLElement | null => root.querySelector<HTMLElement>(s);
@@ -31,7 +32,7 @@ export function createTouch(root: HTMLElement, opts: TouchOptions = {}): InputSo
 
   let stick: Tracked | null = null;
   let actId: number | null = null;
-  /** Pointer holding Onde (charges the onde d'énergie). */
+  /** Pointer on Onde (only its press matters: it starts the onde d'énergie's charge). */
   let ondeId: number | null = null;
   /** Onde went down since the last read: a tap shorter than one sim step still reads `chargeHeld` once. */
   let ondeTap = false;
