@@ -237,7 +237,7 @@ describe('Le Caïd: he hits harder', () => {
 describe('Le Caïd: rewards, closing and determinism', () => {
   test('KO bonus +5 and energy +20 unchanged', () => {
     expect(CONFIG.caid.bonus).toBe(5);
-    expect(CONFIG.energy.gain.boss).toBe(20);
+    expect(CONFIG.energy.gain.boss).toBe(25);
   });
 
   test('sessions with the tougher Caïd: K === T at every round end, deterministic', () => {

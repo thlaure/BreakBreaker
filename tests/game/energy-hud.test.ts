@@ -27,20 +27,23 @@ afterEach(() => {
 });
 
 describe('energyView (HUD « ÉNERGIE » row)', () => {
-  test('low: no tag; onde from 50 (« ONDE · C »); full: « FURIE · R »; touch names the buttons', () => {
+  test('low: no tag; onde from 50 (« C · Onde »: the key first); full: « R · Furie »; touch names the buttons', () => {
     expect(energyView(withEnergy(0))).toEqual({ pct: 0, state: 'low', tag: '', aria: 'Énergie 0 sur 100' });
-    expect(energyView(withEnergy(36))).toMatchObject({ pct: 36, state: 'low', tag: '' });
-    expect(energyView(withEnergy(50))).toMatchObject({ pct: 50, state: 'onde', tag: 'ONDE · C' });
-    expect(energyView(withEnergy(50)).aria).toBe('Énergie 50 sur 100, onde d’énergie disponible (maintenir C)');
-    expect(energyView(withEnergy(100))).toMatchObject({ pct: 100, state: 'furie', tag: 'FURIE · R' });
+    expect(energyView(withEnergy(49))).toMatchObject({ pct: 49, state: 'low', tag: '' });
+    expect(energyView(withEnergy(50))).toMatchObject({ pct: 50, state: 'onde', tag: 'C · Onde' });
+    expect(energyView(withEnergy(99))).toMatchObject({ state: 'onde', tag: 'C · Onde' });
+    expect(energyView(withEnergy(50)).aria).toBe('Énergie 50 sur 100, onde d’énergie disponible (appuyer sur C)');
+    expect(energyView(withEnergy(50), true).aria).toContain('bouton Onde');
+    expect(energyView(withEnergy(100))).toMatchObject({ pct: 100, state: 'furie', tag: 'R · Furie' });
     expect(energyView(withEnergy(100), true)).toMatchObject({ tag: 'FURIE !' });
     expect(energyView(withEnergy(64), true)).toMatchObject({ tag: 'ONDE !' });
     expect(energyView(withEnergy(100), true).aria).toContain('bouton Furie');
   });
 
-  test('mode furie on: the bar shows the time left (drains over 12 s), tag « EN FURIE »', () => {
+  test('mode furie on: the bar shows the time left (drains over 18 s), tag « EN FURIE »', () => {
     expect(energyView(withEnergy(0, CONFIG.furie.durationSec))).toMatchObject({ pct: 100, state: 'active', tag: 'EN FURIE' });
-    expect(energyView(withEnergy(0, 3)).pct).toBeCloseTo(25, 6);
+    expect(energyView(withEnergy(0, 9)).pct).toBeCloseTo(50, 6);
+    expect(energyView(withEnergy(0, 4.5)).pct).toBeCloseTo(25, 6);
   });
 });
 
@@ -51,7 +54,7 @@ describe('world energy bar under Paul’s health bar', () => {
     expect(energyBar(withEnergy(25))).toEqual({ fill: Math.round(inner / 4), color: ENERGY_CYAN });
     expect(energyBar(withEnergy(50)).fill).toBe(Math.round(inner / 2));
     expect(energyBar(withEnergy(100))).toEqual({ fill: inner, color: ENERGY_GOLD });
-    expect(energyBar(withEnergy(0, 6))).toEqual({ fill: Math.round(inner / 2), color: ENERGY_GOLD });
+    expect(energyBar(withEnergy(0, 9))).toEqual({ fill: Math.round(inner / 2), color: ENERGY_GOLD });
   });
 });
 
@@ -79,12 +82,12 @@ describe('Hud ÉNERGIE row, refusal hint and touch buttons', () => {
     hud.update(withEnergy(56), view);
     expect(r.querySelector('.ebar')!.classList.contains('pop')).toBe(true);
     expect(r.classList.contains('st-onde')).toBe(true);
-    expect(r.querySelector('.etag')!.textContent).toBe('ONDE · C');
+    expect(r.querySelector('.etag')!.textContent).toBe('C · Onde');
     hud.update(withEnergy(100), view);
     expect(r.classList.contains('st-furie')).toBe(true);
-    expect(r.querySelector('.etag')!.textContent).toBe('FURIE · R');
+    expect(r.querySelector('.etag')!.textContent).toBe('R · Furie');
     expect(r.getAttribute('aria-label')).toContain('mode furie disponible');
-    hud.update(withEnergy(0, 6), view);
+    hud.update(withEnergy(0, 9), view);
     expect(r.classList.contains('st-active')).toBe(true);
     expect(r.querySelector<HTMLElement>('.efill')!.style.width).toBe('50%');
     hud.destroy();
@@ -133,7 +136,7 @@ describe('Hud ÉNERGIE row, refusal hint and touch buttons', () => {
     expect(row(hud).classList.contains('st-onde')).toBe(true);
     sim.energy.value = 100;
     hud.update(sim.snapshot(), view);
-    expect(row(hud).querySelector('.etag')!.textContent).toBe('FURIE · R');
+    expect(row(hud).querySelector('.etag')!.textContent).toBe('R · Furie');
     const ev = sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: true });
     hud.onEvents(ev);
     hud.update(sim.snapshot(), view);

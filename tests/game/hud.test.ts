@@ -354,22 +354,23 @@ describe('content', () => {
     expect(RULES.length).toBeGreaterThanOrEqual(4);
     expect(RULES.length).toBeLessThanOrEqual(7);
     const energy = RULES.find((r) => r.includes('jauge d’énergie'))!;
-    // every KO fills the gauge; half of it charges the onde (C held), a full one starts the mode furie (R)
+    // every KO fills the gauge; half of it lets a C tap charge the onde (0.7 s), a full one starts the mode furie (R, 18 s)
     expect(energy).toMatch(/Chaque casseur mis KO remplit la jauge d’énergie/);
-    expect(energy).toMatch(/maintiens C pour charger l’onde d’énergie 1 s/);
-    expect(energy).toMatch(/appuie sur R pour le mode furie/);
+    expect(energy).toMatch(/appuie sur C : l’onde d’énergie se charge 0,7 s/);
+    expect(energy).toMatch(/appuie sur R pour le mode furie \(18 s\)/);
+    expect(energy).not.toMatch(/maintiens/);
     expect(RULES.some((r) => /bouclier peut apparaître \(20 s\)/.test(r))).toBe(true);
     expect(RULES.some((r) => /repousse/.test(r))).toBe(false);
     for (const r of RULES) expect(r).not.toMatch(/saiyan|éclair jaune|ramasse.*(furie|onde)/i);
     expect(CONTROLS).toContainEqual({ action: 'Mode furie', keyboard: 'R (jauge pleine)', touch: 'Bouton Furie' });
-    expect(CONTROLS).toContainEqual({ action: 'Onde d’énergie', keyboard: 'Maintenir C (jauge à moitié)', touch: 'Maintenir le bouton Onde' });
+    expect(CONTROLS).toContainEqual({ action: 'Onde d’énergie', keyboard: 'C (jauge à moitié)', touch: 'Bouton Onde' });
     expect(CONTROLS.some((c) => c.action === 'Pause' && c.keyboard === 'Échap')).toBe(true);
   });
 
   test('F / Agir repairs or puts out a fire with a toolbox (a press, never held); rescuing needs no key', () => {
     expect(CONTROLS).toContainEqual({ action: 'Réparer / éteindre (caisse à outils)', keyboard: 'F', touch: 'Bouton Agir (près d’un lieu à réparer)' });
-    // only the onde d’énergie is held (C); nothing else, and never to help or repair
-    expect(CONTROLS.some((c) => /aider/i.test(c.action) || (/maintenir/i.test(c.keyboard) && c.action !== 'Onde d’énergie'))).toBe(false);
+    // nothing is held any more (the onde d’énergie is a C tap too), and never to help or repair
+    expect(CONTROLS.some((c) => /aider/i.test(c.action) || /maintenir/i.test(c.keyboard) || /maintenir/i.test(c.touch))).toBe(false);
     for (const r of RULES) expect(r).not.toMatch(/maintenir|reste à côté/);
     expect(RULES.some((r) => r.includes('passe sur une caisse à outils, va près du lieu en ruine ou en feu et appuie sur F'))).toBe(true);
   });
@@ -527,8 +528,8 @@ describe('mode furie HUD and audio', () => {
     sim.energy.value = 100;
     sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: true });
     const s = sim.snapshot();
-    expect(s.furie!.secondsLeft).toBeCloseTo(12 - 1 / 60, 6);
-    expect(weaponLine(s)).toBe('Arme : Panneau (3) · Mode furie 12 s');
+    expect(s.furie!.secondsLeft).toBeCloseTo(18 - 1 / 60, 6);
+    expect(weaponLine(s)).toBe('Arme : Panneau (3) · Mode furie 18 s');
   });
 
   test('power-up sweep and hum on FurieStarted, hum stopped and power-down on FurieEnded; reset stops the hum', async () => {

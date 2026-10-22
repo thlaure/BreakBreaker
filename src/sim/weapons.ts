@@ -56,7 +56,10 @@ export interface GroundWeapon {
   id: number;
   kind: PickupKind;
   pos: Vec;
-  /** Sim time at which an unclaimed special drop vanishes; null for the timed street spawns. */
+  /**
+   * Sim time at which the unclaimed weapon vanishes (CONFIG.weapons.dropLifetime for the special drops,
+   * groundLifetime for the street spawns and the first shooter's flashball); null = never (only hand-placed ones).
+   */
   expiresAt: number | null;
 }
 
@@ -73,7 +76,8 @@ export function heldOf(kind: HeldKind): HeldWeapon {
 
 /**
  * Random weapon pickups. A weapon appears every CONFIG.weapons.spawnEvery seconds (random within the range) on a
- * free spot away from Paul, up to maxGround at once and never while one lies within clearRadius px of Paul. Walking over one takes it (replacing the current weapon).
+ * free spot away from Paul, up to maxGround at once and never while one lies within clearRadius px of Paul; nobody takes
+ * it within CONFIG.weapons.groundLifetime s and it vanishes (freeing the cap). Walking over one takes it (replacing the current weapon).
  * A strike that hits at least one rioter uses one strike; at 0 the weapon breaks and Paul fights bare-handed.
  * The mode furie (`startFurie`, from the energy gauge) does not touch the weapon: it lasts CONFIG.furie.durationSec;
  * the timer runs with the sim steps (frozen while paused) and `endFurie` cuts it short (Paul KO).
@@ -175,7 +179,7 @@ export class Weapons {
         const pos = this.freeSpot(player.pos);
         if (pos) {
           const kind = this.timedKind(this.rand(), round);
-          const w = { id: this.nextId++, kind, pos, expiresAt: null };
+          const w = { id: this.nextId++, kind, pos, expiresAt: now + CONFIG.weapons.groundLifetime };
           this.ground.push(w);
           ev.push({ type: 'WeaponSpawned', kind, pos: { ...pos } });
         }
@@ -250,12 +254,12 @@ export class Weapons {
 
   /**
    * A weapon of `kind` dropped `min`–`max` px from Paul (the flashball of the first shooter), outside the timer and the
-   * ground cap; it never expires. Null when no free spot was found.
+   * ground cap; it vanishes after CONFIG.weapons.groundLifetime s like the street spawns. Null when no free spot was found.
    */
   dropNear(player: Vec, kind: PickupKind, min: number, max: number): GroundWeapon | null {
     const pos = this.freeSpot(player, min, max);
     if (!pos) return null;
-    const w: GroundWeapon = { id: this.nextId++, kind, pos, expiresAt: null };
+    const w: GroundWeapon = { id: this.nextId++, kind, pos, expiresAt: this.now + CONFIG.weapons.groundLifetime };
     this.ground.push(w);
     return w;
   }

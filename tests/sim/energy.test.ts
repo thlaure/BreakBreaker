@@ -30,21 +30,22 @@ function strikeKo(sim: Sim, role: Role = 'contact'): SimEvent[] {
   return ev;
 }
 
-/** Charges the onde from a standing start (C pressed then held) until it fires or `sec` s pass. */
+/** One tap of C (pressed for one step, then released), then `sec` s of idle steps: the charge runs on its own. */
 function charge(sim: Sim, sec: number): SimEvent[] {
   const all: SimEvent[] = [];
   all.push(...sim.step(input({ chargeHeld: true })));
-  for (let i = 0; i < STEPS(sec); i++) all.push(...sim.step(input({ chargeHeld: true })));
+  for (let i = 0; i < STEPS(sec); i++) all.push(...sim.step(IDLE));
   return all;
 }
 
 describe('energy gauge: filling', () => {
-  test('gain per role: +4 a rioter, +8 a brute, +20 Le Caïd', () => {
-    expect(energyGain('contact')).toBe(4);
-    expect(energyGain('runner')).toBe(4);
-    expect(energyGain('thrower')).toBe(4);
-    expect(energyGain('brute')).toBe(8);
-    expect(energyGain('boss')).toBe(20);
+  test('gain per role: +6 a rioter, +10 a brute, +25 Le Caïd', () => {
+    expect(CONFIG.energy.gain).toEqual({ rioter: 6, brute: 10, boss: 25 });
+    expect(energyGain('contact')).toBe(6);
+    expect(energyGain('runner')).toBe(6);
+    expect(energyGain('thrower')).toBe(6);
+    expect(energyGain('brute')).toBe(10);
+    expect(energyGain('boss')).toBe(25);
   });
 
   test('a new session starts empty; the snapshot shows the gauge and its ready flags', () => {
@@ -52,15 +53,15 @@ describe('energy gauge: filling', () => {
     expect(s.energy).toEqual({ value: 0, max: 100, ready: { onde: false, furie: false } });
   });
 
-  test('a melee KO fills +4; a brute +8; Le Caïd +20 (with a weapon hit counted once)', () => {
+  test('a melee KO fills +6; a brute +10; Le Caïd +25 (with a weapon hit counted once)', () => {
     const sim = new Sim(5);
     strikeKo(sim);
-    expect(sim.energy.value).toBe(4);
+    expect(sim.energy.value).toBe(6);
     strikeKo(sim, 'brute');
-    expect(sim.energy.value).toBe(12);
+    expect(sim.energy.value).toBe(16);
     strikeKo(sim, 'boss');
-    expect(sim.energy.value).toBe(32);
-    expect(sim.snapshot().energy.value).toBe(32);
+    expect(sim.energy.value).toBe(41);
+    expect(sim.snapshot().energy.value).toBe(41);
   });
 
   test('a bare-handed KO and a returned rock KO fill it too', () => {
@@ -70,7 +71,7 @@ describe('energy gauge: filling', () => {
     h.hp = 1;
     sim.step(input({ strike: true }));
     expect(h.state).toBe('ko');
-    expect(sim.energy.value).toBe(4);
+    expect(sim.energy.value).toBe(6);
 
     const rock = new Sim(5);
     const q = rock.player.pos;
@@ -80,7 +81,7 @@ describe('energy gauge: filling', () => {
     rock.step(input({ throwRock: true, aim: { x: 1, y: 0 } }));
     for (let i = 0; i < 30; i++) rock.step(IDLE);
     expect(r.state).toBe('ko');
-    expect(rock.energy.value).toBe(4);
+    expect(rock.energy.value).toBe(6);
   });
 
   test('a melee hit that does not KO gives nothing', () => {
@@ -112,20 +113,20 @@ describe('energy gauge: filling', () => {
 
   test('EnergyReady once per threshold crossing: onde at 50, furie at 100', () => {
     const sim = new Sim(5);
-    sim.energy.value = 44;
+    sim.energy.value = 40;
     expect(of(strikeKo(sim), 'EnergyReady')).toEqual([]);
-    expect(sim.energy.value).toBe(48);
+    expect(sim.energy.value).toBe(46);
     expect(of(strikeKo(sim), 'EnergyReady')).toEqual([{ type: 'EnergyReady', level: 'onde' }]);
     expect(sim.snapshot().energy.ready).toEqual({ onde: true, furie: false });
     expect(of(strikeKo(sim), 'EnergyReady')).toEqual([]);
-    sim.energy.value = 96;
+    sim.energy.value = 95;
     expect(of(strikeKo(sim), 'EnergyReady')).toEqual([{ type: 'EnergyReady', level: 'furie' }]);
     expect(sim.snapshot().energy.ready).toEqual({ onde: true, furie: true });
     // already full: nothing more
     expect(of(strikeKo(sim), 'EnergyReady')).toEqual([]);
-    // a Caïd KO from 40 crosses 50 once; from 90 it fills the gauge (capped) and announces the furie only
+    // a Caïd KO from 30 crosses 50 once; from 90 it fills the gauge (capped) and announces the furie only
     const e = new Energy();
-    e.value = 40;
+    e.value = 30;
     expect(e.gain('boss')).toEqual([{ type: 'EnergyReady', level: 'onde' }]);
     e.value = 90;
     expect(e.gain('boss')).toEqual([{ type: 'EnergyReady', level: 'furie' }]);
@@ -137,11 +138,11 @@ describe('energy gauge: filling', () => {
     e.value = 48;
     expect(e.gain('contact')).toHaveLength(1);
     expect(e.spend(CONFIG.energy.ondeCost)).toBe(true);
-    expect(e.value).toBe(2);
+    expect(e.value).toBe(4);
     e.value = 48;
     expect(e.gain('contact')).toEqual([{ type: 'EnergyReady', level: 'onde' }]);
     expect(e.spend(80)).toBe(false);
-    expect(e.value).toBe(52);
+    expect(e.value).toBe(54);
   });
 
   test('kept across rounds; a new session (Rejouer) starts at 0', () => {
@@ -218,8 +219,9 @@ describe('energy gauge: Furie (R)', () => {
     const sim = new Sim(5);
     sim.energy.value = 100;
     sim.step(input({ chargeHeld: true }));
+    sim.step(IDLE);
     expect(sim.snapshot().charge).not.toBeNull();
-    const ev = sim.step(input({ chargeHeld: true, furie: true }));
+    const ev = sim.step(input({ furie: true }));
     expect(of(ev, 'BeamCancelled')).toHaveLength(1);
     expect(of(ev, 'FurieStarted')).toHaveLength(1);
     expect(sim.snapshot().charge).toBeNull();
@@ -235,11 +237,11 @@ describe('energy gauge: Furie (R)', () => {
     for (let i = 0; i < STEPS(CONFIG.furie.durationSec) + 2; i++) sim.step(IDLE);
     expect(sim.snapshot().furie).toBeNull();
     strikeKo(sim);
-    expect(sim.energy.value).toBe(4);
+    expect(sim.energy.value).toBe(6);
   });
 });
 
-describe('energy gauge: Onde (C held)', () => {
+describe('energy gauge: Onde (a C tap)', () => {
   test('below 50: refused (EnergyRefused need 50), no charge; a strike still swings', () => {
     const sim = new Sim(5);
     sim.energy.value = 48;
@@ -255,28 +257,30 @@ describe('energy gauge: Onde (C held)', () => {
     expect(of(sim.step(input({ chargeHeld: true })), 'EnergyRefused')).toEqual([]);
   });
 
-  test('released before 1 s: cancelled, nothing spent', () => {
+  test('a tap: released at once, the charge is not cancelled; nothing is spent before the beam fires', () => {
     const sim = new Sim(5);
     sim.energy.value = 60;
-    const all = charge(sim, 0.9);
-    all.push(...sim.step(IDLE));
+    const all = charge(sim, CONFIG.kamehame.chargeSec - 0.1);
     expect(of(all, 'BeamCharging')).toHaveLength(1);
-    expect(of(all, 'BeamCancelled')).toHaveLength(1);
+    expect(of(all, 'BeamCancelled')).toEqual([]);
     expect(of(all, 'BeamFired')).toEqual([]);
     expect(sim.energy.value).toBe(60);
+    for (let i = 0; i < STEPS(0.1); i++) all.push(...sim.step(IDLE));
+    expect(of(all, 'BeamFired')).toHaveLength(1);
+    expect(sim.energy.value).toBe(10);
   });
 
-  test('fires at 1 s and spends 50; its own KOs give no energy', () => {
+  test('fires at 0.7 s and spends 50; its own KOs give no energy', () => {
     const sim = new Sim(5);
     sim.energy.value = 70;
     sim.player.facing = { x: 1, y: 0 };
     const p = { ...sim.player.pos };
     const all: SimEvent[] = [];
     all.push(...sim.step(input({ chargeHeld: true })));
-    for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec) - 1; i++) all.push(...sim.step(input({ chargeHeld: true })));
+    for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec) - 1; i++) all.push(...sim.step(IDLE));
     expect(sim.energy.value).toBe(70);
     const line = [60, 120].map((dx) => calm(sim, { x: p.x + dx, y: p.y }));
-    all.push(...sim.step(input({ chargeHeld: true })));
+    all.push(...sim.step(IDLE));
     expect(of(all, 'BeamFired')).toHaveLength(1);
     for (const h of line) expect(h.state).toBe('ko');
     expect(sim.rules.kos).toBe(2);
@@ -324,7 +328,7 @@ describe('energy gauge: Onde (C held)', () => {
       return { out, v: sim.energy.value };
     };
     const a = run();
-    expect(a.v).toBe(14 * 4 - 50);
+    expect(a.v).toBe(14 * 6 - 50);
     expect(run()).toEqual(a);
   });
 });

@@ -157,7 +157,7 @@ describe('keyboard', () => {
   });
 });
 
-describe('energy activations: Onde held (charge) and Furie (press)', () => {
+describe('energy activations: Onde (a press starts the charge) and Furie (press)', () => {
   test('C held: chargeHeld stays true while C is down; Space is only a strike', () => {
     const { kb } = setupKeyboard();
     key('keydown', 'KeyC');
@@ -209,7 +209,7 @@ describe('energy activations: Onde held (charge) and Furie (press)', () => {
     expect(touch.read().chargeHeld).toBe(false);
   });
 
-  test('a latched C tap reaches the sim: a charge starts (then is cancelled at no cost), or « Énergie insuffisante » under 50', async () => {
+  test('a latched C tap reaches the sim: a charge starts and fires on its own 0.7 s later, or « Énergie insuffisante » under 50', async () => {
     const { Sim } = await import('../../src/sim/sim');
     const { CONFIG } = await import('../../src/sim/config');
     const { merge } = await import('../../src/game/input/merge');
@@ -224,9 +224,30 @@ describe('energy activations: Onde held (charge) and Furie (press)', () => {
     key('keydown', 'KeyC');
     key('keyup', 'KeyC');
     expect(full.step(frame()).some((e) => e.type === 'BeamCharging')).toBe(true);
-    expect(full.step(frame()).some((e) => e.type === 'BeamCancelled')).toBe(true);
-    expect(full.energy.value).toBe(CONFIG.energy.max);
+    const after = [];
+    for (let i = 0; i < Math.round(CONFIG.kamehame.chargeSec / CONFIG.step); i++) after.push(...full.step(frame()));
+    expect(after.some((e) => e.type === 'BeamCancelled')).toBe(false);
+    expect(after.filter((e) => e.type === 'BeamFired')).toHaveLength(1);
+    expect(full.energy.value).toBe(CONFIG.energy.max - CONFIG.energy.ondeCost);
     kb.dispose?.();
+  });
+
+  test('a touch Onde tap reaches the sim: the charge starts and the beam fires 0.7 s later without holding the button', async () => {
+    const { Sim } = await import('../../src/sim/sim');
+    const { CONFIG } = await import('../../src/sim/config');
+    const { merge } = await import('../../src/game/input/merge');
+    const { touch, onde } = setupTouch();
+    const frame = merge(touch);
+    const sim = new Sim(1);
+    sim.energy.value = CONFIG.energy.ondeCost;
+    ptr(onde, 'pointerdown', 11, 500, 300);
+    ptr(window, 'pointerup', 11, 500, 300);
+    const all = [...sim.step(frame())];
+    expect(all.some((e) => e.type === 'BeamCharging')).toBe(true);
+    for (let i = 0; i < Math.round(CONFIG.kamehame.chargeSec / CONFIG.step); i++) all.push(...sim.step(frame()));
+    expect(all.filter((e) => e.type === 'BeamFired')).toHaveLength(1);
+    expect(all.some((e) => e.type === 'BeamCancelled')).toBe(false);
+    expect(sim.energy.value).toBe(0);
   });
 
   test('blur releases chargeHeld and a pending Furie (RC-40)', () => {

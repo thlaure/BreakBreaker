@@ -10,7 +10,7 @@ import { guardHp, PRISON_POSTS } from '../../src/sim/prison';
 import { rng } from '../../src/sim/rng';
 import { Sim } from '../../src/sim/sim';
 import { Targets } from '../../src/sim/targets';
-import type { InputFrame, SimEvent, TargetId, Vec } from '../../src/sim/types';
+import type { InputFrame, SimEvent, TargetId, Variant, Vec } from '../../src/sim/types';
 
 const C = (tx: number, ty: number): Vec => ({ x: tx * 32 + 16, y: ty * 32 + 16 });
 const R = (tx: number, ty: number, tw: number, th: number) => ({ x: tx * 32, y: ty * 32, w: tw * 32, h: th * 32 });
@@ -42,8 +42,8 @@ function quiet(pos: Vec = AWAY, seed = 7) {
 }
 
 /** A Caïd of round `round` knocked out on the spot (far from the prison): the KO path of the next step. */
-function koCaid(sim: Sim, round = 5, at: Vec = AWAY): SimEvent[] {
-  const h = sim.horde.spawn({ variant: 'antifa', role: 'boss', pos: at, round })!;
+function koCaid(sim: Sim, round = 5, at: Vec = AWAY, variant: Variant = 'antifa'): SimEvent[] {
+  const h = sim.horde.spawn({ variant, role: 'boss', pos: at, round })!;
   sim.horde.applyHit(h.lifeId, 999);
   return sim.step(IDLE);
 }
@@ -331,6 +331,80 @@ describe('jail and breakout', () => {
     expect(sim.snapshot().prison).toMatchObject({ standing: true, jailed: 0 });
     ev = koCaid(sim);
     expect(of(ev, 'CaidJailed')).toHaveLength(1);
+  });
+});
+
+describe('inmates (who is in the cells)', () => {
+  test('each jailed Caïd is an inmate: a stable id, his variant on the map, the round he was jailed; jailed = their count', () => {
+    const { sim } = quiet();
+    sim.director.round = 6;
+    expect(sim.snapshot().prison.inmates).toEqual([]);
+    koCaid(sim, 6, C(8, 12), 'palestinian');
+    sim.director.round = 7;
+    koCaid(sim, 7, C(9, 12), 'classic');
+    koCaid(sim, 7, C(10, 12), 'antifa');
+    const p = sim.snapshot().prison;
+    expect(p.inmates.map((i) => [i.variant, i.round])).toEqual([
+      ['palestinian', 6],
+      ['classic', 7],
+      ['antifa', 7],
+    ]);
+    expect(p.jailed).toBe(p.inmates.length);
+    const ids = p.inmates.map((i) => i.id);
+    expect(new Set(ids).size).toBe(3);
+    // stable: the same ids on later snapshots
+    sim.step(IDLE);
+    expect(sim.snapshot().prison.inmates.map((i) => i.id)).toEqual(ids);
+    // the snapshot is a copy
+    sim.snapshot().prison.inmates.pop();
+    expect(sim.snapshot().prison.inmates).toHaveLength(3);
+  });
+
+  test('the jailed Caïd’s body is carried off by the van (gone from the horde after CONFIG.prison.pickupSec)', () => {
+    const { sim, run } = quiet();
+    koCaid(sim);
+    const body = () => sim.horde.list.filter((h) => h.role === 'boss');
+    // still lying there while the van drives up
+    expect(body()).toHaveLength(1);
+    run(CONFIG.prison.pickupSec - 0.1);
+    expect(body()).toHaveLength(1);
+    run(0.2);
+    expect(body()).toHaveLength(0);
+    expect(sim.snapshot().hostiles.some((h) => h.role === 'boss')).toBe(false);
+    expect(sim.snapshot().prison.jailed).toBe(1);
+  });
+
+  test('a Caïd KO’d while the prison is ruined keeps lying there (no van)', () => {
+    const { sim, run } = quiet();
+    sim.targets.ruin('prison', 'test#1');
+    sim.step(IDLE);
+    koCaid(sim);
+    run(CONFIG.prison.pickupSec + 0.5);
+    expect(sim.horde.list.filter((h) => h.role === 'boss' && h.state === 'ko')).toHaveLength(1);
+  });
+
+  test('breakout: the released Caïds keep their variants; the cells empty', () => {
+    const { sim } = quiet();
+    koCaid(sim, 5, C(8, 12), 'palestinian');
+    koCaid(sim, 5, C(9, 12), 'classic');
+    koCaid(sim, 5, C(10, 12), 'palestinian');
+    sim.targets.ruin('prison', 'test#1');
+    sim.step(IDLE);
+    const freed = sim.horde.list.filter((h) => h.role === 'boss' && h.state !== 'ko');
+    expect(freed.map((h) => h.variant)).toEqual(['palestinian', 'classic', 'palestinian']);
+    expect(sim.snapshot().prison).toMatchObject({ jailed: 0, inmates: [] });
+  });
+
+  test('inmate ids keep rising after a breakout and a rebuild (never reused)', () => {
+    const { sim } = quiet();
+    koCaid(sim);
+    const first = sim.snapshot().prison.inmates[0]!.id;
+    sim.targets.ruin('prison', 'test#1');
+    sim.step(IDLE);
+    sim.targets.repair('prison');
+    sim.step(IDLE);
+    koCaid(sim);
+    expect(sim.snapshot().prison.inmates[0]!.id).toBeGreaterThan(first);
   });
 });
 

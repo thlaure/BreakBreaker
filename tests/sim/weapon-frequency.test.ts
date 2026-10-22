@@ -39,7 +39,7 @@ describe('fewer weapons: the street timer', () => {
     }
   });
 
-  test('never more than one street weapon on the ground', () => {
+  test('never more than one street weapon on the ground (a new one only once the last one expired, 60 s)', () => {
     const w = new Weapons(grid, rng(3));
     const paul = createPlayer({ ...DISTRICT.playerSpawn });
     let spawned = 0;
@@ -47,7 +47,8 @@ describe('fewer weapons: the street timer', () => {
       spawned += of(w.step(1, t, paul), 'WeaponSpawned').length;
       expect(w.ground.length).toBeLessThanOrEqual(1);
     }
-    expect(spawned).toBe(1);
+    expect(spawned).toBeGreaterThan(1);
+    expect(spawned).toBeLessThanOrEqual(Math.ceil(600 / CONFIG.weapons.groundLifetime));
   });
 });
 

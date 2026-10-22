@@ -158,7 +158,7 @@ export interface Snapshot {
   shield: { secondsLeft: number } | null;
   /** Onde d’énergie charging: `progress` in [0, 1] of CONFIG.kamehame.chargeSec; null when not charging. */
   charge: { progress: number } | null;
-  /** `expiresAt` = sim time a special drop vanishes (null = never). */
+  /** `expiresAt` = sim time the weapon vanishes (special drops 15 s, the others 60 s; null = never). */
   weaponsOnGround: { id: number; kind: PickupKind; pos: Vec; expiresAt: number | null }[];
   /** Mode furie on (seconds left), or null. */
   furie: { secondsLeft: number } | null;
@@ -238,9 +238,10 @@ export function segmentRectEntry(a: Vec, b: Vec, r: Rect): number | null {
  * field heals (fed with the round KOs' growth: drops, pickups, expiry).
  * Energy gauge (CONFIG.energy): every KO counted by Rules fills it, except in mode furie and the beam's own KOs.
  * Furie (`input.furie`, full gauge) spends it all on the mode furie (CONFIG.furie: player move, strike and damage
- * taken; a KO ends it). Onde (`input.chargeHeld`, rising edge, >= ondeCost) charges the onde d'énergie (Paul frozen),
- * fires a beam at CONFIG.kamehame.chargeSec and spends ondeCost then; a release, damage, a mode furie started or a KO
- * cancels it at no cost. Too little energy: EnergyRefused. The bouclier is a protection timer on top of the held
+ * taken; a KO ends it). Onde (`input.chargeHeld`, only its rising edge: one tap is enough, >= ondeCost) starts the
+ * charge of the onde d'énergie (Paul frozen), which runs on its own whether the key stays down or not, fires a beam at
+ * CONFIG.kamehame.chargeSec and spends ondeCost only then; only a mode furie started or Paul's KO cancels it, at no
+ * cost (damage taken does not). Too little energy: EnergyRefused. The bouclier is a protection timer on top of the held
  * weapon (rocks, firebombs and bullets blocked from any side); it adds no damage and never changes the strike.
  * While the school cinematic is running, only its timer advances. Agir (`input.act`, held) counts only on its rising
  * edge: holding F while walking into range, or while a hostile moves away, never starts a toolbox repair.
@@ -310,7 +311,7 @@ export class Sim {
   private stationMessage: StationMessage = null;
   private toolboxMessage: ToolboxMessage = null;
   private koReported = false;
-  /** Onde d'énergie charge under way: seconds held so far. */
+  /** Onde d'énergie charge under way: seconds since the press (it runs on its own once started). */
   private charge: { t: number } | null = null;
   /** Caïds whose KO was already rewarded (bonus + weapon drop). */
   private readonly caidsDown = new Set<number>();
@@ -381,7 +382,7 @@ export class Sim {
     const frozen = this.charge !== null;
     stepPlayer(p, frozen ? { ...input, move: { x: 0, y: 0 } } : input, dt, now, this.grid, furie ? CONFIG.furie.speedMul : 1);
     // no swing on the step a charge starts, while it grows, or the step it fires
-    if (frozen) this.stepCharge(input, dt, ev);
+    if (frozen) this.stepCharge(dt, ev);
     else if (chargePressed) this.startCharge(ev);
     const mode = this.strikeMode(furie);
     if (!frozen && this.charge === null && input.strike && mode === 'shot') this.fireFlashball(input, now, ev);
@@ -430,7 +431,6 @@ export class Sim {
     const shots = this.bullets.step(dt, this.bulletCtx(victimPos));
 
     // damage, hits and rock bookkeeping
-    const hpBefore = p.hp;
     const molotovs: Extract<SimEvent, { type: 'MolotovThrown' }>[] = [];
     for (const e of [...hordeEv, ...rockEv, ...shots.events]) {
       if (e.type === 'PlayerDamaged') {
@@ -478,8 +478,8 @@ export class Sim {
         return true;
       }, this.shield()),
     );
-    // taking damage (or a KO) cancels the charge: nothing used
-    if (this.charge !== null && (p.hp < hpBefore || p.ko)) this.cancelCharge(ev);
+    // a KO cancels the charge (nothing used); damage alone no longer does
+    if (this.charge !== null && p.ko) this.cancelCharge(ev);
     this.telegraphs = this.telegraphs.filter((t) => t.until > now);
     // an aim line goes with its shooter's KO
     this.aims = this.aims.filter((t) => t.until > now && this.horde.list.some((h) => h.lifeId === t.lifeId && h.state !== 'ko'));
@@ -529,7 +529,7 @@ export class Sim {
     );
     this.syncServices();
     // the prison fell this step (by any path): every jailed Caïd out at its door, in the roster
-    ev.push(...this.prison.step({ targets: this.targets, horde: this.horde, extend: (n, e) => this.director.extend(n, e) }));
+    ev.push(...this.prison.step({ targets: this.targets, horde: this.horde, dt, extend: (n, e) => this.director.extend(n, e) }));
     const heal = this.stations.step({ player: p, rules: this.rules });
     ev.push(...heal.events);
     this.stationMessage = heal.message;
@@ -950,19 +950,22 @@ export class Sim {
   }
 
   /**
-   * The charge grows while Onde stays held; at CONFIG.kamehame.chargeSec the beam fires on its own and the energy is
-   * spent. Released (or not enough energy left): cancelled, nothing spent.
+   * The charge grows on its own (Onde need not stay held: releasing it changes nothing); at CONFIG.kamehame.chargeSec
+   * the beam fires and the energy is spent then. Paul KO (or, defensively, the energy gone): cancelled, nothing spent.
    */
-  private stepCharge(input: InputFrame, dt: number, ev: SimEvent[]): void {
+  private stepCharge(dt: number, ev: SimEvent[]): void {
     if (this.charge === null) return;
-    if (!input.chargeHeld || this.player.ko || this.energy.value < CONFIG.energy.ondeCost) {
+    if (this.player.ko) {
       this.cancelCharge(ev);
       return;
     }
     this.charge.t += dt;
     if (this.charge.t + 1e-9 < CONFIG.kamehame.chargeSec) return;
+    if (!this.energy.spend(CONFIG.energy.ondeCost)) {
+      this.cancelCharge(ev);
+      return;
+    }
     this.charge = null;
-    this.energy.spend(CONFIG.energy.ondeCost);
     this.fireBeam(ev);
   }
 
@@ -1074,7 +1077,7 @@ export class Sim {
     const w = this.weapons.dropAt(h.pos, this.player.pos);
     if (w) ev.push({ type: 'WeaponSpawned', kind: w.kind, pos: v(w.pos) });
     // the jail van takes him to the prison, while it stands
-    ev.push(...this.prison.jail(h, this.targets));
+    ev.push(...this.prison.jail(h, this.targets, this.director.round));
   }
 
   /** Hostile facing = along its aim line while a shooter aims or fires, else last movement direction, else toward Paul. */

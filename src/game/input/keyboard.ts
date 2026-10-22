@@ -24,7 +24,10 @@ export function createKeyboard(
   let furie = false;
   /** F went down since the last read: a tap shorter than one sim step still reaches one read as `act`. */
   let actTap = false;
-  /** C went down since the last read: a tap shorter than one sim step still reaches one read as `chargeHeld`. */
+  /**
+   * C went down since the last read: a tap shorter than one sim step still reaches one read as `chargeHeld` (one tap
+   * starts the onde d'énergie's charge, which then completes without holding C).
+   */
   let chargeTap = false;
   let mouseUntil = -Infinity;
   let mouse: { x: number; y: number } | null = null;

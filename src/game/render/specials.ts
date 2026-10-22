@@ -11,6 +11,7 @@ import {
   rimPoint,
   rippleRing,
 } from './bubbleMath';
+import { CHARGE_RING_Y, chargeRing } from './chargeMath';
 import { DEPTH } from './depth';
 
 const INK = 0x14121c;
@@ -172,12 +173,14 @@ interface Block {
 }
 
 /**
- * Onde d’énergie and bouclier effects: the charge glow growing in Paul's hands (additive blue-white disc and a thin
- * ring), the beam (~BEAM_MS, pixel-stepped widths, additive glow, flicker) and, on a bubble block, a spark burst and a
+ * Onde d’énergie and bouclier effects: the charge glow growing in Paul's hands (additive blue-white disc), a
+ * progress ring around Paul that closes clockwise from 12 o’clock over the charge (chargeRing), the beam (~BEAM_MS, pixel-stepped widths, additive glow, flicker) and, on a bubble block, a spark burst and a
  * short expanding ring at the rim point (BubbleView.hit).
  */
 export class SpecialFx {
   private readonly glow: Phaser.GameObjects.Graphics;
+  /** The charge's progress ring around Paul (normal blend so its dark track reads on any ground). */
+  private readonly ring: Phaser.GameObjects.Graphics;
   private readonly beamG: Phaser.GameObjects.Graphics;
   private readonly rings: Phaser.GameObjects.Graphics;
   private readonly sparks: Phaser.GameObjects.Particles.ParticleEmitter;
@@ -186,6 +189,7 @@ export class SpecialFx {
 
   constructor(scene: Phaser.Scene) {
     this.glow = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
+    this.ring = scene.add.graphics().setVisible(false);
     this.beamG = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.overlay - 2).setVisible(false);
     this.rings = scene.add.graphics().setDepth(DEPTH.overlay - 2);
     this.sparks = scene.add.particles(0, 0, 'px', {
@@ -223,6 +227,7 @@ export class SpecialFx {
     const g = this.glow;
     if (!charge || player.ko) {
       g.setVisible(false);
+      this.ring.setVisible(false);
       return;
     }
     const p = Math.max(0, Math.min(1, charge.progress));
@@ -235,10 +240,18 @@ export class SpecialFx {
       .fillStyle(ENERGY, 0.35 + 0.3 * p)
       .fillCircle(h.x, h.y, r + 3)
       .fillStyle(ENERGY_CORE, 0.6 + 0.4 * p)
-      .fillCircle(h.x, h.y, Math.max(1, r - 1))
-      // thin ring closing in as the charge grows
-      .lineStyle(1, ENERGY_CORE, 0.8)
-      .strokeCircle(h.x, h.y, Math.round(18 - 10 * p));
+      .fillCircle(h.x, h.y, Math.max(1, r - 1));
+    // progress ring around Paul: dark track, light-blue arc closing clockwise, a bright head
+    const arc = chargeRing(p);
+    const cx = Math.round(body.x);
+    const cy = Math.round(body.y - CHARGE_RING_Y);
+    const ring = this.ring.clear().setVisible(true).setDepth(body.depth + 0.1);
+    ring.lineStyle(4, INK, 0.6).strokeCircle(cx, cy, arc.radius);
+    ring.lineStyle(1, ENERGY, 0.35).strokeCircle(cx, cy, arc.radius);
+    if (p > 0) {
+      ring.lineStyle(2, ENERGY, 1).beginPath().arc(cx, cy, arc.radius, arc.start, arc.end, false).strokePath();
+      ring.fillStyle(ENERGY_CORE, 1).fillCircle(Math.round(cx + Math.cos(arc.end) * arc.radius), Math.round(cy + Math.sin(arc.end) * arc.radius), 2);
+    }
   }
 
   private drawBeam(nowMs: number): void {
@@ -274,6 +287,7 @@ export class SpecialFx {
 
   destroy(): void {
     this.glow.destroy();
+    this.ring.destroy();
     this.beamG.destroy();
     this.rings.destroy();
     this.sparks.destroy();

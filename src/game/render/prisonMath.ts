@@ -1,3 +1,6 @@
+import type { PrisonInmate } from '../../sim/prison';
+import { rioterSheet } from './roleLook';
+
 /** The counter on the prison's roof. */
 export function jailedText(n: number): string {
   return `Caïds enfermés : ${n}`;
@@ -9,6 +12,16 @@ export function jailedText(n: number): string {
  */
 export function shownJailed(jailed: number, riding: number): number {
   return Math.max(0, jailed - riding);
+}
+
+/**
+ * Caïds still riding a jail van: each jailed Caïd has one pickup and one drop-off run, so the drop-offs not through the
+ * gate yet (the pickup is the same Caïd, never counted twice).
+ */
+export function ridingCount(runs: readonly { kind: 'pickup' | 'drop'; inside: boolean }[]): number {
+  let n = 0;
+  for (const r of runs) if (r.kind === 'drop' && !r.inside) n++;
+  return n;
 }
 
 /** The jail van's run (ms): drives in, stops (the Caïd hops in or out), drives off fading. */
@@ -69,4 +82,72 @@ export function sweepAngle(nowMs: number): number {
   const k = (nowMs % SWEEP_MS) / SWEEP_MS;
   const tri = k < 0.5 ? k * 2 : 2 - k * 2;
   return Math.PI * (0.18 + 0.5 * tri);
+}
+
+/** The render hides the KO'd Caïd's body (the van loads him) when his hop into the pickup van starts. */
+export const PICKUP_HOP_MS = VAN_PICKUP_DELAY_MS + VAN_IN_MS + HOP_START * VAN_STOP_MS;
+
+/**
+ * THE SKIN HOOK. The texture (LPC character sheet) an inmate is drawn with in the prison yard: today the Caïd's own
+ * sheet for the variant he had on the map (classic / palestinian / antifa, a / b by id parity, like rioterSheet for a
+ * boss). This is the only place to change to give jailed Caïds their own skins later (e.g. a prison-uniform sheet per
+ * variant, or one chosen from `inmate.round` / `inmate.id`): PrisonLayer draws every inmate with this key and plays its
+ * walk-row frames, so a new sheet must follow layout.json and be listed in CHAR_SHEETS (src/game/assets.ts).
+ */
+export function inmateTextureKey(inmate: Pick<PrisonInmate, 'id' | 'variant'>): string {
+  return rioterSheet(inmate.variant, 'boss', inmate.id);
+}
+
+/**
+ * The exercise yard in the prison roof's middle, where the inmates stand: px from the prison footprint's top-left
+ * (it sits on the roof, clear of the watchtower, the vents, the sign and the counter).
+ */
+export const YARD = { x: 36, y: -12, w: 96, h: 110 } as const;
+/** Inmates shown in the yard (the others are a « +N » label), in rows of INMATE_COLS. */
+export const INMATE_SLOTS = 8;
+export const INMATE_COLS = 4;
+/** px between two inmates of a row; feet of the back and front rows (from YARD.y). */
+const SLOT_DX = 22;
+const ROW_FEET = [58, 106] as const;
+/** Sprite scale of an inmate (the Caïd is ×1.5 on the street; ×1 fits 4 abreast in the yard). */
+export const INMATE_SCALE = 1;
+
+/**
+ * Where the first `count` inmates stand (feet, px from the footprint's top-left): back row first, each row centred,
+ * at most INMATE_SLOTS; `extra` = how many more are in the cells (« +N »).
+ */
+export function inmateLayout(count: number): { slots: { x: number; y: number }[]; extra: number } {
+  const n = Math.max(0, Math.min(INMATE_SLOTS, count));
+  const slots: { x: number; y: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const row = Math.floor(i / INMATE_COLS);
+    const inRow = Math.min(INMATE_COLS, n - row * INMATE_COLS);
+    const col = i % INMATE_COLS;
+    slots.push({ x: YARD.x + YARD.w / 2 + (col - (inRow - 1) / 2) * SLOT_DX, y: YARD.y + ROW_FEET[row]! });
+  }
+  return { slots, extra: Math.max(0, count - n) };
+}
+
+/** « +3 »: inmates in the cells beyond the yard's slots. */
+export function extraText(n: number): string {
+  return `+${n}`;
+}
+
+/**
+ * An inmate's idle at `nowMs`: facing the camera ('s') with a 1-px bob, now and then a glance aside ('e' / 'w'),
+ * out of step between ids; still under prefers-reduced-motion.
+ */
+export function inmatePose(nowMs: number, id: number, reduced: boolean): { dir: 's' | 'e' | 'w'; bob: 0 | -1 } {
+  if (reduced) return { dir: 's', bob: 0 };
+  const bob = Math.sin(nowMs / 520 + id * 1.7) > 0.35 ? -1 : 0;
+  const period = 4200 + (id % 5) * 370;
+  const k = ((nowMs + id * 911) % period) / period;
+  const dir = k >= 0.7 && k < 0.82 ? (id % 2 === 0 ? 'e' : 'w') : 's';
+  return { dir, bob };
+}
+
+/** The breakout: the yard's inmates run out to the gate over ESCAPE_MS (the sim's released Caïds take over there). */
+export const ESCAPE_MS = 500;
+export function escapeProgress(age: number): number {
+  return Math.max(0, Math.min(1, age / ESCAPE_MS));
 }

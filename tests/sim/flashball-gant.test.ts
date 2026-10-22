@@ -199,7 +199,7 @@ describe('flashball', () => {
 });
 
 describe('the flashball guaranteed with the first shooter', () => {
-  test('the first shooter to walk in drops a flashball 120–220 px from Paul (never expires), once', () => {
+  test('the first shooter to walk in drops a flashball 120–220 px from Paul (it lasts 60 s), once', () => {
     const sim = new Sim(2, { invulnerable: true });
     sim.player.pos = { ...OPEN };
     sim.queue.request([{ variant: 'classic', role: 'shooter' }], { firstDelay: 0 });
@@ -210,7 +210,10 @@ describe('the flashball guaranteed with the first shooter', () => {
     expect(dist(drop[0]!.pos, OPEN)).toBeGreaterThanOrEqual(CONFIG.flashball.dropMin - 32);
     expect(dist(drop[0]!.pos, OPEN)).toBeLessThanOrEqual(CONFIG.flashball.dropMax + 32);
     expect(of(ev, 'WeaponSpawned')).toContainEqual({ type: 'WeaponSpawned', kind: 'flashball', pos: drop[0]!.pos });
-    expect(sim.snapshot().weaponsOnGround).toContainEqual({ id: expect.any(Number), kind: 'flashball', pos: drop[0]!.pos, expiresAt: null });
+    const fb = sim.snapshot().weaponsOnGround.find((w) => w.kind === 'flashball')!;
+    expect(fb).toEqual({ id: expect.any(Number), kind: 'flashball', pos: drop[0]!.pos, expiresAt: expect.any(Number) });
+    expect(fb.expiresAt! - sim.snapshot().now).toBeGreaterThan(CONFIG.weapons.groundLifetime - 1);
+    expect(fb.expiresAt! - sim.snapshot().now).toBeLessThanOrEqual(CONFIG.weapons.groundLifetime);
     expect(grid.circleBlocked(drop[0]!.pos, 10)).toBe(false);
 
     sim.queue.request([{ variant: 'antifa', role: 'shooter' }], { firstDelay: 0 });

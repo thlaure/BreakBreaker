@@ -344,20 +344,37 @@ describe('onde d’énergie: charge and fire (Sim)', () => {
     return sim;
   }
 
-  test('held 1 s: BeamCharging, then the beam fires on its own and KOs a whole line (+1 each, launched along it)', () => {
+  /** A rioter right behind Paul whose blow lands on the next step. */
+  function blowNow(sim: Sim) {
+    const p = sim.player.pos;
+    const h = sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { x: p.x - 14, y: p.y } })!;
+    h.state = 'windup';
+    h.stateUntil = 0;
+    h.nextAttackAt = 99;
+    return h;
+  }
+
+  test('the charge lasts 0.7 s', () => {
+    expect(CONFIG.kamehame.chargeSec).toBe(0.7);
+  });
+
+  test('a single tap (one step pressed, then released): the charge runs on its own and fires at 0.7 s, KOing a whole line', () => {
     const sim = armed();
     const p = { ...sim.player.pos };
     const all: SimEvent[] = [];
     all.push(...sim.step(PRESS));
     expect(of(all, 'BeamCharging')).toHaveLength(1);
     expect(sim.snapshot().charge).toEqual({ progress: 0 });
-    for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec) - 1; i++) all.push(...sim.step(HOLD));
+    for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec) - 1; i++) all.push(...sim.step(IDLE));
+    expect(of(all, 'BeamCancelled')).toEqual([]);
     expect(of(all, 'BeamFired')).toEqual([]);
     expect(sim.snapshot().charge!.progress).toBeGreaterThan(0.95);
+    // energy is spent only when the beam fires
+    expect(sim.energy.value).toBe(CONFIG.energy.max);
     // three rioters lined up in front, one behind
     const line = [60, 120, 180].map((dx) => calm(sim, { x: p.x + dx, y: p.y }));
     const behind = calm(sim, { x: p.x - 60, y: p.y });
-    const ev = sim.step(HOLD);
+    const ev = sim.step(IDLE);
     const fired = of(ev, 'BeamFired');
     expect(fired).toHaveLength(1);
     expect(fired[0]!.kos).toBe(3);
@@ -373,46 +390,81 @@ describe('onde d’énergie: charge and fire (Sim)', () => {
     }
     expect(sim.energy.value).toBe(CONFIG.energy.max - CONFIG.energy.ondeCost);
     expect(sim.snapshot().charge).toBeNull();
-    // still held: no new charge until the next press
-    expect(of(sim.step(HOLD), 'BeamCharging')).toEqual([]);
   });
 
-  test('released at 0.9 s: cancelled, nothing used, movement free again', () => {
+  test('held the whole time: fires once; still held, no new charge until the next press', () => {
+    const sim = armed();
+    const all: SimEvent[] = [];
+    all.push(...sim.step(PRESS));
+    for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec); i++) all.push(...sim.step(HOLD));
+    expect(of(all, 'BeamFired')).toHaveLength(1);
+    for (let i = 0; i < 30; i++) expect(of(sim.step(HOLD), 'BeamCharging')).toEqual([]);
+    sim.step(IDLE);
+    expect(of(sim.step(PRESS), 'BeamCharging')).toHaveLength(1);
+  });
+
+  test('a release mid-charge does not cancel it (no BeamCancelled, the beam still fires)', () => {
     const sim = armed();
     const all: SimEvent[] = [sim.step(PRESS)].flat();
-    for (let i = 0; i < STEPS(0.9) - 1; i++) all.push(...sim.step(HOLD));
+    for (let i = 0; i < STEPS(0.3); i++) all.push(...sim.step(HOLD));
+    for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec); i++) all.push(...sim.step(IDLE));
+    expect(of(all, 'BeamCancelled')).toEqual([]);
+    expect(of(all, 'BeamFired')).toHaveLength(1);
+    expect(sim.energy.value).toBe(CONFIG.energy.max - CONFIG.energy.ondeCost);
+  });
+
+  test('a second press while charging changes nothing (one beam, one charge)', () => {
+    const sim = armed();
+    const all: SimEvent[] = [sim.step(PRESS)].flat();
     all.push(...sim.step(IDLE));
-    expect(of(all, 'BeamCancelled')).toHaveLength(1);
-    expect(of(all, 'BeamFired')).toEqual([]);
-    expect(sim.energy.value).toBe(CONFIG.energy.max);
+    all.push(...sim.step(PRESS));
+    for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec); i++) all.push(...sim.step(IDLE));
+    expect(of(all, 'BeamCharging')).toHaveLength(1);
+    expect(of(all, 'BeamFired')).toHaveLength(1);
+    expect(sim.energy.value).toBe(CONFIG.energy.max - CONFIG.energy.ondeCost);
+  });
+
+  test('Paul cannot move while charging, key held or released (aim still turns him); free again after the beam', () => {
+    const sim = armed();
+    sim.step(PRESS);
+    const before = { ...sim.player.pos };
+    for (let i = 0; i < 10; i++) sim.step(input({ chargeHeld: true, move: { x: 0, y: 1 }, run: true, aim: { x: 0, y: -1 } }));
+    for (let i = 0; i < 10; i++) sim.step(input({ move: { x: 0, y: 1 }, run: true, aim: { x: 0, y: -1 } }));
+    expect(sim.player.pos).toEqual(before);
+    expect(sim.player.facing).toEqual({ x: 0, y: -1 });
+    for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec); i++) sim.step(IDLE);
+    expect(sim.snapshot().charge).toBeNull();
     const x = sim.player.pos.x;
     sim.step(input({ move: { x: 1, y: 0 } }));
     expect(sim.player.pos.x).toBeGreaterThan(x);
   });
 
-  test('Paul cannot move while charging (aim still turns him)', () => {
+  test('taking damage no longer cancels the charge: the beam still fires and spends its energy', () => {
     const sim = armed();
     sim.step(PRESS);
-    const before = { ...sim.player.pos };
-    for (let i = 0; i < 20; i++) sim.step(input({ chargeHeld: true, move: { x: 0, y: 1 }, run: true, aim: { x: 0, y: -1 } }));
-    expect(sim.player.pos).toEqual(before);
-    expect(sim.player.facing).toEqual({ x: 0, y: -1 });
+    sim.step(IDLE);
+    blowNow(sim);
+    const ev = sim.step(IDLE);
+    expect(of(ev, 'PlayerDamaged')).toHaveLength(1);
+    expect(of(ev, 'BeamCancelled')).toEqual([]);
+    expect(sim.snapshot().charge).not.toBeNull();
+    const all: SimEvent[] = [];
+    for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec); i++) all.push(...sim.step(IDLE));
+    expect(of(all, 'BeamFired')).toHaveLength(1);
+    expect(sim.energy.value).toBe(CONFIG.energy.max - CONFIG.energy.ondeCost);
   });
 
-  test('taking damage cancels the charge (nothing used)', () => {
+  test('Paul KO cancels the charge (BeamCancelled, nothing used)', () => {
     const sim = armed();
     sim.step(PRESS);
-    sim.step(HOLD);
-    const p = sim.player.pos;
-    const h = sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { x: p.x - 14, y: p.y } })!;
-    h.state = 'windup';
-    h.stateUntil = 0;
-    h.nextAttackAt = 99;
-    const ev = sim.step(HOLD);
-    expect(of(ev, 'PlayerDamaged')).toHaveLength(1);
+    sim.step(IDLE);
+    sim.player.hp = 1;
+    blowNow(sim);
+    const ev = sim.step(IDLE);
+    expect(sim.player.ko).toBe(true);
     expect(of(ev, 'BeamCancelled')).toHaveLength(1);
     expect(sim.snapshot().charge).toBeNull();
-    for (let i = 0; i < STEPS(1.2); i++) expect(of(sim.step(HOLD), 'BeamFired')).toEqual([]);
+    for (let i = 0; i < STEPS(1.2); i++) expect(of(sim.step(IDLE), 'BeamFired')).toEqual([]);
     expect(sim.energy.value).toBe(CONFIG.energy.max);
   });
 
@@ -422,8 +474,7 @@ describe('onde d’énergie: charge and fire (Sim)', () => {
     const all: SimEvent[] = [];
     for (let shot = 0; shot < 2; shot++) {
       all.push(...sim.step(PRESS));
-      for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec); i++) all.push(...sim.step(HOLD));
-      all.push(...sim.step(IDLE));
+      for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec); i++) all.push(...sim.step(IDLE));
     }
     expect(of(all, 'BeamFired').map((e) => e.kos)).toEqual([0, 0]);
     expect(sim.energy.value).toBe(0);
@@ -436,9 +487,9 @@ describe('onde d’énergie: charge and fire (Sim)', () => {
     const g = DISTRICT.peacefulGroup.area;
     sim.player.pos = { x: g.x - 60, y: g.y + g.h / 2 };
     sim.step(PRESS);
-    for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec) - 1; i++) sim.step(HOLD);
+    for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec) - 1; i++) sim.step(IDLE);
     const hidden = calm(sim, { x: g.x + g.w + 30, y: g.y + g.h / 2 });
-    const ev = sim.step(HOLD);
+    const ev = sim.step(IDLE);
     expect(of(ev, 'BeamFired')[0]!.to.x).toBeLessThan(g.x);
     expect(hidden.state).not.toBe('ko');
   });
@@ -446,13 +497,13 @@ describe('onde d’énergie: charge and fire (Sim)', () => {
   test('pause freezes the charge', () => {
     const sim = armed();
     sim.step(PRESS);
-    for (let i = 0; i < 30; i++) sim.step(HOLD);
+    for (let i = 0; i < 20; i++) sim.step(IDLE);
     const prog = sim.snapshot().charge!.progress;
     sim.pause();
-    for (let i = 0; i < 120; i++) expect(sim.step(HOLD)).toEqual([]);
+    for (let i = 0; i < 120; i++) expect(sim.step(IDLE)).toEqual([]);
     expect(sim.snapshot().charge!.progress).toBe(prog);
     sim.resume();
-    sim.step(HOLD);
+    sim.step(IDLE);
     expect(sim.snapshot().charge!.progress).toBeGreaterThan(prog);
   });
 
@@ -461,7 +512,7 @@ describe('onde d’énergie: charge and fire (Sim)', () => {
     const p = sim.player.pos;
     const h = calm(sim, { x: p.x + 20, y: p.y });
     expect(of(sim.step(input({ chargeHeld: true, strike: true })), 'HitConfirmed')).toEqual([]);
-    expect(of(sim.step(input({ chargeHeld: true, strike: true })), 'HitConfirmed')).toEqual([]);
+    expect(of(sim.step(input({ strike: true })), 'HitConfirmed')).toEqual([]);
     expect(h.state).not.toBe('ko');
   });
 });

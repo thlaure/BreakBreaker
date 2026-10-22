@@ -72,6 +72,9 @@ export const CONFIG = {
    * the Caïd's) while one already lies within `clearRadius` px of Paul (no piles; the bouclier and the first shooter's
    * flashball are exempt). The twist drop, when it is not a bouclier, is a regular weapon `twistRegularShare` of the
    * time (else nothing); the breather drop comes at the end of every `breatherEvery`-th round only (even rounds).
+   * A weapon nobody picks up vanishes: the special drops (twist, breather, the Caïd's, a dropped bouclier) after
+   * `dropLifetime` s, the street spawns and the first shooter's flashball after `groundLifetime` s (which frees the
+   * `maxGround` cap); the render blinks the last 3 s of either.
    */
   weapons: {
     firstSpawn: 20,
@@ -81,6 +84,7 @@ export const CONFIG = {
     minDist: 160,
     maxDist: 480,
     dropLifetime: 15,
+    groundLifetime: 60,
     clearRadius: 200,
     twistRegularShare: 0.5,
     breatherEvery: 2,
@@ -89,9 +93,10 @@ export const CONFIG = {
    * Energy gauge (« mana », 0..`max`): every rioter KO counted by Rules fills it by `gain` (`boss` for Le Caïd, `brute`
    * for a brute, `rioter` for anyone else), except while the mode furie is on and for the onde d’énergie's own KOs. It
    * is kept across rounds (a new session starts at 0) and never decays. Full (`furieCost` = `max`): Furie (R) spends it
-   * all on the mode furie. At `ondeCost` or more: Onde (C held) charges the beam, which spends `ondeCost` when it fires.
+   * all on the mode furie. At `ondeCost` or more: an Onde press (a C tap) starts the beam's charge, which spends
+   * `ondeCost` only when it fires.
    */
-  energy: { max: 100, ondeCost: 50, furieCost: 100, gain: { rioter: 4, brute: 8, boss: 20 } },
+  energy: { max: 100, ondeCost: 50, furieCost: 100, gain: { rioter: 6, brute: 10, boss: 25 } },
   /**
    * Mode furie (from a full energy gauge): lasts `durationSec`. While active Paul moves `speedMul` faster, strikes
    * `reachMul` farther at up to `maxTargets` rioters, every strike KOs (`damage`) without using the weapon, and he
@@ -99,7 +104,7 @@ export const CONFIG = {
    * `launchSpin` turns, direction away from Paul ± `launchJitter` rad.
    */
   furie: {
-    durationSec: 12,
+    durationSec: 18,
     speedMul: 1.35,
     reachMul: 1.5,
     maxTargets: 8,
@@ -125,12 +130,13 @@ export const CONFIG = {
     spawnShare: 1 / 6,
   },
   /**
-   * Kamehame (« Onde d’énergie », from the energy gauge): holding Onde charges `chargeSec` (Paul cannot move), then a
-   * beam `length` px long KOs every active rioter within `halfWidth` + its radius of the line, which stops at the first
-   * solid (buildings, props, trunks, plinth, the peaceful group).
+   * Kamehame (« Onde d’énergie », from the energy gauge): one Onde press (a C tap, the key need not stay down) starts a
+   * charge of `chargeSec` that completes on its own (Paul cannot move; only his KO or a mode furie started cancels it,
+   * damage does not), then a beam `length` px long KOs every active rioter within `halfWidth` + its radius of the line,
+   * which stops at the first solid (buildings, props, trunks, plinth, the peaceful group).
    */
   kamehame: {
-    chargeSec: 1,
+    chargeSec: 0.7,
     length: 320,
     halfWidth: 16,
     /**
@@ -216,7 +222,7 @@ export const CONFIG = {
     burst: 3,
     burstGap: 0.12,
     reloadSec: 3,
-    counts: [[6, 1], [8, 2]] as const,
+    counts: [[6, 1], [8, 2], [10, 3]] as const,
     maxPerRound: 3,
   },
   /**
@@ -230,7 +236,7 @@ export const CONFIG = {
    * else the facing snapped to the nearest active rioter within ±`assistDeg`° and `assistRange` px (clear line). The first
    * rioter hit takes a weapon hit (one-hit KO; CONFIG.toughWeaponDamage on a brute or the Caïd); solids, the peaceful group
    * and the victim stop it. In the street pool from `fromRound`; one is dropped `dropMin`–`dropMax` px from Paul when the
-   * session's first shooter enters (never expires).
+   * session's first shooter enters (it vanishes after CONFIG.weapons.groundLifetime s like the street spawns).
    */
   flashball: { speed: 420, range: 480, radius: 4, assistDeg: 12, assistRange: 320, fromRound: 5, dropMin: 120, dropMax: 220 },
   /**
@@ -329,9 +335,10 @@ export const CONFIG = {
    * bursts out at its door. `guards` guards (the police's brain and stats, CONFIG.services.police, but a Caïd's hp for the
    * round, at least CONFIG.caid.hp, and bare-hands blows: 1 hp, damageFrom.hands on the Caïd) each hold a post: they only
    * go for rioters within `postRadius` px of it and never step out of that circle; one knocked out comes back in the
-   * breather unless the prison is ruined.
+   * breather unless the prison is ruined. A jailed Caïd's KO body is carried off by the jail van `pickupSec` s after his
+   * KO (it leaves the horde; the render's van picks it up just before: prisonMath.VAN_PICKUP_DELAY_MS + the drive-in + the hop).
    */
-  prison: { hp: 400, guards: 5, postRadius: 160, fromRound: 4, repairShare: 0.6 },
+  prison: { hp: 400, guards: 5, postRadius: 160, fromRound: 4, repairShare: 0.6, pickupSec: 1.6 },
   pressureMax: 12,
   rulesVersion: 'slice-0.2.0',
 } as const;

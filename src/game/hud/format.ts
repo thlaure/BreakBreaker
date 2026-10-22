@@ -292,10 +292,13 @@ function weaponText(s: Snapshot, bare: string): string {
 export type EnergyState = 'low' | 'onde' | 'furie' | 'active';
 
 export interface EnergyView {
-  /** Bar fill in percent: the gauge, or the mode furie's time left while it is on (the bar drains over its 12 s). */
+  /** Bar fill in percent: the gauge, or the mode furie's time left while it is on (the bar drains over CONFIG.furie.durationSec). */
   pct: number;
   state: EnergyState;
-  /** Short tag next to the bar: « ONDE · C », « FURIE · R » (touch: the button names), « EN FURIE », or empty. */
+  /**
+   * Short tag next to the bar, the key first so it reads as an instruction: « C · Onde » from the onde cost, « R · Furie »
+   * when full (touch: « ONDE ! » / « FURIE ! », the buttons carry the names), « EN FURIE », or empty.
+   */
   tag: string;
   /** Screen-reader line: « Énergie 36 sur 100 », with what is available. */
   aria: string;
@@ -312,9 +315,9 @@ export function energyView(s: Pick<Snapshot, 'energy' | 'furie'>, touch = false)
   }
   const pct = e.max > 0 ? (value / e.max) * 100 : 0;
   if (e.ready.furie)
-    return { pct, state: 'furie', tag: touch ? 'FURIE !' : 'FURIE · R', aria: `${base}, mode furie disponible (${touch ? 'bouton Furie' : 'touche R'})` };
+    return { pct, state: 'furie', tag: touch ? 'FURIE !' : 'R · Furie', aria: `${base}, mode furie disponible (${touch ? 'bouton Furie' : 'touche R'})` };
   if (e.ready.onde)
-    return { pct, state: 'onde', tag: touch ? 'ONDE !' : 'ONDE · C', aria: `${base}, onde d’énergie disponible (${touch ? 'maintenir Onde' : 'maintenir C'})` };
+    return { pct, state: 'onde', tag: touch ? 'ONDE !' : 'C · Onde', aria: `${base}, onde d’énergie disponible (${touch ? 'bouton Onde' : 'appuyer sur C'})` };
   return { pct, state: 'low', tag: '', aria: base };
 }
 

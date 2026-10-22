@@ -131,13 +131,53 @@ describe('special drops', () => {
     }
   });
 
-  test('timed spawns never expire', () => {
+  test('a timed street spawn nobody picks up vanishes after 60 s (expiresAt set for the render blink)', () => {
     const w = new Weapons(grid, rng(3));
     const paul = createPlayer({ ...DISTRICT.playerSpawn });
-    w.step(1, CONFIG.weapons.firstSpawn, paul);
+    const t0 = CONFIG.weapons.firstSpawn;
+    w.step(1, t0, paul);
     expect(w.ground).toHaveLength(1);
-    expect(w.ground[0]!.expiresAt).toBeNull();
-    w.step(1, CONFIG.weapons.firstSpawn + 14, paul);
-    expect(w.ground.length).toBeGreaterThanOrEqual(1);
+    const g = w.ground[0]!;
+    expect(CONFIG.weapons.groundLifetime).toBe(60);
+    expect(g.expiresAt).toBeCloseTo(t0 + CONFIG.weapons.groundLifetime, 6);
+    w.step(1, t0 + CONFIG.weapons.groundLifetime - 0.1, paul);
+    expect(w.ground.some((x) => x.id === g.id)).toBe(true);
+    w.step(1, t0 + CONFIG.weapons.groundLifetime + 0.01, paul);
+    expect(w.ground.some((x) => x.id === g.id)).toBe(false);
+  });
+
+  test('the « at most 1 street weapon on the ground » cap frees up once the weapon expires', () => {
+    const w = new Weapons(grid, rng(3));
+    const paul = createPlayer({ ...DISTRICT.playerSpawn });
+    const spawns: number[] = [];
+    for (let t = 0; t <= 300; t += 1) {
+      for (const e of w.step(1, t, paul)) if (e.type === 'WeaponSpawned') spawns.push(t);
+      expect(w.ground.length).toBeLessThanOrEqual(CONFIG.weapons.maxGround);
+      for (const g of w.ground) expect(t).toBeLessThan(g.expiresAt!);
+    }
+    expect(spawns.length).toBeGreaterThanOrEqual(2);
+    for (let i = 1; i < spawns.length; i++) expect(spawns[i]! - spawns[i - 1]!).toBeGreaterThanOrEqual(CONFIG.weapons.groundLifetime);
+  });
+
+  test('special drops keep their 15 s; the first shooter\'s flashball lasts 60 s like the street weapons', () => {
+    const w = new Weapons(grid, rng(4));
+    const paul = createPlayer({ ...DISTRICT.playerSpawn });
+    w.step(CONFIG.step, 2, paul);
+    expect(w.dropSpecial(paul.pos)!.expiresAt).toBeCloseTo(2 + CONFIG.weapons.dropLifetime, 6);
+    expect(w.dropSpecial(paul.pos, 'bouclier')!.expiresAt).toBeCloseTo(2 + CONFIG.weapons.dropLifetime, 6);
+    const f = w.dropNear(paul.pos, 'flashball', 120, 220)!;
+    expect(f.expiresAt).toBeCloseTo(2 + CONFIG.weapons.groundLifetime, 6);
+  });
+
+  test('expiry is deterministic per seed', () => {
+    const run = () => {
+      const w = new Weapons(grid, rng(11));
+      const paul = createPlayer({ ...DISTRICT.playerSpawn });
+      const log: string[] = [];
+      for (let t = 0; t <= 400; t += 0.5)
+        for (const e of w.step(0.5, t, paul)) if (e.type === 'WeaponSpawned') log.push(`${t}:${e.kind}:${e.pos.x},${e.pos.y}`);
+      return { log, ground: w.ground.map((g) => ({ ...g })) };
+    };
+    expect(run()).toEqual(run());
   });
 });

@@ -254,7 +254,7 @@ export class WorldScene extends Phaser.Scene {
     this.toolboxes = new ToolboxView(this);
     this.actionHint = new ActionHintLayer(this, this.reducedMotion);
     this.services = new ServicesLayer(this, (x, y, t) => this.pows.spawn(x, y, t, 'PAF !'));
-    this.prison = new PrisonLayer(this, (x, y, t, word, big) => this.pows.spawn(x, y, t, word, big), this.reducedMotion);
+    this.prison = new PrisonLayer(this, (x, y, t, word, big) => this.pows.spawn(x, y, t, word, big), this.reducedMotion, this.hostiles);
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.world.width, this.world.height);
