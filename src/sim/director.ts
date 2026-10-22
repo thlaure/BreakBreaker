@@ -118,6 +118,23 @@ export function tableTotal(round: number): number {
   return t[round - 1] ?? Math.min(CONFIG.round.maxTotal, t[t.length - 1]! + CONFIG.round.growth * (round - t.length));
 }
 
+/**
+ * Fill rioters a round keeps at least from TWO_URGENCIES_FROM (when two attacks would leave less, the roster grows,
+ * past CONFIG.round.maxTotal if need be, like an objective-heavy roster): the round's runner pack (as roundFill sizes it) plus the smallest rest whose contact slots
+ * (after the rock throwers and firebombers fillGroups hands out) hold the Caïd, the brutes and the shooters.
+ */
+export function fillReserve(round: number): number {
+  const [lo, hi] = CONFIG.runner.pack;
+  const pack = round >= CONFIG.runner.fromRound ? Math.min(hi, lo + (round % (hi - lo + 1))) : 0;
+  const need = (round >= CONFIG.caid.fromRound ? 1 : 0) + bruteCount(round) + shooterCount(round);
+  const share = round >= 2 ? THROWER_SHARE : 0;
+  const fb = CONFIG.firebomber;
+  for (let n = need; ; n++) {
+    const firebombers = round >= fb.fromRound ? Math.min(fb.maxPerRound, Math.floor((n + fb.fillEvery / 2) / fb.fillEvery)) : 0;
+    if (n - Math.floor(n * share) - firebombers >= need) return pack + n;
+  }
+}
+
 /** Urgent incidents allowed at once: 1 in rounds 1–2, then 2. */
 export function urgentCap(round: number): number {
   return round < 3 ? 1 : 2;
@@ -129,42 +146,65 @@ export interface MonumentPlan {
   lastWasMonument: boolean;
 }
 
+/** From this round, two places are attacked at once from the round start (the first beat holds two casses). */
+export const TWO_URGENCIES_FROM = 5;
+
 /**
  * The round catalogue. r1: the school (tutorial: first Molotov, cinematic, reinforcements) then rescue. From r2 the
  * headline casse is a seeded random draw among every kind open this round (casseOpen: school, shop, car, bus stop from
- * r2, nursery and kiosk from r5, town hall from r7, library from r9) with a free target (standing, not burning), weight 2, or 1 if it was `last` round's headline (it may repeat, rarely; nothing is forced). Second
- * beat: the rescue; from round CONFIG.monument.fromRound the monument occupation instead when the flag is French and
- * last round's second beat was not the monument (they alternate; never while the flag is Palestinian). Twists: from
- * round 2 always a weapon drop (from round 3 a bouclier half the time; otherwise a regular weapon one time in two, else
- * nothing; never a bouclier in round 2),
- * and on odd rounds from r3 a second urgency as well (when the urgency cap allows).
- * No free target → the second beat alone (its kind is the headline).
+ * r2, nursery and kiosk from r5, town hall from r7, library from r9) with a free target (standing, not burning), weight
+ * 2, or 1 if it was in `last` round's first beat (it may repeat, rarely; nothing is forced). From round
+ * TWO_URGENCIES_FROM the first beat holds two casses on distinct targets, started together: the kinds opening this very
+ * round first (round 5 nursery then kiosk, round 7 the town hall, round 9 the library), then the same weighted draw
+ * (another kind when one has a free target, else a second target of the same kind: the two cars); a single free target
+ * → a single casse. Second beat: the rescue; from round CONFIG.monument.fromRound the monument occupation instead when
+ * the flag is French and last round's second beat was not the monument (they alternate; never while the flag is
+ * Palestinian). Twists: from round 2 always a weapon drop (from round 3 a bouclier half the time; otherwise a regular
+ * weapon one time in two, else nothing; never a bouclier in round 2), and on odd rounds from r3 a second urgency as
+ * well (when the urgency cap allows: never a third while two run). No free target → the second beat alone (its kind is
+ * the headline).
  */
 export function roundPlan(
   round: number,
   rand: () => number,
   targets: Targets,
-  last: CasseKind | null = null,
+  last: CasseKind | readonly CasseKind[] | null = null,
   monument: MonumentPlan | null = null,
   isFree: (id: TargetId) => boolean = (id) => targets.standing(id) && !targets.get(id).burning,
 ): RoundPlan {
+  const lastKinds: readonly CasseKind[] = last === null ? [] : typeof last === 'string' ? [last as CasseKind] : (last as readonly CasseKind[]);
   // a kind is drawn only with a free target (the director's free(): standing, not burning, no unresolved attack)
-  const intact = (k: CasseKind): boolean => TARGETS_OF[k].some(isFree);
-  let first: CasseKind | null = null;
-  if (round === 1) first = intact('school') ? 'school' : null;
-  else {
-    const kinds = CASSE_KINDS.filter((k) => casseOpen(k, round) && intact(k));
-    const weights = kinds.map((k) => (k === last ? 1 : 2));
-    let r = rand() * weights.reduce((a, b) => a + b, 0);
-    for (let i = 0; i < kinds.length && first === null; i++) {
-      r -= weights[i]!;
-      if (r < 0 || i === kinds.length - 1) first = kinds[i]!;
+  const freeTargets = (k: CasseKind): number => TARGETS_OF[k].filter(isFree).length;
+  const picks: CasseKind[] = [];
+  if (round === 1) {
+    if (freeTargets('school') > 0) picks.push('school');
+  } else {
+    const want = round >= TWO_URGENCIES_FROM ? 2 : 1;
+    for (let n = 0; n < want; n++) {
+      const room = (k: CasseKind): boolean => casseOpen(k, round) && freeTargets(k) > picks.filter((p) => p === k).length;
+      let kinds = CASSE_KINDS.filter((k) => room(k) && !picks.includes(k));
+      if (kinds.length === 0) kinds = CASSE_KINDS.filter(room);
+      if (kinds.length === 0) break;
+      const fresh = want > 1 ? kinds.find((k) => CONFIG.casse.fromRound[k] === round) : undefined;
+      if (fresh) {
+        picks.push(fresh);
+        continue;
+      }
+      const weights = kinds.map((k) => (lastKinds.includes(k) ? 1 : 2));
+      let r = rand() * weights.reduce((a, b) => a + b, 0);
+      for (let i = 0; i < kinds.length; i++) {
+        r -= weights[i]!;
+        if (r < 0 || i === kinds.length - 1) {
+          picks.push(kinds[i]!);
+          break;
+        }
+      }
     }
   }
   const twists: Twist[] = round === 1 ? [] : round >= 3 && round % 2 === 1 ? ['weaponDrop', 'secondUrgency'] : ['weaponDrop'];
   const second: BeatKind =
     monument && round >= CONFIG.monument.fromRound && monument.french && !monument.lastWasMonument ? 'monument' : 'rescue';
-  return { headline: first ?? second, beats: first ? [[first], [second]] : [[second]], twists };
+  return { headline: picks[0] ?? second, beats: picks.length > 0 ? [picks, [second]] : [[second]], twists };
 }
 
 /** Newcomers enter by the nearest this many eligible edge points (so they arrive closer to Paul). */
@@ -259,7 +299,8 @@ export class Director {
   /** Round-tagged hostiles seen on the map this round (pruned KO bodies stay counted). */
   private readonly roster = new Set<number>();
   private scoreAtStart = 0;
-  private lastHeadline: CasseKind | null = null;
+  /** The casses of last round's first beat (the draw favours the others). */
+  private lastCasses: CasseKind[] = [];
   /** Last round's plan had the monument occupation (the monument and the rescue alternate). */
   private lastMonument = false;
   private readonly counters: Record<BeatKind, number> = {
@@ -340,12 +381,12 @@ export class Director {
       this.round,
       host.rand,
       host.targets,
-      this.lastHeadline,
+      this.lastCasses,
       { french: host.monument.flag === 'french', lastWasMonument: this.lastMonument },
       (id) => this.free(id, host),
     );
     this.plan = plan;
-    this.lastHeadline = plan.headline === 'rescue' || plan.headline === 'monument' ? null : plan.headline;
+    this.lastCasses = (plan.beats[0] ?? []).filter((k): k is CasseKind => k !== 'rescue' && k !== 'monument');
     this.lastMonument = plan.beats.some((b) => b.includes('monument'));
     const p = this.pressure(host.rules.kos);
     const reserved = new Set<TargetId>();
@@ -357,6 +398,9 @@ export class Director {
     );
     const objective = this.beats.reduce((n, b) => n + b.reduce((m, o) => m + o.count, 0), 0);
     this.total = Math.max(tableTotal(this.round), objective);
+    // two attacks at once must not eat the fill its special rioters (runner pack, Caïd, brutes, shooters) live in
+    if (this.round >= TWO_URGENCIES_FROM)
+      this.total = Math.max(this.total, objective + fillReserve(this.round));
     this.fill = [];
     // no fill to close the round: the Caïd comes alone after the objectives, one more rioter in the roster
     if (this.total === objective && this.round >= CONFIG.caid.fromRound) this.total += 1;

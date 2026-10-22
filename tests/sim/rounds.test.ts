@@ -46,7 +46,9 @@ describe('round catalogue', () => {
       expect(roundPlan(1, rng(s), t)).toEqual({ headline: 'school', beats: [['school'], ['rescue']], twists: [] });
     for (let r = 2; r <= 8; r++) {
       const p = roundPlan(r, rng(r), t);
-      expect(p.beats).toEqual([[p.headline], ['rescue']]);
+      // from round 5 two casses open the round together (tests/sim/twoUrgencies.test.ts)
+      if (r < 5) expect(p.beats).toEqual([[p.headline], ['rescue']]);
+      else expect(p.beats).toEqual([[p.headline, p.beats[0]![1]], ['rescue']]);
       expect(p.twists).toEqual(r >= 3 && r % 2 === 1 ? ['weaponDrop', 'secondUrgency'] : ['weaponDrop']);
     }
   });

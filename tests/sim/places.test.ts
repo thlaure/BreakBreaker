@@ -176,25 +176,27 @@ describe('the Phase C places in the round plan', () => {
   const headlines = (round: number, n = 600, last: CasseKind | null = null): Set<string> => {
     const t = new Targets();
     const seen = new Set<string>();
-    for (let s = 1; s <= n; s++) seen.add(roundPlan(round, rng(s), t, last).headline);
+    // from round 5 the first beat holds two casses: every kind attacked at the round start counts
+    for (let s = 1; s <= n; s++) for (const k of roundPlan(round, rng(s), t, last).beats[0]!) seen.add(k);
     return seen;
   };
 
   test('a place is never drawn before its round, then is part of the draw', () => {
     for (const r of [2, 3, 4]) expect([...headlines(r)].sort()).toEqual(['busStop', 'car', 'school', 'shop']);
-    expect([...headlines(5)].sort()).toEqual(['busStop', 'car', 'kiosk', 'nursery', 'school', 'shop']);
+    // round 5: its two new places come first, together
+    expect([...headlines(5)].sort()).toEqual(['kiosk', 'nursery']);
     expect([...headlines(6)].sort()).toEqual(['busStop', 'car', 'kiosk', 'nursery', 'school', 'shop']);
     expect([...headlines(7)].sort()).toEqual(['busStop', 'car', 'kiosk', 'nursery', 'school', 'shop', 'townHall']);
     expect([...headlines(8)].sort()).toEqual(['busStop', 'car', 'kiosk', 'nursery', 'school', 'shop', 'townHall']);
     expect([...headlines(9)].sort()).toEqual(['busStop', 'car', 'kiosk', 'library', 'nursery', 'school', 'shop', 'townHall']);
   });
 
-  test('round 9: weights 2 each, 1 for last round’s headline', () => {
+  test('round 10: weights 2 each, 1 for last round’s headline', () => {
     const t = new Targets();
     const n: Record<string, number> = {};
     const N = 3000;
     for (let s = 1; s <= N; s++) {
-      const h = roundPlan(9, rng(s), t, 'library').headline;
+      const h = roundPlan(10, rng(s), t, 'library').headline;
       n[h] = (n[h] ?? 0) + 1;
     }
     // 1 / 15 ≈ 6.7 %, the others 2 / 15 ≈ 13.3 %
