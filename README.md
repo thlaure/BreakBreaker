@@ -2,7 +2,7 @@
 
 A 2D top-down pixel-art arcade web game, rewritten from the old Three.js prototype (kept in the git history). The game's text is in French.
 
-Specification: [`docs/CAHIER_DES_CHARGES.md`](docs/CAHIER_DES_CHARGES.md) (v1.9.17, French). Slice 2 design: [`docs/superpowers/specs/2026-10-20-slice-2-fun-design.md`](docs/superpowers/specs/2026-10-20-slice-2-fun-design.md).
+Specification: [`docs/CAHIER_DES_CHARGES.md`](docs/CAHIER_DES_CHARGES.md) (v1.9.18, French). Slice 2 design: [`docs/superpowers/specs/2026-10-20-slice-2-fun-design.md`](docs/superpowers/specs/2026-10-20-slice-2-fun-design.md).
 
 ## Features
 
@@ -20,6 +20,7 @@ A full session in a single district, playable with keyboard/mouse or touch (firs
 - **Toolboxes**: walk over a toolbox to carry it (its icon floats above Paul), go next to a ruin or a burning place with no rioter close and press F (touch: Agir; a fresh press, holding F on the way does nothing): 2 s later, without holding the key, the ruin is repaired or the fire put out, restoring full health (+5 / +3). A fire never goes out by itself.
 - **Retro video-game shop**: a « JEUX RÉTRO » storefront (pixel joystick sign, striped awning, lit windows) is a 100 HP building to protect like the school: it joins the random headline draw from round 2 (round 1 is always the school; from round 2 the headline casse is a seeded random pick among every free place); saved +6, ruined −2, put out or repaired with a toolbox +4.
 - **Equestrian monument and capture the flag**: a bronze rider on a stone plinth holds a waving French flag; from round 4 (every other round, instead of the rescue, while the flag is French) rioters rush the statue and swap it for a Palestinian flag in a few seconds (−3; all knocked out first: +4); the flag stays until Paul holds the zone for 8 s with no rioter inside (+10, « zone contestée » otherwise), even during the breather.
+- **More places, two attacks at once, field heals** (v1.9.18): four new places to defend, a nursery (south-west building, from round 5), a newspaper kiosk (prop, from round 5), the town hall (north building, round 7) and the library (south building, round 9); from round 5 two places are attacked at the same time from the start of the round (new kinds first; the odd-round twist never adds a third urgency); a roster that would be too thin grows past 40 (the 40 active-hostile cap holds); every 8 round KOs a small +10 heal drops near Paul (two on the ground at most, 20 s, blinking at the end, « +N PV » popup on pickup).
 - **School defense**: the round-1 school assault has a first line, then, once it is down, a short "Renforts en approche !" sequence (skippable with Space or F, or a tap) announces 8 reinforcements.
 - **Rescue**: reach a threatened victim (« À L’AIDE ! » bubble) and knock out the attackers: the rescue then ends by itself (« MERCI ! », +6), no key to press.
 - **Stolen belongings**: while the attackers work on the victim they snatch its belongings (bag, hat, cane, backpack, scarf, cap) one by one; knock a thief out, walk over what it dropped and bring it back to the victim (+2 each; once safe, the victim waits up to 12 s for them).
