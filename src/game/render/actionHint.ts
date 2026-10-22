@@ -157,9 +157,9 @@ export class ActionHintLayer {
     const c = Math.cos(p.angle);
     const sn = Math.sin(p.angle);
     const pt = (fx: number, fy: number) => ({ x: p.x + fx * c - fy * sn, y: p.y + fx * sn + fy * c });
-    const tip = pt(7, 0);
-    const l = pt(-5, -6);
-    const r = pt(-5, 6);
+    const tip = pt(10, 0);
+    const l = pt(-7, -8);
+    const r = pt(-7, 8);
     g.fillStyle(INK, 1).fillTriangle(tip.x + 1, tip.y + 1, l.x + 1, l.y + 1, r.x + 1, r.y + 1);
     g.fillStyle(GOLD, 1).fillTriangle(tip.x, tip.y, l.x, l.y, r.x, r.y);
   }
