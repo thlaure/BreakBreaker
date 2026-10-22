@@ -60,7 +60,7 @@ describe('two urgencies at once from round 5 (plan)', () => {
 
   test('never a ruined or burning target, never the same target twice; one free target → one attack; none → the second beat alone', () => {
     const t = new Targets();
-    for (const id of ['school', 'shop', 'nursery', 'kiosk', 'townHall', 'library', 'busStop'] as const) t.ruin(id, `${id}#x`);
+    for (const id of ['school', 'shop', 'nursery', 'kiosk', 'townHall', 'library', 'busStop', 'boothRed', 'boothBlue'] as const) t.ruin(id, `${id}#x`);
     // only the two cars are free: car + car (two distinct targets)
     for (let s = 1; s <= 20; s++) expect(roundPlan(9, rng(s), t).beats[0]).toEqual(['car', 'car']);
     t.ignite('car1', 'car#x');

@@ -133,7 +133,8 @@ describe('the shop in the round plan', () => {
     const t = new Targets();
     const seen = new Set<string>();
     for (let s = 1; s <= 200; s++) seen.add(roundPlan(2 + (s % 3), rng(s), t, 'car').headline);
-    expect([...seen].sort()).toEqual(['busStop', 'car', 'school', 'shop']);
+    // rounds 2-4: the phone booths join the draw from round 3
+    expect([...seen].sort()).toEqual(['booth', 'busStop', 'car', 'school', 'shop']);
   });
 
   test('round 4+: the last headline is drawn half as often (weights 1 / 2 / 2 / 2)', () => {

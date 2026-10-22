@@ -75,7 +75,7 @@ export const THROWER_SHARE = 0.2;
 /** Aggressors of every rescue from round 2 (round 1 keeps the random CONFIG.rescue.aggressors range). */
 export const RESCUE_COUNT = 3;
 const VARIANTS: Variant[] = ['classic', 'palestinian', 'antifa'];
-const CASSE_KINDS: CasseKind[] = ['school', 'car', 'busStop', 'shop', 'nursery', 'kiosk', 'townHall', 'library'];
+const CASSE_KINDS: CasseKind[] = ['school', 'car', 'busStop', 'shop', 'nursery', 'kiosk', 'townHall', 'library', 'booth'];
 const TARGETS_OF: Readonly<Record<CasseKind, TargetId[]>> = {
   school: ['school'],
   car: ['car1', 'car2'],
@@ -85,9 +85,10 @@ const TARGETS_OF: Readonly<Record<CasseKind, TargetId[]>> = {
   kiosk: ['kiosk'],
   townHall: ['townHall'],
   library: ['library'],
+  booth: ['boothRed', 'boothBlue'],
 };
 
-/** A kind of casse can be attacked in `round` (CONFIG.casse.fromRound: the nursery and the kiosk from 5, the town hall from 7, the library from 9). */
+/** A kind of casse can be attacked in `round` (CONFIG.casse.fromRound: the phone booths from 3, the nursery and the kiosk from 5, the town hall from 7, the library from 9). */
 export function casseOpen(kind: CasseKind, round: number): boolean {
   return round >= CONFIG.casse.fromRound[kind];
 }
@@ -152,7 +153,7 @@ export const TWO_URGENCIES_FROM = 5;
 /**
  * The round catalogue. r1: the school (tutorial: first Molotov, cinematic, reinforcements) then rescue. From r2 the
  * headline casse is a seeded random draw among every kind open this round (casseOpen: school, shop, car, bus stop from
- * r2, nursery and kiosk from r5, town hall from r7, library from r9) with a free target (standing, not burning), weight
+ * r2, the phone booths from r3, nursery and kiosk from r5, town hall from r7, library from r9) with a free target (standing, not burning), weight
  * 2, or 1 if it was in `last` round's first beat (it may repeat, rarely; nothing is forced). From round
  * TWO_URGENCIES_FROM the first beat holds two casses on distinct targets, started together: the kinds opening this very
  * round first (round 5 nursery then kiosk, round 7 the town hall, round 9 the library), then the same weighted draw
@@ -312,6 +313,7 @@ export class Director {
     kiosk: 0,
     townHall: 0,
     library: 0,
+    booth: 0,
     rescue: 0,
     monument: 0,
   };

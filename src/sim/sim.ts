@@ -22,9 +22,10 @@ import { Rocks, type RockCtx, type RockState } from './projectiles';
 import { rng } from './rng';
 import { Toolboxes, type ToolboxMessage } from './repair';
 import { Rules, type SessionStats } from './rules';
+import { BOOTH_OF, Services, type CallCtx } from './services';
 import { beam } from './specials';
 import { Targets } from './targets';
-import type { CasseKind, InputFrame, Launch, MonumentFlag, Role, SimEvent, TargetId, Variant, Vec } from './types';
+import type { CasseKind, InputFrame, Launch, MonumentFlag, Role, ServiceKind, SimEvent, TargetId, Variant, Vec } from './types';
 import { WEAPONS, Weapons, type HeldKind, type PickupKind } from './weapons';
 
 /** How long a thrown bottle is drawn in flight (render only; the fire starts on the throw). */
@@ -170,7 +171,14 @@ export interface Snapshot {
     zone: { x: number; y: number; r: number };
   };
   stats: SessionStats;
+  /**
+   * Emergency calls left (3 + 3 per session) and `hint`: a call of that kind would be accepted right now (booth
+   * standing, a call left, no help of that kind on the map, a fire burning / enough rioters).
+   */
+  services: { calls: { fire: number; police: number }; hint: { fire: boolean; police: boolean } };
 }
+
+const SERVICE_KINDS: readonly ServiceKind[] = ['fire', 'police'];
 
 const v = (p: Vec): Vec => ({ x: p.x, y: p.y });
 
@@ -237,6 +245,8 @@ export class Sim {
   /** Small field heals dropped near Paul every CONFIG.fieldHeal.every eligible KOs. */
   readonly fieldHeals: FieldHeals;
   readonly toolboxes = new Toolboxes();
+  /** Phone booth calls (fire truck, police): counters and acceptance. */
+  readonly services = new Services();
   readonly firePatches = new FirePatches();
   /** The equestrian monument's flag and capture the flag (persists across rounds). */
   readonly monument = new Monument();
@@ -469,7 +479,9 @@ export class Sim {
     ev.push(...this.monument.step(dt, { player: p, horde: this.horde, rules: this.rules }));
     if (this.rescue) ev.push(...this.rescue.step(dt, { horde: this.horde, rules: this.rules, player: p, spawner: this.objectiveSpawner }));
 
-    const kit = this.toolboxes.step(dt, { player: p, horde: this.horde, targets: this.targets, rules: this.rules, act: actPressed });
+    // a fresh Agir press goes to the nearest of the startable repair and the booths in call range (ties: repair > red > blue)
+    const kitAct = actPressed && this.agirAtBooth(ev) === null;
+    const kit = this.toolboxes.step(dt, { player: p, horde: this.horde, targets: this.targets, rules: this.rules, act: kitAct });
     ev.push(...kit.events);
     this.toolboxMessage = kit.message;
     const heal = this.stations.step({ player: p, rules: this.rules });
@@ -590,7 +602,48 @@ export class Sim {
       energy: { value: this.energy.value, max: CONFIG.energy.max, ready: this.energy.ready() },
       monument: this.monumentView(),
       stats: { ...this.rules.stats },
+      services: {
+        calls: { ...this.services.calls },
+        hint: { fire: this.services.check('fire', this.callCtx('fire')).ok, police: this.services.check('police', this.callCtx('police')).ok },
+      },
     };
+  }
+
+  /** What a call of `kind` from its booth would weigh now. */
+  private callCtx(kind: ServiceKind): CallCtx {
+    let burning = 0;
+    for (const t of DISTRICT.targets) if (this.targets.get(t.id).burning) burning++;
+    return {
+      burning,
+      activeHostiles: this.horde.active().length,
+      boothStanding: this.targets.standing(BOOTH_OF[kind]),
+      busy: this.services.active[kind],
+    };
+  }
+
+  /**
+   * A fresh Agir press: the nearest of a repair that would start (Toolboxes.startable, at its target's door) and the
+   * booths whose door is within CONFIG.services.callRange of Paul; ties go to the repair, then red, then blue. A booth
+   * that wins makes the call (ServiceCalled, or ServiceRefused with the reason) and returns its kind; null leaves the
+   * press to the toolbox.
+   */
+  private agirAtBooth(ev: SimEvent[]): ServiceKind | null {
+    const p = this.player.pos;
+    const repair = this.toolboxes.startable(p, this.horde, this.targets);
+    let best: ServiceKind | null = null;
+    let bestD = repair === null ? Infinity : dist(p, DISTRICT.targets.find((t) => t.id === repair)!.door);
+    for (const kind of SERVICE_KINDS) {
+      const d = dist(p, DISTRICT.targets.find((t) => t.id === BOOTH_OF[kind])!.door);
+      // strictly nearer by more than a rounding error: equal distances keep the earlier candidate
+      if (d <= CONFIG.services.callRange && d < bestD - 1e-9) {
+        best = kind;
+        bestD = d;
+      }
+    }
+    if (best === null) return null;
+    const r = this.services.tryCall(best, this.callCtx(best));
+    ev.push(r.ok ? { type: 'ServiceCalled', kind: best } : { type: 'ServiceRefused', kind: best, reason: r.reason });
+    return best;
   }
 
   private monumentView(): Snapshot['monument'] {

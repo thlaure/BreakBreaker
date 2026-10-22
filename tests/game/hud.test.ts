@@ -278,6 +278,18 @@ describe('incidentLines', () => {
     expect(incidentLines(f, 'en cours')[0]).toMatchObject({ key: 'shop', name: 'Boutique', status: 'en feu' });
   });
 
+  test('the phone booths have their own cards (Cabine rouge, Cabine bleue)', () => {
+    const s = snap((x) => {
+      calm(x);
+      attacked(x, 'boothRed', 30, true);
+      attacked(x, 'boothBlue', 45);
+    });
+    expect(incidentLines(s, 'en cours')).toEqual([
+      expect.objectContaining({ key: 'boothRed', kind: 'booth', name: 'Cabine rouge', time: '50 %', status: 'en feu' }),
+      expect.objectContaining({ key: 'boothBlue', kind: 'booth', name: 'Cabine bleue', time: '75 %', status: 'attaquée' }),
+    ]);
+  });
+
   test('the Phase C places have their cards (Maternelle, Kiosque, Mairie, Bibliothèque)', () => {
     const s = snap((x) => {
       calm(x);

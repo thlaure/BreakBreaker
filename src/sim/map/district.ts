@@ -18,7 +18,7 @@ export interface TargetDef {
   footprint: Rect;
   attackPoints: Vec[];
   door: Vec;
-  /** Props (cars, bus stop, kiosk) are solid obstacles outside `buildings`. */
+  /** Props (cars, bus stop, kiosk, phone booths) are solid obstacles outside `buildings`. */
   prop: boolean;
   maxHp: number;
 }
@@ -146,6 +146,11 @@ export const DISTRICT: District = {
     prop('kiosk', 'kiosk', R(34, 40, 2, 1), [C(33, 40), C(36, 40), C(34, 41), C(35, 41)]),
     building('townHall', 'townHall', R(15, 3, 6, 4), [C(16, 7), C(17, 7), C(19, 7), C(20, 7)], C(18, 7)),
     building('library', 'library', R(22, 38, 8, 5), [C(24, 43), C(25, 43), C(27, 43), C(28, 43)], C(26, 43)),
+    // the two phone booths side by side on the centre-west plaza (red: fire truck, blue: police), a free tile all
+    // around the island; open to attacks from round 3 (CONFIG.casse.fromRound.booth). Paul calls from the street row
+    // in front (row 23), within CONFIG.services.callRange of the booth's door (its centre).
+    prop('boothRed', 'booth', R(4, 22, 1, 1), [C(3, 22), C(4, 23), C(4, 21)]),
+    prop('boothBlue', 'booth', R(5, 22, 1, 1), [C(6, 22), C(5, 23), C(5, 21)]),
   ],
   kitSites: [C(18, 12), C(28, 25), C(8, 26), C(36, 44)],
   monument: {

@@ -1,6 +1,6 @@
 import { CONFIG } from '../../sim/config';
 import type { Snapshot } from '../../sim/sim';
-import type { CasseKind, Vec } from '../../sim/types';
+import type { CasseKind, TargetId, Vec } from '../../sim/types';
 import { HELD_LABELS } from '../../sim/weapons';
 import { casseurs, type IncidentKind, type RoundHeadline } from './alerts';
 
@@ -116,7 +116,10 @@ export const TARGET_NAMES: Readonly<Record<CasseKind, string>> = {
   kiosk: 'Kiosque',
   townHall: 'Mairie',
   library: 'Bibliothèque',
+  booth: 'Cabine',
 };
+/** Card names of the targets a kind's name does not tell apart: the two phone booths. */
+const TARGET_CARD_NAMES: Readonly<Partial<Record<TargetId, string>>> = { boothRed: 'Cabine rouge', boothBlue: 'Cabine bleue' };
 const OBJECTIVE_NAMES: Readonly<Record<RoundHeadline, string>> = { ...TARGET_NAMES, rescue: 'Secours', monument: 'Monument' };
 
 export interface IncidentLine {
@@ -146,7 +149,7 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
     if (t.state !== 'attacked' && t.state !== 'burning') continue;
     const hp = Math.max(0, Math.min(100, (100 * t.hp) / t.maxHp));
     const status: IncidentStatus = t.id === 'school' && s.school.stage === 'cinematic' ? 'renforts' : t.burning ? 'en feu' : 'attaquée';
-    out.push({ key: t.id, kind: t.kind, name: TARGET_NAMES[t.kind], time: `${Math.ceil(hp - 1e-9)} %`, hp, status, target: t.door, items: null });
+    out.push({ key: t.id, kind: t.kind, name: TARGET_CARD_NAMES[t.id] ?? TARGET_NAMES[t.kind], time: `${Math.ceil(hp - 1e-9)} %`, hp, status, target: t.door, items: null });
   }
   const r = s.rescue;
   if (r && (r.stage === 'threat' || r.stage === 'secured')) {

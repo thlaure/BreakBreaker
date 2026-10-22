@@ -294,10 +294,17 @@ export const CONFIG = {
       kiosk: [4, -2, 3],
       townHall: [8, -3, 5],
       library: [8, -3, 5],
+      booth: [4, -2, 3],
     },
     /** First round a kind can be attacked (headline draw and second urgency; round 1 is always the school). */
-    fromRound: { school: 1, car: 2, busStop: 2, shop: 2, nursery: 5, kiosk: 5, townHall: 7, library: 9 },
+    fromRound: { school: 1, car: 2, busStop: 2, shop: 2, nursery: 5, kiosk: 5, townHall: 7, library: 9, booth: 3 },
   },
+  /**
+   * Emergency services (phone booths): `calls` fire calls and as many police calls per session; Paul calls within
+   * `callRange` px of a booth's door; the police come only with `policeMinHostiles` active rioters or more (the entry
+   * line not counted), the fire truck only while a target burns.
+   */
+  services: { calls: 3, callRange: 40, policeMinHostiles: 8 },
   pressureMax: 12,
   rulesVersion: 'slice-0.2.0',
 } as const;

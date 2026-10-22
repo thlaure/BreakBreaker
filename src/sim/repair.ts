@@ -77,7 +77,18 @@ export class Toolboxes {
     return best;
   }
 
-  step(dt: number, ctx: ToolboxCtx): { events: SimEvent[]; message: ToolboxMessage } {
+  /**
+   * The target a fresh Agir press would start repairing now (a toolbox carried, a target in reach, no hostile within
+   * safetyRadius), or null: what the Sim weighs against the phone booths for the press.
+   */
+  startable(player: Vec, horde: Horde, targets: Targets): TargetId | null {
+    if (!this.carried) return null;
+    const target = this.repairTarget(player, targets);
+    if (target === null) return null;
+    return horde.active().some((h) => dist(h.pos, player) <= CONFIG.kit.safetyRadius) ? null : target;
+  }
+
+  step(dt: number, ctx: ToolboxCtx):{ events: SimEvent[]; message: ToolboxMessage } {
     const events: SimEvent[] = [];
     const { player, horde, targets, rules } = ctx;
     this.ready = false;

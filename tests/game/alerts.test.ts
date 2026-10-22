@@ -90,6 +90,8 @@ describe('pure helpers', () => {
       ['townHall', 7, { title: 'MAIRIE ATTAQUÉE !', sub: 'Défends la mairie', label: 'MAIRIE', tone: 'fire', icon: 'flame' }, 'Mairie menacée'],
       ['library', 9, { title: 'BIBLIOTHÈQUE EN FEU !', sub: 'Sauve les livres', label: 'BIBLIOTHÈQUE', tone: 'fire', icon: 'flame' }, 'Bibliothèque menacée'],
     ] as const;
+    expect(incidentAlert('booth', 3)).toMatchObject({ title: 'CABINE SACCAGÉE !', sub: 'Protège la cabine', label: 'CABINE', tone: 'warn', icon: 'glass', meta: 'Manche 3' });
+    expect(incidentAlert('round', 3, 18, 'booth').sub).toBe('Cabine menacée · 18 casseurs');
     for (const [id, round, spec, headline] of cases) {
       expect(incidentAlert(id, round)).toMatchObject({ ...spec, meta: `Manche ${round}`, positioned: true });
       expect(incidentAlert('round', round, 26, id).sub).toBe(`${headline} · 26 casseurs`);

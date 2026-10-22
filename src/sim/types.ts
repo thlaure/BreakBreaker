@@ -90,9 +90,24 @@ export type Role =
   | 'brute'
   | 'boss'
   | 'shooter';
-export type TargetId = 'school' | 'car1' | 'car2' | 'busStop' | 'shop' | 'nursery' | 'kiosk' | 'townHall' | 'library';
-/** What kind of attack a round's "casse" is (Phase C extends both unions). */
-export type CasseKind = 'school' | 'car' | 'busStop' | 'shop' | 'nursery' | 'kiosk' | 'townHall' | 'library';
+export type TargetId =
+  | 'school'
+  | 'car1'
+  | 'car2'
+  | 'busStop'
+  | 'shop'
+  | 'nursery'
+  | 'kiosk'
+  | 'townHall'
+  | 'library'
+  | 'boothRed'
+  | 'boothBlue';
+/** What kind of attack a round's "casse" is (Phase C extends both unions; 'booth' = the two phone booths). */
+export type CasseKind = 'school' | 'car' | 'busStop' | 'shop' | 'nursery' | 'kiosk' | 'townHall' | 'library' | 'booth';
+/** The emergency services a phone booth calls: the red one the fire truck, the blue one the police. */
+export type ServiceKind = 'fire' | 'police';
+/** Why a booth call was refused (nothing spent). */
+export type ServiceRefusal = 'noFire' | 'fewRioters' | 'noCalls' | 'busy' | 'ruined';
 /**
  * Where a site-bound rioter (degrader) goes: a target, or the equestrian monument's plinth. The monument has no hp and
  * is not a target: it only shares the horde's site mechanism (attack points, flow field).
@@ -206,6 +221,10 @@ export type SimEvent =
   | { type: 'FireOut'; target: TargetId }
   | { type: 'TargetSaved'; incidentId: string; target: TargetId }
   | { type: 'TargetRepaired'; target: TargetId; incidentId: string }
+  /** Paul called the fire truck (red booth) or the police (blue booth): one call of that kind spent. */
+  | { type: 'ServiceCalled'; kind: ServiceKind }
+  /** A booth call was refused (nothing spent): see ServiceRefusal. */
+  | { type: 'ServiceRefused'; kind: ServiceKind; reason: ServiceRefusal }
   | { type: 'ToolboxSpawned'; id: number; pos: Vec }
   | { type: 'ToolboxPickedUp'; id: number }
   /** `rescueKind`: set when the headline is the rescue (its variant, drawn at round start; RescueStarted has the same). */
