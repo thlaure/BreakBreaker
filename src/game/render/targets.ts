@@ -13,8 +13,13 @@ type BuildingParts = WorldView['buildingParts'];
 const OUTLINE = 0x14121c;
 /** Props are drawn from 1-px logical textures scaled ×2, like the city tiles. */
 const PX = 2;
+type PropKind = 'car' | 'busStop' | 'kiosk';
 /** World px a prop texture rises above its footprint (it is anchored on the footprint's bottom edge). */
-const PROP_RISE: Record<'car' | 'busStop', number> = { car: 10, busStop: 16 };
+const PROP_RISE: Record<PropKind, number> = { car: 10, busStop: 16, kiosk: 16 };
+/** The look of a prop target: cars, the bus shelter and the newspaper kiosk. */
+function propKind(kind: TargetDef['kind']): PropKind {
+  return kind === 'busStop' || kind === 'kiosk' ? kind : 'car';
+}
 const FLASH_MS = 120;
 /** Extra flare of a target already burning hit by another bottle. */
 const FLARE_MS = 350;
@@ -26,7 +31,8 @@ const TRAIL_PER_SEC = 0.3;
 
 /**
  * Runtime prop textures (1 px logical, drawn ×2): `car_a` / `car_b` (3/4 side-view compact, red / blue) and `car_burnt`,
- * `busstop` / `busstop_broken`, plus the `toolbox` pickup, the Molotov `bottle`, its `flame` and the `bang` mark.
+ * `busstop` / `busstop_broken`, `kiosk` / `kiosk_broken` (green newspaper stand), plus the `toolbox` pickup, the
+ * Molotov `bottle`, its `flame` and the `bang` mark.
  */
 export function makeTargetTextures(scene: Phaser.Scene): void {
   if (scene.textures.exists('car_a')) return;
@@ -169,6 +175,76 @@ export function makeTargetTextures(scene: Phaser.Scene): void {
   shelter('busstop', false);
   shelter('busstop_broken', true);
 
+  // newspaper kiosk, front view: striped green / white awning, green booth, magazines on the racks, a newspaper
+  // headline board, the vendor's hatch; once ransacked: torn awning, empty racks, papers strewn, scorched panels
+  const kiosk = (key: string, broken: boolean): void => {
+    g.clear();
+    const green = broken ? 0x2a4a3a : 0x2f8a4a;
+    const greenHi = broken ? 0x3a5a48 : 0x5ec07a;
+    const greenLo = broken ? 0x1d3328 : 0x1f6a36;
+    // booth body
+    r(OUTLINE, 1, 5, 30, 19);
+    r(green, 2, 6, 28, 17);
+    r(greenHi, 2, 6, 28, 1);
+    r(greenLo, 2, 21, 28, 2);
+    // vendor's hatch (middle) with the counter
+    r(OUTLINE, 11, 7, 10, 9);
+    r(broken ? 0x1d1a24 : 0xffd27a, 12, 8, 8, 7);
+    r(OUTLINE, 10, 15, 12, 2);
+    r(broken ? 0x6a4a2b : 0xb07a43, 11, 15, 10, 1);
+    if (!broken) {
+      r(0x8a5a3a, 13, 11, 6, 1); // shelf inside
+      r(0xf4ecd8, 14, 9, 2, 2); // vendor's paper stack
+    }
+    // side racks of magazines (left and right of the hatch)
+    const mags = [0xff4f6d, 0xffd23f, 0x3fc6e0, 0xf4ecd8, 0x7a5cff, 0xff8a3a];
+    for (const [x0, k0] of [[3, 0], [22, 3]] as const) {
+      for (let row = 0; row < 2; row++) {
+        r(OUTLINE, x0, 9 + row * 6, 7, 1);
+        for (let k = 0; k < 3; k++) {
+          if (broken && (k + row + k0) % 3 !== 0) continue; // racks mostly empty
+          const c = mags[(k + row * 2 + k0) % mags.length]!;
+          r(c, x0 + k * 2 + (k > 0 ? 1 : 0), 6 + row * 6, 2, 3);
+          r(OUTLINE, x0 + k * 2 + (k > 0 ? 1 : 0), 7 + row * 6, 2, 1, 0.35);
+        }
+      }
+    }
+    // headline board on the front (white sheet, black lines)
+    r(OUTLINE, 12, 17, 8, 6);
+    r(broken ? 0xa8a08a : 0xf4f4f0, 13, 18, 6, 4);
+    r(OUTLINE, 14, 19, 4, 1);
+    r(OUTLINE, 14, 21, 3, 1);
+    // awning
+    if (!broken) {
+      r(OUTLINE, 0, 0, 32, 6);
+      for (let k = 0; k < 8; k++) {
+        const c = k % 2 === 0 ? 0x2f8a4a : 0xf4f4f0;
+        r(c, 1 + k * 4, 1, k === 7 ? 2 : 4, 3);
+        r(c, 1 + k * 4, 4, k === 7 ? 2 : 4, k % 2 === 0 ? 2 : 1); // scalloped edge
+      }
+      r(0xe6f7ff, 2, 1, 4, 1); // sheen
+    } else {
+      // torn: left half sagging, strips hanging
+      r(OUTLINE, 0, 1, 18, 5);
+      for (let k = 0; k < 4; k++) r(k % 2 === 0 ? 0x2a6a3e : 0xb8b4a8, 1 + k * 4, 2, 4, 3);
+      r(OUTLINE, 18, 3, 14, 3);
+      r(0x2a6a3e, 19, 4, 4, 1);
+      r(0xb8b4a8, 23, 4, 4, 1);
+      r(0xb8b4a8, 24, 5, 1, 3); // hanging strip
+      r(0x2a6a3e, 28, 5, 1, 4);
+      // soot and papers strewn on the ground line
+      r(0x14121c, 4, 12, 4, 3, 0.6);
+      r(0x14121c, 24, 16, 5, 3, 0.6);
+      r(0xf4ecd8, 0, 22, 3, 2);
+      r(0xf4ecd8, 27, 23, 4, 1);
+      r(0xff4f6d, 6, 23, 2, 1);
+      r(0xff7a1f, 16, 9, 1, 1); // embers
+    }
+    g.generateTexture(key, 32, 24);
+  };
+  kiosk('kiosk', false);
+  kiosk('kiosk_broken', true);
+
   // toolbox: red-orange case, grey handle, yellow latch
   g.clear();
   r(OUTLINE, 3, 0, 6, 3);
@@ -280,9 +356,9 @@ const BAR_COLORS: [number, number][] = [
 
 /**
  * One destructible target: hp bar, fire + smoke while `burning`, ruin (scorched, debris, smoke wisps) while ruined,
- * back to normal once repaired. A building (school, retro video-game shop) dims its own parts when ruined, and the
+ * back to normal once repaired. A building (school, retro video-game shop, nursery, town hall, library) dims its own parts when ruined, and the
  * school flies the French flag while it stands and is not on fire (schoolFlagShown); props
- * (cars, bus shelter) are drawn on their solid footprint and swap to a wreck texture.
+ * (cars, bus shelter, newspaper kiosk) are drawn on their solid footprint and swap to a wreck texture.
  */
 class TargetView {
   private readonly fire: Phaser.GameObjects.Particles.ParticleEmitter;
@@ -317,11 +393,13 @@ class TargetView {
     const prop = def.prop;
     const big = !prop;
     if (prop) {
-      const kind = def.kind === 'busStop' ? 'busStop' : 'car';
+      const kind = propKind(def.kind);
       this.textures =
         kind === 'busStop'
           ? { intact: 'busstop', ruined: 'busstop_broken' }
-          : { intact: def.id === 'car2' ? 'car_b' : 'car_a', ruined: 'car_burnt' };
+          : kind === 'kiosk'
+            ? { intact: 'kiosk', ruined: 'kiosk_broken' }
+            : { intact: def.id === 'car2' ? 'car_b' : 'car_a', ruined: 'car_burnt' };
       scene.add.ellipse(cx, bottom - 2, f.w + 6, 12, 0x000000, 0.25).setDepth(DEPTH.decal);
       this.sprite = scene.add
         .image(cx, bottom + (kind === 'car' ? 2 : 0), this.textures.intact)
@@ -383,7 +461,7 @@ class TargetView {
       this.mast = scene.add.container(mx, my, [pole, flag]).setDepth(DEPTH.roof + 3).setVisible(false);
     }
     // a building's bar sits on the front of its roof, just above the flames, so it shows from the door
-    const barTop = big ? bottom - FACADE_H - 56 : f.y - PROP_RISE[def.kind === 'busStop' ? 'busStop' : 'car'] - 12;
+    const barTop = big ? bottom - FACADE_H - 56 : f.y - PROP_RISE[propKind(def.kind)] - 12;
     this.bar = big ? new HpBar(scene, cx, barTop, 64, 10) : new HpBar(scene, cx, barTop, 36, 8);
   }
 
@@ -458,7 +536,12 @@ class TargetView {
     const cy = f.y + f.h / 2;
     g.fillStyle(0x14121c, 0.45).fillEllipse(cx, cy + 4, f.w + 28, f.h + 18);
     g.fillStyle(0x14121c, 0.3).fillEllipse(cx - 10, cy + 10, f.w * 0.6, f.h * 0.6);
-    const bits = this.def.kind === 'busStop' ? [0x8fcfe8, 0xe6f7ff, 0x8fcfe8, 0x6d6a72] : [0x3a3438, 0x6d6a72, 0x8a4a2b, 0x9fd8ef];
+    const bits =
+      this.def.kind === 'busStop'
+        ? [0x8fcfe8, 0xe6f7ff, 0x8fcfe8, 0x6d6a72]
+        : this.def.kind === 'kiosk'
+          ? [0xf4ecd8, 0xff4f6d, 0xf4ecd8, 0x2f8a4a] // newspapers and torn magazines
+          : [0x3a3438, 0x6d6a72, 0x8a4a2b, 0x9fd8ef];
     for (let k = 0; k < 18; k++) {
       const a = rnd() * Math.PI * 2;
       const d = 0.55 + rnd() * 0.35;
