@@ -173,8 +173,8 @@ interface Block {
 }
 
 /**
- * Onde d’énergie and bouclier effects: the charge glow growing in Paul's hands (additive blue-white disc and a thin
- * ring), a progress ring around Paul that closes clockwise from 12 o’clock over the charge (chargeRing), the beam (~BEAM_MS, pixel-stepped widths, additive glow, flicker) and, on a bubble block, a spark burst and a
+ * Onde d’énergie and bouclier effects: the charge glow growing in Paul's hands (additive blue-white disc), a
+ * progress ring around Paul that closes clockwise from 12 o’clock over the charge (chargeRing), the beam (~BEAM_MS, pixel-stepped widths, additive glow, flicker) and, on a bubble block, a spark burst and a
  * short expanding ring at the rim point (BubbleView.hit).
  */
 export class SpecialFx {
@@ -240,16 +240,14 @@ export class SpecialFx {
       .fillStyle(ENERGY, 0.35 + 0.3 * p)
       .fillCircle(h.x, h.y, r + 3)
       .fillStyle(ENERGY_CORE, 0.6 + 0.4 * p)
-      .fillCircle(h.x, h.y, Math.max(1, r - 1))
-      // thin ring closing in as the charge grows
-      .lineStyle(1, ENERGY_CORE, 0.8)
-      .strokeCircle(h.x, h.y, Math.round(18 - 10 * p));
+      .fillCircle(h.x, h.y, Math.max(1, r - 1));
     // progress ring around Paul: dark track, light-blue arc closing clockwise, a bright head
     const arc = chargeRing(p);
     const cx = Math.round(body.x);
     const cy = Math.round(body.y - CHARGE_RING_Y);
     const ring = this.ring.clear().setVisible(true).setDepth(body.depth + 0.1);
-    ring.lineStyle(4, INK, 0.55).strokeCircle(cx, cy, arc.radius);
+    ring.lineStyle(4, INK, 0.6).strokeCircle(cx, cy, arc.radius);
+    ring.lineStyle(1, ENERGY, 0.35).strokeCircle(cx, cy, arc.radius);
     if (p > 0) {
       ring.lineStyle(2, ENERGY, 1).beginPath().arc(cx, cy, arc.radius, arc.start, arc.end, false).strokePath();
       ring.fillStyle(ENERGY_CORE, 1).fillCircle(Math.round(cx + Math.cos(arc.end) * arc.radius), Math.round(cy + Math.sin(arc.end) * arc.radius), 2);

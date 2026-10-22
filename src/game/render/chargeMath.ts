@@ -1,5 +1,5 @@
 /** Radius (px) of the onde d’énergie charge ring drawn around Paul (clears his sprite). */
-export const CHARGE_RING_R = 16;
+export const CHARGE_RING_R = 20;
 /** Height (px) above Paul's feet of the ring's centre (mid-body). */
 export const CHARGE_RING_Y = 12;
 
