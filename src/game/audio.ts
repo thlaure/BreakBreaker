@@ -566,6 +566,7 @@ export class GameAudio {
         case 'ToolboxPickedUp':
         case 'ItemPickedUp':
         case 'HealCompleted':
+        case 'SmallHealPicked':
           this.play('pickup');
           break;
         case 'MolotovThrown':

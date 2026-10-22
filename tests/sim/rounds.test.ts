@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { CONFIG } from '../../src/sim/config';
-import { pressure, roundPlan, tableTotal, urgentCap } from '../../src/sim/director';
+import { casseOpen, pressure, roundPlan, tableTotal, urgentCap } from '../../src/sim/director';
 import { lineup } from '../../src/sim/incidents/targetAttack';
 import { DISTRICT } from '../../src/sim/map/district';
 import { rng } from '../../src/sim/rng';
@@ -46,7 +46,9 @@ describe('round catalogue', () => {
       expect(roundPlan(1, rng(s), t)).toEqual({ headline: 'school', beats: [['school'], ['rescue']], twists: [] });
     for (let r = 2; r <= 8; r++) {
       const p = roundPlan(r, rng(r), t);
-      expect(p.beats).toEqual([[p.headline], ['rescue']]);
+      // from round 5 two casses open the round together (tests/sim/twoUrgencies.test.ts)
+      if (r < 5) expect(p.beats).toEqual([[p.headline], ['rescue']]);
+      else expect(p.beats).toEqual([[p.headline, p.beats[0]![1]], ['rescue']]);
       expect(p.twists).toEqual(r >= 3 && r % 2 === 1 ? ['weaponDrop', 'secondUrgency'] : ['weaponDrop']);
     }
   });
@@ -76,7 +78,8 @@ describe('round catalogue', () => {
   test('the draw only picks targets the given free() accepts (an unresolved attack makes a target unavailable)', () => {
     const t = new Targets();
     const busy = new Set(['school', 'car1', 'car2', 'shop']);
-    for (let s = 1; s <= 30; s++) expect(roundPlan(2 + (s % 6), rng(s), t, null, null, (id) => !busy.has(id)).headline).toBe('busStop');
+    // rounds 2-4: the Phase C places (nursery, kiosk from round 5…) are not open yet
+    for (let s = 1; s <= 30; s++) expect(roundPlan(2 + (s % 3), rng(s), t, null, null, (id) => !busy.has(id)).headline).toBe('busStop');
     busy.add('busStop');
     expect(roundPlan(4, rng(1), t, null, null, (id) => !busy.has(id)).beats).toEqual([['rescue']]);
   });
@@ -193,8 +196,14 @@ describe('rounds in the sim', () => {
         const r = sim.director.round;
         const extra = sim.attacks[sim.attacks.length - 1]!;
         const earlier = new Set(sim.attacks.filter((a) => a.round === r && a !== extra).map((a) => a.target));
+        // a place before its round (nursery, kiosk from 5…) is never picked
+        const kindOf = (id: string) => DISTRICT.targets.find((t) => t.id === id)!.kind;
+        expect(casseOpen(kindOf(extra.target), r)).toBe(true);
         const free = DISTRICT.targets.filter(
-          (t) => sim.targets.standing(t.id) && !sim.attacks.some((a) => a !== extra && a.target === t.id && !a.resolved()),
+          (t) =>
+            casseOpen(t.kind, r) &&
+            sim.targets.standing(t.id) &&
+            !sim.attacks.some((a) => a !== extra && a.target === t.id && !a.resolved()),
         );
         if (free.some((t) => earlier.has(t.id))) mattered++;
         if (free.some((t) => t.id !== extra.target && !earlier.has(t.id))) expect(earlier.has(extra.target)).toBe(false);
@@ -408,7 +417,7 @@ describe('rounds in the sim', () => {
   test('a ruined target is never drawn again until repaired; its planned rioters join the fill', () => {
     const t = new Targets();
     for (const id of ['car1', 'car2', 'busStop', 'shop'] as const) t.ruin(id, `${id}#x`);
-    for (let s = 1; s <= 40; s++) expect(roundPlan(2 + (s % 5), rng(s), t).beats[0]).toEqual(['school']);
+    for (let s = 1; s <= 40; s++) expect(roundPlan(2 + (s % 3), rng(s), t).beats[0]).toEqual(['school']);
     t.ruin('school', 'school#x');
     expect(roundPlan(2, rng(1), t)).toEqual({ headline: 'rescue', beats: [['rescue']], twists: ['weaponDrop'] });
     expect(roundPlan(4, rng(1), t).beats).toEqual([['rescue']]);
@@ -642,9 +651,9 @@ describe('a burning target stays so until put out (no fire going out by itself)'
     t.ignite('car1', 'car#1');
     t.ignite('car2', 'car#2');
     t.ignite('shop', 'shop#1');
-    for (let s = 1; s <= 30; s++) expect(roundPlan(2 + (s % 6), rng(s), t).headline).toBe('busStop');
+    for (let s = 1; s <= 30; s++) expect(roundPlan(2 + (s % 3), rng(s), t).headline).toBe('busStop');
     t.ignite('busStop', 'busStop#1');
-    for (let s = 1; s <= 30; s++) expect(roundPlan(2 + (s % 6), rng(s), t).headline).toBe('rescue');
+    for (let s = 1; s <= 30; s++) expect(roundPlan(2 + (s % 3), rng(s), t).headline).toBe('rescue');
     // in the sim: the smouldering school is not attacked again while it burns (rounds 2-4)
     const { sim } = smouldering();
     for (let i = 0; i < 60 * 600 && sim.director.round <= 4 && sim.targets.get('school').burning; i++) {

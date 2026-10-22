@@ -132,7 +132,7 @@ describe('the shop in the round plan', () => {
   test('from round 2 the shop is one of the randomly drawn headlines (never forced)', () => {
     const t = new Targets();
     const seen = new Set<string>();
-    for (let s = 1; s <= 200; s++) seen.add(roundPlan(2 + (s % 6), rng(s), t, 'car').headline);
+    for (let s = 1; s <= 200; s++) seen.add(roundPlan(2 + (s % 3), rng(s), t, 'car').headline);
     expect([...seen].sort()).toEqual(['busStop', 'car', 'school', 'shop']);
   });
 

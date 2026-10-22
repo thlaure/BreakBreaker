@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { Vec } from '../../sim/types';
 import { DEPTH } from './depth';
-import { POPUP_CAP, POPUP_INK, popupLayout, popupPose, popupStyle } from './scorePopupMath';
+import { POPUP_CAP, POPUP_INK, popupLayout, popupPose, popupSize, popupStyle } from './scorePopupMath';
 
 const FONT = '"Press Start 2P", ui-monospace, monospace';
 
@@ -63,6 +63,21 @@ export class ScorePopups {
       p.alive = true;
       p.text.setVisible(false);
     });
+  }
+
+  /** A non-score floating text (« +10 PV », green) rising from `pos`, with the score popups' pose and pool. */
+  spawnLabel(text: string, color: string, pos: Vec, nowMs: number): void {
+    const p = this.free();
+    p.text.setText(text).setColor(color).setFontSize(popupSize(2));
+    p.text.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+    p.start = nowMs;
+    p.born = this.spawned++;
+    p.x = pos.x;
+    p.dx = 0;
+    p.y = Math.round(pos.y - 24);
+    p.magnitude = 2;
+    p.alive = true;
+    p.text.setVisible(false);
   }
 
   update(nowMs: number): void {

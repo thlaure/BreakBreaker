@@ -83,6 +83,27 @@ describe('pure helpers', () => {
     expect(activeIncidents(s)).toContainEqual({ id: 'shop', kind: 'shop', pos: door, burning: true });
   });
 
+  test('the Phase C places: banner on their fire, round line, edge indicator at the door', () => {
+    const cases = [
+      ['nursery', 5, { title: 'ÉCOLE MATERNELLE EN DANGER !', sub: 'Protège les petits', label: 'MATERNELLE', tone: 'fire', icon: 'flame' }, 'École maternelle menacée'],
+      ['kiosk', 5, { title: 'KIOSQUE SACCAGÉ !', sub: 'Protège le kiosque', label: 'KIOSQUE', tone: 'warn', icon: 'glass' }, 'Kiosque menacé'],
+      ['townHall', 7, { title: 'MAIRIE ATTAQUÉE !', sub: 'Défends la mairie', label: 'MAIRIE', tone: 'fire', icon: 'flame' }, 'Mairie menacée'],
+      ['library', 9, { title: 'BIBLIOTHÈQUE EN FEU !', sub: 'Sauve les livres', label: 'BIBLIOTHÈQUE', tone: 'fire', icon: 'flame' }, 'Bibliothèque menacée'],
+    ] as const;
+    for (const [id, round, spec, headline] of cases) {
+      expect(incidentAlert(id, round)).toMatchObject({ ...spec, meta: `Manche ${round}`, positioned: true });
+      expect(incidentAlert('round', round, 26, id).sub).toBe(`${headline} · 26 casseurs`);
+      const door = DISTRICT.targets.find((t) => t.id === id)!.door;
+      expect(alertFromEvent({ type: 'CasseStarted', incidentId: `${id}#1`, kind: id, target: id, pos: { ...door }, round, total: 26 })).toBeNull();
+      expect(alertFromEvent({ type: 'TargetIgnited', target: id, incidentId: `${id}#3`, kind: id, pos: { ...door }, round })).toEqual({
+        id: `${id}#3`, kind: id, pos: door, wave: round, total: 0, incident: id,
+      });
+      const s = new Sim(1).snapshot();
+      Object.assign(s.targets.find((t) => t.id === id)!, { state: 'burning', burning: true });
+      expect(activeIncidents(s)).toContainEqual({ id, kind: id, pos: door, burning: true });
+    }
+  });
+
   test('alertFromEvent maps fires, rescue starts and round starts (a round has no position); an attack start is not announced', () => {
     // no fire before a bottle was thrown: the attack starts are silent
     expect(alertFromEvent(schoolEv)).toBeNull();

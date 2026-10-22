@@ -59,6 +59,14 @@ export const CONFIG = {
   },
   heal: { amount: 25 },
   /**
+   * Small field heals (§12.5): after every `every` eligible KOs (round-roster KOs, domino victims included; patrols
+   * never) a +`amount` heal drops `minDist`–`maxDist` px from Paul on a walkable spot at least `wallClear` px from any
+   * solid, with a clear line to him. At most `maxGround` lie on the ground: at the cap the next one waits (one at most,
+   * the counter keeps its remainder) and drops once a place frees. Walking within `pickupRadius` px takes it (up to max
+   * health; at full health it stays). It vanishes after `lifeSec` s.
+   */
+  fieldHeal: { every: 8, amount: 10, maxGround: 2, lifeSec: 20, pickupRadius: 20, minDist: 48, maxDist: 112, wallClear: 14 },
+  /**
    * Weapon pickups. Street timer: the first at `firstSpawn` s, then every `spawnEvery` s (random in the range), only
    * while fewer than `maxGround` weapons lie on the ground. No regular weapon is dropped (street timer, twist, breather,
    * the Caïd's) while one already lies within `clearRadius` px of Paul (no piles; the bouclier and the first shooter's
@@ -275,7 +283,21 @@ export const CONFIG = {
     twistAt: 0.5,
     bonus: 5,
   },
-  casse: { scores: { school: [8, -3, 5], car: [4, -2, 3], busStop: [4, -2, 3], shop: [6, -2, 4] } },
+  casse: {
+    /** [saved, lost, repaired] points of each kind. */
+    scores: {
+      school: [8, -3, 5],
+      car: [4, -2, 3],
+      busStop: [4, -2, 3],
+      shop: [6, -2, 4],
+      nursery: [8, -3, 5],
+      kiosk: [4, -2, 3],
+      townHall: [8, -3, 5],
+      library: [8, -3, 5],
+    },
+    /** First round a kind can be attacked (headline draw and second urgency; round 1 is always the school). */
+    fromRound: { school: 1, car: 2, busStop: 2, shop: 2, nursery: 5, kiosk: 5, townHall: 7, library: 9 },
+  },
   pressureMax: 12,
   rulesVersion: 'slice-0.2.0',
 } as const;

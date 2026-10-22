@@ -25,10 +25,10 @@ export interface AttackCtx {
 
 const VARIANTS: Variant[] = ['classic', 'palestinian', 'antifa'];
 
-/** Buildings (school, retro video-game shop), as opposed to props (cars, bus stop). */
-const BUILDING_KINDS: ReadonlySet<CasseKind> = new Set<CasseKind>(['school', 'shop']);
+/** Buildings (school, retro video-game shop, nursery, town hall, library), as opposed to props (cars, bus stop, kiosk). */
+const BUILDING_KINDS: ReadonlySet<CasseKind> = new Set<CasseKind>(['school', 'shop', 'nursery', 'townHall', 'library']);
 
-/** Molotov throwers of an attack in `round`: min(4, 1 + floor(round / 2)) on a building, at most 2 on a prop (car, bus stop). */
+/** Molotov throwers of an attack in `round`: min(4, 1 + floor(round / 2)) on a building, at most 2 on a prop (car, bus stop, kiosk). */
 export function molotovCount(kind: CasseKind, round: number): number {
   return Math.min(BUILDING_KINDS.has(kind) ? 4 : 2, 1 + Math.floor(round / 2));
 }
@@ -49,7 +49,7 @@ export function lineup(kind: CasseKind, round: number, pressure: number): Attack
   } else {
     first = [...Array<Role>(molotovCount(kind, round)).fill('molotov'), 'degrader', 'degrader', 'contact'];
     if (BUILDING_KINDS.has(kind)) {
-      // buildings (school, shop): degraders and contacts alternate with pressure
+      // buildings (school, shop, nursery, town hall, library): degraders and contacts alternate with pressure
       const extra = Math.min(6, 2 + Math.floor(pressure / 3));
       for (let i = 0; i < extra; i++) first.push(i % 2 === 0 ? 'degrader' : 'contact');
     } else {
