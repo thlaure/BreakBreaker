@@ -59,6 +59,14 @@ export const CONFIG = {
   },
   heal: { amount: 25 },
   /**
+   * Small field heals (§12.5): after every `every` eligible KOs (round-roster KOs, domino victims included; patrols
+   * never) a +`amount` heal drops `minDist`–`maxDist` px from Paul on a walkable spot at least `wallClear` px from any
+   * solid, with a clear line to him. At most `maxGround` lie on the ground: at the cap the next one waits (one at most,
+   * the counter keeps its remainder) and drops once a place frees. Walking within `pickupRadius` px takes it (up to max
+   * health; at full health it stays). It vanishes after `lifeSec` s.
+   */
+  fieldHeal: { every: 8, amount: 10, maxGround: 2, lifeSec: 20, pickupRadius: 20, minDist: 48, maxDist: 112, wallClear: 14 },
+  /**
    * Weapon pickups. Street timer: the first at `firstSpawn` s, then every `spawnEvery` s (random in the range), only
    * while fewer than `maxGround` weapons lie on the ground. No regular weapon is dropped (street timer, twist, breather,
    * the Caïd's) while one already lies within `clearRadius` px of Paul (no piles; the bouclier and the first shooter's

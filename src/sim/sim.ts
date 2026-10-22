@@ -4,6 +4,7 @@ import { Director, spawnPoints, type RoundPhase, type RoundSummary } from './dir
 import { Energy } from './energy';
 import { pickFall, type FallSource } from './falls';
 import { EntryQueue, type Spawner } from './entry';
+import { FieldHeals } from './fieldHeals';
 import { FirePatches } from './firepatch';
 import { Stations, type StationMessage } from './healing';
 import { damageOn, Horde, isTough, KO_DAMAGE, type DamageSource, type Hostile, type HordeCtx } from './hostiles';
@@ -136,6 +137,8 @@ export interface Snapshot {
   carriedItems: number;
   stations: { id: string; pos: Vec; charged: boolean }[];
   stationMessage: StationMessage;
+  /** Small field heals on the ground; `expiresAt` = sim time it vanishes (the render blinks its last seconds). */
+  fieldHeals: { id: number; pos: Vec; expiresAt: number }[];
   /** Weapon in Paul's hands (null = bare hands) and its strikes left. */
   weapon: { kind: HeldKind; uses: number } | null;
   /** The bouclier's protection bubble on top of the held weapon (seconds left), or null. */
@@ -198,7 +201,8 @@ export function segmentRectEntry(a: Vec, b: Vec, r: Rect): number | null {
  * Deterministic session facade driven one fixed step at a time by the Phaser layer.
  * Step order: player move → sweep/punch/shot/return → hostiles → queue entries (the first shooter brings a flashball)
  * → rocks → bullets → damage → fire patches → KO check → Molotovs routed to
- * the attack on their target → attacks → rescue → toolboxes → heals → weapons (pickups, furie timer) → director.
+ * the attack on their target → attacks → rescue → toolboxes → heals → weapons (pickups, furie timer) → director →
+ * field heals (fed with the round KOs' growth: drops, pickups, expiry).
  * Energy gauge (CONFIG.energy): every KO counted by Rules fills it, except in mode furie and the beam's own KOs.
  * Furie (`input.furie`, full gauge) spends it all on the mode furie (CONFIG.furie: player move, strike and damage
  * taken; a KO ends it). Onde (`input.chargeHeld`, rising edge, >= ondeCost) charges the onde d'énergie (Paul frozen),
@@ -230,6 +234,8 @@ export class Sim {
   /** The latest school attack (round 1's from the start; later ones replace it). */
   school: SchoolIncident = new SchoolIncident(this.targets, this.objectiveSpawner);
   readonly stations = new Stations(DISTRICT.stations);
+  /** Small field heals dropped near Paul every CONFIG.fieldHeal.every eligible KOs. */
+  readonly fieldHeals: FieldHeals;
   readonly toolboxes = new Toolboxes();
   readonly firePatches = new FirePatches();
   /** The equestrian monument's flag and capture the flag (persists across rounds). */
@@ -273,6 +279,9 @@ export class Sim {
   private prevAct = false;
   /** Onde (C / touch Onde) was down on the previous step: a charge only starts on a fresh press. */
   private prevCharge = false;
+  /** Round and round KOs last fed to the field heals. */
+  private healRound = 0;
+  private healKos = 0;
 
   constructor(seed: number, opts: { invulnerable?: boolean } = {}) {
     this.rand = rng(seed);
@@ -280,6 +289,7 @@ export class Sim {
     this.weapons = new Weapons(this.grid, rng((seed ^ 0x9e3779b9) >>> 0));
     this.launchRand = rng((seed ^ 0x85ebca6b) >>> 0);
     this.fallRand = rng((seed ^ 0x9e3779b1) >>> 0);
+    this.fieldHeals = new FieldHeals(this.grid, rng((seed ^ 0xc2b2ae35) >>> 0));
     this.invulnerable = opts.invulnerable ?? false;
     this.fields = { player: new FlowField(this.grid), victim: new FlowField(this.grid) };
     for (const t of DISTRICT.targets) this.siteFields.set(t.id, new FlowField(this.grid));
@@ -470,6 +480,8 @@ export class Sim {
     for (const h of this.horde.list) if (h.role === 'boss' && h.state === 'ko') this.caidDown(h, ev);
 
     ev.push(...this.director.step(dt, this));
+    this.feedFieldHeals();
+    ev.push(...this.fieldHeals.step(now, { player: p, rules: this.rules }));
     this.tally(ev);
     this.scoreEvents(ev);
     return ev;
@@ -569,6 +581,7 @@ export class Sim {
       carriedItems: r ? r.carried : 0,
       stations: this.stations.list.map((s) => ({ id: s.id, pos: v(s.pos), charged: s.charged })),
       stationMessage: this.stationMessage,
+      fieldHeals: this.fieldHeals.ground.map((h) => ({ id: h.id, pos: v(h.pos), expiresAt: h.expiresAt })),
       weapon: this.weapons.held ? { kind: this.weapons.held.kind, uses: this.weapons.held.uses } : null,
       shield: this.weapons.shield() ? { secondsLeft: this.weapons.shieldLeft } : null,
       charge: this.charge ? { progress: Math.min(1, this.charge.t / CONFIG.kamehame.chargeSec) } : null,
@@ -919,6 +932,21 @@ export class Sim {
       else next.set(h.lifeId, norm(sub(this.player.pos, h.pos)));
     }
     this.facings = next;
+  }
+
+  /**
+   * Eligible KOs for the field heals: the growth of the director's round KOs (round-roster rioters, domino victims
+   * included, patrols never), measured once per step; a new round starts again from 0.
+   */
+  private feedFieldHeals(): void {
+    const d = this.director;
+    if (d.round !== this.healRound) {
+      this.healRound = d.round;
+      this.healKos = 0;
+    }
+    const k = d.roundKos(this);
+    if (k > this.healKos) this.fieldHeals.count(k - this.healKos);
+    this.healKos = k;
   }
 
   /** One ScoreChanged per score change applied since the last step, where it happened (else at Paul). */

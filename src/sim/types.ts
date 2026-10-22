@@ -163,6 +163,10 @@ export type SimEvent =
   /** Paul handed the belonging back to the victim (+CONFIG.rescue.itemBonus). */
   | { type: 'ItemReturned'; rescueId: string; item: string }
   | { type: 'HealCompleted' }
+  /** A small field heal (CONFIG.fieldHeal) dropped at `pos` near Paul. */
+  | { type: 'SmallHealDropped'; id: number; pos: Vec }
+  /** Paul took field heal `id`: `amount` = the health actually gained (clamped at max health). */
+  | { type: 'SmallHealPicked'; id: number; amount: number }
   /** A pickup appears: a regular weapon or the bouclier. */
   | { type: 'WeaponSpawned'; kind: PickupKind; pos: Vec }
   /** Paul spent a full energy gauge (Furie): the mode is on for `secondsLeft` s. */
