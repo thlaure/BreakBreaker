@@ -82,7 +82,7 @@ describe('the Phase C places (nursery, kiosk, town hall, library)', () => {
     expect(Math.hypot(g.x - centre.x, g.y - centre.y)).toBeGreaterThan(320);
   });
 
-  test('scores [saved, lost, repaired] and opening rounds from the cahier', () => {
+  test('scores [saved, lost, repaired] and opening rounds from the spec', () => {
     for (const p of PLACES) {
       expect(CONFIG.casse.scores[p.id]).toEqual(p.scores);
       expect(CONFIG.casse.fromRound[p.id]).toBe(p.from);

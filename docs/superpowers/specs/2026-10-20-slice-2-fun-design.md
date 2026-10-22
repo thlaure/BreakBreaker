@@ -1,7 +1,7 @@
 # BreakBreaker — Slice 2 « Fun » design
 
-Date: 2026-10-20. Status: approved in chat by the user ("ça me plaît bien, tu peux implémenter"). Supersedes the parts of
-`docs/superpowers/plans/2026-10-20-slice-2.md` it contradicts; everything else in that plan still stands.
+Date: 2026-10-20. Status: approved in chat by the user ("ça me plaît bien, tu peux implémenter"). Historical design record: the delivered state
+is described in the `docs/SPECS - *.md` files, which win over this document.
 
 ## 1. Why
 
@@ -128,7 +128,7 @@ cartoonish and are drawn as pixel sprites at runtime like today's.
 - **Changed:** the old plan's "No firearms" rule is lifted by the user for the AK-47 shooters and the flashball —
   cartoon style, no blood, no realistic gore.
 - Caps: 40 hostiles, 24 flying rocks; bullets cap 30 in flight.
-- Spec `docs/CAHIER_DES_CHARGES.md` updated (v1.9) with this design: rounds rhythm, building HP, Molotov, toolbox,
+- Spec `docs/SPECS - Index.md` updated (v1.9) with this design: rounds rhythm, building HP, Molotov, toolbox,
   enemies, firearms rule change, falls.
 
 ## 8. Delivery in four playable phases (Claude's call)
