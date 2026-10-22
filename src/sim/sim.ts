@@ -2,6 +2,7 @@ import { Bullets } from './bullets';
 import { CONFIG } from './config';
 import { Director, spawnPoints, type RoundPhase, type RoundSummary } from './director';
 import { Energy } from './energy';
+import { pickFall, type FallSource } from './falls';
 import { EntryQueue, type Spawner } from './entry';
 import { FirePatches } from './firepatch';
 import { Stations, type StationMessage } from './healing';
@@ -244,6 +245,8 @@ export class Sim {
   readonly rand: () => number;
   /** Own stream for the cosmetic furie launches, so they never shift any other random sequence. */
   private readonly launchRand: () => number;
+  /** Own stream for the KO falls (3 draws per KO), so they never shift any other random sequence. */
+  private readonly fallRand: () => number;
   rescue: RescueIncident | null = null;
   now = 0;
   paused = false;
@@ -276,6 +279,7 @@ export class Sim {
     // Separate stream so weapon spawns never shift the director's random sequence.
     this.weapons = new Weapons(this.grid, rng((seed ^ 0x9e3779b9) >>> 0));
     this.launchRand = rng((seed ^ 0x85ebca6b) >>> 0);
+    this.fallRand = rng((seed ^ 0x9e3779b1) >>> 0);
     this.invulnerable = opts.invulnerable ?? false;
     this.fields = { player: new FlowField(this.grid), victim: new FlowField(this.grid) };
     for (const t of DISTRICT.targets) this.siteFields.set(t.id, new FlowField(this.grid));
@@ -336,13 +340,14 @@ export class Sim {
       // Mode furie: KO in one hit (CONFIG.caid.damageFrom.furie on the Caïd), more targets, the weapon is not used,
       // every KO is launched. The bouclier changes nothing.
       const source: DamageSource = furie ? 'furie' : this.weapons.held ? 'weapon' : 'hands';
+      const fall: FallSource = furie ? 'furie' : (this.weapons.held?.kind ?? 'hands');
       const maxTargets = furie ? CONFIG.furie.maxTargets : CONFIG.melee.maxTargets;
       const { hits } = sweep(p, now, this.horde.views(), this.grid, this.weapons.range(), maxTargets);
       for (const id of hits) {
         const tough = this.tough(id);
         const damage = this.damageTo(id, source);
         ev.push(tough ? { type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee', heavy: true } : { type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee' });
-        this.hit(id, damage, ev, furie);
+        this.hit(id, damage, ev, fall);
       }
       if (!furie) ev.push(...this.weapons.onSwing(hits.length));
     }
@@ -389,7 +394,7 @@ export class Sim {
         const damage = this.damageTo(e.targetLifeId, 'rock', e.damage);
         ev.push({ ...e, damage });
         this.rules.stats.rocksHit += 1;
-        this.hit(e.targetLifeId, damage, ev);
+        this.hit(e.targetLifeId, damage, ev, 'rock');
         continue;
       }
       ev.push(e);
@@ -409,7 +414,7 @@ export class Sim {
           ? { type: 'HitConfirmed', targetLifeId: s.lifeId, damage, source: 'flashball', heavy: true }
           : { type: 'HitConfirmed', targetLifeId: s.lifeId, damage, source: 'flashball' },
       );
-      this.hit(s.lifeId, damage, ev);
+      this.hit(s.lifeId, damage, ev, 'flashball');
     }
     // ground fire: Paul only, through the same damage path (invulnerability frames, mode furie)
     ev.push(
@@ -806,25 +811,50 @@ export class Sim {
     for (const id of shot.lifeIds) {
       const damage = this.damageTo(id, 'beam');
       ev.push({ type: 'HitConfirmed', targetLifeId: id, damage, source: 'beam' });
-      if (this.hit(id, damage, ev, dir)) kos += 1;
+      if (this.hit(id, damage, ev, 'beam', dir)) kos += 1;
     }
     ev.push({ type: 'BeamFired', from: v(p.pos), to: v(shot.to), kos });
   }
 
   /**
-   * Every 'ko' from applyHit scores +1 (deduped by Rules) and emits ActorKnockedOut; `launched` (Paul's strike in mode
-   * furie: true; the onde d'énergie: its direction) adds the cosmetic launch payload. A KO Rules counts fills the energy
-   * gauge, except in mode furie and for the beam's KOs (no chain refills). True on a KO.
+   * Every 'ko' from applyHit scores +1 (deduped by Rules) and emits ActorKnockedOut with its fall (pickFall by `source`,
+   * along the launch, else `dir`, else away from Paul). Mode furie, the gant and the beam (`along` = its direction) add
+   * the cosmetic launch payload. A KO Rules counts fills the energy gauge, except in mode furie and for the beam's KOs
+   * (no chain refills). A WTF 'domino' then knocks its neighbours down (dominoVictims) through this same path, as
+   * 'knocked' (which never chains); none: 'faceplant'. True on a KO.
    */
-  private hit(lifeId: number, dmg: number, ev: SimEvent[], launched: boolean | Vec | 'gant' = false): boolean {
+  private hit(lifeId: number, dmg: number, ev: SimEvent[], source: FallSource, along?: Vec, dir?: Vec): boolean {
     if (this.horde.applyHit(lifeId, dmg) !== 'ko') return false;
     const h = this.horde.list.find((x) => x.lifeId === lifeId);
     const counted = this.rules.onKnockout(lifeId, h?.pos);
-    if (counted && h && !this.weapons.furie() && typeof launched !== 'object') ev.push(...this.energy.gain(h.role));
+    if (counted && h && !this.weapons.furie() && source !== 'beam') ev.push(...this.energy.gain(h.role));
     if (h?.role === 'boss') this.caidDown(h, ev);
-    const along = typeof launched === 'object' ? launched : undefined;
-    ev.push(h && launched ? { type: 'ActorKnockedOut', lifeId, launch: this.launch(h.pos, along, launched === 'gant') } : { type: 'ActorKnockedOut', lifeId });
+    const launched = source === 'furie' || source === 'gant' || source === 'beam';
+    const launch = h && launched ? this.launch(h.pos, along, source === 'gant') : undefined;
+    const away = h ? sub(h.pos, this.player.pos) : { x: 0, y: 0 };
+    const fallDir = launch?.dir ?? dir ?? (len(away) > 1e-6 ? norm(away) : norm(this.player.facing));
+    let fall = pickFall(source, { boss: h?.role === 'boss', launched: launch !== undefined, dir: fallDir }, this.fallRand);
+    const victims = fall.kind === 'domino' && h ? this.dominoVictims(h) : [];
+    if (fall.kind === 'domino' && victims.length === 0) fall = { ...fall, kind: 'faceplant' };
+    ev.push(launch ? { type: 'ActorKnockedOut', lifeId, launch, fall } : { type: 'ActorKnockedOut', lifeId, fall });
+    if (victims.length > 0) {
+      ev.push({ type: 'DominoTriggered', from: v(h!.pos), lifeIds: victims.map((x) => x.lifeId) });
+      for (const x of victims) this.hit(x.lifeId, KO_DAMAGE, ev, 'knocked', undefined, fall.dir);
+    }
     return true;
+  }
+
+  /** Up to CONFIG.falls.dominoMax living non-boss rioters within CONFIG.falls.dominoRadius px of `body`, nearest first. */
+  private dominoVictims(body: Hostile): Hostile[] {
+    const { dominoRadius, dominoMax } = CONFIG.falls;
+    const near: { h: Hostile; d: number }[] = [];
+    for (const h of this.horde.list) {
+      if (h === body || h.state === 'ko' || h.role === 'boss') continue;
+      const d = dist(h.pos, body.pos);
+      if (d <= dominoRadius) near.push({ h, d });
+    }
+    near.sort((a, b) => a.d - b.d || a.h.lifeId - b.h.lifeId);
+    return near.slice(0, dominoMax).map((x) => x.h);
   }
 
   /**

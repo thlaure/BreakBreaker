@@ -1,6 +1,6 @@
 # BreakBreaker — Cahier des charges fonctionnel et technique
 
-**Version :** 1.9.16 — 21 octobre 2026  
+**Version :** 1.9.17 — 22 octobre 2026  
 **Périmètre :** jeu web 2D en pixel art, vue du dessus non isométrique, mode arcade par manches sans limite de durée, Paris, Paul (commerçant fictif) comme héros unique, ordinateur et téléphone  
 **Statut :** spécification de référence ; les décisions confirmées par le porteur du projet et les recommandations de conception sont identifiées. Une première tranche jouable existe (section 24) ; ce document ne constitue pas une validation de production ni une attestation que toutes les exigences sont déjà implémentées.  
 **Langue de lancement :** français  
@@ -27,7 +27,7 @@
    - [12.2 Structure des manches](#122-structure-des-manches)
    - [12.10 Événements dynamiques de secours](#1210-événements-dynamiques-de-secours)
    - [12.14 Nouveaux ennemis et armes de la phase B (à faire)](#1214-nouveaux-ennemis-et-armes-de-la-phase-b-à-faire)
-   - [12.15 Chutes de KO et effets de coups de la phase D (à faire)](#1215-chutes-de-ko-et-effets-de-coups-de-la-phase-d-à-faire)
+   - [12.15 Chutes de KO et effets de coups de la phase D](#1215-chutes-de-ko-et-effets-de-coups-de-la-phase-d)
 13. [Score, compteur de casseurs neutralisés et bilan](#13-score-compteur-de-casseurs-neutralisés-et-bilan)
 14. [Interface et accessibilité](#14-interface-et-accessibilité)
 15. [Direction artistique et ressources pixel art](#15-direction-artistique-et-ressources-pixel-art)
@@ -793,11 +793,37 @@ Exigences issues de la conception de la tranche 2 « Fun » (sections 2, 4 et 5 
 
 **Armes (v1.9.15, valeurs de la section 8.7)** : armes ordinaires (sans indicateur de bord d’écran), avec la règle de dégâts ci-dessus (2 sur un costaud ou le Caïd, KO des autres). **Flashball** (« Flashball (6) ») : tir visé à la souris, vers l’orientation au tactile avec une légère aide à la visée, KO d’un coup, arrêté par les murs, le groupe pacifique et la victime ; un tir usé par appui, touché ou non. À l’entrée du **premier tireur de la partie** (manche 6), un flashball est posé à 120–220 px de Paul (il ne disparaît pas) avec une bannière courte d’une ligne « FLASHBALL AU SOL » (flèche et distance, retirée dès qu’il est ramassé). **Gant de boxe à ressort** (« Gant de boxe (6) ») : coup de poing à ressort de 160 px en ligne droite, KO et repoussement de 32 px du premier casseur touché (corps projeté), bulle « BOING ! ». En mode furie, Frapper reste le coup du mode furie avec ces deux armes (rien n’est usé). La règle « jamais d’arme à feu » est levée pour ces seuls éléments, en style cartoon, sans sang ni gore (EX-07).
 
-### 12.15 Chutes de KO et effets de coups de la phase D (à faire)
+### 12.15 Chutes de KO et effets de coups de la phase D (livré, v1.9.17)
 
-Exigences issues de la section 6 de la [conception](superpowers/specs/2026-10-20-slice-2-fun-design.md). **Déjà livré :** l’envol en tourbillon des KO du mode furie (section 8.8), la satellisation des KO de l’onde d’énergie (section 8.9), les bulles « POW ! » / « BOUM ! » et la légère secousse des coups du mode furie, la secousse du rayon, les points flottants (section 14.1) et trois variantes de son d’impact. **Tout le reste de cette section est à faire.**
+Exigences issues de la section 6 de la [conception](superpowers/specs/2026-10-20-slice-2-fun-design.md). **Livré (v1.9.17) :** les chutes de KO par source, les chutes rares « WTF », l’effet domino, les onomatopées par source, la secousse, le gel d’impact doublé sur un KO « WTF » et le comportement `prefers-reduced-motion`. **Déjà livré avant :** l’envol en tourbillon des KO du mode furie (section 8.8), la satellisation de l’onde d’énergie (section 8.9), les bulles « POW ! » / « BOUM ! » du mode furie, les points flottants (section 14.1) et trois variantes de son d’impact. **Reste à faire :** la hauteur de son légèrement aléatoire et les étoiles d’étourdissement qui précèdent la disparition du corps (un corps KO reste allongé et atténué).
 
-Chaque KO choisit une chute qui dépend de l’arme, avec une part d’aléatoire (flux aléatoire séparé, déterministe, transmis avec l’événement de KO) : mains nues, tassement ou tour sur soi ; pierre renvoyée, vacille puis bascule ; panneau, vol lointain en rotation ; marteau, aplati comme une crêpe puis qui se redresse (« SPLOTCH ») ; gant, rebond de flipper contre les murs ; flashball, salto arrière ; onde d’énergie, satellisation (livrée, v1.9.8). Environ un KO sur dix est une **chute rare « WTF »** : triple salto, hélice verticale, glissade à plat ventre, tête la première dans une poubelle (jambes qui dépassent) ou **effet domino** (le corps projeté fait tomber un à deux casseurs voisins, comptés +1 chacun, avec une bulle « DOMINO ×2 ! »). Seul le domino a un effet de simulation ; le reste est du rendu. À chaque coup : gel d’image de 2 à 3 images, légère secousse d’écran (plus forte pour onde, domino et Caïd), bulles pixel « POW ! », « BONK ! », « PAF ! », « BOING ! » (gant), sons variés (hauteur légèrement aléatoire) ; avec `prefers-reduced-motion`, aucune secousse et des gels plus courts. Aucun sang : les casseurs restent étourdis avec des étoiles, puis disparaissent (aujourd’hui, un corps KO reste simplement allongé et atténué).
+**Chute par source (simulation, `src/sim/falls.ts`).** Chaque `ActorKnockedOut` porte une `fall` (`kind`, `wtf`, `dir`), choisie par la simulation sur un **flux aléatoire séparé** (`fallRand`, graine `seed ^ 0x9e3779b1`) : trois tirages à chaque KO (jet « WTF », sous-type, variante), quelle que soit la branche, pour que le flux reste aligné. La source du KO est donnée par l’appelant du coup : mains nues, arme tenue, pierre renvoyée, mode furie, onde, flashball, gant ou corps tombant (domino). `dir` est la direction du lancer s’il y en a un, sinon la direction qui éloigne le corps de Paul (celle du coup pour une victime du domino).
+
+| Source | Chute | Rendu |
+| --- | --- | --- |
+| Mains nues | `crumple` ou `spin` (variante, une chance sur deux) | tassement debout (écrasement) puis pose allongée ; ou un tour sur soi au sol |
+| Panneau, bâton | `flyspin` | saut d’environ 70 px le long de `dir`, un tour et demi, poussière à l’atterrissage |
+| Marteau | `pancake` | aplati (×1,5, ×0,15) 500 ms puis qui se redresse avec un rebond et un petit saut, « SPLOTCH » |
+| Gant | `bounce` | le vol existant du lancer, avec « BOING ! » à l’atterrissage |
+| Flashball | `backflip` | arc arrière de 40 px avec un tour complet |
+| Pierre renvoyée | `wobble` | trois oscillations amorties debout puis bascule à 90° |
+| Mode furie, onde | `flyspin` (inchangé : le vol du lancer, section 8.8 et 8.9, reste joué) | envol et satellisation existants |
+| Caïd | toujours `crumple` | tassement, plus forte secousse ; son lancer éventuel (furie, onde) reste joué |
+
+**Chutes rares « WTF » (`CONFIG.falls.wtfChance` = 0,1).** Un KO sur dix, jamais le Caïd, jamais un corps lancé (furie, onde, gant), jamais une victime de domino. Sous-type uniforme parmi cinq : `tripleflip` (trois saltos, arc de 60 px, 60 px de course), `helicopter` (monte de 60 px à la verticale en tournant cinq fois, puis retombe), `faceplant` (petit saut puis glissade à plat ventre d’environ 90 px avec traînée de poussière), `trashcan` (plonge la tête la première dans une poubelle dont les jambes dépassent environ 1,5 s, puis la poubelle s’efface et le corps reste à côté ; sans poubelle libre dans le réservoir de 3, le corps s’allonge simplement) et `domino`.
+
+**Effet domino (seul effet de simulation).** Le corps `domino` vole de 80 px avec deux tours. Au moment de son KO, la simulation émet `DominoTriggered` (`from`, `lifeIds`) puis fait tomber jusqu’à `CONFIG.falls.dominoMax` = 2 casseurs vivants non boss à moins de `CONFIG.falls.dominoRadius` = 56 px du corps, les plus proches d’abord (égalité : plus petit `lifeId`). Chaque victime est un vrai KO (source « knocked », chute `knocked` : debout 150 ms puis bascule le long de `dir`), compté +1 et remplissant la jauge d’énergie (sauf en mode furie). **Pas de chaîne** : une victime ne déclenche pas d’autre domino. **Jamais le Caïd**. Sans voisin à portée, le domino devient un `faceplant`. Les victimes n’émettent pas de `HitConfirmed`. Bulle « DOMINO ×N ! » (grande).
+
+**Onomatopées.** Une bulle pixel à chaque coup, selon la source : « POW ! » / « PAF ! » (mains nues), « BONK ! » / « TCHAC ! » (bâton), « SPLOTCH ! » / « SPLATCH ! » (marteau), « BOING ! » / « BOÏNG ! » (gant), « PIOU ! » / « PIOU PIOU ! » (flashball), « TOC ! » / « BLONK ! » (pierre), tirée dans le rendu seul (`Math.random`). Sur un coup qui met KO dans le même lot, le mot du KO remplace celui du coup ; l’onde et le gant ne disent rien au coup (rayon avec son effet, le coup du gant dit déjà « BOING ! »). Les chutes WTF affichent « WTF !? », « OUPS ! », « WOUAAH ! » ou « NOOON ! » en grande bulle (×1,5, durée plus longue).
+
+**Secousse d’écran.** Mains nues : 1 px pendant 80 ms ; arme, pierre ou flashball : 2 px pendant 110 ms ; KO « WTF », KO du Caïd ou domino : 4 px pendant 240 ms. Une secousse plus faible ne coupe jamais une plus forte.
+
+**Gel d’impact.** 60 ms à chaque coup ; **doublé (120 ms) sur un KO « WTF »**. La chute démarre à la fin du gel.
+
+**Mouvement réduit (`prefers-reduced-motion`).** Aucune secousse ; tous les gels divisés par deux (30 ms, 60 ms sur un KO « WTF ») ; chutes à 0,6 de leur durée, sans tour, saut ni oscillation ; la course, la crêpe et la poubelle restent.
+
+**Coût et plafonds.** Les chutes sont **cosmétiques**, sauf le domino (section 18.3) : elles ne changent ni la santé, ni le score propre au corps, ni l’IA. Au plus **8 corps animés** à la fois (`MAX_FALLS`) : au-delà, le corps reste allongé sans animation. 3 poubelles au plus dans le réservoir, 10 bulles de mots. La course d’une chute est limitée au sol libre (jamais dans un mur ni hors de la carte). Le calcul de pose (`src/game/render/fallMath.ts`) est pur et ne fait aucune allocation par image.
+
 
 ## 13. Score, compteur de casseurs neutralisés et bilan
 
@@ -899,7 +925,7 @@ Afficher les états : préparation ennemie, pierre en vol, pierre récupérable,
 
 ### 14.2 Accessibilité
 
-Remappage ; grosses actions tactiles ; maintien ou bascule ; options de visée ; contraste ; taille de HUD ; sons doublés par des repères visuels ; focus clavier ; pause automatique. Aucun contrôle de caméra à apprendre en V1.
+Remappage ; grosses actions tactiles ; maintien ou bascule ; options de visée ; contraste ; taille de HUD ; sons doublés par des repères visuels ; focus clavier ; pause automatique. Aucun contrôle de caméra à apprendre en V1. **Mouvement réduit (v1.9.17) :** avec `prefers-reduced-motion`, aucune secousse d’écran, gels d’impact divisés par deux et chutes de KO plus courtes sans tour, saut ni oscillation (section 12.15).
 
 Les alertes de secours ont texte/icône en plus d’un son et de leur couleur. Les sprites peuvent être dessinés à basse résolution, mais le texte de règles et le HUD doivent rester lisibles à taille CSS adaptée. Une police bitmap trop petite n’est pas imposée. Les couleurs rouge/vert sont complétées par formes, icônes ou textes.
 
@@ -949,6 +975,8 @@ Sources retenues pour la première tranche : personnages Universal LPC, tuiles K
 Au minimum : repos, déplacement, frappe circulaire, rotation de l’arme tenue à chaque coup, flottement et halo des armes au sol, flottement et pulsation des trousses chargées, réaction, KO, ramassage bref ou indication de ramassage, renvoi, soin, lancer ennemi, dégradation, port de drapeau, manifestation calme, appel à l’aide, recul de victime, aide/rassurance, réparation, marche des étudiants, feu, ruine, réparation et changement de drapeau. Aucune animation de nudité ou de brûlure graphique n’est nécessaire.
 
 Quatre directions dessinées au minimum ; huit directions de déplacement logique. Le choix de huit directions dessinées est une amélioration, pas un prérequis au premier prototype. Les effets de contact ne remplacent pas une animation lisible du héros.
+
+**Chutes de KO (v1.9.17).** Treize types de chute (`crumple`, `spin`, `flyspin`, `pancake`, `bounce`, `backflip`, `wobble`, `tripleflip`, `helicopter`, `faceplant`, `trashcan`, `domino`, `knocked`) jouées par transformation du sprite KO existant (pivot, écrasement, rotation, hauteur), sans nouvelle planche ; la poubelle est une texture créée à l’exécution (12×14, ×2). Détail en section 12.15.
 
 ### 15.5 Préparation
 
@@ -1061,7 +1089,7 @@ Seul `LandedRecoverable` peut entrer dans le stock. `PlayerFlying` ne redevient 
 **Modifié (v1.9.11) :** catalogue livré (`src/sim/types.ts`, type `SimEvent`) :
 
 - Manches : `RoundStarted` (avec `rescueKind` quand la casse phare est le secours, v1.9.12), `RoundTotalChanged`, `TwistStarted` (aux manches impaires dès la 3, deux à la suite : `weaponDrop` puis `secondUrgency`, v1.9.12), `RoundCompleted`, `StationsRecharged`.
-- Combat et projectiles : `HitConfirmed`, `ActorKnockedOut`, `PlayerDamaged`, `PlayerKnockedOut`, `EnemyThrowStarted`, `EnemyRockThrown`, `ProjectileLanded`, `ProjectilePickedUp`, `ProjectileReturned`, `ProtectedGroupBlockedImpact`, `ShieldBlocked`.
+- Combat et projectiles : `HitConfirmed`, `ActorKnockedOut` (porte `fall` depuis v1.9.17), `DominoTriggered` (`from`, `lifeIds`, v1.9.17), `PlayerDamaged`, `PlayerKnockedOut`, `EnemyThrowStarted`, `EnemyRockThrown`, `ProjectileLanded`, `ProjectilePickedUp`, `ProjectileReturned`, `ProtectedGroupBlockedImpact`, `ShieldBlocked`.
 - Lieux : `SchoolStarted` et `CasseStarted` (position), `MolotovThrown`, `TargetIgnited`, `BuildingThreatStarted`, `BuildingThreatPaused`, `TargetSaved`, `SchoolRestored`, `BuildingDestroyed`, `FirebombThrown`, `FirePatchStarted`.
 - Caisses à outils : `ToolboxSpawned`, `ToolboxPickedUp`, `FireOut`, `TargetRepaired`.
 - Secours : `RescueStarted` (position et type, émis une fois ; il déclenche l’alerte), `ItemStolen`, `ItemDropped`, `ItemPickedUp`, `ItemReturned`, `RescueSecured`, `RescueCompleted`, `RescueFailed`.
@@ -1376,6 +1404,13 @@ Tests de règles ; intégration avec horloge contrôlée ; navigateur avec rendu
 | RC-124 | Balles (v1.9.15) | 260 px/s, 1,6 s au plus, 8 dégâts une fois par impact (images d’invulnérabilité et moitié en mode furie respectées), Paul qui s’écarte de la ligne n’est pas touché ; arrêtées par bâtiments, mobilier, groupe pacifique et victime (sans dégât) et par la bulle du bouclier de tous les côtés ; jamais de dégât aux casseurs ; 30 en vol au plus. |
 | RC-125 | Flashball (v1.9.15) | 6 tirs, un par appui sur Frapper (délai de frappe), usé touché ou non, bris à 0 ; visée souris, sinon orientation aimantée vers le casseur actif le plus proche à ±12° et 320 px ; KO du premier casseur touché (2 dégâts à un costaud ou au Caïd) ; arrêté par les obstacles, le groupe et la victime ; rues dès la manche 5 ; un seul flashball garanti à 120–220 px de Paul à l’entrée du premier tireur de la partie, avec la bannière « FLASHBALL AU SOL ». |
 | RC-126 | Gant de boxe à ressort (v1.9.15) | 6 coups ; coup droit de 160 px vers la visée ou l’orientation, arrêté par le premier obstacle, le groupe et la victime ; le premier casseur actif sur le segment est mis KO (2 dégâts à un costaud ou au Caïd) et repoussé de 32 px, son corps projeté en culbute, bulle « BOING ! » ; un coup n’est usé que s’il touche ; rues dès la manche 3. |
+| RC-127 | Chute de KO par source (v1.9.17) | Chaque `ActorKnockedOut` porte une `fall` choisie par la simulation sur un flux séparé (3 tirages par KO). Mains nues : `crumple` ou `spin` ; panneau et bâton : `flyspin` ; marteau : `pancake` ; gant : `bounce` ; flashball : `backflip` ; pierre : `wobble` ; Caïd : toujours `crumple`. Même graine, mêmes chutes ; la chute ne change pas le flux aléatoire du reste du jeu. |
+| RC-128 | Chutes rares « WTF » (v1.9.17) | `CONFIG.falls.wtfChance` = 0,1 : environ un KO sur dix, jamais le Caïd, jamais un corps lancé ou une victime de domino ; sous-type uniforme parmi `tripleflip`, `helicopter`, `faceplant`, `trashcan`, `domino`. Poubelle : jambes dépassant environ 1,5 s ; sans poubelle libre, le corps s’allonge. |
+| RC-129 | Effet domino (v1.9.17) | Jusqu’à 2 casseurs vivants non boss à moins de 56 px du corps `domino` tombent (KO réels, +1 chacun, jauge d’énergie sauf en mode furie), les plus proches d’abord ; pas de chaîne ; jamais le Caïd ; sans voisin, `faceplant`. `DominoTriggered` est émis après le KO du corps ; bulle « DOMINO ×N ! ». Seul effet de simulation des chutes. |
+| RC-130 | Onomatopées par source (v1.9.17) | Un mot par coup selon la source (POW/PAF, BONK/TCHAC, SPLOTCH/SPLATCH, BOING/BOÏNG, PIOU/PIOU PIOU, TOC/BLONK) ; le mot du KO remplace celui du coup dans le même lot ; mots « WTF » (WTF !?, OUPS !, WOUAAH !, NOOON !) en grande bulle ; rendu seul, sans effet sur la simulation. |
+| RC-131 | Secousse et gel d’impact (v1.9.17) | Secousse : mains nues 1 px / 80 ms ; arme, pierre, flashball 2 px / 110 ms ; KO « WTF », Caïd ou domino 4 px / 240 ms, sans jamais couper une plus forte. Gel : 60 ms par coup, 120 ms sur un KO « WTF ». |
+| RC-132 | Chutes et mouvement réduit (v1.9.17) | Avec `prefers-reduced-motion` : aucune secousse, gels divisés par deux (30 / 60 ms), chutes à 0,6 de leur durée sans tour, saut ni oscillation ; course, crêpe et poubelle conservées. |
+| RC-133 | Plafond et coût des chutes (v1.9.17) | Au plus 8 corps animés à la fois, au-delà le corps reste allongé ; 3 poubelles ; course limitée au sol libre ; aucune allocation par image dans le calcul de pose. Les chutes sont cosmétiques sauf le domino. |
 
 ### 21.3 Recette visuelle
 
@@ -1467,7 +1502,7 @@ Les éléments de la colonne « Reste à faire » demeurent des exigences de la 
 | A — rythme et lieux | Manches (répit, annonce, montée, retournement, apogée, bonus), santé des lieux, Molotov, feu qui couve, ruines, caisses à outils (Agir), école, voitures, abribus, casse phare tirée au sort | — |
 | B — ennemis et armes | Bouclier, jauge d’énergie avec onde d’énergie (C maintenu) et mode furie (R) (v1.9.14), lanceurs sur Paul et flaques de feu, coureurs, costauds, mini-boss « Le Caïd » (v1.9.13), tireurs AK-47 cartoon, gant de boxe à ressort, flashball (v1.9.15) | — |
 | C — plus de casse | Boutique de jeux rétro, monument et capture du drapeau, seconde urgence en retournement (deux urgences au plus dès la manche 3), objets volés à rendre | Maternelle, kiosque, mairie, bibliothèque, deux lieux attaqués à la fois dès la manche 5, petits soins de terrain (section 12.5) |
-| D — chutes et effets | Envol du mode furie, satellisation de l’onde, bulles « POW ! » / « BOUM ! » et secousse du mode furie, points flottants | Chutes de KO par arme, chutes rares « WTF » et effet domino, gel d’impact, secousse et onomatopées sur tous les coups, étoiles d’étourdissement (section 12.15) |
+| D — chutes et effets | Envol du mode furie, satellisation de l’onde, bulles « POW ! » / « BOUM ! » et secousse du mode furie, points flottants, chutes de KO par source, chutes rares « WTF » et effet domino, gel d’impact, secousse et onomatopées sur tous les coups, mouvement réduit (v1.9.17, section 12.15) | Hauteur de son aléatoire, étoiles d’étourdissement |
 
 ## 25. Décisions restantes et sources
 
@@ -1549,6 +1584,7 @@ Une capture d’écran pixelisée, une conversion de perspective ou les anciens 
 - **1.9.14 — 21 octobre 2026 :** jauge d’énergie (« mana », sections 8.8 et 8.9 ; sections 7, 8.7, 12.2, 12.14, 14.1, 16, 18.3, 23.4, 24, 26.3 ; RC-99, RC-102, RC-115 à RC-117 réécrites), à la demande du porteur du projet (« une sorte de barre de mana qu’on alimente à chaque fois qu’on met KO un émeutier ») : le mode furie et l’onde d’énergie ne se ramassent plus ; chaque KO remplit la jauge (+4, +8 costaud, +20 Caïd, rien en mode furie ni par l’onde), conservée entre les manches ; R (jauge pleine) dépense tout pour le mode furie, C maintenu (dès 50) charge l’onde qui coûte 50 au tir ; refus « Énergie insuffisante » ; ligne ÉNERGIE, barre sous la santé de Paul, boutons tactiles Furie et Onde, sons ; le bouclier reste le seul spécial au sol (retournement une fois sur deux dès la manche 3).
 - **1.9.15 — 21 octobre 2026 :** phase B, tireurs et nouvelles armes (section 12.14 ; sections 2 (EX-07), 8.7, 8.9, 16, 18, 24 ; RC-123 à RC-126) : **tireur AK-47 cartoon** (3 PV, à 220–300 px, ligne de visée rouge 0,8 s et « ! », rafale de 3 balles le long de la ligne fixe, rechargement 3 s ; 1 aux manches 6–7, 2 dès la 8, sur le dernier groupe de remplissage), **balles** (8 dégâts, 260 px/s, arrêtées par obstacles, groupe, victime et bulle du bouclier, 30 au plus), **flashball** (6 tirs visés avec aide à la visée au tactile, garanti à l’entrée du premier tireur avec « FLASHBALL AU SOL », rues dès la manche 5) et **gant de boxe à ressort** (coup droit de 160 px, KO et repoussement de 32 px, « BOING ! », rues dès la manche 3) ; armes ordinaires (2 dégâts aux costauds et au Caïd) ; sons « pop », « thump » et « boing ».
 - **1.9.16 — 21 octobre 2026 :** équilibrage à la demande du porteur du projet (« il y a peut-être un poil trop d’armes. Aussi, le bouclier doit juste protéger, pas faire des dégâts supplémentaires. Et pour les caïds, ils doivent être un peu plus résistants ») (sections 2 (EX-25), 7, 8.1, 8.7, 8.8, 8.9, 12.2, 12.14, 14.1, 18.4, 19.2 ; RC-79, RC-113, RC-114, RC-117, RC-120, RC-121) : **moins d’armes** (rue à 20 s puis toutes les 30 à 45 s, une seule au sol, aucun dépôt ordinaire à 200 px d’une arme près de Paul, arme du retournement une fois sur deux hors bouclier, arme du répit aux manches paires seulement, arme du Caïd une fois sur deux ; environ moitié moins d’armes posées) ; **bouclier de protection seule** (plus de coup de bouclier ; minuteur de 20 s par-dessus l’arme tenue, HUD « Bâton (12) · Bouclier 14 s ») ; **Caïd plus résistant** (14 PV en manche 3, +2 toutes les deux manches, 26 au plus ; table de dégâts reçus : mains nues 1, arme 2, pierre 1, furie 5, onde 10 ; dégâts ×1,5, repoussement 52 px, frappe ×0,85 ; barre de vie segmentée).
+- **1.9.17 — 22 octobre 2026 :** phase D, chutes de KO (section 12.15 ; sections 14.2, 15.4, 18.3, 24 ; RC-127 à RC-133) : chute par source (mains nues tassement ou tour, panneau et bâton vol en rotation, marteau crêpe, gant rebond, flashball salto arrière, pierre qui vacille), **chutes rares « WTF »** (un KO sur dix : triple salto, hélice, glissade à plat ventre, poubelle jambes dehors, domino), **effet domino** (jusqu’à 2 voisins à 56 px, +1 chacun, sans chaîne, jamais le Caïd), onomatopées par source, secousse à trois niveaux, gel d’impact doublé sur un KO « WTF », mouvement réduit (sans secousse, gels et chutes plus courts, sans tour ni saut), plafond de 8 corps animés ; chutes cosmétiques sauf le domino ; flux aléatoire séparé de la simulation. Reste à faire : hauteur de son aléatoire, étoiles d’étourdissement.
 
 ## 26. Landing page et accès au jeu
 

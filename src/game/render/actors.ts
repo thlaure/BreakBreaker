@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import type { CharLayout, CharSheet, Dir } from '../assets';
 import type { Snapshot } from '../../sim/sim';
-import type { Launch, Vec } from '../../sim/types';
+import type { Fall, Launch, Vec } from '../../sim/types';
 import { DEPTH } from './depth';
+import { FALL_SPECS, fallPose, fallTravel, newFallPose, pickWord, type FallPose } from './fallMath';
 import { edgeExit, landingDistance, launchPose, satelliteDelay, satellitePose } from './furieMath';
 import { MAX_SATELLITES, Twinkles } from './satellite';
 import { RifleProp } from './guns';
@@ -386,7 +387,52 @@ interface Flight {
   dist: number;
   start: number;
   landed: boolean;
+  /** The gant's « BOING ! » when the body lands (bounce fall). */
+  boing: boolean;
 }
+
+/** A body falling per its ActorKnockedOut.fall (not launched): where, how far it travels, when, its fx flags. */
+interface Falling {
+  fall: Fall;
+  from: Vec;
+  dist: number;
+  start: number;
+  impacted: boolean;
+  /** Last dust-trail puff (faceplant). */
+  lastTrail: number;
+  /** The pooled trash can (trashcan fall), or null. */
+  can: Phaser.GameObjects.Image | null;
+}
+
+/** At most this many bodies play a fall at once; the next ones just lie down (still KO frame). */
+export const MAX_FALLS = 8;
+/** Trash cans in the pool (a trashcan fall over the pool falls without a can: plain crumple look). */
+const CAN_POOL = 3;
+const CAN_SCALE = 2;
+/** Trash can: 12×14 pixel rows (lid, ribbed body). */
+const CAN_ROWS = [
+  '...KKKKKK...',
+  '.KKLLLLLLKK.',
+  'KLLWLLLLLLLK',
+  'KKKKKKKKKKKK',
+  '.KGWGgGGgGK.',
+  '.KGWGgGGgGK.',
+  '.KGWGgGGgGK.',
+  '.KGGGgGGgGK.',
+  '.KGGGgGGgGK.',
+  '.KGGGgGGgGK.',
+  '.KGGGgGGgGK.',
+  '.KgGGgGGggK.',
+  '.KggggggggK.',
+  '..KKKKKKKK..',
+];
+const CAN_PAL: Record<string, number> = { K: 0x14121c, L: 0xa9b3bd, W: 0xe6edf2, G: 0x7c8894, g: 0x5a6570 };
+/** Trash can: frame row where the legs start (hips) in an LPC frame; only rows below it show, upside down. */
+const LEGS_ROW = 44;
+const LEGS_ORIGIN_Y = LEGS_ROW / 64;
+/** How deep (px) the legs sink under the can rim. */
+const LEGS_TUCK = 3;
+const TRAIL_MS = 40;
 
 /** Sprite origin (y) while airborne: the body spins around its middle, not its feet. */
 const SPIN_ORIGIN_Y = 0.6;
@@ -405,6 +451,14 @@ export interface LaunchCtx {
   zoom: () => number;
   satellites: { flying: number };
   reducedMotion: boolean;
+  /** Bodies playing a fall right now (capped at MAX_FALLS). */
+  falls: { active: number };
+  /** Free trash cans (pool). */
+  cans: Phaser.GameObjects.Image[];
+  /** An onomatopoeia bubble (`big` for the WTF words). */
+  pow: (x: number, y: number, nowMs: number, word: string, big?: boolean) => void;
+  /** Shared pose scratch (no per-frame allocation). */
+  pose: FallPose;
   /** Runner dust puffs at the feet (shared emitter). */
   dust: Phaser.GameObjects.Particles.ParticleEmitter;
 }
@@ -424,6 +478,10 @@ class HostileView {
   /** A shooter's cartoon rifle (and its « ! » while aiming). */
   private readonly rifle: RifleProp | null;
   private flight: Flight | null = null;
+  private falling: Falling | null = null;
+  /** Lying offset (px) left by a fall's travel, kept while the body lies. */
+  private restX = 0;
+  private restY = 0;
   /** Satellite gone: the sprites are destroyed, nothing more is drawn. */
   private gone = false;
   /** The satellite counter this body takes a slot of while it flies (released when it vanishes or is removed). */
@@ -449,8 +507,8 @@ class HostileView {
   }
 
   /** `index` = rank of this body among the satellites of one beam (take-off stagger, see satelliteDelay). */
-  launch(from: Vec, launch: Launch, nowMs: number, ctx: LaunchCtx, index = 0): void {
-    if (this.gone || this.flight) return;
+  launch(from: Vec, launch: Launch, nowMs: number, ctx: LaunchCtx, index = 0, boing = false): void {
+    if (this.gone || this.flight || this.falling) return;
     if (launch.kind === 'satellite') {
       // over the cap: no flight, it vanishes at once with its twinkle
       if (ctx.satellites.flying >= MAX_SATELLITES) {
@@ -459,11 +517,39 @@ class HostileView {
       }
       ctx.satellites.flying += 1;
       this.slot = ctx.satellites;
-      this.flight = { from: { ...from }, launch, dist: launch.power, start: nowMs + satelliteDelay(index), landed: false };
+      this.flight = { from: { ...from }, launch, dist: launch.power, start: nowMs + satelliteDelay(index), landed: false, boing: false };
       return;
     }
     const dist = landingDistance(from, launch, ctx.world, ctx.blocked);
-    this.flight = { from: { ...from }, launch, dist, start: nowMs, landed: false };
+    this.flight = { from: { ...from }, launch, dist, start: nowMs, landed: false, boing };
+  }
+
+  /**
+   * Plays `fall` from `from` (a KO without launch). Over MAX_FALLS bodies falling at once, the body just lies down. The
+   * travel is clamped to free ground inside the world (landingDistance), the body never lies in a wall.
+   */
+  fall(from: Vec, fall: Fall, nowMs: number, ctx: LaunchCtx): void {
+    if (this.gone || this.flight || this.falling) return;
+    if (ctx.falls.active >= MAX_FALLS) return;
+    ctx.falls.active += 1;
+    const travel = fallTravel(fall.kind);
+    const dist = travel > 0 ? landingDistance(from, { dir: fall.dir, power: travel, spin: 0 }, ctx.world, ctx.blocked) : 0;
+    const can = fall.kind === 'trashcan' ? (ctx.cans.pop() ?? null) : null;
+    // no can left: the dive still plays, the legs phase reads as a lying body
+    this.falling = { fall, from: { ...from }, dist, start: nowMs, impacted: false, lastTrail: 0, can };
+  }
+
+  /** Ends the fall: frees its slot and its can. */
+  private endFall(ctx: LaunchCtx): void {
+    const f = this.falling;
+    if (!f) return;
+    this.falling = null;
+    ctx.falls.active = Math.max(0, ctx.falls.active - 1);
+    if (f.can) {
+      f.can.setVisible(false);
+      ctx.cans.push(f.can);
+    }
+    this.view.sprite.setCrop();
   }
 
   get removed(): boolean {
@@ -490,10 +576,15 @@ class HostileView {
     if (h.state === 'ko' && this.flight) {
       v.still(koFrame(v.sheet));
       this.fly(this.flight, nowMs, ctx);
+    } else if (h.state === 'ko' && this.falling) {
+      this.playFall(this.falling, dir, nowMs, ctx);
     } else if (h.state === 'ko') {
       v.still(koFrame(v.sheet));
-      s.setAlpha(0.6).setDepth(h.pos.y - 8);
+      s.setPosition(Math.round(h.pos.x + this.restX), Math.round(h.pos.y + this.restY)).setAlpha(0.6).setDepth(h.pos.y + this.restY - 8);
     } else {
+      if (this.falling) this.endFall(ctx);
+      this.restX = 0;
+      this.restY = 0;
       s.setAlpha(1);
       if (h.state === 'windup') v.still(windupFrame(v.sheet, dir));
       else if (h.state === 'degrade' || h.state === 'threaten') v.slash(dir, true);
@@ -522,6 +613,61 @@ class HostileView {
     this.role?.update(h, s);
   }
 
+  private playFall(f: Falling, dir: Dir, nowMs: number, ctx: LaunchCtx): void {
+    const v = this.view;
+    const s = v.sprite;
+    const p = fallPose(f.fall, f.dist, nowMs - f.start, ctx.reducedMotion, ctx.pose);
+    const gx = f.from.x + p.dx;
+    const gy = f.from.y + p.dy;
+    if (p.t >= 1) {
+      this.restX = p.dx;
+      this.restY = p.dy;
+      this.endFall(ctx);
+      v.still(koFrame(v.sheet));
+      s.setOrigin(0.5, FEET_ORIGIN_Y).setAngle(0).setScale(this.size).setPosition(Math.round(gx), Math.round(gy)).setAlpha(0.6).setDepth(gy - 8);
+      return;
+    }
+    v.still(p.frame === 'stand' ? idleFrame(v.sheet, dir) : koFrame(v.sheet));
+    const spec = FALL_SPECS[f.fall.kind];
+    if (!f.impacted && spec.impact >= 0 && p.t >= spec.impact) {
+      f.impacted = true;
+      ctx.dust.emitParticleAt(gx, gy - 2, ctx.reducedMotion ? 2 : 6);
+    }
+    if (p.trail && nowMs - f.lastTrail >= TRAIL_MS) {
+      f.lastTrail = nowMs;
+      ctx.dust.emitParticleAt(gx - f.fall.dir.x * 8, gy - 1, 1);
+    }
+    const x = gx;
+    let y = gy - p.lift;
+    if (p.legs && f.can) {
+      // upside down, only the legs out of the can's rim
+      const frameH = s.frame.height;
+      s.setCrop(0, LEGS_ROW, s.frame.width, frameH - LEGS_ROW).setOrigin(0.5, LEGS_ORIGIN_Y);
+      y = gy - CAN_ROWS.length * CAN_SCALE + LEGS_TUCK;
+    } else {
+      s.setCrop();
+      if (p.legs) {
+        // no can in the pool: lie down for the legs phase
+        v.still(koFrame(v.sheet));
+        p.angle = 0;
+      }
+      s.setOrigin(0.5, p.origin === 'mid' && !p.legs ? SPIN_ORIGIN_Y : FEET_ORIGIN_Y);
+      if (p.origin === 'mid' && !p.legs) y -= SPIN_LIFT;
+    }
+    s.setPosition(Math.round(x), Math.round(y))
+      .setAngle(p.angle)
+      .setScale(p.scaleX * this.size, p.scaleY * this.size)
+      .setAlpha(1)
+      .setDepth(p.lift > 20 ? DEPTH.foliage + 2 : gy + 1);
+    if (f.can) {
+      f.can
+        .setVisible(p.can > 0)
+        .setAlpha(p.can)
+        .setPosition(Math.round(f.from.x), Math.round(f.from.y))
+        .setDepth(p.legs ? s.depth + 0.05 : gy + 0.5);
+    }
+  }
+
   private fly(f: Flight, nowMs: number, ctx: LaunchCtx): void {
     const s = this.view.sprite;
     const pose = launchPose(f.from, f.launch, f.dist, nowMs - f.start);
@@ -539,6 +685,7 @@ class HostileView {
     if (!f.landed) {
       f.landed = true;
       ctx.trail.emitParticleAt(pose.x, pose.y - 4, 6);
+      if (f.boing) ctx.pow(pose.x, pose.y, nowMs, pickWord('glove', Math.random()));
     }
     s.setOrigin(0.5, FEET_ORIGIN_Y).setAngle(0).setScale(this.size).setPosition(Math.round(pose.x), Math.round(pose.y)).setAlpha(0.6).setDepth(pose.y - 8);
   }
@@ -581,9 +728,10 @@ class HostileView {
     this.destroy();
   }
 
-  destroy(): void {
+  destroy(ctx?: LaunchCtx): void {
     if (this.gone) return;
     this.gone = true;
+    if (ctx) this.endFall(ctx);
     if (this.slot) this.slot.flying = Math.max(0, this.slot.flying - 1);
     this.slot = null;
     this.view.destroy();
@@ -595,7 +743,24 @@ class HostileView {
   }
 }
 
-/** Keeps one HostileView per lifeId in the snapshot; `launch` sends a KO body flying (mode furie). */
+/** `trash_can` texture (pixel rows drawn at runtime, no image file). */
+export function makeFallTextures(scene: Phaser.Scene): void {
+  if (scene.textures.exists('trash_can')) return;
+  const g = scene.make.graphics({}, false);
+  CAN_ROWS.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      const c = CAN_PAL[row[x]!];
+      if (c !== undefined) g.fillStyle(c, 1).fillRect(x, y, 1, 1);
+    }
+  });
+  g.generateTexture('trash_can', CAN_ROWS[0]!.length, CAN_ROWS.length);
+  g.destroy();
+}
+
+/**
+ * Keeps one HostileView per lifeId in the snapshot; `launch` sends a KO body flying (mode furie, beam, gant), `fall`
+ * plays its ActorKnockedOut.fall.
+ */
 export class HostileLayer {
   private readonly views = new Map<number, HostileView>();
   private readonly ctx: LaunchCtx;
@@ -604,11 +769,19 @@ export class HostileLayer {
 
   constructor(
     private readonly scene: Phaser.Scene,
-    opts: { world: { width: number; height: number }; blocked: (p: Vec) => boolean; reducedMotion?: boolean } = {
+    opts: {
+      world: { width: number; height: number };
+      blocked: (p: Vec) => boolean;
+      reducedMotion?: boolean;
+      pow?: (x: number, y: number, nowMs: number, word: string, big?: boolean) => void;
+    } = {
       world: { width: Infinity, height: Infinity },
       blocked: () => false,
     },
   ) {
+    makeFallTextures(scene);
+    const cans: Phaser.GameObjects.Image[] = [];
+    for (let i = 0; i < CAN_POOL; i++) cans.push(scene.add.image(0, 0, 'trash_can').setOrigin(0.5, 1).setScale(CAN_SCALE).setVisible(false));
     const trail = scene.add
       .particles(0, 0, 'px', {
         lifespan: { min: 260, max: 520 },
@@ -641,6 +814,10 @@ export class HostileLayer {
       zoom: () => scene.cameras.main.zoom || 1,
       satellites: { flying: 0 },
       reducedMotion: opts.reducedMotion ?? false,
+      falls: { active: 0 },
+      cans,
+      pow: opts.pow ?? (() => {}),
+      pose: newFallPose(),
     };
   }
 
@@ -648,8 +825,18 @@ export class HostileLayer {
    * The body of `lifeId` (knocked out at `from`) flies along the launch: a tumble for furieMath.LAUNCH_MS, a satellite
    * for SATELLITE_MS (then gone).
    */
-  launch(lifeId: number, from: Vec, launch: Launch, nowMs: number, index = 0): void {
-    this.views.get(lifeId)?.launch(from, launch, nowMs, this.ctx, index);
+  launch(lifeId: number, from: Vec, launch: Launch, nowMs: number, index = 0, boing = false): void {
+    this.views.get(lifeId)?.launch(from, launch, nowMs, this.ctx, index, boing);
+  }
+
+  /** The body of `lifeId` (knocked out at `from`) plays `fall` (see fallMath). */
+  fall(lifeId: number, from: Vec, fall: Fall, nowMs: number): void {
+    this.views.get(lifeId)?.fall(from, fall, nowMs, this.ctx);
+  }
+
+  /** Bodies playing a fall right now (debug / tests). */
+  get fallsActive(): number {
+    return this.ctx.falls.active;
   }
 
   update(list: Snapshot['hostiles'], nowMs: number): void {
@@ -666,7 +853,7 @@ export class HostileLayer {
     this.twinkles.update(nowMs);
     for (const [id, view] of this.views) {
       if (seen.has(id)) continue;
-      view.destroy();
+      view.destroy(this.ctx);
       this.views.delete(id);
     }
   }
