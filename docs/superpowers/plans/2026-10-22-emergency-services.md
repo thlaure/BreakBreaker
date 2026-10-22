@@ -59,4 +59,4 @@
 
 ### Task 4: Cahier and final checks
 
-- [ ] Update `docs/CAHIER_DES_CHARGES.md` to v1.9.19 (new §, RC numbers continuing from the highest, events, HUD texts, changelog) and README bullet; run all checks; commit.
+- [ ] Update `docs/SPECS - Index.md` to v1.9.19 (new §, RC numbers continuing from the highest, events, HUD texts, changelog) and README bullet; run all checks; commit.

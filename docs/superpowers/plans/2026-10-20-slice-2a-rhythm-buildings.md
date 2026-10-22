@@ -55,7 +55,7 @@ src/sim/sim.ts, rules.ts       wiring, snapshot, stats
 src/game/render/targets.ts     NEW TargetView (HP bar, fire, ruin; car/busStop props), ToolboxView, MolotovFx
 src/game/render/world.ts, actors.ts, scenes/WorldScene.ts
 src/game/hud/alerts.ts, format.ts, hud.ts, hud.css, ui.ts, audio.ts
-docs/CAHIER_DES_CHARGES.md     v1.9
+docs/SPECS - Index.md     v1.9
 tests/sim/autopilot.ts         NEW test helper
 ```
 
@@ -239,7 +239,7 @@ test('determinism over 4 rounds with autopilot; hostile count never exceeds 40 o
 ### Task 6: HUD, alerts, round panel, audio, spec v1.9
 
 **Files:**
-- Modify: `src/game/hud/alerts.ts`, `format.ts`, `hud.ts`, `hud.css`, `ui.ts`, `src/game/audio.ts`, `src/content/controls.ts` (rule lines), `docs/CAHIER_DES_CHARGES.md`, `README.md`
+- Modify: `src/game/hud/alerts.ts`, `format.ts`, `hud.ts`, `hud.css`, `ui.ts`, `src/game/audio.ts`, `src/content/controls.ts` (rule lines), `docs/SPECS - Index.md`, `README.md`
 - Test: `tests/game/alerts.test.ts`, `tests/game/hud.test.ts` (update + extend)
 
 **Interfaces:**
@@ -249,7 +249,7 @@ test('determinism over 4 rounds with autopilot; hostile count never exceeds 40 o
   - **Round panel** (HTML, non-modal, top-centre under the HUD, never over Paul or the health panel) while `roundPhase === 'breather'`: `Manche N terminée`, KOs, each objective `réussi / perdu`, `+points`, `Bonus +5` when earned, `Soins rechargés`, and a countdown `Manche N+1 dans 4…`.
   - Summary rows: `Manche atteinte` (replaces `Vague atteinte`), `Manches parfaites`, `Lieux sauvés / détruits`, `Réparations`.
   - Audio: `CasseStarted` → `alarm` once per incident id; `MolotovThrown` → a short whoosh (noise burst, synthesised); `TargetIgnited` → fire loop follows any burning target; `TargetSaved`, `TargetRepaired`, `RoundCompleted` → `chime()` (sine 660 → 880 Hz, 120 ms each); `ToolboxPickedUp` → `pickup`. Threat level follows the lowest attacked target HP.
-  - Spec `docs/CAHIER_DES_CHARGES.md` → **v1.9**: rounds with breather/twist/climax (§12.2, RC-94 breather exception), health model + Molotov + fire out (§10), toolbox without F (§10.6–10.7, RCs), firearms rule change and Phase B–D outline (pointer to the design doc). README: link spec v1.9 (fixes the stale "v1.5").
+  - Spec `docs/SPECS - Index.md` → **v1.9**: rounds with breather/twist/climax (§12.2, RC-94 breather exception), health model + Molotov + fire out (§10), toolbox without F (§10.6–10.7, RCs), firearms rule change and Phase B–D outline (pointer to the design doc). README: link spec v1.9 (fixes the stale "v1.5").
 
 - [ ] **Step 1: Write failing tests**
 

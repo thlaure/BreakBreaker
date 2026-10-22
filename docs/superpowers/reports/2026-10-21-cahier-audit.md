@@ -1,7 +1,7 @@
 # Cahier des charges audit (v1.9.10 → v1.9.11)
 
 Branch `docs/cahier-sync`. Request from the product owner: « mets bien à jour le cahier des charges ». The spec
-(`docs/CAHIER_DES_CHARGES.md`) was read in full and checked against the code (`src/sim`, `src/game`, `src/content`),
+(`docs/SPECS - Index.md`) was read in full and checked against the code (`src/sim`, `src/game`, `src/content`),
 the per-feature reports and the slice-2 design (`docs/superpowers/specs/2026-10-20-slice-2-fun-design.md`). The code
 won wherever it disagreed; no code was changed. `npx vitest run` (496 tests, none reads the spec) and `npm run build`
 pass.

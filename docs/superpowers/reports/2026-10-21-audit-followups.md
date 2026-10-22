@@ -78,7 +78,7 @@ une sorte de bulle de protection ». Every item below is delivered; nothing was 
 
 ## Docs
 
-`docs/CAHIER_DES_CHARGES.md` is now 1.9.12. Updated sections:
+`docs/SPECS - Index.md` is now 1.9.12. Updated sections:
 
 - 8.8 and 8.9: effect, presentation, pickup, who drops it.
 - 10.3, 10.6 and 10.8.

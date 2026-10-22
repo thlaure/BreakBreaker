@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript 5, Vite (locked), Phaser 4 (exact version locked), Vitest, Node 22. Art: Universal LPC spritesheets (characters, 64×64 frames), LPC Modern Streets + Kenney RPG Urban / Roguelike Modern City (tiles, CC0), Kenney Impact Sounds + RPG Audio (CC0).
 
-**Spec:** `docs/CAHIER_DES_CHARGES.md` (v1.4). Agreed deviations from the spec, binding for this plan:
+**Spec:** `docs/SPECS - Index.md` (v1.4). Agreed deviations from the spec, binding for this plan:
 - Hero is **Paul**, a fictional shopkeeper — no Micromania, no real-person references, no press links.
 - **Every rioter KO scores +1**, whatever its flag. Flags are cosmetic only.
 - No OQTF counter and no satirical deportation/denationalisation lines: the HUD and summary show a neutral **"Casseurs neutralisés"** count.

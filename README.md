@@ -2,7 +2,7 @@
 
 A 2D top-down pixel-art arcade web game, rewritten from the old Three.js prototype (kept in the git history). The game's text is in French.
 
-Specification: [`docs/CAHIER_DES_CHARGES.md`](docs/CAHIER_DES_CHARGES.md) (v1.9.19, French). Slice 2 design: [`docs/superpowers/specs/2026-10-20-slice-2-fun-design.md`](docs/superpowers/specs/2026-10-20-slice-2-fun-design.md).
+Specification: [`docs/SPECS - Index.md`](docs/SPECS%20-%20Index.md) (v1.9.25, French), the index of the split spec files in `docs/` (vision, journey and map, controls and interface, combat, places, rounds, art and sound, technical, acceptance). Slice 2 design: [`docs/superpowers/specs/2026-10-20-slice-2-fun-design.md`](docs/superpowers/specs/2026-10-20-slice-2-fun-design.md).
 
 ## Features
 
