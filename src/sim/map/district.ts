@@ -26,6 +26,18 @@ export interface TargetDef {
   repairShare?: number;
 }
 
+/** Decor fronts (render only): ordinary solid buildings, never targets, no interaction. */
+export type DecorId = 'caf' | 'tastyCrousty';
+export interface DecorDef {
+  id: DecorId;
+  /** The sign text painted on its roof edge. */
+  sign: string;
+  /** One of DISTRICT.buildings. */
+  footprint: Rect;
+  /** Centre of the street tile in front of its door (on the row below the front). */
+  door: Vec;
+}
+
 export interface District {
   tiles: 48;
   buildings: Rect[];
@@ -37,6 +49,8 @@ export interface District {
   hostileSpawns: Vec[];
   rescueSites: Vec[];
   targets: TargetDef[];
+  /** Decor fronts on free buildings (never in `targets`: never attacked, burnt or repaired). */
+  decor: DecorDef[];
   kitSites: Vec[];
   /**
    * Equestrian monument (§11): a solid stone `plinth` (like a prop), the capture `zone`, the flag `mast` (top of the
@@ -78,13 +92,13 @@ export const DISTRICT: District = {
   buildings: [
     R(4, 4, 8, 5), // 0: school (north-west)
     R(15, 3, 6, 4), // 1: town hall (north)
-    R(26, 4, 7, 5),
+    R(26, 4, 7, 5), // 2: « CAF » office (decor)
     R(36, 3, 8, 5),
     R(4, 14, 6, 5),
     R(12, 15, 4, 4), // 5: retro video-game shop
     R(14, 26, 6, 5),
     R(30, 28, 7, 5),
-    R(38, 16, 6, 6),
+    R(38, 16, 6, 6), // 8: « TASTY CROUSTY » fast food (decor)
     R(6, 30, 7, 6), // 9: nursery school (south-west)
     R(22, 38, 8, 5), // 10: library (south)
     R(38, 36, 6, 6), // 11: prison (south-east)
@@ -161,6 +175,11 @@ export const DISTRICT: District = {
       maxHp: CONFIG.prison.hp,
       repairShare: CONFIG.prison.repairShare,
     },
+  ],
+  // decor only: solid buildings like the others, drawn with their own front (src/game/render/decor.ts)
+  decor: [
+    { id: 'caf', sign: 'CAF', footprint: R(26, 4, 7, 5), door: C(29, 9) },
+    { id: 'tastyCrousty', sign: 'TASTY CROUSTY', footprint: R(38, 16, 6, 6), door: C(41, 22) },
   ],
   kitSites: [C(18, 12), C(28, 25), C(8, 26), C(36, 44)],
   monument: {
