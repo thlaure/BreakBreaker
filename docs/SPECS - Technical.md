@@ -1,117 +1,117 @@
-# BreakBreaker — Spécifications : Technique
+# BreakBreaker — Specifications: Technical
 
-> **Rôle du fichier :** choix techniques, architecture et données, performances, stockage, chargement et diffusion.  
-> Fait partie des spécifications de BreakBreaker (version 1.9.25), découpées en plusieurs fichiers. Retour à l’[index des spécifications](SPECS%20-%20Index.md) (sommaire général, historique des versions, conventions, plan des fichiers).
+> **Purpose of this file:** technical choices, architecture and data, performance, storage, loading and distribution.  
+> Part of the BreakBreaker specifications (version 1.9.25), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
-## 17. Choix techniques
+## 17. Technical choices
 
-### 17.1 Stack retenue
+### 17.1 Chosen stack
 
-| Domaine | Choix | Motif |
+| Area | Choice | Rationale |
 | --- | --- | --- |
-| Langage | TypeScript compilé en JavaScript | États, objets, collisions et tests typés |
-| Build | Vite, version verrouillée | Développement local et build statique |
-| Moteur 2D | Phaser 4.2.1, version verrouillée | Rendu des sprites, animations, caméra, entrées, son et scènes |
-| Simulation | Module TypeScript pur et déterministe à pas fixe (60 Hz), sans dépendance à Phaser, séparé du rendu | Règles testables et reproductibles |
-| Rendu | WebGL, pixelArt activé, mode d’échelle RESIZE, zoom de caméra entier, base 640 × 360 / 360 × 640 | Netteté sans étirement |
-| Collisions | Cercles et rectangles 2D calculés par la simulation ; grille de tuiles de 32 pixels | Contacts, projectiles et top-down sans dépendre du moteur de rendu |
-| Projectiles | Trajectoires 2D et arc visuel séparé | Contrôle et coût prévisible |
-| Carte | Tuiles orthogonales et objets JSON | Sol, collisions, objectifs, groupes et apparitions |
-| Animation | Spritesheets/atlas | Pas de squelette 3D requis |
-| IA | États, directeur de hordes, grille et voisinage spatial | Beaucoup d’agents simples, logique testable |
-| Interface | HUD de jeu et menus HTML/CSS accessibles | Séparer commandes de jeu et navigation de menus |
-| Son | Système audio Phaser / Web Audio | Mixage et reprise après interruption |
-| Tests | Vitest pour la simulation et les règles ; parcours navigateur | Projeter, ramasser, renvoyer, protéger les groupes, frapper, armes |
-| Ressources | Universal LPC, Kenney / LPC CC0, sons Kenney CC0 | Crédits dans `public/CREDITS.md` |
-| Livraison | Fichiers statiques sur HTTPS | Sans compte, API payante ou serveur applicatif |
+| Language | TypeScript compiled to JavaScript | Typed states, objects, collisions and tests |
+| Build | Vite, pinned version | Local development and static build |
+| 2D engine | Phaser 4.2.1, pinned version | Rendering of sprites, animations, camera, input, sound and scenes |
+| Simulation | Pure, deterministic TypeScript module with a fixed step (60 Hz), with no dependency on Phaser, separate from rendering | Testable and reproducible rules |
+| Rendering | WebGL, pixelArt enabled, RESIZE scale mode, integer camera zoom, base 640 × 360 / 360 × 640 | Sharpness without stretching |
+| Collisions | 2D circles and rectangles computed by the simulation; 32-pixel tile grid | Contacts, projectiles and top-down view without depending on the rendering engine |
+| Projectiles | 2D trajectories and a separate visual arc | Control and predictable cost |
+| Map | Orthogonal tiles and JSON objects | Ground, collisions, objectives, groups and spawns |
+| Animation | Spritesheets/atlases | No 3D skeleton required |
+| AI | States, horde director, grid and spatial neighbourhood | Many simple agents, testable logic |
+| Interface | Game HUD and accessible HTML/CSS menus | Separate game controls from menu navigation |
+| Sound | Phaser audio system / Web Audio | Mixing and resumption after interruption |
+| Tests | Vitest for the simulation and the rules; browser walkthroughs | Throwing, picking up, throwing back, protecting the groups, striking, weapons |
+| Resources | Universal LPC, Kenney / LPC CC0, Kenney CC0 sounds | Credits in `public/CREDITS.md` |
+| Delivery | Static files over HTTPS | No account, paid API or application server |
 
-### 17.2 Changement par rapport à Three.js
+### 17.2 Change from Three.js
 
-La direction visuelle a changé : la conservation du moteur 3D n’est plus un objectif. Phaser a été retenu pour utiliser un cadre 2D de jeu plutôt que reconstituer sprites, scènes et collisions autour d’un moteur 3D.
+The visual direction has changed: keeping the 3D engine is no longer a goal. Phaser was chosen in order to use a 2D game framework rather than rebuild sprites, scenes and collisions around a 3D engine.
 
-Les règles pures de score, capture, santé et objectifs peuvent être réutilisées après adaptation. Le rendu, la caméra, les entrées directionnelles et les ressources doivent être refaits. Aucun portage automatique des modèles et animations procédurales du prototype ne donnera un résultat pixel art final.
+The pure rules for score, capture, health and objectives can be reused after adaptation. The rendering, camera, directional input and resources must be redone. No automatic port of the prototype's procedural models and animations will give a final pixel art result.
 
-Three.js, Rapier 3D, KTX2, GLB et le choix WebGPU ne font plus partie de la cible. Ils ne doivent pas être chargés dans le build 2D de production.
+Three.js, Rapier 3D, KTX2, GLB and the WebGPU choice are no longer part of the target. They must not be loaded in the production 2D build.
 
-### 17.3 Références et limites
+### 17.3 References and limits
 
-Le [téléchargement officiel](https://phaser.io/download) et les [archives de versions](https://phaser.io/download/archive) indiquent les versions disponibles. La documentation [Arcade Physics](https://docs.phaser.io/phaser/concepts/physics/arcade) reste une référence ; la première tranche calcule toutefois ses collisions dans la simulation pure.
+The [official download](https://phaser.io/download) and the [version archives](https://phaser.io/download/archive) list the available versions. The [Arcade Physics](https://docs.phaser.io/phaser/concepts/physics/arcade) documentation remains a reference; the first slice, however, computes its collisions in the pure simulation.
 
-Le [Scale Manager](https://docs.phaser.io/phaser/concepts/scale-manager) et les [caméras](https://docs.phaser.io/phaser/concepts/cameras) servent à adapter l’affichage. Les options [pixel art](https://docs.phaser.io/api-documentation/typedef/types-core) permettent de préserver des pixels nets.
+The [Scale Manager](https://docs.phaser.io/phaser/concepts/scale-manager) and the [cameras](https://docs.phaser.io/phaser/concepts/cameras) are used to adapt the display. The [pixel art](https://docs.phaser.io/api-documentation/typedef/types-core) options make it possible to preserve sharp pixels.
 
-Le Canvas de Phaser 4 est annoncé comme déprécié dans la [présentation officielle du moteur de rendu](https://phaser.io/news/2026/04/phaser-4-renderer-faster-cleaner-and-built-for-modern-games). Le cahier ne promet donc pas un mode Canvas de secours équivalent avant essai. La base de recette est WebGL ; l’absence de prise en charge produit un message clair.
+Phaser 4's Canvas renderer is announced as deprecated in the [official presentation of the renderer](https://phaser.io/news/2026/04/phaser-4-renderer-faster-cleaner-and-built-for-modern-games). The specification therefore does not promise an equivalent Canvas fallback mode before testing. The acceptance baseline is WebGL; the lack of support produces a clear message.
 
-### 17.4 Première validation technique
+### 17.4 First technical validation
 
-Avant de figer la version : faire fonctionner Paul, quarante adversaires, trois groupes pacifiques, les collisions et des projectiles sur les téléphones cibles. Vérifier le poids réel du moteur et des atlas, pas seulement la facilité du démarrage sur ordinateur.
+Before freezing the version: get Paul, forty opponents, three peaceful groups, the collisions and projectiles working on the target phones. Check the real weight of the engine and the atlases, not just how easily it starts on a computer.
 
-Pas de backend, IA générative à l’exécution, dépendance réseau à chaque manche, physique de débris complète ou effet WebGPU obligatoire.
+No backend, no generative AI at runtime, no network dependency in every round, no full debris physics and no mandatory WebGPU effect.
 
-## 18. Architecture logicielle et données
+## 18. Software architecture and data
 
-### 18.1 Systèmes
+### 18.1 Systems
 
 ```text
 src/
-  site/         landing HTML/CSS, contenu, aperçu et lien vers le jeu
-  app/          démarrage, menus, chargement et erreurs
-  scenes/       accueil, quartier, HUD, pause et bilan
-  sim/          simulation pure et déterministe, sans Phaser : entités, règles, manches, armes
-  core/         états, horloges, identifiants, événements
-  input/        clavier, souris, tactile, manette
-  player/       Paul, déplacement, visée, frappe circulaire, santé
-  weapons/      armes au sol, apparition, ramassage, usure et bris
-  projectiles/  lancers, trajectoires, impacts, ramassage, stock, renvoi
-  crowds/       groupes pacifiques et volumes protégés
-  ai/           hordes, rôles, pression, navigation et voisinage
-  objectives/   école, monument, boutique, résistance locale et occurrences
-  incidents/    directeur, urgences de bâtiment et secours de victimes
-  repairs/      caisses à outils, stock, réparation / extinction lancée par Agir, interruption et restauration
-  healing/      stations au contact, petits soins et charges
-  rules/        dégâts, KO, score, casseurs neutralisés et bilan
-  rendering/    atlas, animations, profondeur, effets et qualité
-  audio/        groupes de sons et interruptions
-  storage/      préférences et records versionnés
-  data/         carte, atlas, manches, compositions et paramètres
-public/assets/  sprites, tuiles, atlas, sons et cartes exportés
-public/CREDITS.md  auteurs et licences des ressources
-assets-source/  sources artistiques et fichiers de carte
-tests/          règles, intégration, navigateur et endurance
+  site/         landing HTML/CSS, content, preview and link to the game
+  app/          startup, menus, loading and errors
+  scenes/       home, district, HUD, pause and summary
+  sim/          pure, deterministic simulation, without Phaser: entities, rules, rounds, weapons
+  core/         states, clocks, identifiers, events
+  input/        keyboard, mouse, touch, gamepad
+  player/       Paul, movement, aiming, circular strike, health
+  weapons/      ground weapons, spawning, pickup, wear and breakage
+  projectiles/  throws, trajectories, impacts, pickup, stock, return
+  crowds/       peaceful groups and protected volumes
+  ai/           hordes, roles, pressure, navigation and neighbourhood
+  objectives/   school, monument, shop, local resistance and occurrences
+  incidents/    director, building emergencies and victim rescue
+  repairs/      toolboxes, stock, repair / extinguishing launched by Act, interruption and restoration
+  healing/      contact stations, small heals and charges
+  rules/        damage, KO, score, neutralised rioters and summary
+  rendering/    atlases, animations, depth, effects and quality
+  audio/        sound groups and interruptions
+  storage/      versioned preferences and records
+  data/         map, atlas, rounds, compositions and parameters
+public/assets/  exported sprites, tiles, atlases, sounds and maps
+public/CREDITS.md  authors and licences of the resources
+assets-source/  art sources and map files
+tests/          rules, integration, browser and endurance
 ```
 
-Cette arborescence est une cible ; la première tranche regroupe la simulation dans `src/sim/` et le rendu, les entrées et l’interface dans `src/game/`. La logique de mission ne doit pas dépendre d’un sprite visible ou du nom d’une image. Une séparation entre entités de jeu et objets de rendu facilite les tests et le recyclage.
+This tree is a target; the first slice groups the simulation in `src/sim/` and the rendering, input and interface in `src/game/`. The mission logic must not depend on a visible sprite or on an image name. A separation between game entities and rendering objects eases testing and recycling.
 
-### 18.2 États de projectile
+### 18.2 Projectile states
 
 `EnemyWindup → EnemyFlying → LandedRecoverable → InInventory → PlayerFlying → Inert/Removed`.
 
-Chaque projectile possède identifiant, propriétaire, type visuel, état, position, vitesse, durée de vie et identifiant d’impact. Un événement de transition est accepté une seule fois. Un pool réinitialise entièrement les champs avant réutilisation et attribue une nouvelle identité de vie.
+Each projectile has an identifier, owner, visual type, state, position, velocity, lifetime and impact identifier. A transition event is accepted only once. A pool fully resets the fields before reuse and assigns a new life identity.
 
-Seul `LandedRecoverable` peut entrer dans le stock. `PlayerFlying` ne redevient pas récupérable. Le stock n’est jamais supérieur à trois ou inférieur à zéro. Un objet retiré ne peut pas être consommé de nouveau.
+Only `LandedRecoverable` can enter the stock. `PlayerFlying` does not become recoverable again. The stock is never greater than three or less than zero. A removed object cannot be consumed again.
 
-### 18.3 Événements
+### 18.3 Events
 
-**Modifié (v1.9.11) :** catalogue livré (`src/sim/types.ts`, type `SimEvent`) :
+**Changed (v1.9.11):** delivered catalogue (`src/sim/types.ts`, type `SimEvent`):
 
-- Manches : `RoundStarted` (avec `rescueKind` quand la casse phare est le secours, v1.9.12), `RoundTotalChanged`, `TwistStarted` (aux manches impaires dès la 3, deux à la suite : `weaponDrop` puis `secondUrgency`, v1.9.12), `RoundCompleted`, `StationsRecharged`.
-- Combat et projectiles : `HitConfirmed`, `ActorKnockedOut` (porte `fall` depuis v1.9.17), `DominoTriggered` (`from`, `lifeIds`, v1.9.17), `PlayerDamaged`, `PlayerKnockedOut`, `EnemyThrowStarted`, `EnemyRockThrown`, `ProjectileLanded`, `ProjectilePickedUp`, `ProjectileReturned`, `ProtectedGroupBlockedImpact`, `ShieldBlocked`.
-- Lieux : `SchoolStarted` et `CasseStarted` (position), `MolotovThrown`, `TargetIgnited`, `BuildingThreatStarted`, `BuildingThreatPaused`, `TargetSaved`, `SchoolRestored`, `BuildingDestroyed`, `FirebombThrown`, `FirePatchStarted`.
-- Petits soins de terrain (v1.9.18) : `SmallHealDropped` (`id`, `pos`), `SmallHealPicked` (`id`, `amount` = PV réellement gagnés). L’instantané ajoute `fieldHeals` (`id`, `pos`, `expiresAt`).
-- Services d’urgence (v1.9.19) : `ServiceCalled` (`kind` 'fire' ou 'police'), `ServiceRefused` (`kind`, `reason` parmi `noFire`, `fewRioters`, `noCalls`, `busy`, `ruined`), `TruckArrived` (`from`), `TruckSprayed` (`target`, une fois par lieu), `TruckDestroyed` (`pos`), `TruckLeft`, `PoliceArrived` (`from`, `count`), `PoliceDown` (`id`), `PoliceLeft`. L’instantané ajoute `services` (`calls` { fire, police } = appels restants ; `hint` { fire, police } = un appel serait accepté à l’instant) et `allies` (`truck` : `pos`, `hp`, `maxHp`, `state` 'arriving' / 'spraying' / 'leaving', `target`, ou null ; `police` : liste d’agents `id`, `role`, `pos`, `hp`, `maxHp`, `state` 'run' / 'strike' / 'down').
-- Prison (v1.9.20) : `CaidJailed` (`lifeId`, une fois par vie de Caïd enfermé), `PrisonBreakout` (`count` Caïds libérés, `pos` = la porte ; jamais émis si personne n’est enfermé), `GuardDown` (`id`, un gardien KO ; un policier de la cabine donne `PoliceDown`), `GuardsBack` (au répit, des gardiens reviennent). `Director.extend` émet `RoundTotalChanged` quand T grandit. L’instantané ajoute `prison` (`jailed` = Caïds enfermés ; `guards` : liste de `id`, `pos`, `hp`, `maxHp`, `state` ; `standing`). `allies.police` ne liste que la police, jamais les gardiens.
-- Caisses à outils : `ToolboxSpawned`, `ToolboxPickedUp`, `FireOut`, `TargetRepaired`.
-- Secours : `RescueStarted` (position et type, émis une fois ; il déclenche l’alerte), `ItemStolen`, `ItemDropped`, `ItemPickedUp`, `ItemReturned`, `RescueSecured`, `RescueCompleted`, `RescueFailed`.
-- Monument : `MonumentAttacked`, `FlagSwapped`, `MonumentDefended`, `FlagCaptured`.
-- Armes et spéciaux : `WeaponSpawned`, `WeaponPickedUp`, `WeaponBroken`, `FurieStarted`, `FurieEnded`, `BeamCharging`, `BeamCancelled`, `BeamFired`, `ShieldBlocked`.
-- Tireurs et armes de la phase B (v1.9.15) : `ShooterAimStarted` (`lifeId`, `from`, `to`, `until`), `BulletFired` (`id`), `BulletImpact` (`pos`, `owner`), `FlashballFired` (`id`, `from`, `dir`), `FlashballDropped` (`pos`), `GlovePunched` (`from`, `to`, `lifeId`) ; `HitConfirmed.source` vaut aussi 'gant' ou 'flashball'. L’instantané ajoute `aims`, `bullets`, `flashballs` et `hostiles[].aiming`.
-- Jauge d’énergie (v1.9.14) : `EnergyReady` (`level` 'onde' ou 'furie', une fois par franchissement), `EnergyRefused` (`need`). L’entrée `InputFrame` porte `chargeHeld` (C ou bouton Onde enfoncé ; **modifié v1.9.23 :** seul son front montant compte, la charge se termine ensuite seule) et `furie` (appui sur R ou Furie) ; `strikeHeld` est retiré.
-- Soins et score : `HealCompleted`, `ScoreChanged` (points et position, section 14.1).
+- Rounds: `RoundStarted` (with `rescueKind` when the headline incident is the rescue, v1.9.12), `RoundTotalChanged`, `TwistStarted` (on odd rounds from round 3, two in a row: `weaponDrop` then `secondUrgency`, v1.9.12), `RoundCompleted`, `StationsRecharged`.
+- Combat and projectiles: `HitConfirmed`, `ActorKnockedOut` (carries `fall` since v1.9.17), `DominoTriggered` (`from`, `lifeIds`, v1.9.17), `PlayerDamaged`, `PlayerKnockedOut`, `EnemyThrowStarted`, `EnemyRockThrown`, `ProjectileLanded`, `ProjectilePickedUp`, `ProjectileReturned`, `ProtectedGroupBlockedImpact`, `ShieldBlocked`.
+- Places: `SchoolStarted` and `CasseStarted` (position), `MolotovThrown`, `TargetIgnited`, `BuildingThreatStarted`, `BuildingThreatPaused`, `TargetSaved`, `SchoolRestored`, `BuildingDestroyed`, `FirebombThrown`, `FirePatchStarted`.
+- Field small heals (v1.9.18): `SmallHealDropped` (`id`, `pos`), `SmallHealPicked` (`id`, `amount` = HP actually gained). The snapshot adds `fieldHeals` (`id`, `pos`, `expiresAt`).
+- Emergency services (v1.9.19): `ServiceCalled` (`kind` 'fire' or 'police'), `ServiceRefused` (`kind`, `reason` among `noFire`, `fewRioters`, `noCalls`, `busy`, `ruined`), `TruckArrived` (`from`), `TruckSprayed` (`target`, once per place), `TruckDestroyed` (`pos`), `TruckLeft`, `PoliceArrived` (`from`, `count`), `PoliceDown` (`id`), `PoliceLeft`. The snapshot adds `services` (`calls` { fire, police } = remaining calls; `hint` { fire, police } = a call would be accepted right now) and `allies` (`truck`: `pos`, `hp`, `maxHp`, `state` 'arriving' / 'spraying' / 'leaving', `target`, or null; `police`: list of agents `id`, `role`, `pos`, `hp`, `maxHp`, `state` 'run' / 'strike' / 'down').
+- Prison (v1.9.20): `CaidJailed` (`lifeId`, once per life of a jailed Caïd), `PrisonBreakout` (`count` Caïds freed, `pos` = the door; never emitted if nobody is jailed), `GuardDown` (`id`, a guard KO; a police officer from the phone booth gives `PoliceDown`), `GuardsBack` (during the breather, guards come back). `Director.extend` emits `RoundTotalChanged` when T grows. The snapshot adds `prison` (`jailed` = jailed Caïds; `guards`: list of `id`, `pos`, `hp`, `maxHp`, `state`; `standing`). `allies.police` lists only the police, never the guards.
+- Toolboxes: `ToolboxSpawned`, `ToolboxPickedUp`, `FireOut`, `TargetRepaired`.
+- Rescue: `RescueStarted` (position and type, emitted once; it triggers the alert), `ItemStolen`, `ItemDropped`, `ItemPickedUp`, `ItemReturned`, `RescueSecured`, `RescueCompleted`, `RescueFailed`.
+- Monument: `MonumentAttacked`, `FlagSwapped`, `MonumentDefended`, `FlagCaptured`.
+- Weapons and specials: `WeaponSpawned`, `WeaponPickedUp`, `WeaponBroken`, `FurieStarted`, `FurieEnded`, `BeamCharging`, `BeamCancelled`, `BeamFired`, `ShieldBlocked`.
+- Shooters and weapons of phase B (v1.9.15): `ShooterAimStarted` (`lifeId`, `from`, `to`, `until`), `BulletFired` (`id`), `BulletImpact` (`pos`, `owner`), `FlashballFired` (`id`, `from`, `dir`), `FlashballDropped` (`pos`), `GlovePunched` (`from`, `to`, `lifeId`); `HitConfirmed.source` can also be 'gant' or 'flashball'. The snapshot adds `aims`, `bullets`, `flashballs` and `hostiles[].aiming`.
+- Energy gauge (v1.9.14): `EnergyReady` (`level` 'onde' or 'furie', once per crossing), `EnergyRefused` (`need`). The `InputFrame` input carries `chargeHeld` (C or the Onde button held; **changed v1.9.23:** only its rising edge counts, the charge then ends by itself) and `furie` (press of R or Furie); `strikeHeld` is removed.
+- Heals and score: `HealCompleted`, `ScoreChanged` (points and position, section 14.1).
 
-Les événements de la cible initiale non repris (`SessionStarted`, `SessionEnded`, `ObjectiveActivated`, `ObjectiveLost`, `RepairStarted`, `RepairCancelled`, `StudentEnteredSchool`, `WaveStarted`) restent à ajouter si un besoin apparaît ; la fin de session passe par l’état `ended` de la simulation.
+The events of the initial target that were not carried over (`SessionStarted`, `SessionEnded`, `ObjectiveActivated`, `ObjectiveLost`, `RepairStarted`, `RepairCancelled`, `StudentEnteredSchool`, `WaveStarted`) remain to be added if a need appears; the end of a session goes through the simulation's `ended` state.
 
-Le système de règles est seul auteur du score et du compteur de casseurs neutralisés. Les KO, consommations de soins, ramassages et bonus d’objectif sont dédupliqués. Les groupes pacifiques et victimes ne peuvent jamais émettre un KO valide. Les santés de lieu, délais de secours, consommation de caisse à outils, réparation et bonus de secours sont dédupliqués par identifiant propre. Une ancienne perte encore réparable garde seulement son état minimal ; elle n’oblige pas à conserver tout le journal historique.
+The rules system is the sole author of the score and of the « Casseurs neutralisés » counter. KOs, heal consumptions, pickups and objective bonuses are deduplicated. Peaceful groups and victims can never emit a valid KO. Place health, rescue deadlines, toolbox consumption, repair and rescue bonuses are deduplicated by their own identifier. An older loss that is still repairable keeps only its minimal state; it does not require keeping the whole historical log.
 
-### 18.4 Configuration cible
+### 18.4 Target configuration
 
 ```json
 {
@@ -185,96 +185,96 @@ Le système de règles est seul auteur du score et du compteur de casseurs neutr
 }
 ```
 
-**Modifié (v1.9.11) :** ce bloc est un résumé ; la source de vérité des paramètres est `CONFIG` dans `src/sim/config.ts` (ancienne réserve de 30 s remplacée par la santé des lieux, capture de 8 s, réparation de 2 s ; `repairBonus` est la valeur de l’école ; `smallHealAmount` correspond aux petits soins livrés en v1.9.18, `CONFIG.fieldHeal`). Les valeurs sont proposées. Les caps de simulation sont communs aux profils graphiques ; un réglage de difficulté distinct peut changer les effectifs, pas une baisse automatique de qualité.
+**Changed (v1.9.11):** this block is a summary; the source of truth for the parameters is `CONFIG` in `src/sim/config.ts` (the former 30 s reserve replaced by place health, 8 s capture, 2 s repair; `repairBonus` is the school's value; `smallHealAmount` corresponds to the small heals delivered in v1.9.18, `CONFIG.fieldHeal`). The values are proposed. The simulation caps are shared by all graphics profiles; a separate difficulty setting can change the rosters, but not an automatic drop in quality.
 
-### 18.5 Collisions et temps
+### 18.5 Collisions and time
 
-Simulation fixe cible 60 Hz, rendu séparé. Coordonnées logiques flottantes ; arrondi seulement au rendu. Utiliser des volumes de pieds pour les agents, des empreintes de bâtiments et des volumes de groupe séparés.
+Fixed simulation targeting 60 Hz, rendering separate. Floating-point logical coordinates; rounding only at render time. Use foot volumes for agents, separate building footprints and group volumes.
 
-Les projectiles rapides utilisent une vérification du segment parcouru ou des sous-pas bornés pour éviter de traverser une petite hitbox entre deux images. Les groupes protégés et obstacles doivent être considérés avant une cible derrière eux.
+Fast projectiles use a check of the segment travelled or bounded sub-steps to avoid passing through a small hitbox between two frames. Protected groups and obstacles must be considered before a target behind them.
 
-Pause : santé des lieux, feu, détresse, capture, réparation, apparition d’armes, entrée des casseurs, IA, projectiles, particules utiles et dégâts suspendus. Perte de focus : commandes relâchées et reprise explicite. Ne pas rejouer toute une trajectoire en accéléré au retour d’onglet.
+Pause: place health, fire, distress, capture, repair, weapon spawning, rioter entry, AI, projectiles, useful particles and damage are suspended. Loss of focus: controls released and explicit resumption. Do not replay a whole trajectory in fast-forward when returning to the tab.
 
-### 18.6 Ressources bornées
+### 18.6 Bounded resources
 
-Pool de sprites, corps, pierres, armes, soins, caisses à outils, victimes et effets. Le directeur de secours utilise les mêmes plafonds d’agents hostiles ; ses agresseurs ne sont pas une population supplémentaire hors budget. Plafonds distincts pour projectiles en vol et pierres au sol. Après le plafond au sol, remplacer la plus ancienne pierre récupérable par une nouvelle chute ou retirer la nouvelle selon une règle unique documentée ; proposition : recycler la plus ancienne hors de proximité immédiate du joueur.
+Pool of sprites, bodies, stones, weapons, heals, toolboxes, victims and effects. The rescue director uses the same caps on hostile agents; its aggressors are not an additional population outside the budget. Separate caps for flying projectiles and stones on the ground. Once the ground cap is reached, either replace the oldest recoverable stone with a new fall or remove the new one, according to a single documented rule; proposal: recycle the oldest one outside the player's immediate vicinity.
 
-Les projectiles en attente de lancement ne créent pas une réserve infinie : le directeur retarde la préparation quand le budget de vol est atteint. Les corps et pierres sont nettoyés entre manches ou hors vue selon les règles annoncées. Aucun retrait d’un projectile en vol dangereux sans résolution explicite.
+Projectiles waiting to be thrown do not create an infinite reserve: the director delays preparation when the flight budget is reached. Bodies and stones are cleaned up between rounds or out of view according to the announced rules. No removal of a dangerous flying projectile without explicit resolution.
 
-Conserver les totaux historiques, pas tous les événements, corps ou identifiants depuis le lancement. Rejouer et enchaîner des manches ne doivent pas augmenter indéfiniment textures, écouteurs, minuteries ou sons.
+Keep historical totals, not all events, bodies or identifiers since launch. Replaying and chaining rounds must not make textures, listeners, timers or sounds grow indefinitely.
 
-## 19. Performances et compatibilité
+## 19. Performance and compatibility
 
-### 19.1 Statut
+### 19.1 Status
 
-Budgets proposés à mesurer sur un vrai prototype 2D. Le pixel art n’est pas une garantie automatique de performance : transparences, projectiles, chemins et collisions peuvent rester coûteux.
+Proposed budgets to be measured on a real 2D prototype. Pixel art is not an automatic guarantee of performance: transparencies, projectiles, paths and collisions can remain costly.
 
-### 19.2 Budgets de départ
+### 19.2 Starting budgets
 
-| Indicateur | Cible proposée |
+| Indicator | Proposed target |
 | --- | --- |
-| Premier chargement jouable | Au plus 8 Mo transférés |
-| Quartier complet | Au plus 20 Mo de ressources, audio compris |
-| Mobile modeste de référence | Cible nominale 30 images/s, 95 % des images actives ≤ 40 ms |
-| Ordinateur de référence | Cible nominale 60 images/s, 95 % des images actives ≤ 20 ms |
-| Hostiles actifs | 40 au maximum ; entrée de la file suspendue à 12 hostiles actifs (l’effectif d’une manche peut dépasser 40 dès la manche 9, v1.9.18, sans changer ce plafond) |
-| Groupes pacifiques | 3 groupes de 6 à 8 sprites dans la carte de référence (1 groupe de 6 livré) |
-| Étudiants actifs | 5 au maximum (à faire) |
-| Projectiles en vol | 24 pierres au maximum, plus 30 balles des tireurs (v1.9.15) et les tirs de flashball de Paul |
-| Pierres récupérables au sol | 16 au maximum |
-| Flaques de feu | 6 au maximum |
-| Petits soins au sol | 2 au maximum, 20 s de vie (v1.9.18) |
-| Alliés des services d’urgence | 1 camion et 5 policiers au maximum à la fois (v1.9.19), hors du plafond de 40 hostiles actifs ; coût mesuré d’environ 0,02 ms par pas avec le camion, 5 policiers et 40 casseurs, banc complet ≤ 0,3 ms par pas |
-| Prison (v1.9.20) | 5 gardiens toujours sur la carte, hors du plafond de 40 hostiles actifs, plus au plus les Caïds libérés (comptés dans l’effectif de la manche) ; banc complet mesuré de 0,248 à 0,253 ms par pas sous charge (0,233 sans la prison, même charge), sous la limite de 0,3 ms par pas |
-| Armes au sol | 1 apparition chronométrée au maximum (v1.9.16), plus les dépôts du retournement, du répit et du Caïd (15 s) ; aucun dépôt ordinaire à 200 px de Paul d’une arme déjà au sol |
-| Caisses à outils au sol / portées | 2 au sol et 1 portée au maximum |
-| Incidents urgents simultanés | 1 en manches 1 et 2, puis 2 au maximum (deux dès le début de la manche à partir de la manche 5, v1.9.18) |
-| Effets purement visuels | 16 casseurs satellisés en vol, 24 points flottants à la fois |
-| Corps visibles / persistants | Budget borné, proposé à 16 avant recyclage hors vue |
-| Chargement puis contrôle | Cible ≤ 8 secondes sur le profil rapide de recette |
+| First playable load | At most 8 MB transferred |
+| Full district | At most 20 MB of resources, audio included |
+| Reference modest mobile | Nominal target 30 frames/s, 95% of active frames ≤ 40 ms |
+| Reference computer | Nominal target 60 frames/s, 95% of active frames ≤ 20 ms |
+| Active hostiles | 40 at most; queue entry suspended at 12 active hostiles (a round's roster can exceed 40 from round 9, v1.9.18, without changing this cap) |
+| Peaceful groups | 3 groups of 6 to 8 sprites in the reference map (1 group of 6 delivered) |
+| Active students | 5 at most (to do) |
+| Flying projectiles | 24 stones at most, plus 30 shooter bullets (v1.9.15) and Paul's flashball shots |
+| Recoverable stones on the ground | 16 at most |
+| Fire patches | 6 at most |
+| Small heals on the ground | 2 at most, 20 s lifetime (v1.9.18) |
+| Emergency service allies | 1 truck and 5 police officers at most at a time (v1.9.19), outside the cap of 40 active hostiles; measured cost of about 0.02 ms per step with the truck, 5 police officers and 40 rioters, full bench ≤ 0.3 ms per step |
+| Prison (v1.9.20) | 5 guards always on the map, outside the cap of 40 active hostiles, plus at most the freed Caïds (counted in the round's roster); full bench measured at 0.248 to 0.253 ms per step under load (0.233 without the prison, same load), under the limit of 0.3 ms per step |
+| Ground weapons | 1 timed spawn at most (v1.9.16), plus the drops of the twist, the breather and the Caïd (15 s); no ordinary drop within 200 px of Paul of a weapon already on the ground |
+| Toolboxes on the ground / carried | 2 on the ground and 1 carried at most |
+| Simultaneous urgent incidents | 1 in rounds 1 and 2, then 2 at most (two from the start of the round from round 5, v1.9.18) |
+| Purely visual effects | 16 rioters launched into orbit in flight, 24 floating points at a time |
+| Visible / persistent bodies | Bounded budget, proposed at 16 before recycling out of view |
+| Load then control | Target ≤ 8 seconds on the fast acceptance profile |
 
-Profil rapide : cache froid, 20 Mbit/s descendants, 80 ms de latence, appareil documenté. Profil contraint : 5 Mbit/s et 150 ms, progression explicite et reprise possible, sans promesse de huit secondes.
+Fast profile: cold cache, 20 Mbit/s down, 80 ms latency, documented device. Constrained profile: 5 Mbit/s and 150 ms, explicit progress and possible resumption, with no eight-second promise.
 
-Percentiles sur scénario reproductible de dix minutes, hors chargement/pause, cinq essais par configuration. Endurance sur appareil réel pendant trente minutes ; cent manches en simulation.
+Percentiles on a reproducible ten-minute scenario, excluding loading/pause, five trials per configuration. Endurance on a real device for thirty minutes; one hundred rounds in simulation.
 
-### 19.3 Rendu pixel art
+### 19.3 Pixel art rendering
 
-Atlas raisonnables, proposés à 2 048 × 2 048 pixels maximum par page pour la base de recette. Partager les atlas entre variantes, éviter les changements de texture et de mode de fusion permanents. Le texte et les dessins de foule ne sont pas recréés en bitmap à chaque image.
+Reasonable atlases, proposed at 2,048 × 2,048 pixels maximum per page for the acceptance baseline. Share atlases between variants, avoid permanent texture and blend mode changes. Text and crowd drawings are not recreated as bitmaps on every frame.
 
-La définition interne n’est pas multipliée sans limite par le ratio de pixels du téléphone. Un agrandissement net est privilégié ; pas de flou, d’anticrénelage ou de zoom continu obligatoire. Les effets lumineux et les ombres sont simples et désactivables sans masquer la lecture du combat.
+The internal resolution is not multiplied without limit by the phone's pixel ratio. A sharp enlargement is preferred; no blur, anti-aliasing or mandatory continuous zoom. Light effects and shadows are simple and can be disabled without hiding the readability of the combat.
 
-### 19.4 Qualité
+### 19.4 Quality
 
-Économie, Standard, Élevée : varier particules, détails décoratifs, ombres et effets. Ne pas réduire silencieusement les hordes, les alertes de lancer, les groupes protégés ou les hitboxes. Les projectiles restent visibles en Économie.
+Economy, Standard, High: vary particles, decorative details, shadows and effects. Do not silently reduce the hordes, the throw alerts, the protected groups or the hitboxes. Projectiles remain visible in Economy.
 
-Les positions et collisions sont calculées avec le même système quel que soit le rendu. Les formats portrait/paysage peuvent modifier le champ visible mais pas la simulation ou la vitesse.
+Positions and collisions are computed with the same system whatever the rendering. Portrait/landscape formats can change the visible field but not the simulation or the speed.
 
-### 19.5 Compatibilité
+### 19.5 Compatibility
 
-WebGL comme base de production, détection au démarrage, pas de WebGPU ou WebAssembly de physique obligatoire. Aucun écran vide si le contexte n’est pas disponible. Un mode Canvas équivalent n’est pas promis sans validation spécifique.
+WebGL as the production baseline, detection at startup, no mandatory WebGPU or physics WebAssembly. No blank screen if the context is not available. An equivalent Canvas mode is not promised without specific validation.
 
-Recette : Safari iPhone ancien compatible et récent ; Chrome Android modeste et récent ; Chrome/Edge/Firefox sur portable Windows intégré ; Safari/Chrome sur Mac. Modèles et versions exacts consignés avant validation. Navigateur intégré à une autre application non déclaré compatible sans essai.
+Acceptance: older compatible and recent iPhone Safari; modest and recent Android Chrome; Chrome/Edge/Firefox on an integrated Windows laptop; Safari/Chrome on Mac. Exact models and versions recorded before validation. A browser embedded in another application is not declared compatible without testing.
 
-Vérifier chauffe, mémoire, multi-touch, interruptions, rotation, reprise audio et vingt transitions de manche au minimum. Les textures doivent se stabiliser après le chargement de la carte ; la durée de session ne doit pas faire croître le nombre d’objets.
+Check heating, memory, multi-touch, interruptions, rotation, audio resumption and at least twenty round transitions. Textures must stabilise after the map is loaded; session duration must not make the number of objects grow.
 
-## 20. Stockage, chargement et diffusion
+## 20. Storage, loading and distribution
 
 ### 20.1 Local
 
-Préférences de commandes, audio, accessibilité, qualité et records par version de règles/difficulté. Aucun choix d’apparence du héros, aucun compte. Une ancienne préférence de sexe/teint du prototype est ignorée à la migration.
+Preferences for controls, audio, accessibility, quality, and records per rules version/difficulty. No hero appearance choice, no account. An old gender/skin tone preference from the prototype is ignored during migration.
 
-Un stockage indisponible n’empêche pas de jouer. Le record d’une session interrompue est distingué selon la règle arcade. Le chargement d’une ancienne donnée invalide revient à des valeurs sûres.
+Unavailable storage does not prevent play. The record of an interrupted session is distinguished according to the arcade rule. Loading old invalid data falls back to safe values.
 
-### 20.2 Ressources
+### 20.2 Assets
 
-La landing et le jeu ont des points d’entrée séparés. La landing ne télécharge ni moteur ni atlas ni sons du jeu ; le chargement de ces ressources commence à l’ouverture de la page du jeu. Les exigences détaillées de navigation et de poids sont en section 26.
+The landing page and the game have separate entry points. The landing page downloads neither the engine nor the atlases nor the sounds of the game; loading of these resources begins when the game page is opened. The detailed navigation and weight requirements are in section 26.
 
-Moteur, atlas de Paul et ennemis, armes, carte, collisions, pierres, soins et alertes indispensables chargés avant le contrôle. Autres sons et détails possibles ensuite. Les hordes suivantes ne redescendent pas le même atlas à chaque manche.
+Engine, atlas of Paul and the enemies, weapons, map, collisions, stones, heals and essential alerts loaded before control. Other sounds and details can follow. Subsequent hordes do not re-download the same atlas every round.
 
-Les sprites réutilisent des textures partagées mais conservent leur état d’animation indépendant. Aucun chargement synchrone au premier coup ou à la première pierre renvoyée.
+Sprites reuse shared textures but keep their animation state independent. No synchronous loading at the first strike or the first thrown-back stone.
 
-### 20.3 Livraison
+### 20.3 Delivery
 
-Build statique HTTPS, fichiers versionnés et compression adaptée. Sprites et sons hébergés avec le jeu, sans dépendance à une URL de démonstration externe. La session continue hors connexion après le chargement complet du quartier ; rechargement hors connexion réservé à une évolution PWA.
+Static HTTPS build, versioned files and suitable compression. Sprites and sounds hosted with the game, with no dependency on an external demo URL. The session continues offline after the district has fully loaded; offline reloading is reserved for a PWA evolution.
 
-Aucun backend, publicité, analyse d’audience ou API générative nécessaire. Les diagnostics de développement sont locaux. La spécification n’autorise ni achat ni nouvelle publication externe.
+No backend, advertising, audience analytics or generative API needed. Development diagnostics are local. The specification authorises neither a purchase nor a new external publication.

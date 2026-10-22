@@ -1,128 +1,128 @@
-# BreakBreaker — Spécifications : Lieux, monument et services
+# BreakBreaker — Specifications: Places, Monument and Services
 
-> **Rôle du fichier :** bâtiments menacés, défense, réparation et objectif monument.  
-> Fait partie des spécifications de BreakBreaker (version 1.9.25), découpées en plusieurs fichiers. Retour à l’[index des spécifications](SPECS%20-%20Index.md) (sommaire général, historique des versions, conventions, plan des fichiers).
+> **Purpose of this file:** threatened buildings, defence, repair and the monument objective.  
+> Part of the BreakBreaker specifications (version 1.9.25), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
-## 10. Bâtiments menacés, défense et réparation
+## 10. Threatened buildings, defence and repair
 
-### 10.1 Boucle d’un lieu attaqué
+### 10.1 Loop of an attacked place
 
-**Modifié (v1.9) :** l’ancienne réserve de temps (30 s) est remplacée partout, école comprise, par un modèle de santé. La boucle vaut pour tous les lieux de casse (école, voiture, abribus, **ajouté (v1.9.4)** boutique de jeux rétro, puis ceux de la section 12.2).
+**Changed (v1.9):** the former time reserve (30 s) is replaced everywhere, school included, by a health model. The loop applies to all incident places (school, car, bus shelter, **added (v1.9.4)** retro games shop, then those of section 12.2).
 
 ```mermaid
 flowchart TD
-  A[Attaque annoncée : Molotov et casseurs en route] --> B[Molotov : 1,5 s d’élan puis lancer]
-  A --> C[Dégradeurs à la façade]
-  B -->|KO pendant l’élan| C
-  B -->|Bouteille lancée| D[Lieu en feu]
-  D --> E[Santé qui baisse]
+  A[Attack announced: Molotov and rioters on the way] --> B[Molotov: 1.5 s wind-up then throw]
+  A --> C[Degraders at the facade]
+  B -->|KO during the wind-up| C
+  B -->|Bottle thrown| D[Place on fire]
+  D --> E[Health dropping]
   C --> E
-  E -->|Derniers casseurs KO, pas de feu| F[Lieu sauvé, bonus]
-  E -->|Derniers casseurs KO, feu en cours| S[Le feu continue : 0,7 PV/s]
-  S -->|Caisse à outils + F, 2 s| F2[Feu éteint : lieu sauvé, points de réparation]
-  S -->|Santé à zéro| G
-  E -->|Santé à zéro| G[Ruine persistante : session continue]
-  G --> H[Ramasser une caisse à outils]
-  H --> I[Appuyer sur F près de la ruine : 2 s, abords sûrs]
-  I --> J[Lieu réparé à 100 %]
-  F --> K[Étudiants et formations projetées]
+  E -->|Last rioters KO, no fire| F[Place saved, bonus]
+  E -->|Last rioters KO, fire ongoing| S[Fire continues: 0.7 HP/s]
+  S -->|Toolbox + F, 2 s| F2[Fire out: place saved, repair points]
+  S -->|Health at zero| G
+  E -->|Health at zero| G[Persistent ruin: session continues]
+  G --> H[Pick up a toolbox]
+  H --> I[Press F near the ruin: 2 s, safe surroundings]
+  I --> J[Place repaired to 100%]
+  F --> K[Students and projected training courses]
   F2 --> K
   J --> K
 ```
 
-### 10.2 Alerte, Molotov et santé
+### 10.2 Alert, Molotov and health
 
-Chaque lieu a une **barre de santé** : bâtiments 100 PV (école, boutique de jeux rétro, école maternelle, mairie, bibliothèque ; v1.9.18), mobilier urbain (deux voitures, abribus, kiosque ; v1.9.18 ; deux cabines, v1.9.19) 60 PV, la **prison** (v1.9.20) 400 PV, quatre fois un bâtiment ordinaire (section 12.17). Elle est dessinée au-dessus du lieu sur la carte et reprise dans la carte d’incident du HUD (« École 64 % ») ; le HUD n’affiche pas de compte à rebours pour un lieu.
+Each place has a **health bar**: buildings 100 HP (school, retro games shop, nursery school, town hall, library; v1.9.18), street furniture (two cars, bus shelter, newsstand; v1.9.18; two phone booths, v1.9.19) 60 HP, the **prison** (v1.9.20) 400 HP, four times an ordinary building (section 12.17). It is drawn above the place on the map and repeated in the HUD incident card (« École 64 % »); the HUD displays no countdown for a place.
 
-Une attaque commence par un **casseur Molotov** : il marche vers le lieu, s’arrête à 96 px au plus avec une ligne dégagée, lève une bouteille allumée pendant 1,5 s (élan visible), puis la lance ; le lieu **prend feu**. Le mettre KO pendant l’élan empêche ce feu. **Modifié (v1.9.1) :** une attaque compte plusieurs lanceurs de Molotov, en plus de ses autres casseurs : min(4, 1 + manche ÷ 2 arrondi à l’inférieur), soit 1 en manche 1, 2 en manches 2–3, 3 en manches 4–5, 4 ensuite (aussi pour la boutique de jeux rétro, v1.9.4, qui est un bâtiment), deux au plus pour une voiture ou l’abribus ; ils arrivent en tête de la première ligne, sauf pour l’école de la manche 1 dont le second lanceur vient avec les renforts, après la cinématique. Plusieurs lanceurs du même lieu ne lancent jamais ensemble : chacun garde sa bouteille levée 0,25 s de plus que le précédent. Une bouteille sur un lieu déjà en feu ne le rallume pas (pas de nouvelle bannière ni d’alarme) mais lui retire d’un coup 8 PV (`molotov.burstDamage`), avec une gerbe de flammes visible ; à zéro, même ruine et même pénalité unique que pour le feu. Les autres casseurs de l’attaque se partagent entre **dégradeurs** (ils frappent la façade) et casseurs qui s’en prennent à Paul ; ce mélange est le réglage d’équilibrage. Composition livrée (hors école de la manche 1, section 10.4) : les lanceurs de Molotov, deux dégradeurs et un casseur au contact, plus, pour un bâtiment, min(6, 2 + ⌊pression ÷ 3⌋) dégradeurs et casseurs au contact en alternance, et pour une voiture ou l’abribus min(3, ⌊pression ÷ 4⌋) casseurs au contact ; variantes alternées.
+An attack begins with a **Molotov rioter**: he walks toward the place, stops at 96 px at most with a clear line, raises a lit bottle for 1.5 s (visible wind-up), then throws it; the place **catches fire**. Knocking him out during the wind-up prevents this fire. **Changed (v1.9.1):** an attack includes several Molotov throwers, in addition to its other rioters: min(4, 1 + round ÷ 2 rounded down), that is 1 in round 1, 2 in rounds 2–3, 3 in rounds 4–5, 4 afterwards (also for the retro games shop, v1.9.4, which is a building), two at most for a car or the bus shelter; they arrive at the head of the front line, except for the round 1 school whose second thrower comes with the reinforcements, after the cutscene. Several throwers at the same place never throw together: each keeps its bottle raised 0.25 s longer than the previous one. A bottle on a place already on fire does not relight it (no new banner or alarm) but removes 8 HP at once (`molotov.burstDamage`), with a visible burst of flames; at zero, same ruin and same one-time penalty as for fire. The other rioters of the attack split between **degraders** (they hit the facade) and rioters who go after Paul; this mix is the balancing setting. Composition delivered (excluding the round 1 school, section 10.4): the Molotov throwers, two degraders and one contact rioter, plus, for a building, min(6, 2 + ⌊pressure ÷ 3⌋) degraders and contact rioters alternating, and for a car or the bus shelter min(3, ⌊pressure ÷ 4⌋) contact rioters; variants alternating.
 
-Le feu retire 2 PV/s ; chaque dégradeur en train de frapper retire 1,2 PV/s, quatre au plus comptés. La santé ne baisse que pendant ces dégradations effectives ; elle ne dépend pas de l’entrée de Paul dans une zone. La première école (manche 1) présente sa première ligne puis huit renforts ; ces casseurs comptent dans l’effectif de la manche (section 12.2).
+Fire removes 2 HP/s; each degrader currently hitting removes 1.2 HP/s, four at most counted. Health drops only during these effective degradations; it does not depend on Paul entering a zone. The first school (round 1) presents its front line then eight reinforcements; these rioters count in the round roster (section 12.2).
 
-### 10.3 Source de vérité de la santé
+### 10.3 Source of truth for health
 
-La santé du lieu, tenue par la simulation, est l’unique source de vérité : pas de second minuteur. Elle ne se réinitialise pas quand Paul quitte la zone et ne remonte pas pendant l’attaque.
+The place's health, held by the simulation, is the single source of truth: no second timer. It does not reset when Paul leaves the zone and does not go back up during the attack.
 
-À zéro : lieu détruit. La perte est résolue une seule fois (−3 pour l’école, −2 pour la boutique, une voiture ou l’abribus ; barème complet en section 12.2) et le bonus de sauvetage est perdu. La ruine (brûlée, fumante) persiste d’une manche à l’autre et n’est plus attaquée tant qu’elle n’est pas réparée. Un lieu détruit ne termine jamais la session ; seul le KO de Paul y met fin. Les survivants de l’attaque se reportent sur Paul.
+At zero: place destroyed. The loss is resolved only once (−3 for the school, −2 for the shop, a car or the bus shelter; full scale in section 12.2) and the rescue bonus is lost. The ruin (burnt, smoking) persists from one round to the next and is no longer attacked as long as it is not repaired. A destroyed place never ends the session; only Paul's KO does. The survivors of the attack turn on Paul.
 
-### 10.4 Première ligne et renforts
+### 10.4 Front line and reinforcements
 
-L’entrée du cercle déclenche la confrontation, pas le début du danger. Les KO obtenus avant l’entrée sont conservés. Aucun agent ne réapparaît à cause d’une sortie/rentrée.
+Entering the circle triggers the confrontation, not the start of the danger. KOs obtained before entering are kept. No agent respawns because of an exit/re-entry.
 
-Après la première ligne entièrement KO, une courte cinématique annonce les huit renforts ; elle n’existe que pour l’école de la manche 1. Pendant cette présentation suspendue, la santé du lieu et tous les autres incidents sont également suspendus. Passer la séquence (F, Espace ou toucher) ne double pas les renforts.
+After the front line is entirely KO, a short cutscene announces the eight reinforcements; it exists only for the round 1 school. During this suspended presentation, the place's health and all other incidents are also suspended. Skipping the sequence (F, Space or touch) does not double the reinforcements.
 
-Si le bâtiment a déjà été détruit, cette occurrence ne crée pas ses renforts en retard. Les survivants restent à traiter, mais la voie de résolution devient la réparation par caisse à outils.
+If the building has already been destroyed, this occurrence does not create its reinforcements late. The survivors remain to be dealt with, but the resolution route becomes repair with a toolbox.
 
-### 10.5 Sauvetage avant destruction
+### 10.5 Rescue before destruction
 
-Tous les casseurs de l’attaque KO avec une santé strictement positive et **aucun feu** : le lieu est sauvé aussitôt. Bonus +8 pour l’école, +6 pour la boutique, +4 pour une voiture ou l’abribus, une seule fois par occurrence ; drapeau français sur l’école ; aucune caisse consommée. La santé d’un lieu sauvé revient au maximum à la fin de la manche.
+All the attack's rioters KO with strictly positive health and **no fire**: the place is saved at once. Bonus +8 for the school, +6 for the shop, +4 for a car or the bus shelter, only once per occurrence; French flag on the school; no toolbox consumed. The health of a saved place returns to maximum at the end of the round.
 
-**Modifié (v1.9.1) — un feu ne s’éteint jamais seul.** Si le lieu brûle quand ses derniers casseurs tombent, l’attaque est réglée pour la manche (objectif « réussi » tant que le lieu tient debout, la manche peut se terminer) mais le feu **continue** : il retire 0,7 PV/s (`target.smoulderDps` ; école de 100 PV ≈ 143 s, voiture de 60 PV ≈ 86 s), à travers les fins de manche et le répit, sans remise à niveau de la santé. Seule une caisse à outils l’éteint (section 10.6) : le lieu est alors sauvé (drapeau de l’école, statistiques), sans le bonus de sauvetage, avec les points de réparation. S’il atteint zéro avant, il devient une ruine (pénalité unique). Un lieu en feu n’est pas attaqué de nouveau ; sa carte « en feu » et son indicateur flamme restent affichés pour guider Paul, sans nouvelle bannière.
+**Changed (v1.9.1) — a fire never goes out by itself.** If the place is burning when its last rioters fall, the attack is settled for the round (objective « réussi » (succeeded) as long as the place is still standing, the round may end) but the fire **continues**: it removes 0.7 HP/s (`target.smoulderDps`; 100 HP school ≈ 143 s, 60 HP car ≈ 86 s), through round ends and the breather, with no health reset. Only a toolbox puts it out (section 10.6): the place is then saved (school flag, statistics), without the rescue bonus, with the repair points. If it reaches zero before that, it becomes a ruin (one-time penalty). A place on fire is not attacked again; its « en feu » (on fire) card and its flame indicator remain displayed to guide Paul, with no new banner.
 
-### 10.6 Caisses à outils après destruction
+### 10.6 Toolboxes after destruction
 
-**Modifié (v1.9.1) :** la réparation se lance avec la touche Agir (F, bouton Agir), sans la maintenir. Une ruine se répare, et un lieu en feu s’éteint, avec une **caisse à outils** trouvée sur la carte. Elle est distincte des soins médicaux : caisse orange/rouge, même animation flottante que les soins ; portée, son icône flotte au-dessus de Paul (**modifié v1.9.6 :** plus de compteur « Caisse » dans le HUD). Elle ne rend pas de santé à Paul.
+**Changed (v1.9.1):** repair is started with the Act key (F, Act button), without holding it. A ruin is repaired, and a place on fire is put out, with a **toolbox** found on the map. It is distinct from medical heals: orange/red box, same floating animation as the heals; when carried, its icon floats above Paul (**changed v1.9.6:** no more « Caisse » counter in the HUD). It does not restore health to Paul.
 
-Stock : une caisse portée au maximum, au plus deux au sol, posées sur des emplacements libres prévus (quatre sur la carte, à 64 px au moins de Paul) au début et à la fin de chaque manche (la manche 1 en a donc). Paul la ramasse en passant dessus (rayon de 20 px) ; une caisse au sol ne disparaît pas s’il en porte déjà une. Une caisse portée est conservée entre manches. Les emplacements sont accessibles sans traverser bâtiment, tronc ou groupe ; aucune caisse dans la ruine à réparer.
+Stock: one box carried at most, at most two on the ground, placed on planned free locations (four on the map, at least 64 px from Paul) at the start and at the end of each round (round 1 therefore has them). Paul picks it up by walking over it (radius of 20 px); a box on the ground does not disappear if he already carries one. A carried box is kept between rounds. The locations are reachable without crossing a building, trunk or group; no box in the ruin to be repaired.
 
-Pour réparer ou éteindre : à 48 px au plus de la porte d’un lieu en ruine ou en feu (la ruine d’abord si les deux sont proches), Paul debout, caisse portée et **sans casseur actif à 64 px**, **appuyer une fois sur Agir** (F au clavier, bouton Agir au tactile) ; l’action dure ensuite **2 secondes** sans maintenir la touche. S’éloigner, laisser un casseur approcher ou un KO de Paul remet la progression à zéro et il faut appuyer de nouveau ; sans appui, rien ne se passe. **Modifié (v1.9.12) :** seul un **nouvel appui** compte (front montant de la touche, suivi par la simulation) : garder F enfoncé en arrivant près du lieu, pendant qu’un casseur s’éloigne ou en ramassant la caisse ne lance rien ; l’appui doit avoir lieu à portée, caisse portée et abords sûrs. Une tape plus courte qu’un pas de simulation (16,7 ms) n’est pas perdue : la saisie la retient pour une lecture. Le HUD l’affiche sous Paul : « F — Réparer » (ruine) ou « F — Éteindre le feu » (feu), sans la touche au tactile où le bouton Agir prend le libellé « Réparer » / « Éteindre » ; « Réparation… » (en cours) ; « Caisse à outils requise » (sans caisse) et « Abords non sécurisés » (casseur trop proche), informatifs.
+To repair or put out: within 48 px at most of the door of a ruined or burning place (the ruin first if both are close), with Paul standing, box carried and **no active rioter within 64 px**, **press Act once** (F on keyboard, Act button on touch); the action then lasts **2 seconds** without holding the key. Moving away, letting a rioter approach or a Paul KO resets progress to zero and the key must be pressed again; without a press, nothing happens. **Changed (v1.9.12):** only a **new press** counts (rising edge of the key, tracked by the simulation): keeping F held while arriving near the place, while a rioter moves away or while picking up the box starts nothing; the press must take place in range, box carried and surroundings safe. A tap shorter than a simulation step (16.7 ms) is not lost: the input capture holds it for one read. The HUD displays it under Paul: « F — Réparer » (Repair) (ruin) or « F — Éteindre le feu » (Put out the fire) (fire), without the key on touch where the Act button takes the label « Réparer » / « Éteindre »; « Réparation… » (Repairing…) (in progress); « Caisse à outils requise » (Toolbox required) (no box) and « Abords non sécurisés » (Surroundings not secured) (rioter too close), informative.
 
-La caisse n’est consommée qu’à la fin des 2 s. Interruption : aucun gain, aucune caisse consommée. **Modifié (v1.9.11, aligné sur le jeu) :** éteindre un lieu en feu (pendant ou après l’attaque) lui rend toute sa santé, comme une réparation (section 10.7), et rapporte une fois par feu les points de réparation (+5 école, +4 boutique, +3 voiture ou abribus).
+The box is consumed only at the end of the 2 s. Interruption: no gain, no box consumed. **Changed (v1.9.11, aligned with the game):** putting out a burning place (during or after the attack) restores all its health, like a repair (section 10.7), and earns the repair points once per fire (+5 school, +4 shop, +3 car or bus shelter).
 
-### 10.7 Résultat d’une réparation
+### 10.7 Result of a repair
 
-Le lieu revient à **100 % de sa santé** (ruine réparée ou feu éteint) ; sa fonction reprend (l’école peut de nouveau recevoir des étudiants). Points : +5 pour l’école, +4 pour la boutique, +3 pour une voiture ou l’abribus, sans effacer la pénalité déjà subie ni ajouter le bonus de sauvetage : sauver avant destruction reste mieux récompensé.
+The place returns to **100% of its health** (ruin repaired or fire put out); its function resumes (the school can receive students again). Points: +5 for the school, +4 for the shop, +3 for a car or the bus shelter, without erasing the penalty already suffered nor adding the rescue bonus: saving before destruction remains better rewarded.
 
-Une réparation ne recrée ni l’attaque perdue ni une nouvelle occurrence d’assaut. Chaque lieu conserve la référence de son dernier incident détruit et de sa réparation pour empêcher le double bonus. Une nouvelle attaque ultérieure est annoncée et identifiée séparément.
+A repair recreates neither the lost attack nor a new assault occurrence. Each place keeps the reference of its last destroyed incident and of its repair to prevent the double bonus. A later new attack is announced and identified separately.
 
-### 10.8 Étudiants et formations
+### 10.8 Students and training courses
 
-**À faire :** les étudiants et les formations projetées ne sont pas livrés dans la première tranche ; seul le drapeau français de l’école l’est. **Modifié (v1.9.12) :** il flotte dès que l’école est debout et ne brûle pas, quel que soit l’état de son dernier incident (dès le début de la partie, de retour après une réparation ou une extinction) ; une école en feu ou en ruine n’en a pas.
+**To do:** the students and projected training courses are not delivered in the first slice; only the school's French flag is. **Changed (v1.9.12):** it flies as soon as the school is standing and not burning, whatever the state of its last incident (from the start of the game, back after a repair or a fire being put out); a school on fire or in ruins has none.
 
-Après sauvetage ou réparation, quatre étudiants puis de petits groupes peuvent rejoindre la porte. Chaque entrée produit une seule formation projetée, ingénieur ou scientifique. Pas de points de classement par attente. Au plus cinq étudiants en déplacement.
+After a rescue or a repair, four students then small groups may reach the door. Each entry produces a single projected training course, engineer or scientist. No ranking points for waiting. At most five students on the move.
 
-Les arrivées se suspendent si l’école est attaquée ou détruite. Les compteurs déjà obtenus ne sont pas effacés. Une réparation les fait reprendre sans remettre à zéro l’historique de session.
+Arrivals are suspended if the school is attacked or destroyed. The counters already obtained are not erased. A repair makes them resume without resetting the session history.
 
-### 10.9 Lanceurs sur Paul
+### 10.9 Throwers aimed at Paul
 
-**Confirmé (v1.9.4, demande du porteur du projet) :** quelques casseurs à cocktail Molotov lancent aussi leurs bouteilles **sur Paul**, pas seulement sur les lieux. Ce sont les **lanceurs sur Paul** (rôle `firebomber`), peu nombreux.
+**Confirmed (v1.9.4, project owner's request):** a few rioters with Molotov cocktails also throw their bottles **at Paul**, not only at places. These are the **throwers aimed at Paul** (role `firebomber`), few in number.
 
-- **Comportement :** comme le lanceur de pierres, il se tient entre 140 et 260 px de Paul avec une ligne dégagée, lève une bouteille allumée pendant **1,2 s** (« ! » au-dessus de la tête et ligne de visée en pointillés jusqu’au sol, avec l’anneau de la future flaque), puis lance. La bouteille vole **0,7 s** vers l’endroit où se trouvait Paul **au début de l’élan** : Paul qui se déplace l’évite. Un lancer toutes les 5 s. Paul à moins de 100 px : il se bat au contact comme un casseur ordinaire. Le mettre KO pendant l’élan empêche le lancer. Ses élans comptent dans le plafond des élans de lancer (avec les pierres).
-- **Flaque de feu :** là où la bouteille tombe, une flaque de 30 px de rayon brûle **3,5 s** (six au plus à la fois : une nouvelle chasse la plus ancienne). Une bouteille qui tomberait dans un obstacle s’allume au point libre le plus proche (aucune flaque à défaut). Paul debout dedans perd **4 PV toutes les 0,5 s** par le chemin normal des dégâts : les images d’invulnérabilité s’appliquent (un coup refusé est retenté dès qu’elles finissent) et le mode furie les réduit de moitié. La flaque ne blesse aucun casseur et n’enflamme jamais un lieu. La pause la fige.
-- **Qui :** jamais en manches 1–2. Dès la manche 3, environ **un casseur de remplissage sur huit** (au moins un dès que le remplissage en compte quatre, trois au plus par manche ; comptés hors meute de coureurs depuis la v1.9.13, section 12.14) ; et, dans chaque attaque de lieu, le **dernier lanceur de Molotov** de la composition, après sa bouteille sur le lieu (inchangée), devient un lanceur sur Paul au lieu d’un simple casseur de contact. Ce sont des casseurs ordinaires de la manche : ils comptent dans K/T, doivent être mis KO, +1 chacun ; leurs variantes alternent comme les autres.
-- **Rendu et son :** bouteille en main comme le casseur Molotov, même trajectoire de bouteille, flaque en pixel art (lueur, flammes, étincelles, léger anneau de danger) qui s’estompe sur sa dernière demi-seconde ; même souffle que le Molotov au lancer. Aucune bannière ni nouvel élément de HUD.
+- **Behaviour:** like the stone thrower, he stands between 140 and 260 px from Paul with a clear line, raises a lit bottle for **1.2 s** ("!" above the head and a dotted aiming line down to the ground, with the ring of the future pool), then throws. The bottle flies for **0.7 s** toward where Paul was **at the start of the wind-up**: a moving Paul avoids it. One throw every 5 s. Paul within 100 px: he fights in contact like an ordinary rioter. Knocking him out during the wind-up prevents the throw. His wind-ups count in the cap on throw wind-ups (with the stones).
+- **Pool of fire:** where the bottle lands, a pool of 30 px radius burns for **3.5 s** (six at most at once: a new one drives out the oldest). A bottle that would land in an obstacle ignites at the nearest free point (no pool otherwise). Paul standing in it loses **4 HP every 0.5 s** through the normal damage path: invulnerability frames apply (a refused hit is retried as soon as they end) and fury mode halves them. The pool hurts no rioter and never sets a place on fire. The pause freezes it.
+- **Who:** never in rounds 1–2. From round 3, about **one filler rioter in eight** (at least one as soon as the filler counts four, three at most per round; counted outside the runner pack since v1.9.13, section 12.14); and, in each place attack, the **last Molotov thrower** of the composition, after his bottle on the place (unchanged), becomes a thrower aimed at Paul instead of a simple contact rioter. These are ordinary rioters of the round: they count in K/T, must be knocked out, +1 each; their variants alternate like the others.
+- **Rendering and sound:** bottle in hand like the Molotov rioter, same bottle trajectory, pixel-art pool (glow, flames, sparks, slight danger ring) that fades over its last half-second; same whoosh as the Molotov at the throw. No banner or new HUD element.
 
-## 11. Objectif monument
+## 11. Monument objective
 
-**Réécrit (v1.9.4, demande du porteur du projet).** L’ancienne version (monument occupé dès le départ, défenseurs à l’entrée dans la zone, capture de 12 s) est remplacée par la règle ci-dessous.
+**Rewritten (v1.9.4, project owner's request).** The former version (monument occupied from the start, defenders on entering the zone, 12 s capture) is replaced by the rule below.
 
-### 11.1 Présentation
+### 11.1 Presentation
 
-Une **statue équestre** fictive en pixel art : un cheval et son cavalier en bronze sombre sur un socle de pierre à plaque vierge, le cavalier tenant une hampe. **Le drapeau tenu est d’abord le drapeau français** (bleu #0055a4, blanc, rouge #ef4135). Le tissu ondule (trois images). Aucune personne réelle n’est représentée. Le socle est solide comme le mobilier urbain : tuiles 33–34 × 21–22 (`R(33,21,2,2)`), mât en {1088, 672}, zone de capture circulaire {1088, 704} de rayon 112 px. Huit points d’occupation entourent le socle sur les tuiles libres ; socle, bord de zone et points sont atteignables depuis l’apparition de Paul et les entrées, sans chevaucher bâtiment, mobilier, station, arbre ni groupe pacifique.
+A fictional pixel-art **equestrian statue**: a horse and its rider in dark bronze on a stone base with a blank plaque, the rider holding a flagpole. **The flag held is first the French flag** (blue #0055a4, white, red #ef4135). The cloth waves (three frames). No real person is represented. The base is solid like street furniture: tiles 33–34 × 21–22 (`R(33,21,2,2)`), pole at {1088, 672}, circular capture zone {1088, 704} of radius 112 px. Eight occupation points surround the base on free tiles; base, zone edge and points are reachable from Paul's spawn and the entrances, without overlapping a building, furniture, station, tree or peaceful group.
 
-Le monument n’a pas de santé et n’est pas un lieu de casse : il ne brûle pas, n’est pas réparé par caisse à outils et n’entre pas dans les ruines. Son drapeau, en revanche, **persiste comme une ruine** : une fois remplacé, il le reste d’une manche à l’autre et pendant les répits, jusqu’à ce que Paul le reprenne.
+The monument has no health and is not an incident place: it does not burn, is not repaired by toolbox and does not enter the ruins. Its flag, however, **persists like a ruin**: once replaced, it stays so from one round to the next and during breathers, until Paul takes it back.
 
 ### 11.2 Occupation (« MONUMENT ATTAQUÉ ! »)
 
-Dès la manche 4, la deuxième étape de la manche alterne entre le monument et le secours : monument quand le drapeau est français et que la manche précédente n’avait pas le monument, sinon secours. **Aucune occupation ne démarre tant que le drapeau est palestinien.** Si aucun lieu de casse n’est libre, l’étape restante est seule et donne son titre à la manche (« Monument menacé »).
+From round 4, the second stage of the round alternates between the monument and the rescue: monument when the flag is French and the previous round did not have the monument, otherwise rescue. **No occupation starts as long as the flag is Palestinian.** If no incident place is free, the remaining stage stands alone and gives the round its title (« Monument menacé »).
 
-Une occupation (`monument#n`) envoie **6 casseurs** la première fois, puis min(8, 5 + ⌊manche ÷ 3⌋). Ils entrent par la file d’entrée (en tête, comme les autres objectifs), variantes **mélangées en alternance** (classique, drapeau palestinien, Antifa), et marchent jusqu’au socle comme des dégradeurs ; ils comptent dans K/T et chaque KO vaut +1. Ils peuvent se détourner vers Paul quand il approche (règle d’attraction de la section 9).
+An occupation (`monument#n`) sends **6 rioters** the first time, then min(8, 5 + ⌊round ÷ 3⌋). They enter through the entry queue (at the head, like the other objectives), variants **mixed in alternation** (classic, Palestinian flag, Antifa), and walk to the base like degraders; they count in K/T and each KO is worth +1. They may turn toward Paul when he approaches (attraction rule of section 9).
 
-Tant qu’au moins un casseur de l’occupation se tient au socle, un compteur de remplacement avance d’1 s par seconde **par casseur au socle (trois au plus comptés)** ; il garde sa valeur quand ils s’en éloignent. À **4 s** (environ 1,3 s à trois), le drapeau français est remplacé par le drapeau palestinien : animation (le drapeau descend, l’autre monte, 0,5 s), bannière « DRAPEAU REMPLACÉ ! » / « Reprends le monument », −3 une seule fois par occurrence. L’occupation est alors réglée pour la manche (objectif « perdu ») : la manche peut se clore, mais ses casseurs restent au socle et doivent être mis KO comme les autres. Si tous les casseurs de l’occupation sont KO avant le remplacement, le monument est **défendu** : +4 une fois, objectif « réussi ».
+As long as at least one rioter of the occupation stands at the base, a replacement counter advances by 1 s per second **per rioter at the base (three at most counted)**; it keeps its value when they move away. At **4 s** (about 1.3 s with three), the French flag is replaced by the Palestinian flag: animation (the flag comes down, the other goes up, 0.5 s), banner « DRAPEAU REMPLACÉ ! » (Flag replaced!) / « Reprends le monument » (Take the monument back), −3 only once per occurrence. The occupation is then settled for the round (objective « perdu » (lost)): the round may close, but its rioters remain at the base and must be knocked out like the others. If all the occupation's rioters are KO before the replacement, the monument is **defended**: +4 once, objective "succeeded".
 
-### 11.3 Capture du drapeau
+### 11.3 Flag capture
 
-Seulement quand le drapeau est palestinien, **à tout moment, répit compris** :
+Only when the flag is Palestinian, **at any time, breather included**:
 
-| Situation | Progression |
+| Situation | Progress |
 | --- | --- |
-| Drapeau français | Aucune capture |
-| Paul hors de la zone (distance au centre > 112 px) | Suspendue, valeur conservée |
-| Paul dans la zone avec un hostile actif à l’intérieur | Suspendue : « zone contestée » |
-| Paul dans la zone, aucun hostile actif à l’intérieur | Avance d’1 s par seconde |
-| 8 s atteintes | Drapeau français rétabli |
+| French flag | No capture |
+| Paul outside the zone (distance to centre > 112 px) | Suspended, value kept |
+| Paul in the zone with an active hostile inside | Suspended: « zone contestée » (contested zone) |
+| Paul in the zone, no active hostile inside | Advances by 1 s per second |
+| 8 s reached | French flag restored |
 
-Aucune touche : rester dans la zone suffit. Les corps KO et les personnes protégées ne contestent pas ; pause et KO de Paul figent la progression. À 8 s : drapeau français (animation inverse), son de confirmation, étincelles bleu-blanc-rouge, bannière courte « DRAPEAU RÉCUPÉRÉ ! », **+10 une seule fois par remplacement** (clé `monument#<n° du remplacement>:captured`). Plusieurs cycles remplacement / capture dans une session sont comptés chacun.
+No key: staying in the zone is enough. KO bodies and protected persons do not contest; pause and Paul's KO freeze the progress. At 8 s: French flag (reverse animation), confirmation sound, blue-white-red sparks, short banner « DRAPEAU RÉCUPÉRÉ ! » (Flag recovered!), **+10 only once per replacement** (key `monument#<replacement no.>:captured`). Several replacement / capture cycles in a session are each counted.
 
-### 11.4 Affichage
+### 11.4 Display
 
-Bannière « MONUMENT ATTAQUÉ ! » / « Défends le drapeau » au début de l’occupation (palette jaune, icône fanion neutre, flèche et distance), indicateur en bord d’écran « MONUMENT » pendant l’occupation puis « DRAPEAU » tant que le drapeau est palestinien ; carte « Drapeau — capture N/8 s » avec une mini-barre, « zone contestée » quand un hostile bloque. Au sol, l’anneau de la zone est discret quand le drapeau est français, rouge quand il est palestinien, hachuré quand la zone est contestée, avec un arc qui se remplit pendant la capture. Les drapeaux des casseurs restent purement cosmétiques (section 9) ; aucune variante n’est désignée comme occupante.
+Banner « MONUMENT ATTAQUÉ ! » (Monument under attack!) / « Défends le drapeau » (Defend the flag) at the start of the occupation (yellow palette, neutral pennant icon, arrow and distance), screen-edge indicator « MONUMENT » during the occupation then « DRAPEAU » as long as the flag is Palestinian; card « Drapeau — capture N/8 s » with a mini-bar, « zone contestée » (contested zone) when a hostile blocks. On the ground, the zone ring is discreet when the flag is French, red when it is Palestinian, hatched when the zone is contested, with an arc that fills during the capture. The rioters' flags remain purely cosmetic (section 9); no variant is designated as the occupier.

@@ -1,67 +1,67 @@
-# BreakBreaker — Spécifications : Direction artistique et son
+# BreakBreaker — Specifications: Art Direction and Sound
 
-> **Rôle du fichier :** direction artistique, ressources pixel art, animations et son.  
-> Fait partie des spécifications de BreakBreaker (version 1.9.25), découpées en plusieurs fichiers. Retour à l’[index des spécifications](SPECS%20-%20Index.md) (sommaire général, historique des versions, conventions, plan des fichiers).
+> **Purpose of this file:** art direction, pixel art assets, animations and sound.  
+> Part of the BreakBreaker specifications (version 1.9.25), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
-## 15. Direction artistique et ressources pixel art
+## 15. Art direction and pixel art assets
 
 ### 15.1 Style
 
-Pixel art dessiné, palette cohérente et sprites de même échelle. Vue du dessus orthogonale, sans isométrie. Paul conserve cheveux longs, lunettes rectangulaires noires (v1.9.10) et tenue noire ; l’écharpe ou le bavoir blanc et un contour contrasté le distinguent du sol et de la foule.
+Hand-drawn pixel art, a consistent palette and sprites at the same scale. Orthogonal top-down view, no isometry. Paul keeps his long hair, black rectangular glasses (v1.9.10) and black outfit; the white scarf or bib and a contrasting outline set him apart from the ground and the crowd.
 
-Paris est évoqué par les pavés, panneaux, façades, devantures, école et monument. Les silhouettes et panneaux doivent rester compréhensibles à la taille de jeu. Les drapeaux sont lisibles sans agrandir tous les adversaires.
+Paris is evoked by the cobblestones, signs, facades, shopfronts, school and monument. Silhouettes and signs must remain understandable at game size. Flags are readable without enlarging all the opponents.
 
-### 15.2 Gabarits retenus
+### 15.2 Chosen templates
 
-| Élément | Gabarit |
+| Element | Template |
 | --- | --- |
-| Tuile de sol | 32 × 32 pixels logiques (tuiles Kenney / LPC CC0) |
-| Paul et personnages courants | Cellules de 64 × 64 des spritesheets Universal LPC, silhouette visible d’environ 32 × 48, ancrage aux pieds |
-| Grandes animations de contact | Cellule plus large si nécessaire, hitbox séparée |
-| Drapeau | Accessoire séparé, lisible et non retourné avec du texte inversé |
-| Caillou / pavé / brique | Environ 8 à 16 pixels, contour visible |
-| Arme au sol | Sprite lisible avec halo, flottement et oscillation |
-| Vue interne paysage | Base de 640 × 360 pixels logiques |
-| Vue interne portrait | Base de 360 × 640 pixels logiques, sans étirement |
+| Ground tile | 32 × 32 logical pixels (Kenney / LPC CC0 tiles) |
+| Paul and common characters | 64 × 64 cells from the Universal LPC spritesheets, visible silhouette of about 32 × 48, anchored at the feet |
+| Large contact animations | Wider cell if needed, separate hitbox |
+| Flag | Separate prop, readable and not flipped with mirrored text |
+| Pebble / cobblestone / brick | About 8 to 16 pixels, visible outline |
+| Weapon on the ground | Readable sprite with halo, floating and oscillation |
+| Internal landscape view | Base of 640 × 360 logical pixels |
+| Internal portrait view | Base of 360 × 640 logical pixels, no stretching |
 
-Mise à l’échelle retenue : mode RESIZE de Phaser (le canevas occupe la fenêtre) et zoom de caméra entier, calculé à partir de la base paysage ou portrait, minimum 1. Les pixels restent nets ; des marges ou un champ visible plus large sont acceptés plutôt qu’une déformation.
+Chosen scaling: Phaser's RESIZE mode (the canvas fills the window) and an integer camera zoom, computed from the landscape or portrait base, minimum 1. Pixels stay sharp; margins or a wider visible field are accepted rather than distortion.
 
-### 15.3 Ressources
+### 15.3 Assets
 
-Un jeu de sprites de Paul ; armes au sol et tenues (bâton, marteau, panneau de signalisation) ; victimes individuelles et couple âgé ; caisse à outils au sol et portée ; objets personnels de secours ; trois variantes de casseurs avec rôles contact/lanceur ; manifestants en groupe avec pancartes ; étudiants et secours ; tuiles de sol et bâtiment ; école à plusieurs états ; monument et drapeaux ; boutique ; stations de soin ; pierres en vol et au sol ; icônes.
+One set of Paul sprites; weapons on the ground and outfits (stick, hammer, road sign); individual victims and the elderly couple; toolbox on the ground and carried; personal rescue items; three rioter variants with contact/thrower roles; demonstrators in a group with placards; students and rescue workers; ground and building tiles; school with several states; monument and flags; shop; healing stations; stones in flight and on the ground; icons.
 
-Les groupes pacifiques doivent se lire comme un ensemble calme. Éviter de donner aux sprites neutres les mêmes animations de charge ou de lancer que les hostiles.
+Peaceful groups must read as a calm whole. Avoid giving neutral sprites the same charge or throw animations as the hostile ones.
 
-Sources retenues pour la première tranche : personnages Universal LPC, tuiles Kenney et LPC sous CC0, sons Kenney sous CC0. Chaque auteur et licence est listé dans `public/CREDITS.md`, accessible depuis la landing et le menu Pause.
+Sources chosen for the first slice: Universal LPC characters, Kenney and LPC tiles under CC0, Kenney sounds under CC0. Each author and licence is listed in `public/CREDITS.md`, reachable from the landing page and the Pause menu.
 
 ### 15.4 Animations
 
-Au minimum : repos, déplacement, frappe circulaire, rotation de l’arme tenue à chaque coup, flottement et halo des armes au sol, flottement et pulsation des trousses chargées, réaction, KO, ramassage bref ou indication de ramassage, renvoi, soin, lancer ennemi, dégradation, port de drapeau, manifestation calme, appel à l’aide, recul de victime, aide/rassurance, réparation, marche des étudiants, feu, ruine, réparation et changement de drapeau. Aucune animation de nudité ou de brûlure graphique n’est nécessaire.
+At minimum: idle, movement, circular strike, rotation of the held weapon on each hit, floating and halo of weapons on the ground, floating and pulsing of charged kits, reaction, KO, brief pickup or pickup indication, throw-back, healing, enemy throw, degradation, flag carrying, calm demonstration, call for help, victim recoil, help/reassurance, repair, students walking, fire, ruin, repair and flag change. No nudity or graphic burn animation is needed.
 
-Quatre directions dessinées au minimum ; huit directions de déplacement logique. Le choix de huit directions dessinées est une amélioration, pas un prérequis au premier prototype. Les effets de contact ne remplacent pas une animation lisible du héros.
+At least four drawn directions; eight logical movement directions. Drawing eight directions is an improvement, not a prerequisite for the first prototype. Contact effects do not replace a readable hero animation.
 
-**Chutes de KO (v1.9.17).** Treize types de chute (`crumple`, `spin`, `flyspin`, `pancake`, `bounce`, `backflip`, `wobble`, `tripleflip`, `helicopter`, `faceplant`, `trashcan`, `domino`, `knocked`) jouées par transformation du sprite KO existant (pivot, écrasement, rotation, hauteur), sans nouvelle planche ; la poubelle est une texture créée à l’exécution (12×14, ×2). Détail en section 12.15.
+**KO falls (v1.9.17).** Thirteen fall types (`crumple`, `spin`, `flyspin`, `pancake`, `bounce`, `backflip`, `wobble`, `tripleflip`, `helicopter`, `faceplant`, `trashcan`, `domino`, `knocked`) played by transforming the existing KO sprite (pivot, squash, rotation, height), with no new sheet; the trash can is a texture created at runtime (12×14, ×2). Details in section 12.15.
 
-### 15.5 Préparation
+### 15.5 Preparation
 
-Sources éditables de sprites et carte ; exports PNG avec transparence ; atlas de textures et données d’animation ; carte en JSON de tuiles et objets ; validation des ancrages, collisions et cadres. Pas de pipeline de modèles GLB ou de squelette 3D dans cette version.
+Editable sources for sprites and map; PNG exports with transparency; texture atlases and animation data; map as JSON of tiles and objects; validation of anchors, collisions and frames. No GLB model pipeline or 3D skeleton in this version.
 
-Registre des auteurs, licences, attributions, sources et modifications (`public/CREDITS.md`). Les ressources du prototype ne doivent pas être de simples carrés colorés présentés comme une direction pixel art finale. Une création ou adaptation artistique reste nécessaire.
+Register of authors, licences, attributions, sources and modifications (`public/CREDITS.md`). Prototype assets must not be mere coloured squares presented as a final pixel art direction. Artistic creation or adaptation is still required.
 
-## 16. Son
+## 16. Sound
 
-Le premier clic, toucher ou geste clavier pertinent autorise l’initialisation audio. Le son reste désactivable depuis l’accueil et la pause. L’échec de l’audio ne bloque pas le jeu.
+The first relevant click, touch or keyboard gesture authorises audio initialisation. Sound can be turned off from the landing page and the pause menu. An audio failure does not block the game.
 
-Prévoir des groupes de volume séparés : ambiance, effets, musique éventuelle, voix. La musique est facultative ; la lisibilité du combat prime. Les sons proches sont spatialisés avec mesure et le nombre de voix simultanées plafonné.
+Provide separate volume groups: ambience, effects, optional music, voice. Music is optional; combat readability comes first. Nearby sounds are spatialised with moderation and the number of simultaneous voices is capped.
 
-Les sons de la première tranche proviennent de Kenney (CC0). Les pas suivent le rythme de déplacement ; les impacts correspondent au contact ; les alarmes ou crépitements indiquent la présence du feu. Les répétitions de coups utilisent plusieurs variantes pour éviter un effet mécanique. **Ajouté (v1.9.24) :** chaque son d’impact (coups `hit1`–`hit3`, « hurt », chocs sourds `land`, et les sons WebAudio « tock », « pop », « thump », « boing », « clank ») est joué avec une hauteur légèrement aléatoire, ±6 % (`PITCH_JITTER`, sur la vitesse de lecture ou les fréquences), tirée côté rendu uniquement (`Math.random`, jamais le tirage du simulateur) et seulement quand la voix joue vraiment (rien sans audio ni en mode muet) ; sirènes, alarme, carillons, bourdonnements du mode furie et de la charge gardent leur hauteur exacte.
+The first slice's sounds come from Kenney (CC0). Footsteps follow the movement rhythm; impacts match the contact; alarms or crackling indicate the presence of fire. Repeated hits use several variants to avoid a mechanical effect. **Added (v1.9.24):** every impact sound (the `hit1`–`hit3` blows, « hurt », the dull `land` thuds, and the WebAudio « tock », « pop », « thump », « boing », « clank » sounds) is played with a slightly random pitch, ±6% (`PITCH_JITTER`, on the playback rate or the frequencies), drawn on the render side only (`Math.random`, never the simulator's draw) and only when the voice actually plays (nothing without audio or in mute mode); sirens, alarm, chimes, and the hums of fury mode and of charging keep their exact pitch.
 
-Repères sonores de la tranche 2 (phase A) : alarme une fois par attaque, au moment où le lieu prend feu (v1.9.1), et une fois par secours, souffle bref à chaque lancer de Molotov (sur un lieu ou, v1.9.4, sur Paul), crépitement du feu qui suit le lieu le plus touché tant qu’un lieu est attaqué ou brûle, carillon bref (deux notes) quand un lieu est sauvé, éteint ou réparé et en fin de manche (un seul par image), son de ramassage pour la caisse à outils. **Ajouté (v1.9.11, aligné sur le jeu) :** alarme aussi au début d’une occupation du monument ; carillon quand le monument est défendu, quand le drapeau est repris et à chaque objet rendu ; son de chute quand le drapeau est remplacé et quand une arme se brise ; son de ramassage pour les pierres, armes, objets volés et soins ; trois variantes de son d’impact tirées au hasard. Souffle et carillon sont synthétisés (WebAudio), sans nouveau fichier. **Ajouté (v1.9.3) :** mode furie (section 8.8) : montée synthétique au ramassage, bourdonnement grave tant que le mode dure (une voix du plafond de huit, soumis à la sourdine et suspendu en pause), descente à la fin ; sans nouveau fichier. **Ajouté (v1.9.7) :** bourdonnement montant pendant la charge de l’onde d’énergie (coupé au tir ou à l’annulation), décharge au tir, choc métallique quand le bouclier bloque (section 8.9) ; synthétisés, dans le plafond de voix. **Ajouté (v1.9.14) :** jauge d’énergie (section 8.8) : petit « ping » doux (sinus) quand elle atteint 50, arpège plus brillant quand elle est pleine, une fois par remplissage ; « toc » sourd quand Furie ou Onde est refusé ; la montée du mode furie retentit à l’activation.
+Sound cues of slice 2 (phase A): alarm once per attack, when the place catches fire (v1.9.1), and once per rescue, a brief whoosh on each Molotov throw (at a place or, v1.9.4, at Paul), crackling of the fire that follows the most affected place as long as a place is attacked or burning, a brief two-note chime when a place is saved, extinguished or repaired and at the end of a round (only one per frame), a pickup sound for the toolbox. **Added (v1.9.11, aligned with the game):** alarm also at the start of a monument occupation; chime when the monument is defended, when the flag is retaken and for each returned item; a drop sound when the flag is replaced and when a weapon breaks; a pickup sound for stones, weapons, stolen items and healing; three impact sound variants drawn at random. Whoosh and chime are synthesised (WebAudio), with no new file. **Added (v1.9.3):** fury mode (section 8.8): synthetic rise on pickup, low hum for as long as the mode lasts (one voice of the cap of eight, subject to mute and suspended on pause), fall at the end; no new file. **Added (v1.9.7):** rising hum while the energy wave charges (cut at firing or on cancel), discharge on firing, metallic clang when the shield blocks (section 8.9); synthesised, within the voice cap. **Added (v1.9.14):** energy gauge (section 8.8): a soft little « ping » (sine) when it reaches 50, a brighter arpeggio when it is full, once per fill; a dull « toc » when Fury or Wave is refused; the fury mode rise sounds on activation.
 
-Repères sonores de la phase B (v1.9.15, WebAudio, dans le plafond de voix) : petit « pop » cartoon à chaque balle d’un tireur, « thump » grave au tir du flashball, « boing » à ressort quand le gant touche (souffle simple s’il frappe dans le vide).
+Phase B sound cues (v1.9.15, WebAudio, within the voice cap): a small cartoon « pop » on each shooter bullet, a low « thump » when the flashball fires, a springy « boing » when the boxing glove connects (a simple whoosh if it hits empty air).
 
-Sirènes des services d’urgence (v1.9.19, WebAudio, par le même assistant de voix et dans le plafond de voix) : à `ServiceCalled`, sirène des pompiers (onde triangle, « pin-pon » à 580 / 435 Hz, 4 notes de 0,32 s) ou de la police (onde carrée filtrée passe-bas, 880 / 660 Hz, 6 notes de 0,18 s) ; à `ServiceRefused`, le « tock » existant ; à `TruckDestroyed`, un choc lourd d’atterrissage.
+Emergency services sirens (v1.9.19, WebAudio, through the same voice helper and within the voice cap): on `ServiceCalled`, the fire truck siren (triangle wave, « pin-pon » at 580 / 435 Hz, 4 notes of 0.32 s) or the police siren (square wave low-pass filtered, 880 / 660 Hz, 6 notes of 0.18 s); on `ServiceRefused`, the existing « tock »; on `TruckDestroyed`, a heavy landing thud.
 
-Sons de la prison (v1.9.20, WebAudio, dans le plafond de voix) : à `CaidJailed`, la sirène de police existante (le fourgon) ; à `PrisonBreakout`, un choc lourd suivi de l’alarme.
+Prison sounds (v1.9.20, WebAudio, within the voice cap): on `CaidJailed`, the existing police siren (the van); on `PrisonBreakout`, a heavy thud followed by the alarm.
 
-Une cinématique ne doit pas déclencher une seconde copie des sons de la scène à sa reprise. Retour d’onglet et reprise de contexte audio sont gérés explicitement.
+A cutscene must not trigger a second copy of the scene's sounds when it resumes. Tab return and audio context resumption are handled explicitly.

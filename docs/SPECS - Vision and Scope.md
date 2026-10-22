@@ -1,229 +1,229 @@
-# BreakBreaker — Spécifications : Vision et périmètre
+# BreakBreaker — Specifications: Vision and Scope
 
-> **Rôle du fichier :** vision du jeu, exigences validées, périmètre et priorités, production et livrables, extensions prévues, décisions restantes et sources.  
-> Fait partie des spécifications de BreakBreaker (version 1.9.25), découpées en plusieurs fichiers. Retour à l’[index des spécifications](SPECS%20-%20Index.md) (sommaire général, historique des versions, conventions, plan des fichiers).
+> **Purpose of this file:** game vision, validated requirements, scope and priorities, production and deliverables, planned extensions, remaining decisions and sources.  
+> Part of the BreakBreaker specifications (version 1.9.25), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
-## 1. Vision et positionnement
+## 1. Vision and positioning
 
 ### 1.1 Concept
 
-Jeu web d’action arcade en **2D pixel art, vu du dessus, sans isométrie**, proche d’un hack-and-slash rétro. Le joueur incarne Paul, un commerçant de quartier fictif, représenté avec des cheveux longs, des lunettes rectangulaires noires, une tenue noire et une écharpe blanche qui le distingue des casseurs.
+Arcade action web game in **2D pixel art, top-down view, with no isometry**, close to a retro hack-and-slash. The player plays Paul, a fictional neighbourhood shopkeeper, shown with long hair, black rectangular glasses, a black outfit and a white scarf that sets him apart from the rioters.
 
-Il se déplace librement dans une carte parisienne fictive : places, école, monument et commerces. Des hordes de casseurs arrivent par plusieurs accès. Le joueur les combat au contact, à mains nues ou avec des armes ramassées dans les rues, évite leurs projectiles, peut récupérer certaines pierres tombées puis les renvoyer, défend l’école et reprend des drapeaux.
+He moves freely through a fictional Parisian map: squares, school, monument and shops. Hordes of rioters arrive through several entrances. The player fights them in close combat, bare-handed or with weapons picked up in the streets, dodges their projectiles, can recover some fallen stones and throw them back, defends the school and retakes flags.
 
-Des groupes de manifestants pacifiques occupent des parties de la carte. Ils ne sont pas des cibles pour Paul et doivent être contournés. Certains peuvent être menacés par des casseurs lors d’événements de secours. D’autres rencontres mettent en scène une personne ou un couple âgé victime de vol ou d’intimidation, à aider rapidement.
+Groups of peaceful demonstrators occupy parts of the map. They are not targets for Paul and must be walked around. Some may be threatened by rioters during rescue events. Other encounters feature an elderly person or couple who are victims of theft or intimidation, to be helped quickly.
 
-La session est découpée en manches : chaque manche fixe un nombre de casseurs à neutraliser et un à trois objectifs. La santé, les soins (stations ; petits soins de terrain livrés, v1.9.18) et la survie jusqu’au KO restent conservés. Aucun compte à rebours global et aucune victoire terminant automatiquement la session. Une barre de santé indique en revanche l’état d’un lieu attaqué, et un délai local le temps restant pour intervenir auprès de personnes menacées. Un lieu détruit peut être réparé avec une caisse à outils trouvée sur la carte.
+The session is divided into rounds: each round sets a number of rioters to neutralise and one to three objectives. Health, healing (stations; small field heals delivered, v1.9.18) and survival until KO are kept. There is no global countdown and no victory that automatically ends the session. A health bar, however, shows the state of an attacked place, and a local deadline shows the time left to step in for threatened people. A destroyed place can be repaired with a toolbox found on the map.
 
-### 1.2 Promesse
+### 1.2 Promise
 
-« Se déplacer, repousser les hordes, ramasser des armes, renvoyer leurs pavés et tenir le quartier manche après manche, aussi longtemps que possible. »
+« Move around, push back the hordes, pick up weapons, throw their cobblestones back and hold the neighbourhood round after round, for as long as possible. »
 
-Le plaisir repose sur le mouvement, la lecture des groupes, les coups, l’esquive par déplacement, le renvoi de projectiles, la défense des lieux et la gestion de la santé. La récupération d’objets est limitée et compréhensible ; aucun inventaire complexe.
+The fun rests on movement, reading the groups, strikes, dodging by moving, throwing projectiles back, defending places and managing health. Item pickup is limited and easy to understand; no complex inventory.
 
-### 1.3 Direction visuelle
+### 1.3 Visual direction
 
-Vue orthogonale du dessus, carte à axes horizontaux/verticaux, sprites et décors dessinés en pixels. De petits volumes dessinés et des faces de bâtiment peuvent améliorer la lisibilité, sans projection isométrique ni grille en losanges.
+Orthogonal top-down view, map with horizontal/vertical axes, sprites and scenery drawn in pixels. Small drawn volumes and building faces may improve legibility, without isometric projection or diamond-shaped grids.
 
-La référence GTA / The Division n’est plus une cible de rendu. La crédibilité vient désormais des détails reconnaissables, des animations, des réactions et du son, dans une représentation rétro cohérente.
+The GTA / The Division reference is no longer a rendering target. Credibility now comes from recognisable details, animations, reactions and sound, in a coherent retro representation.
 
-### 1.4 Public et accès
+### 1.4 Audience and access
 
-Navigateur sur ordinateur et téléphone, sans compte ni installation obligatoire. Caméra automatique, commandes simples et version tactile. Le pixel art réduit certains besoins graphiques, mais ne dispense pas de limiter les hordes, les collisions et les effets ni de tester sur téléphone réel.
+Browser on computer and phone, with no account and no mandatory installation. Automatic camera, simple controls and a touch version. Pixel art reduces some graphical needs, but does not remove the need to limit hordes, collisions and effects, nor to test on a real phone.
 
-### 1.5 Paul, protagoniste unique
+### 1.5 Paul, sole protagonist
 
-**Confirmé (révision 1.5) :** le héros est Paul, un commerçant de quartier entièrement fictif. Repères visuels : cheveux longs, lunettes rectangulaires noires (v1.9.10), vêtements noirs et un accent clair (écharpe ou bavoir blanc) qui le distingue des casseurs vêtus de sombre ; silhouette identifiable à la taille réelle du sprite. Aucun choix de sexe, de teint ou d’un autre héros.
+**Confirmed (revision 1.5):** the hero is Paul, an entirely fictional neighbourhood shopkeeper. Visual markers: long hair, black rectangular glasses (v1.9.10), black clothes and a light accent (white scarf or bib) that sets him apart from the dark-clothed rioters; silhouette identifiable at the real sprite size. No choice of gender, skin tone or another hero.
 
-Paul ne représente aucune personne réelle. Les missions parisiennes, les dialogues et les positions exprimées dans le jeu relèvent de la fiction. Aucun nom de famille, élément biographique ou référence de presse n’est associé au personnage.
+Paul does not represent any real person. The Parisian missions, the dialogues and the positions expressed in the game are fiction. No surname, biographical element or press reference is associated with the character.
 
-## 2. Exigences validées et décisions proposées
+## 2. Validated requirements and proposed decisions
 
-### 2.1 Statut
+### 2.1 Status
 
-- **Confirmé** : demandé explicitement par le porteur du projet.
-- **Proposé** : solution concrète de conception à essayer.
-- **Paramètre initial** : valeur d’équilibrage modifiable sans changer la vision.
-- **Extension** : hors première version de diffusion.
+- **Confirmed** (« Confirmé »): explicitly requested by the project owner.
+- **Proposed** (« Proposé »): concrete design solution to try out.
+- **Initial parameter** (« Paramètre initial »): balancing value that can be changed without changing the vision.
+- **Extension**: outside the first release.
 
-La présente révision remplace la cible 3D. Les dernières demandes annulent la vue derrière l’épaule, la personnalisation et le chronomètre global. L’idée de murs ou de ruelles imposés a été retirée par l’utilisateur ; elle ne doit pas devenir une fonctionnalité à développer.
+This revision replaces the 3D target. The latest requests cancel the over-the-shoulder view, customisation and the global timer. The idea of imposed walls or alleys was withdrawn by the user; it must not become a feature to develop.
 
-La révision 1.5 intègre des décisions **confirmées** : héros fictif Paul, barème égal pour tous les casseurs, compteur neutre « Casseurs neutralisés », frappe circulaire, soins appliqués au contact, armes ramassables, manches à effectif fixe et lancement direct depuis la landing. Les valeurs chiffrées associées restent des paramètres initiaux sauf mention contraire.
+Revision 1.5 incorporates **confirmed** decisions: fictional hero Paul, equal scoring scale for all rioters, neutral « Casseurs neutralisés » (Rioters neutralised) counter, circular strike, healing applied on contact, pickup weapons, fixed-roster rounds and direct launch from the landing page. The associated figures remain initial parameters unless stated otherwise.
 
-### 2.2 Exigences confirmées
+### 2.2 Confirmed requirements
 
-| ID | Exigence |
+| ID | Requirement |
 | --- | --- |
-| EX-01 | Jeu web, un joueur, ordinateur et téléphone, sans compte. |
-| EX-02 | 2D pixel art, vue du dessus, non isométrique, action de type hack-and-slash rétro. |
-| EX-03 | Déplacement libre sur la carte ; Paris pour la première version. |
-| EX-04 | Paul, commerçant fictif, héros unique ; aucun écran de sélection d’apparence ; aucune référence à une personne réelle. |
-| EX-05 | Trois variantes de casseurs : classique, drapeau palestinien, drapeau Antifa. Le drapeau est purement cosmétique : même barème (+1 au KO), mêmes rôles possibles. |
-| EX-06 | Arrivée de hordes ; casseurs hostiles jusqu’au KO, sans reddition ni interpellation. |
-| EX-07 | Combat au contact, à mains nues ou avec des armes ramassées ; aucun gore, aucun sang. **Modifié (v1.9) :** le porteur du projet lève l’ancienne interdiction des armes à feu pour les tireurs ennemis (AK-47, manches tardives) et le flashball de Paul, en style cartoon, tirs lisibles et esquivables ; livré en phase B de la tranche 2 (v1.9.15, section 12.14). |
-| EX-08 | Projectiles ennemis de type caillou, pavé ou brique. |
-| EX-09 | Possibilité de récupérer des projectiles et de les renvoyer contre les casseurs. |
-| EX-10 | Groupes de manifestants pacifiques à éviter et non ciblables par Paul ; certains peuvent subir une menace ennemie et être secourus. |
-| EX-11 | Étudiants, professeurs, policiers, pompiers, soignants et commerçants restent non ennemis. |
-| EX-12 | Santé et petits soins conservés (stations de soin livrées ; petits soins de terrain livrés en v1.9.18, section 12.5). |
-| EX-13 | Session arcade sans durée limite, découpée en manches, poursuivie jusqu’au KO du joueur. |
-| EX-14 | École à défendre : première ligne, renforts, réparation, retour des étudiants et formations projetées (étudiants et formations à faire, section 10.8). |
-| EX-15 | Captures de drapeau sur des monuments, avec zone contestée et changement de drapeau. **Modifié (v1.9.4, demande du porteur du projet) :** une statue équestre dont le cavalier tient un drapeau français ; des casseurs s’en prennent à la statue et, en quelques secondes, remplacent le drapeau français par un drapeau palestinien ; Paul le reprend en capture du drapeau (section 11). |
-| EX-16 | Flèche et zone au sol pour les objectifs. |
-| EX-17 | Chaque casseur KO ajoute une unité au compteur neutre « Casseurs neutralisés », sans doublon. |
-| EX-18 | Score, record local, pause, arrêt volontaire et son après geste utilisateur. |
-| EX-19 | Assez de contenu et de renouvellement pour plusieurs manches. |
-| EX-20 | Santé d’un lieu attaqué (feu, dégradeurs) avant sa destruction, pour créer une urgence de défense ; elle remplace l’ancien délai local (v1.9, section 10.2). |
-| EX-21 | Caisses à outils récupérables sur la carte ; près d’un lieu détruit ou en feu, un appui sur Agir (F, bouton Agir) lance la réparation ou l’extinction, qui se termine 2 s plus tard sans maintenir la touche, abords sûrs (v1.9.1, section 10.6). Un lieu en feu ou détruit le reste tant qu’il n’est pas réparé. |
-| EX-22 | Événements dynamiques de secours : manifestants agressés, personne ou couple âgé menacé ou dépouillé ; délai local d’intervention. |
-| EX-23 | Déplacement libre, mais impossibilité de traverser les bâtiments, les troncs d’arbre et les obstacles solides. |
-| EX-24 | Landing page publique simple donnant accès au jeu ; contenu et fonctionnement définis ici, direction visuelle traitée séparément avec Claude. |
-| EX-25 | Armes ramassables apparaissant aléatoirement dans les rues, en petit nombre (v1.9.16, section 8.7) ; chacune met un casseur KO en un coup (2 dégâts seulement sur un costaud ou « Le Caïd », section 12.14), avec portée et nombre de coups propres ; armes à feu cartoon seulement dans les conditions d’EX-07 (section 8.7). |
-| EX-26 | Manches à effectif fixe : un nombre de casseurs à neutraliser et un à trois objectifs par manche, panneau « Manche N terminée » non bloquant pendant un répit voulu de 6 s sans entrée de casseur, puis la manche suivante est annoncée (v1.9, section 12.2). |
-| EX-27 | Landing sobre (titre, accroche, boutons Jouer et Commandes, pied de page) avec visuel original ; règles et instructions affichées au lancement du jeu ; bouton « Commandes » (modale) sur la landing et dans le jeu (section 26). |
-| EX-28 | Alerte visible dans le style pixel du jeu à l’apparition de chaque incident (« ÉCOLE EN FEU ! », « AGRESSION EN COURS ! », « VOL EN COURS ! ») avec flèche et distance, puis indicateur en bord d’écran par incident actif hors écran ; système générique réutilisé par les futurs événements de casse (section 14.1). |
+| EX-01 | Web game, one player, computer and phone, no account. |
+| EX-02 | 2D pixel art, top-down view, non-isometric, retro hack-and-slash-style action. |
+| EX-03 | Free movement on the map; Paris for the first version. |
+| EX-04 | Paul, a fictional shopkeeper, sole hero; no appearance selection screen; no reference to a real person. |
+| EX-05 | Three rioter variants: classic, Palestinian flag, Antifa flag. The flag is purely cosmetic: same scoring scale (+1 on KO), same possible roles. |
+| EX-06 | Arrival of hordes; rioters hostile until KO, with no surrender or arrest. |
+| EX-07 | Close combat, bare-handed or with picked-up weapons; no gore, no blood. **Changed (v1.9):** the project owner lifts the former ban on firearms for enemy shooters (AK-47, late rounds) and for Paul's flashball, in cartoon style, with readable and dodgeable shots; delivered in phase B of slice 2 (v1.9.15, section 12.14). |
+| EX-08 | Enemy projectiles of the pebble, cobblestone or brick type. |
+| EX-09 | Ability to recover projectiles and throw them back at the rioters. |
+| EX-10 | Groups of peaceful demonstrators to be avoided and not targetable by Paul; some may suffer an enemy threat and be rescued. |
+| EX-11 | Students, teachers, police officers, firefighters, carers and shopkeepers remain non-enemies. |
+| EX-12 | Health and small heals kept (healing stations delivered; small field heals delivered in v1.9.18, section 12.5). |
+| EX-13 | Arcade session with no time limit, divided into rounds, continued until the player's KO. |
+| EX-14 | School to defend: front line, reinforcements, repair, return of the students and projected training courses (students and training courses to do, section 10.8). |
+| EX-15 | Flag captures on monuments, with a contested zone and flag change. **Changed (v1.9.4, project owner's request):** an equestrian statue whose rider holds a French flag; rioters attack the statue and, within a few seconds, replace the French flag with a Palestinian flag; Paul retakes it through flag capture (section 11). |
+| EX-16 | Arrow and ground zone for the objectives. |
+| EX-17 | Each KO'd rioter adds one unit to the neutral « Casseurs neutralisés » counter, with no duplicates. |
+| EX-18 | Score, local record, pause, voluntary stop and sound after a user gesture. |
+| EX-19 | Enough content and renewal for several rounds. |
+| EX-20 | Health of an attacked place (fire, degraders) before its destruction, to create a defence emergency; it replaces the former local deadline (v1.9, section 10.2). |
+| EX-21 | Toolboxes recoverable on the map; near a destroyed or burning place, a press of Agir (Act; F key or Agir button) starts the repair or extinction, which finishes 2 s later without holding the key, safe surroundings (v1.9.1, section 10.6). A place on fire or destroyed stays so until it is repaired. |
+| EX-22 | Dynamic rescue events: demonstrators attacked, elderly person or couple threatened or robbed; local intervention deadline. |
+| EX-23 | Free movement, but impossible to cross buildings, tree trunks and solid obstacles. |
+| EX-24 | Simple public landing page giving access to the game; content and behaviour defined here, visual direction handled separately with Claude. |
+| EX-25 | Pickup weapons appearing randomly in the streets, in small numbers (v1.9.16, section 8.7); each one KOs a rioter in one hit (only 2 damage on a brute or on « Le Caïd » (the Caïd), section 12.14), with its own range and number of hits; cartoon firearms only under the conditions of EX-07 (section 8.7). |
+| EX-26 | Fixed-roster rounds: a number of rioters to neutralise and one to three objectives per round, non-blocking « Manche N terminée » (Round N complete) panel during an intended 6 s breather with no rioter entering, then the next round is announced (v1.9, section 12.2). |
+| EX-27 | Sober landing page (title, tagline, Jouer (Play) and Commandes (Controls) buttons, footer) with an original visual; rules and instructions shown at game launch; « Commandes » button (modal) on the landing page and in the game (section 26). |
+| EX-28 | Visible alert in the game's pixel style when each incident spawns (« ÉCOLE EN FEU ! » (School on fire!), « AGRESSION EN COURS ! » (Assault in progress!), « VOL EN COURS ! » (Theft in progress!)) with arrow and distance, then a screen-edge indicator for each active off-screen incident; generic system reused by future incident events (section 14.1). |
 
-### 2.3 Propositions de départ
+### 2.3 Starting proposals
 
-| Sujet | Proposition |
+| Subject | Proposal |
 | --- | --- |
-| Carte | Quartier unique, 48 × 48 tuiles de 32 pixels (1 536 × 1 536 pixels logiques) |
-| Vue | Caméra qui suit Paul, orientation fixe et zoom entier |
-| Déplacement | Huit directions, diagonales normalisées ; quatre orientations dessinées au minimum |
-| Contact | **Confirmé :** frappe circulaire à 360° autour de Paul, les plus proches d’abord, jusqu’à trois casseurs, chacun touché une seule fois ; Paul se tourne vers le plus proche |
-| Armes | **Confirmé :** armes ramassées en passant dessus, une tenue à la fois, KO en un coup (2 dégâts sur un costaud ou le Caïd, v1.9.13), usure par coup utile (section 8.7) |
-| Pierres | Ramassage automatique des pierres ennemies déjà tombées, stock maximal de trois |
-| Renvoi | Action distincte, direction choisie ; pas de capture parfaite de projectile en vol en V1 |
-| Manifestants | Non ciblables par Paul ; menace ennemie représentée par un état de détresse pendant un événement de secours |
-| Objectifs | École, monument, boutique proposée pour varier les manches |
-| Manches | **Confirmé :** manches à effectif fixe et un à trois objectifs ; progression des effectifs proposée en section 12.2, avec plafond de simulation |
-| Soins | **Confirmé :** stations limitées appliquées au contact (+25) ; petits soins de terrain (+10, livrés en v1.9.18), sans régénération passive |
-| Réparation après perte | Caisse à outils distincte des soins, une portée au maximum, réparation ou extinction lancée par un appui sur F (Agir), interrompable |
-| Urgences | Une barre de santé par lieu attaqué, un délai local par secours, pas de fin de partie à leur échec |
-| Technique | Retenu : Phaser 4.2.1, TypeScript, Vite et Vitest ; simulation pure séparée du rendu ; validation sur appareils réels |
+| Map | Single neighbourhood, 48 × 48 tiles of 32 pixels (1,536 × 1,536 logical pixels) |
+| View | Camera that follows Paul, fixed orientation and integer zoom |
+| Movement | Eight directions, normalised diagonals; at least four drawn orientations |
+| Contact | **Confirmed:** 360° circular strike around Paul, nearest first, up to three rioters, each hit only once; Paul turns towards the nearest |
+| Weapons | **Confirmed:** weapons picked up by walking over them, one held at a time, one-hit KO (2 damage on a brute or the Caïd, v1.9.13), wear per useful hit (section 8.7) |
+| Stones | Automatic pickup of enemy stones already fallen, maximum stock of three |
+| Throw-back | Distinct action, chosen direction; no perfect catch of an in-flight projectile in V1 |
+| Demonstrators | Not targetable by Paul; enemy threat represented by a distress state during a rescue event |
+| Objectives | School, monument, shop proposed to vary the rounds |
+| Rounds | **Confirmed:** fixed-roster rounds and one to three objectives; roster progression proposed in section 12.2, with a simulation cap |
+| Healing | **Confirmed:** limited stations applied on contact (+25); small field heals (+10, delivered in v1.9.18), no passive regeneration |
+| Repair after loss | Toolbox distinct from healing, one carried at most, repair or extinction started by a press of F (Agir), interruptible |
+| Emergencies | One health bar per attacked place, one local deadline per rescue, no game over on their failure |
+| Technical | Chosen: Phaser 4.2.1, TypeScript, Vite and Vitest; pure simulation separated from rendering; validation on real devices |
 
-Les seuils précis sont proposés, pas déjà validés par l’utilisateur, sauf mention « Confirmé ». La récupération au sol est une première interprétation de « récupérer pour renvoyer », plus accessible que l’interception en vol.
+The precise thresholds are proposed, not already validated by the user, except where marked « Confirmed ». Ground pickup is a first interpretation of « recover in order to throw back », more accessible than in-flight interception.
 
-## 3. Périmètre et priorités
+## 3. Scope and priorities
 
-| Priorité | Contenu |
+| Priority | Contents |
 | --- | --- |
-| P0 | Vue du dessus non isométrique, Paul unique, déplacement libre, hordes et trois variantes, frappe circulaire, armes ramassables, projectiles récupérables et renvoi, groupes pacifiques protégés, santé, soins, caisses à outils, urgences locales et secours, arcade par manches sans limite, école et capture, score, compteur de casseurs neutralisés, pause. |
-| P1 | Pixel art abouti, boutique, nouvelles armes débloquées par manche (section 8.7), diversité d’assauts, repérage, accessibilité, optimisation et longue session sur téléphone réel. |
-| P2 | Autres cartes/villes, dialogues complets, récupération de projectile en vol si utile, PWA. |
+| P0 | Non-isometric top-down view, sole Paul, free movement, hordes and three variants, circular strike, pickup weapons, recoverable projectiles and throw-back, protected peaceful groups, health, healing, toolboxes, local emergencies and rescues, arcade mode in rounds with no limit, school and capture, score, « Casseurs neutralisés » counter, pause. |
+| P1 | Polished pixel art, shop, new weapons unlocked by round (section 8.7), variety of assaults, spotting, accessibility, optimisation and long session on a real phone. |
+| P2 | Other maps/cities, full dialogues, in-flight projectile recovery if useful, PWA. |
 
-La cible de diffusion inclut P0 et P1. Contenu minimal proposé : un quartier, trois objectifs récurrents, trois variantes visuelles hostiles et deux comportements de combat (contact/lanceur), trois groupes pacifiques, deux points de soin, trois armes de contact et au moins quatre compositions d’assaut.
+The release target includes P0 and P1. Proposed minimum content: one neighbourhood, three recurring objectives, three hostile visual variants and two combat behaviours (contact/thrower), three peaceful groups, two healing points, three contact weapons and at least four assault compositions.
 
-La carte doit pouvoir être parcourue librement, y compris entre deux objectifs. Les objectifs peuvent être activés progressivement pour l’apprentissage ; le joueur n’est pas enfermé dans une succession d’arènes fermées. La caméra ne doit pas tirer le joueur de force vers une mission.
+The map must be freely traversable, including between two objectives. Objectives can be activated gradually for learning; the player is not locked into a succession of closed arenas. The camera must not pull the player by force towards a mission.
 
-Hors périmètre : 3D, isométrie, monde ouvert de grande taille, construction de murs, couloirs obligatoires, conduite, armes à feu réalistes, gore, multijoueur, compte et inventaire complexe. Les tireurs ennemis et le flashball cartoon d’EX-07 (v1.9) font exception.
+Out of scope: 3D, isometry, large open world, wall building, mandatory corridors, driving, realistic firearms, gore, multiplayer, account and complex inventory. The enemy shooters and the cartoon flashball of EX-07 (v1.9) are an exception.
 
-Cible de variété : plusieurs situations différentes dans les dix premières minutes si le joueur survit, sans durée minimale ou maximale imposée.
+Variety target: several different situations in the first ten minutes if the player survives, with no minimum or maximum duration imposed.
 
-## 22. Production et livrables
+## 22. Production and deliverables
 
-| Lot | Livrable | Condition de passage |
+| Package | Deliverable | Passing condition |
 | --- | --- | --- |
-| L0 | Référence de pixel art, Paul, carte et règles | Vue orthogonale et gabarits validés à taille réelle |
-| L1 | Scène 2D avec déplacement, frappe circulaire, armes ramassables et trois variantes | Contrôle précis au clavier et au tactile |
-| L2 | Groupes protégés, lanceur, pierres, stock et renvoi | Aucun dommage de Paul aux groupes ; cycle de projectile cohérent |
-| L3 | École et capture | Objectifs lisibles dans la vue du dessus |
-| L4 | Soins, caisses à outils, santé des lieux et secours dynamiques | Urgences lisibles, ruines réparables, protection des victimes contre Paul |
-| L4b | Boutique, manches à effectif fixe, nouvelles armes et hordes | Session arcade renouvelée jusqu’au KO |
-| L5 | Habillage, sons, menus, accessibilité et records | Parcours complet sans outils de développement |
-| L5b | Landing et accès au jeu | Présentation, règles, commandes, navigation directe et chargement séparé validés |
-| L6 | Profilage et endurance | Quarante hostiles, groupes et projectiles sur appareils réels |
-| L7 | Livraison | Sources, build, ressources, mesures et limites |
+| L0 | Pixel-art reference, Paul, map and rules | Orthogonal view and templates validated at real size |
+| L1 | 2D scene with movement, circular strike, pickup weapons and three variants | Precise control on keyboard and touch |
+| L2 | Protected groups, thrower, stones, stock and throw-back | No damage from Paul to the groups; coherent projectile cycle |
+| L3 | School and capture | Objectives legible in the top-down view |
+| L4 | Healing, toolboxes, place health and dynamic rescues | Legible emergencies, repairable ruins, protection of victims from Paul |
+| L4b | Shop, fixed-roster rounds, new weapons and hordes | Arcade session renewed until KO |
+| L5 | Finish, sounds, menus, accessibility and records | Complete journey without development tools |
+| L5b | Landing page and game access | Presentation, rules, controls, direct navigation and separate loading validated |
+| L6 | Profiling and endurance | Forty hostiles, groups and projectiles on real devices |
+| L7 | Delivery | Sources, build, assets, measurements and limits |
 
-L1 et L2 précèdent la production de tous les décors. Le changement de moteur et de direction artistique nécessite une nouvelle scène de référence ; les résultats du prototype 3D ne suffisent pas.
+L1 and L2 precede the production of all scenery. The change of engine and art direction requires a new reference scene; the results of the 3D prototype are not enough.
 
-Livrables : code et dépendances verrouillés, build statique, sources de sprites/cartes/sons, registre de ressources, paramètres de hordes et soins, tests et rapports d’appareils réels, vidéos de gameplay. Compétences : développement de jeu 2D web, pixel art et animation, conception de carte, équilibrage, son et QA mobile.
+Deliverables: locked code and dependencies, static build, sprite/map/sound sources, asset register, horde and healing parameters, tests and real-device reports, gameplay videos. Skills: 2D web game development, pixel art and animation, map design, balancing, sound and mobile QA.
 
-Le budget et le calendrier restent à chiffrer après la scène de référence 2D. Pas d’achat ou de calendrier ferme implicitement approuvé par ce document.
+The budget and the schedule remain to be costed after the 2D reference scene. No purchase or firm schedule is implicitly approved by this document.
 
-## 23. Extensions prévues
+## 23. Planned extensions
 
-### 23.1 Boutique — contenu proposé pour la V1 arcade (non livré)
+### 23.1 Shop — content proposed for the arcade V1 (not delivered)
 
-Disperser un attroupement de casseurs devant une boutique : +4. Si un incident de destruction vise cette boutique, sa santé suit les mêmes règles que l’école (section 10.2). Puis rester 2 s à la porte pour relever le rideau, automatiquement (v1.9) : +5, une fois. Le commerçant reste protégé et sa frappe coûte −2. Le rideau ne peut être relevé tant que les casseurs requis sont actifs. Si le bâtiment est détruit, une caisse à outils est nécessaire pour la restauration, et le bonus tardif remplace les gains de sauvetage non acquis afin d’éviter un double paiement. Quitter la porte remet la progression du rideau à zéro.
+Disperse a gathering of rioters in front of a shop: +4. If a destruction incident targets this shop, its health follows the same rules as the school (section 10.2). Then stay 2 s at the door to raise the shutter, automatically (v1.9): +5, once. The shopkeeper remains protected and striking him costs −2. The shutter cannot be raised while the required rioters are active. If the building is destroyed, a toolbox is needed for restoration, and the late bonus replaces the unearned rescue gains to avoid a double payment. Leaving the door resets the shutter progress to zero.
 
-**Modifié (v1.9.4) :** la boutique livrée est la boutique de jeux vidéo rétro de la section 12.2, un lieu de casse ordinaire (santé, feu, ruine, caisse à outils ; +6 / −2 / +4). Le rideau, le commerçant et le bonus de réouverture décrits ci-dessus ne sont pas livrés.
+**Changed (v1.9.4):** the delivered shop is the retro video-game shop of section 12.2, an ordinary incident place (health, fire, ruin, toolbox; +6 / −2 / +4). The shutter, the shopkeeper and the reopening bonus described above are not delivered.
 
-Cette mission devient le troisième type d’objectif proposé pour varier la session arcade. Elle est répétable lors de nouvelles occurrences annoncées, avec des identifiants propres. Elle ne remet pas la santé à 100. Un point de soin en arrière-boutique peut être rendu plus facile d’accès après réouverture, sans devenir un stock illimité.
+This mission becomes the third proposed objective type to vary the arcade session. It is repeatable on new announced occurrences, with its own identifiers. It does not restore health to 100. A healing point in the back room can be made easier to reach after reopening, without becoming an unlimited stock.
 
-### 23.2 Étudiants et professeurs : dialogues
+### 23.2 Students and teachers: dialogues
 
-Conversation à proximité, trois répliques, commandes Suivant / Terminer / Plus tard ; pause de simulation et bonus de +3 une seule fois par session à l’échange terminé. Quitter ne donne pas de bonus ; reprendre ne doit pas dupliquer le gain.
+Conversation nearby, three lines, Next / Finish / Later commands (« Suivant / Terminer / Plus tard »); simulation pause and a +3 bonus once per session when the exchange is finished. Leaving gives no bonus; resuming must not duplicate the gain.
 
-Contenus demandés initialement : établissement dégradé par les casseurs plutôt que par le cortège ; réplique attribuant 32 % du budget de l’Éducation nationale aux retraites ; pour les professeurs, argument sur les salaires, les conditions de travail et les embauches.
+Contents requested initially: an institution damaged by the rioters rather than by the march; a line attributing 32 % of the national education budget to pensions; for teachers, an argument about salaries, working conditions and hiring.
 
-Le chiffre de 32 % est conservé ici comme formulation demandée pour un argument de personnage, non comme donnée vérifiée par ce cahier. Avant son intégration finale, préciser période, périmètre et formulation, ou retenir une réplique sans chiffre. Ces dialogues ne sont pas un préalable à la V1 Paris.
+The 32 % figure is kept here as a requested wording for a character's argument, not as data verified by this specification. Before its final integration, specify the period, scope and wording, or keep a line without a figure. These dialogues are not a prerequisite for the Paris V1.
 
-### 23.3 Autres villes et tension
+### 23.3 Other cities and tension
 
-Lille, Limoges, Bordeaux, Lyon, Grenoble, Marseille et Nice, en complément de Paris. Retour éventuel de la carte de France uniquement à ce stade, sans écran de personnalisation du héros. Chaque destination possède un lieu public et des étudiants ou des professeurs. Une tension entre 2 et 5 modifie la taille des vagues selon une configuration documentée.
+Lille, Limoges, Bordeaux, Lyon, Grenoble, Marseille and Nice, in addition to Paris. Possible return of the map of France only at this stage, with no hero customisation screen. Each destination has a public place and students or teachers. A tension between 2 and 5 changes the size of the waves according to a documented configuration.
 
-Ne pas publier huit noms pour un quartier identique en les présentant comme huit environnements distincts. Une réutilisation de kit est possible, mais chaque destination doit apporter une implantation ou un habillage identifiable.
+Do not publish eight names for an identical neighbourhood by presenting them as eight distinct environments. Reusing a kit is possible, but each destination must bring an identifiable layout or finish.
 
-### 23.4 Armes supplémentaires
+### 23.4 Additional weapons
 
-L’ancienne extension « accessoires de contact » est remplacée par les armes ramassables de la section 8.7 (Bâton, Marteau, Panneau de signalisation). Parmi les armes débloquées par manche, le bouclier est livré (v1.9.7, section 8.9) ; l’onde d’énergie (« kamehame ») et le mode furie sont livrés comme pouvoirs de la jauge d’énergie (v1.9.14, sections 8.8 et 8.9) ; le gant de boxe à ressort et le flashball sont livrés (v1.9.15, sections 8.7 et 12.14). Les armes à feu suivent EX-07 (v1.9) : flashball cartoon pour Paul, tireurs ennemis à partir de la manche 6 (livrés, v1.9.15). Toute nouvelle arme définit animations, portée, nombre de coups et rareté avant ajout ; le score d’un KO reste identique quelle que soit l’arme.
+The former « contact props » extension is replaced by the pickup weapons of section 8.7 (Stick, Hammer, Road sign). Among the weapons unlocked by round, the shield is delivered (v1.9.7, section 8.9); the energy wave (« kamehame ») and fury mode are delivered as powers of the energy gauge (v1.9.14, sections 8.8 and 8.9); the spring boxing glove and the flashball are delivered (v1.9.15, sections 8.7 and 12.14). Firearms follow EX-07 (v1.9): cartoon flashball for Paul, enemy shooters from round 6 (delivered, v1.9.15). Any new weapon defines animations, range, number of hits and rarity before being added; the score of a KO stays the same whatever the weapon.
 
-### 23.5 Diffusion et confort
+### 23.5 Distribution and comfort
 
-Installation PWA facultative, démarrage hors connexion après cache complet, manette étendue, autres langues, davantage de réglages et nouveaux quartiers. Un classement mondial ou un mode multijoueur constituerait un projet distinct avec backend et règles propres.
+Optional PWA installation, offline start after full caching, extended gamepad support, other languages, more settings and new neighbourhoods. A global leaderboard or a multiplayer mode would be a separate project with its own backend and rules.
 
-## 25. Décisions restantes et sources
+## 25. Remaining decisions and sources
 
-### 25.1 Paramètres à valider par le prototype 2D
+### 25.1 Parameters to validate with the 2D prototype
 
-| Sujet | Proposition de travail |
+| Subject | Working proposal |
 | --- | --- |
-| Direction | Pixel art orthogonal du dessus, pas d’isométrie |
-| Héros | Paul (fictif), cheveux longs, lunettes rectangulaires noires, tenue noire, accent clair, sprite unique |
-| Gabarits | Tuile 32 × 32 ; cellules LPC 64 × 64, silhouette environ 32 × 48 |
-| Déplacement | Huit directions, diagonales normalisées |
-| Contact | Frappe circulaire de 56 px à mains nues, trois cibles maximum (confirmé) |
-| Armes | Portées, coups et rythme d’apparition de la section 8.7 |
-| Manches | Effectifs 10, 14, 18, 22 puis +4 ; 12 casseurs sur la carte au plus |
-| Récupération | Pierres ennemies tombées, ramassage automatique |
-| Stock | Trois pierres ; renvois non récupérables |
-| Groupes pacifiques | Non ciblables par Paul ; détresse ennemie seulement dans un événement annoncé |
-| Bâtiments urgents | Santé 100 PV (bâtiments) / 60 PV (mobilier) ; feu 2 PV/s, dégradeur 1,2 PV/s (quatre au plus), feu qui couve 0,7 PV/s ; Molotov sur un lieu en feu −8 PV |
-| Monument | 6 occupants la première fois, puis min(8, 5 + ⌊manche ÷ 3⌋) ; remplacement en 4 s (trois occupants comptés au plus) ; capture de 8 s dans une zone de 112 px |
-| Secours | Délai local de 25 s (fourchette 20 à 30 s), deux urgences simultanées maximum dès la manche 3 |
-| Caisses à outils | Une portée, deux au sol (posées en début et fin de manche), réparation ou extinction lancée par F / Agir, 2 s sans maintien et sans casseur à 64 px |
-| Autres neutres | Anciennes pénalités conservées s’ils restent touchables ; option de protection généralisée à décider |
-| Hordes | Quarante hostiles maximum pour la référence normale |
-| Projectiles | Vingt-quatre en vol et seize récupérables au sol au maximum |
-| Moteur | Phaser 4.2.1 retenu ; compatibilité à confirmer sur appareils réels |
-| Durée | Arcade par manches sans limite, santé et soins conservés |
-| Ressources et diffusion | Universal LPC, Kenney / LPC CC0 retenus ; aucune nouvelle publication autorisée par cette spécification |
+| Direction | Orthogonal top-down pixel art, no isometry |
+| Hero | Paul (fictional), long hair, black rectangular glasses, black outfit, light accent, single sprite |
+| Templates | 32 × 32 tile; LPC cells 64 × 64, silhouette about 32 × 48 |
+| Movement | Eight directions, normalised diagonals |
+| Contact | 56 px circular strike bare-handed, three targets maximum (confirmed) |
+| Weapons | Ranges, hits and spawn rhythm of section 8.7 |
+| Rounds | Rosters 10, 14, 18, 22 then +4; at most 12 rioters on the map |
+| Recovery | Fallen enemy stones, automatic pickup |
+| Stock | Three stones; thrown-back stones not recoverable |
+| Peaceful groups | Not targetable by Paul; enemy distress only in an announced event |
+| Urgent buildings | Health 100 HP (buildings) / 60 HP (furniture); fire 2 HP/s, degrader 1.2 HP/s (four at most), smouldering fire 0.7 HP/s; Molotov on a burning place −8 HP |
+| Monument | 6 occupants the first time, then min(8, 5 + ⌊round ÷ 3⌋); replacement in 4 s (three occupants counted at most); 8 s capture in a 112 px zone |
+| Rescue | Local deadline of 25 s (range 20 to 30 s), two simultaneous emergencies at most from round 3 |
+| Toolboxes | One carried, two on the ground (placed at the start and end of a round), repair or extinction started by F / Agir, 2 s without holding and with no rioter within 64 px |
+| Other neutrals | Former penalties kept if they remain touchable; generalised protection option to be decided |
+| Hordes | Forty hostiles maximum for the normal reference |
+| Projectiles | Twenty-four in flight and sixteen recoverable on the ground at most |
+| Engine | Phaser 4.2.1 chosen; compatibility to be confirmed on real devices |
+| Duration | Arcade mode in rounds with no limit, health and healing kept |
+| Assets and distribution | Universal LPC, Kenney / LPC CC0 chosen; no new publication authorised by this specification |
 
-Ces paramètres permettent de construire une version de travail sans attendre chaque détail artistique. La première tranche 2D existe (section 24) ; elle ne valide pas encore ces paramètres sur appareils réels.
+These parameters make it possible to build a working version without waiting for every artistic detail. The first 2D slice exists (section 24); it does not yet validate these parameters on real devices.
 
-### 25.2 Sources techniques
+### 25.2 Technical sources
 
-Consultation le 19 octobre 2026, mise à jour le 20 octobre 2026. Les budgets et règles sont des choix de projet, pas des garanties fournies par les sources.
+Consulted on 19 October 2026, updated on 20 October 2026. The budgets and rules are project choices, not guarantees provided by the sources.
 
-- [Phaser — téléchargement officiel](https://phaser.io/download).
-- [Phaser — archives et versions](https://phaser.io/download/archive).
+- [Phaser — official download](https://phaser.io/download).
+- [Phaser — archives and versions](https://phaser.io/download/archive).
 - [Phaser — Arcade Physics](https://docs.phaser.io/phaser/concepts/physics/arcade).
-- [Phaser — caméras](https://docs.phaser.io/phaser/concepts/cameras).
+- [Phaser — cameras](https://docs.phaser.io/phaser/concepts/cameras).
 - [Phaser — Scale Manager](https://docs.phaser.io/phaser/concepts/scale-manager).
-- [Phaser — options de rendu et pixel art](https://docs.phaser.io/api-documentation/typedef/types-core).
-- [Phaser — état du moteur de rendu et Canvas](https://phaser.io/news/2026/04/phaser-4-renderer-faster-cleaner-and-built-for-modern-games).
+- [Phaser — rendering options and pixel art](https://docs.phaser.io/api-documentation/typedef/types-core).
+- [Phaser — state of the renderer and Canvas](https://phaser.io/news/2026/04/phaser-4-renderer-faster-cleaner-and-built-for-modern-games).
 - [Vite](https://vite.dev/guide/).
 - [Game Accessibility Guidelines](https://gameaccessibilityguidelines.com/basic/).
 - [Universal LPC Spritesheet Character Generator](https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator).
-- [Kenney — ressources CC0](https://kenney.nl/assets).
+- [Kenney — CC0 assets](https://kenney.nl/assets).
 
-Le héros Paul est un personnage fictif ; aucune source ne le rattache à une personne réelle.
+The hero Paul is a fictional character; no source links him to a real person.
 
-### 25.3 Définition de « terminé »
+### 25.3 Definition of “done”
 
-Landing accessible et jeu accessible directement ; chargement séparé ; Paul jouable dans une carte du dessus non isométrique ; pixel art de référence atteint ; mouvement libre ; hordes lisibles ; frappe circulaire, armes et projectiles cohérents ; récupération/stock/renvoi sans duplication ; groupes protégés contre Paul et secourables ; santé/soins ; santé des lieux et délais de secours équitables ; ruines persistantes et caisses à outils ; école/capture et manches à effectif fixe ; fin au KO ; performances et longue session validées sur appareils réels.
+Landing page accessible and game directly accessible; separate loading; Paul playable in a non-isometric top-down map; reference pixel art reached; free movement; legible hordes; coherent circular strike, weapons and projectiles; recovery/stock/throw-back without duplication; groups protected from Paul and rescuable; health/healing; place health and fair rescue deadlines; persistent ruins and toolboxes; school/capture and fixed-roster rounds; end at KO; performance and long session validated on real devices.
 
-Une capture d’écran pixelisée, une conversion de perspective ou les anciens tests 3D ne suffisent pas.
+A pixelated screenshot, a perspective conversion or the former 3D tests are not enough.
 
-> La sous-section 25.4 (Historique) est tenue dans l’[index des spécifications](SPECS%20-%20Index.md#254-historique).
+> Subsection 25.4 (History) is kept in the [specifications index](SPECS%20-%20Index.md#254-history).

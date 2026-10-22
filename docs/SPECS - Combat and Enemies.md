@@ -1,211 +1,211 @@
-# BreakBreaker — Spécifications : Combat et ennemis
+# BreakBreaker — Specifications: Combat and Enemies
 
-> **Rôle du fichier :** combat, projectiles, armes, énergie, groupes protégés, personnages, hordes et intelligence artificielle.  
-> Fait partie des spécifications de BreakBreaker (version 1.9.25), découpées en plusieurs fichiers. Retour à l’[index des spécifications](SPECS%20-%20Index.md) (sommaire général, historique des versions, conventions, plan des fichiers).
+> **Purpose of this file:** combat, projectiles, weapons, energy, protected groups, characters, hordes and artificial intelligence.  
+> Part of the BreakBreaker specifications (version 1.9.25), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
-## 8. Combat, projectiles et groupes protégés
+## 8. Combat, projectiles and protected groups
 
 ### 8.1 Contact
 
-Hack-and-slash de proximité. **Confirmé : frappe circulaire.** Chaque coup touche tout autour de Paul (360°) les casseurs actifs à portée, les plus proches d’abord, au plus trois par attaque ; Paul se tourne vers le plus proche des casseurs touchés. Portée à mains nues : 56 pixels logiques (tuiles de 32 pixels). Cadence proposée : un coup toutes les 0,45 seconde. Chaque cible ne reçoit qu’un contact par identifiant de coup. Une arme tenue remplace la portée et met KO en un coup (section 8.7).
+Close-range hack-and-slash. **Confirmed: circular strike.** Each hit strikes every active rioter in range all around Paul (360°), nearest first, at most three per attack; Paul turns toward the nearest of the rioters hit. Bare-handed reach: 56 logical pixels (32-pixel tiles). Proposed rate: one hit every 0.45 seconds. Each target receives only one contact per hit identifier. A held weapon replaces the reach and knocks out in one hit (section 8.7).
 
-À mains nues (1 dégât par coup), la résistance commence à deux coups, puis des ennemis renforcés clairement signalés en demandent davantage (livré v1.9.13, section 12.14) : le coureur tombe en un coup, le costaud en quatre, « Le Caïd » en quatorze dès la manche 3, davantage ensuite (v1.9.16) ; les autres casseurs ont 2 PV. Le premier coup ne provoque jamais de reddition.
+Bare-handed (1 damage per hit), toughness starts at two hits, then clearly marked reinforced enemies demand more (delivered v1.9.13, section 12.14): the runner falls in one hit, the brute in four, « Le Caïd » in fourteen from round 3, more afterwards (v1.9.16); the other rioters have 2 HP. The first hit never causes a surrender.
 
-Les contacts sont synchronisés aux images utiles de l’animation. Recul court, réaction et flash d’impact lisible sans sang. Les corps KO ne sont plus ciblables, ne bloquent pas le passage et ne rapportent plus de points.
+Contacts are synchronised with the useful frames of the animation. Short knockback, reaction and a readable impact flash without blood. KO bodies can no longer be targeted, do not block passage and no longer earn points.
 
-### 8.2 Lanceurs ennemis
+### 8.2 Enemy throwers
 
-Le rôle « lanceur » est indépendant de la variante visuelle : un casseur classique ou à drapeau peut lancer une pierre. Aucun drapeau n’attribue automatiquement une statistique supérieure.
+The "thrower" role is independent of the visual variant: a classic or flag-bearing rioter can throw a stone. No flag automatically grants a higher statistic.
 
-Objets : caillou, pavé, brique. En V1, ils peuvent partager les mêmes valeurs de dégâts avec des sprites différents. Pas d’explosif ni d’arme à feu ajouté implicitement. La bouteille incendiaire (Molotov) est réservée au casseur dédié de la section 10.2, qui vise les lieux, et, **modifié (v1.9.4)**, aux lanceurs sur Paul de la section 10.9, dont la bouteille laisse une flaque de feu au sol.
+Objects: pebble, cobblestone, brick. In V1, they may share the same damage values with different sprites. No explosive or firearm added implicitly. The incendiary bottle (Molotov) is reserved for the dedicated rioter of section 10.2, who targets places, and, **changed (v1.9.4)**, for the throwers aimed at Paul in section 10.9, whose bottle leaves a pool of fire on the ground.
 
-Chaque lancer possède une préparation, une direction/zone annoncée et un délai de trajet. Paramètres de départ : préparation d’au moins 0,6 seconde ; portée 280 à 360 pixels ; trajet d’au moins 0,5 seconde sur une cible éloignée ; 5 PV perdus par impact au départ. Un intervalle individuel empêche le tir continu.
+Each throw has a wind-up, an announced direction/zone and a travel delay. Starting parameters: wind-up of at least 0.6 seconds; range 280 to 360 pixels; travel of at least 0.5 seconds against a distant target; 5 HP lost per impact at the start. An individual interval prevents continuous fire.
 
-Un petit arc visuel et une ombre peuvent représenter la trajectoire, mais la collision est calculée dans le plan 2D. Le point d’impact ou la trajectoire est visible avant les dégâts. Les lancers hors écran nécessitent un avertissement et ne sont pas autorisés à très courte distance sans préparation.
+A small visual arc and a shadow may represent the trajectory, but the collision is computed in the 2D plane. The impact point or trajectory is visible before the damage. Off-screen throws require a warning and are not allowed at very short distance without a wind-up.
 
-### 8.3 Cycle de récupération et renvoi
+### 8.3 Recovery and throw-back cycle
 
 ```mermaid
 flowchart LR
-  A[Lancer ennemi] --> B[Projectile en vol]
-  B -->|Paul évite le projectile| C[Chute au sol]
-  B -->|Contact avec Paul| D[Dégâts puis chute]
-  B -->|Obstacle ou groupe neutre hors événement| E[Arrêt sans dommage aux neutres]
-  C --> F[Pierre récupérable]
+  A[Enemy thrower] --> B[Projectile in flight]
+  B -->|Paul dodges the projectile| C[Falls to the ground]
+  B -->|Contact with Paul| D[Damage then fall]
+  B -->|Obstacle or neutral group outside an event| E[Stops without harming neutrals]
+  C --> F[Recoverable stone]
   D --> F
-  E -->|Zone de chute valide| F
-  F -->|À portée et stock libre| G[Stock de Paul]
-  G -->|Action Renvoyer| H[Projectile du joueur]
-  H --> I[Impact ou fin de portée]
-  I --> J[Objet inerte retiré : pas de récupération infinie]
+  E -->|Valid drop zone| F
+  F -->|In range and free stock slot| G[Paul's stock]
+  G -->|Throw-back action| H[Player projectile]
+  H --> I[Impact or end of range]
+  I --> J[Inert object removed: no infinite recovery]
 ```
 
-Proposition V1 : récupération des **projectiles ennemis au sol**, pas interception en vol. Ramassage automatique dans un rayon d’environ 28 pixels, seulement s’il reste une place. Un projectile en vol ne peut pas être ramassé.
+V1 proposal: recovery of **enemy projectiles on the ground**, not interception in flight. Automatic pickup within a radius of about 28 pixels, only if a slot remains. A projectile in flight cannot be picked up.
 
-Stock maximal : trois objets. Stock plein : l’objet reste au sol. Le nombre porté est visible. Aucun achat, fabrication ou inventaire à ouvrir.
+Maximum stock: three objects. Stock full: the object stays on the ground. The number carried is visible. No purchase, crafting or inventory to open.
 
-Renvoyer consomme un objet porté, crée un projectile appartenant au joueur et suit la direction choisie au lancement. Aucun guidage automatique une fois en vol. Paramètres initiaux : un point de dégât, portée d’environ 360 pixels et intervalle de 0,5 seconde. Un seul casseur touché, pas de ricochet en chaîne en V1.
+Throwing back consumes one carried object, creates a projectile belonging to the player and follows the direction chosen at launch. No automatic guidance once in flight. Initial parameters: one point of damage, range of about 360 pixels and interval of 0.5 seconds. Only one rioter hit, no chain ricochet in V1.
 
-Après un renvoi, l’objet devient inerte à son prochain contact ou en fin de course et est retiré ; il n’alimente pas une boucle de ramassage infinie. Seules les nouvelles pierres ennemies produisent des objets récupérables. La collision avec Paul du projectile qu’il vient de renvoyer est désactivée.
+After a throw-back, the object becomes inert on its next contact or at the end of its course and is removed; it does not feed an infinite pickup loop. Only new enemy stones produce recoverable objects. Collision with Paul of the projectile he has just thrown back is disabled.
 
-### 8.4 Règles d’impact
+### 8.4 Impact rules
 
-| Source | Cible | Effet |
+| Source | Target | Effect |
 | --- | --- | --- |
-| Contact du joueur | Casseur actif | Dégâts et éventuellement KO ; KO immédiat avec une arme |
-| Pierre ennemie en vol | Paul | Dégâts, puis chute récupérable en zone valide |
-| Pierre renvoyée | Casseur actif | Dégâts ; score seulement si KO |
-| Coup / pierre de Paul | Groupe pacifique ou victime à secourir | Aucun dégât, aucun KO, aucune unité au compteur de casseurs neutralisés |
-| Attaque d’un agresseur affecté à un secours | Victime de cet événement | Réduit le délai / la jauge de détresse de cet événement, sans gore |
-| Attaque ennemie ordinaire hors secours | Groupe pacifique | Pas de dégâts de foule non scénarisés ni d’événement silencieux |
-| Pierre en vol | Obstacle solide | Arrêt ; chute ou retrait selon espace disponible |
-| Pierre renvoyée | Corps KO | Pas de nouveau score ; ne sert pas de cible active |
+| Player contact | Active rioter | Damage and possibly KO; immediate KO with a weapon |
+| Enemy stone in flight | Paul | Damage, then recoverable fall in a valid zone |
+| Thrown-back stone | Active rioter | Damage; score only if KO |
+| Paul's hit / stone | Peaceful group or victim to rescue | No damage, no KO, no unit added to the « Casseurs neutralisés » counter |
+| Attack by an aggressor assigned to a rescue | Victim of that event | Reduces the deadline / distress gauge of that event, without gore |
+| Ordinary enemy attack outside a rescue | Peaceful group | No unscripted crowd damage or silent event |
+| Stone in flight | Solid obstacle | Stops; falls or is removed depending on available space |
+| Thrown-back stone | KO body | No new score; not used as an active target |
 
-Le KO a le même barème quelle que soit l’origine des dégâts de Paul : mains nues, arme ou renvoi. Aucun bonus supplémentaire pour un projectile ou une arme.
+KO has the same scale whatever the origin of Paul's damage: bare hands, weapon or throw-back. No additional bonus for a projectile or a weapon.
 
-### 8.5 Groupes pacifiques protégés
+### 8.5 Protected peaceful groups
 
-Les manifestants sont regroupés, avec pancartes et animation calme. Le ciblage, la frappe circulaire et le renvoi de Paul les excluent : un manifestant dans le rayon de frappe n’est ni touché ni compté parmi les trois cibles. Ils ne possèdent pas de transition de KO infligée par le joueur. Pendant un secours identifié, un sous-ensemble du groupe ou une victime désignée peut passer en détresse sous la menace des agresseurs affectés à cet événement.
+The demonstrators are grouped, with placards and a calm animation. Paul's targeting, circular strike and throw-back exclude them: a demonstrator within the strike radius is neither hit nor counted among the three targets. They have no KO transition inflicted by the player. During an identified rescue, a subset of the group or a designated victim may go into distress under the threat of the aggressors assigned to that event.
 
-**Ajouté (v1.9.10, demande du porteur du projet) — bulle de mécontentement.** Au-dessus du groupe de manifestants pacifiques, une bulle pixel à bordure et texte rouges affiche tour à tour une phrase de protestation neutre, 2,8 s sur 4,2 s, avec un léger tremblement : « ÇA SUFFIT ! », « ON EN A MARRE ! », « ARRÊTEZ ÇA ! », « STOP À LA CASSE ! », « C’EST HONTEUX ! ». Les phrases ne visent aucun groupe en particulier, ne contiennent ni insulte ni mot-clé politique, et la bulle ne change rien au jeu (le groupe reste non ciblable).
+**Added (v1.9.10, project owner's request) — discontent bubble.** Above the group of peaceful demonstrators, a pixel bubble with red border and text displays in turn a neutral protest phrase, 2.8 s out of every 4.2 s, with a slight tremble: « ÇA SUFFIT ! » (Enough!), « ON EN A MARRE ! » (We've had enough!), « ARRÊTEZ ÇA ! » (Stop that!), « STOP À LA CASSE ! » (Stop the damage!), « C’EST HONTEUX ! » (It's shameful!). The phrases target no group in particular, contain no insult or political keyword, and the bubble changes nothing in the game (the group remains untargetable).
 
-Les groupes occupent un espace identifiable à contourner. Leurs positions ne peuvent pas bloquer entièrement un objectif, une sortie ou un soin. Le joueur ne peut pas les déplacer ou les disperser à coups. Les ennemis doivent également pouvoir les contourner.
+The groups occupy an identifiable space to go around. Their positions cannot entirely block an objective, an exit or a heal. The player cannot move or disperse them by hitting. Enemies must also be able to go around them.
 
-Un projectile de Paul qui rencontre le volume protégé du groupe est arrêté sans blessure. Un projectile ennemi ordinaire suit aussi cette protection ; seule une attaque explicitement affectée à un secours peut faire avancer sa menace. Une chute récupérable exige une position libre hors du groupe ; sinon l’objet est retiré. Les pierres renvoyées arrêtées deviennent inertes. Les sprites neutres ne servent pas à masquer un casseur intouchable : ordre d’affichage, navigation et trajectoires doivent être vérifiés.
+A projectile from Paul that meets the group's protected volume is stopped without injury. An ordinary enemy projectile also follows this protection; only an attack explicitly assigned to a rescue can advance its threat. A recoverable drop requires a free position outside the group; otherwise the object is removed. Thrown-back stones that are stopped become inert. Neutral sprites must not be used to hide an untouchable rioter: display order, navigation and trajectories must be checked.
 
-L’intérêt d’éviter les groupes vient du déplacement et des lignes de renvoi, pas de dégâts infligés par Paul aux manifestants. Il faut distinguer cette protection permanente contre le joueur de la détresse provoquée par des ennemis dans un secours annoncé. Aucun score positif ou négatif de « frappe sur manifestant » n’est déclenché, puisque ces contacts sont exclus. Les pénalités héritées restent applicables aux autres personnes protégées si elles sont touchables ; une extension d’invulnérabilité à tous les neutres reste possible, à décider explicitement.
+The point of avoiding the groups comes from movement and throw-back lines, not from damage dealt by Paul to the demonstrators. This permanent protection against the player must be distinguished from the distress caused by enemies in an announced rescue. No positive or negative "hit on demonstrator" score is triggered, since these contacts are excluded. Inherited penalties remain applicable to other protected persons if they can be touched; an extension of invulnerability to all neutrals remains possible, to be decided explicitly.
 
-### 8.6 Santé
+### 8.6 Health
 
-100 PV au départ, pas de régénération passive en normal. Contacts et projectiles peuvent réduire la santé. Brève invulnérabilité après impact, proposée à 0,6 seconde, pour éviter des dégâts simultanés illisibles. Un projectile ne produit qu’un événement de dommage par trajectoire.
+100 HP at the start, no passive regeneration in normal mode. Contacts and projectiles can reduce health. Brief invulnerability after impact, proposed at 0.6 seconds, to avoid unreadable simultaneous damage. A projectile produces only one damage event per trajectory.
 
-La progression des dégâts est plafonnée comme celle des assauts. Les soins décrits en section 12 sont conservés. Le KO du héros reste la seule défaite globale.
+Damage progression is capped like that of the assaults. The heals described in section 12 are kept. The hero's KO remains the only global defeat.
 
-### 8.7 Armes ramassables
+### 8.7 Pickup weapons
 
-**Confirmé (EX-25) :** des armes apparaissent au hasard dans les rues. Elles remplacent l’ancienne extension « accessoires de contact ». Aucun gore. **Modifié (v1.9) :** l’interdiction des armes à feu est levée pour le flashball de Paul et les tireurs ennemis, en style cartoon (EX-07, livrés en v1.9.15).
+**Confirmed (EX-25):** weapons appear at random in the streets. They replace the former "contact props" extension. No gore. **Changed (v1.9):** the ban on firearms is lifted for Paul's flashball and the enemy shooters, in cartoon style (EX-07, delivered in v1.9.15).
 
-| Règle | Valeur |
+| Rule | Value |
 | --- | --- |
-| Emplacement d’apparition | Point libre et praticable, à 160–480 pixels logiques de Paul, hors groupe pacifique et hors obstacle |
-| Rythme | **Modifié (v1.9.16, demande du porteur du projet : « il y a peut-être un poil trop d’armes ») :** première arme après 20 secondes (`weapons.firstSpawn`), puis une toutes les 30 à 45 secondes (`spawnEvery`) ; une apparition manquée (plafond, arme proche de Paul) attend le tour suivant |
-| Plafond au sol | **Modifié (v1.9.16) :** le minuteur de rue ne pose une arme que s’il n’y en a aucune au sol (`maxGround` : 1, toutes origines comptées) ; au-delà, aucune apparition ni réserve invisible. L’arme du retournement (une fois sur deux quand ce n’est pas le bouclier), celle du répit (fin des manches paires seulement) et celle du Caïd (une fois sur deux) s’y ajoutent hors plafond, à 160–480 px de Paul (le Caïd : là où il tombe), et disparaissent après 15 s (`weapons.dropLifetime`). **Ajouté (v1.9.24) :** une arme de rue que personne ne ramasse disparaît au bout de **60 s** (`weapons.groundLifetime`), ce qui libère le plafond (le minuteur peut reposer une arme au tour suivant) ; le flashball garanti du premier tireur aussi (60 s, il ne restait plus indéfiniment) ; les dépôts spéciaux gardent leurs 15 s. Toute arme qui va disparaître clignote pendant ses 3 dernières secondes (plus vite la dernière), comme les dépôts spéciaux et les petits soins (instantané `weaponsOnGround[].expiresAt`) |
-| Pas de tas | **Ajouté (v1.9.16) :** aucune arme ordinaire n’est déposée (rue, retournement, répit, Caïd) tant qu’une arme est déjà au sol à 200 px ou moins de Paul (`weapons.clearRadius`) ; le bouclier et le flashball garanti du premier tireur n’y sont pas soumis |
-| Fréquence obtenue | Mesurée avec le bot de test (KO différé de 6 à 12 s, ramassage 4 s après l’apparition, graines 1 à 6) : environ 31 à 39 armes et boucliers posés pour 10 manches, contre 61 à 76 avant v1.9.16 (à peu près moitié moins) |
-| Ramassage | Automatique en passant dessus (20 px) ; la nouvelle arme remplace l’arme tenue, qui disparaît (le mode furie et l’onde d’énergie viennent de la jauge d’énergie et n’y touchent pas, sections 8.8 et 8.9 ; **modifié (v1.9.16) :** le bouclier non plus : il s’ajoute à l’arme tenue) |
-| Effet | Toute arme met un casseur KO en un coup ; **modifié (v1.9.13) :** sur un costaud (4 PV) ou « Le Caïd » (14 PV en manche 3, puis davantage, v1.9.16) un coup d’arme ordinaire ne fait que 2 dégâts (`toughWeaponDamage` et `caid.damageFrom.weapon` : 2 coups pour un costaud, 7 pour le Caïd de la manche 3 ; section 12.14) ; portée propre à chaque arme ; frappe circulaire, trois cibles au maximum, sauf le gant de boxe (coup droit de 160 px, premier casseur sur la ligne) et le flashball (tir visé, premier casseur touché) (v1.9.15) |
-| Usure | Seul un coup touchant au moins un casseur consomme une charge ; à zéro, l’arme se brise et Paul revient à mains nues (56 pixels) |
-| Manches | L’arme tenue et ses coups restants sont conservés d’une manche à la suivante |
+| Spawn location | Free, walkable point, 160–480 logical pixels from Paul, outside a peaceful group and outside an obstacle |
+| Rate | **Changed (v1.9.16, project owner's request: « il y a peut-être un poil trop d’armes » — there may be a touch too many weapons):** first weapon after 20 seconds (`weapons.firstSpawn`), then one every 30 to 45 seconds (`spawnEvery`); a missed spawn (cap, weapon near Paul) waits for the next turn |
+| Ground cap | **Changed (v1.9.16):** the street timer places a weapon only if there is none on the ground (`maxGround`: 1, all origins counted); beyond that, no spawn and no invisible reserve. The weapon from the twist (one time in two when it is not the shield), the one from the breather (end of even rounds only) and the Caïd's (one time in two) are added outside the cap, at 160–480 px from Paul (the Caïd's: where he falls), and disappear after 15 s (`weapons.dropLifetime`). **Added (v1.9.24):** a street weapon that nobody picks up disappears after **60 s** (`weapons.groundLifetime`), which frees the cap (the timer can place a weapon again on the next turn); the first shooter's guaranteed flashball too (60 s, it no longer stayed indefinitely); special drops keep their 15 s. Any weapon about to disappear blinks during its last 3 seconds (faster in the last one), like special drops and small heals (snapshot `weaponsOnGround[].expiresAt`) |
+| No piles | **Added (v1.9.16):** no ordinary weapon is dropped (street, twist, breather, Caïd) while a weapon is already on the ground within 200 px of Paul (`weapons.clearRadius`); the shield and the first shooter's guaranteed flashball are not subject to it |
+| Frequency obtained | Measured with the test bot (deferred KO of 6 to 12 s, pickup 4 s after the spawn, seeds 1 to 6): about 31 to 39 weapons and shields placed over 10 rounds, against 61 to 76 before v1.9.16 (roughly half as many) |
+| Pickup | Automatic by walking over it (20 px); the new weapon replaces the held weapon, which disappears (fury mode and the energy wave come from the energy gauge and do not touch it, sections 8.8 and 8.9; **changed (v1.9.16):** neither does the shield: it is added to the held weapon) |
+| Effect | Any weapon knocks a rioter out in one hit; **changed (v1.9.13):** against a brute (4 HP) or « Le Caïd » (14 HP in round 3, then more, v1.9.16) an ordinary weapon hit deals only 2 damage (`toughWeaponDamage` and `caid.damageFrom.weapon`: 2 hits for a brute, 7 for the Caïd of round 3; section 12.14); reach specific to each weapon; circular strike, three targets at most, except the boxing glove (straight punch of 160 px, first rioter on the line) and the flashball (aimed shot, first rioter hit) (v1.9.15) |
+| Wear | Only a hit touching at least one rioter consumes a charge; at zero, the weapon breaks and Paul returns to bare hands (56 pixels) |
+| Rounds | The held weapon and its remaining hits are kept from one round to the next |
 
-Armes de contact actuelles (**Confirmé**, valeurs en paramètre initial) :
+Current contact weapons (**Confirmed**, values as initial parameters):
 
-| Arme | Portée | Coups |
+| Weapon | Reach | Hits |
 | --- | ---: | ---: |
-| Bâton | 72 pixels | 15 |
-| Marteau | 64 pixels | 8 |
-| Panneau de signalisation (« Panneau » en jeu) | 96 pixels | 10 |
+| Stick | 72 pixels | 15 |
+| Hammer | 64 pixels | 8 |
+| Road sign (« Panneau » in game) | 96 pixels | 10 |
 
-Présentation : une arme au sol flotte, oscille et brille pour être repérée ; l’arme tenue tourne sur elle-même à chaque coup. La ligne « ARME » de la liste de score (section 14.1) affiche « <nom> (<coups>) » ou « Mains nues ». Le score d’un KO à l’arme est identique à celui d’un KO à mains nues ou par renvoi.
+Presentation: a weapon on the ground floats, oscillates and shines to be spotted; the held weapon spins on itself with each hit. The « ARME » (weapon) line of the score list (section 14.1) displays « <name> (<hits>) » or « Mains nues » (bare hands). The score for a KO with a weapon is identical to that of a KO bare-handed or by throw-back.
 
-**Nouvelles armes débloquées par manche — tranche 2 :**
+**New weapons unlocked per round — slice 2:**
 
-| Arme | Comportement | Disponibilité |
+| Weapon | Behaviour | Availability |
 | --- | --- | --- |
-| Gant de boxe à ressort (« Gant de boxe » en jeu) | **Livré (v1.9.15, section 12.14)** : Frapper donne un coup de poing à ressort de 160 px en ligne droite (vers la visée, sinon l’orientation) ; le premier casseur touché est mis KO et repoussé de 32 px (corps projeté en culbute) ; arrêté par le premier obstacle, le groupe pacifique et la victime ; 6 coups, un coup n’est usé que s’il touche | Rues dès la manche 3 |
-| Flashball (cartoon) | **Livré (v1.9.15, section 12.14)** : Frapper tire une balle à 420 px/s (480 px au plus) vers la souris ; sans visée, vers l’orientation avec une légère aide (le casseur actif le plus proche à ±12° et 320 px, ligne dégagée) ; KO du premier casseur touché ; arrêtée par bâtiments, mobilier, groupe pacifique et victime ; 6 coups, chaque tir en use un, touché ou non | Rues dès la manche 5 ; un flashball garanti à l’entrée du premier tireur de la partie (manche 6 ; il disparaît après 60 s s’il n’est pas ramassé, v1.9.24) |
-| Onde d’énergie (identifiant `kamehame`) | **Modifié (v1.9.14) :** n’est plus une arme ramassée ; pouvoir de la jauge d’énergie, voir section 8.9 | Dès la manche 1, jauge à 50 ou plus |
-| Bouclier | **Confirmé et livré (v1.9.7)**, protection seule depuis v1.9.16 : voir section 8.9 | Retournement dès la manche 3 (une fois sur deux), rue dès la manche 5 |
+| Spring boxing glove (« Gant de boxe » in game) | **Delivered (v1.9.15, section 12.14)**: Strike throws a spring punch of 160 px in a straight line (toward the aim, otherwise the facing); the first rioter hit is knocked out and pushed back 32 px (body thrown in a tumble); stopped by the first obstacle, the peaceful group and the victim; 6 hits, a hit is used only if it connects | Streets from round 3 |
+| Flashball (cartoon) | **Delivered (v1.9.15, section 12.14)**: Strike fires a ball at 420 px/s (480 px at most) toward the mouse; with no aim, toward the facing with slight assistance (the nearest active rioter within ±12° and 320 px, clear line); KO of the first rioter hit; stopped by buildings, furniture, the peaceful group and the victim; 6 hits, each shot uses one, hit or miss | Streets from round 5; a guaranteed flashball at the entry of the game's first shooter (round 6; it disappears after 60 s if not picked up, v1.9.24) |
+| Energy wave (identifier `kamehame`) | **Changed (v1.9.14):** is no longer a picked-up weapon; energy gauge power, see section 8.9 | From round 1, gauge at 50 or more |
+| Shield | **Confirmed and delivered (v1.9.7)**, protection only since v1.9.16: see section 8.9 | Twist from round 3 (one time in two), street from round 5 |
 
-Ton cartoon, aucun gore ; armes à feu cartoon seulement dans les conditions d’EX-07. Équilibrage : les armes puissantes restent rares et sont associées à l’arrivée de casseurs plus résistants. Les rayons et coups à distance respectent la protection des groupes pacifiques et des victimes (section 8.5) : ils s’arrêtent sur leur volume sans les blesser.
+Cartoon tone, no gore; cartoon firearms only under the conditions of EX-07. Balance: powerful weapons remain rare and are associated with the arrival of tougher rioters. Rays and ranged hits respect the protection of peaceful groups and victims (section 8.5): they stop on their volume without hurting them.
 
-### 8.8 Jauge d’énergie et mode furie
+### 8.8 Energy gauge and fury mode
 
-**Modifié (v1.9.14, demande du porteur du projet : « plutôt que le mode saiyan et le kamehame soient des armes qu’on ramasse, je préfère que ça soit une sorte de barre de mana qu’on alimente à chaque fois qu’on met KO un émeutier. Une fois que cette barre de mana est pleine, on peut l’activer quand on veut ») :** le mode furie et l’onde d’énergie ne se ramassent plus. Ils viennent d’une **jauge d’énergie** que chaque KO remplit ; le joueur les déclenche quand il veut. Aucun objet furie ou onde n’apparaît au sol, au retournement, dans la rue ou au répit, et il n’y a plus ni bannière ni indicateur pour eux.
+**Changed (v1.9.14, project owner's request: « plutôt que le mode saiyan et le kamehame soient des armes qu’on ramasse, je préfère que ça soit une sorte de barre de mana qu’on alimente à chaque fois qu’on met KO un émeutier. Une fois que cette barre de mana est pleine, on peut l’activer quand on veut » — rather than the saiyan mode and the kamehame being weapons you pick up, I would prefer a sort of mana bar that is fed each time a rioter is knocked out; once that mana bar is full, it can be activated whenever wanted):** fury mode and the energy wave are no longer picked up. They come from an **energy gauge** that each KO fills; the player triggers them whenever they want. No fury or wave object appears on the ground, at the twist, in the street or at the breather, and there is no longer any banner or indicator for them.
 
-**Modifié (v1.9.23, retour du porteur du projet : il n’arrivait pas à lancer l’onde d’énergie et voulait un mode furie plus long) :** la jauge se remplit plus vite (+6 par casseur, +10 par costaud, +25 pour le Caïd, au lieu de +4 / +8 / +20), le mode furie dure **18 s** au lieu de 12 s, et l’onde se lance d’**un seul appui** (section 8.9). La ligne ÉNERGIE dit quelle touche presser : « C · Onde » dès 50, « R · Furie » à 100.
+**Changed (v1.9.23, project owner's feedback: they could not manage to launch the energy wave and wanted a longer fury mode):** the gauge fills faster (+6 per rioter, +10 per brute, +25 for the Caïd, instead of +4 / +8 / +20), fury mode lasts **18 s** instead of 12 s, and the wave is launched with **a single press** (section 8.9). The ÉNERGIE line says which key to press: « C · Onde » (C · Wave) from 50, « R · Furie » (R · Fury) at 100.
 
-| Règle | Valeur (paramètres `CONFIG.energy`) |
+| Rule | Value (`CONFIG.energy` parameters) |
 | --- | --- |
-| Jauge | 0 à 100 (`max`), simulée (déterministe) ; conservée d’une manche à l’autre, remise à 0 par Rejouer ; aucune baisse avec le temps |
-| Remplissage | Chaque casseur mis KO compté par la règle de score (`Rules.onKnockout`) : +6 (`gain.rioter`, coureurs compris), +10 pour un costaud (`gain.brute`), +25 pour « Le Caïd » (`gain.boss`), plafonné à 100 (**modifié v1.9.23**, avant +4 / +8 / +20). Aucun gain pendant le mode furie ni pour les KO de l’onde d’énergie (pas de recharge en chaîne). Les KO à mains nues, à l’arme et par pierre renvoyée remplissent la jauge |
-| Seuils | 50 (`ondeCost`) : l’onde d’énergie devient disponible ; 100 (`furieCost`) : le mode furie devient disponible. Événement `EnergyReady { level: 'onde' \| 'furie' }` une fois à chaque franchissement vers le haut (de nouveau après être repassé sous le seuil) |
-| Mode furie | R (téléphone : bouton Furie) avec la jauge pleine : la jauge entière est dépensée et le mode démarre aussitôt pour 18 s (`FurieStarted` ; **modifié v1.9.23**, avant 12 s) ; une charge d’onde en cours est annulée sans coût. Pendant le mode la jauge reste vide et ne se remplit pas. Ignoré pendant le mode, la pause ou Paul KO |
-| Refus | R avec une jauge incomplète, ou C sous 50 : rien ne se passe, `EnergyRefused { need }`, court message « Énergie insuffisante » dans la ligne ÉNERGIE et son sourd « toc » |
+| Gauge | 0 to 100 (`max`), simulated (deterministic); kept from one round to the next, reset to 0 by Replay; no decrease over time |
+| Filling | Each rioter knocked out and counted by the score rule (`Rules.onKnockout`): +6 (`gain.rioter`, runners included), +10 for a brute (`gain.brute`), +25 for « Le Caïd » (`gain.boss`), capped at 100 (**changed v1.9.23**, previously +4 / +8 / +20). No gain during fury mode nor for KOs from the energy wave (no chain recharge). KOs bare-handed, with a weapon and by thrown-back stone fill the gauge |
+| Thresholds | 50 (`ondeCost`): the energy wave becomes available; 100 (`furieCost`): fury mode becomes available. Event `EnergyReady { level: 'onde' \| 'furie' }` once at each upward crossing (again after dropping back below the threshold) |
+| Fury mode | R (phone: Furie button) with the gauge full: the entire gauge is spent and the mode starts at once for 18 s (`FurieStarted`; **changed v1.9.23**, previously 12 s); a wave charge in progress is cancelled at no cost. During the mode the gauge stays empty and does not fill. Ignored during the mode, the pause or when Paul is KO |
+| Refusal | R with an incomplete gauge, or C below 50: nothing happens, `EnergyRefused { need }`, short message « Énergie insuffisante » (Not enough energy) in the ÉNERGIE line and a dull "toc" sound |
 
-Le mode furie lui-même est inchangé (paramètres `CONFIG.furie`) :
+Fury mode itself is unchanged (`CONFIG.furie` parameters):
 
-| Règle | Valeur |
+| Rule | Value |
 | --- | --- |
-| Activation | Depuis la jauge pleine (ci-dessus), 18 s (`durationSec`, **modifié v1.9.23**, avant 12 s) ; l’arme tenue garde ses coups et reste utilisable |
-| Déplacement | Marche et course ×1,35 (`speedMul`) |
-| Frappe | Portée ×1,5 à mains nues comme avec une arme (`reachMul`), jusqu’à 8 casseurs par coup (`maxTargets`, 3 hors mode), KO en un coup même à mains nues, sauf « Le Caïd » qui prend 5 dégâts par coup (v1.9.16, section 12.14) ; le coup ne consomme pas de charge d’arme |
-| Dégâts reçus | ×0,5 (`damageTakenMul`) |
-| Fin | Minuteur écoulé, ou Paul KO (fin immédiate) ; la pause gèle le minuteur ; Rejouer repart sans mode et jauge vide |
-| Envol | Chaque casseur mis KO par un coup de Paul pendant le mode s’envole en tourbillon (purement visuel, aucune règle de jeu changée) : direction opposée à Paul avec un léger écart, 220–420 px, 2 à 5 tours, tirés d’un flux aléatoire séparé et déterministe ; chaque KO compte toujours +1. Le renvoi de pierre est inchangé |
+| Activation | From the full gauge (above), 18 s (`durationSec`, **changed v1.9.23**, previously 12 s); the held weapon keeps its hits and remains usable |
+| Movement | Walking and running ×1.35 (`speedMul`) |
+| Strike | Reach ×1.5 bare-handed as with a weapon (`reachMul`), up to 8 rioters per hit (`maxTargets`, 3 outside the mode), KO in one hit even bare-handed, except « Le Caïd » who takes 5 damage per hit (v1.9.16, section 12.14); the hit does not consume a weapon charge |
+| Damage taken | ×0.5 (`damageTakenMul`) |
+| End | Timer elapsed, or Paul KO (immediate end); the pause freezes the timer; Replay restarts with no mode and an empty gauge |
+| Flight | Each rioter knocked out by a hit from Paul during the mode flies off in a whirl (purely visual, no game rule changed): direction opposite to Paul with a slight deviation, 220–420 px, 2 to 5 turns, drawn from a separate, deterministic random stream; each KO still counts +1. The stone throw-back is unchanged |
 
-Présentation : aura jaune-blanc additive à pointes derrière Paul avec pulsation, étincelles en flammes qui montent, teinte chaude du sprite et contour doré, fin anneau de minuterie aux pieds ; l’aura faiblit et clignote pendant les 2 dernières secondes. Les corps envolés tournoient pendant environ 0,7 s (trajet amorti, arc, léger écrasement, traînée d’étoiles et de poussière) au-dessus du décor, puis retombent au point libre le plus éloigné de leur trajet, jamais hors de la carte ni dans un mur, et restent au sol comme les autres corps. Chaque coup qui touche pendant le mode affiche une courte bulle pixel « POW ! » / « BOUM ! » (réutilisée) et une très légère secousse de caméra, supprimée avec `prefers-reduced-motion`. HUD : ligne « ÉNERGIE » (section 14.1) dont la barre se vide sur les 18 s (`durationSec`) ; ligne « ARME » « Bâton (12) · Mode furie 9 s » (secondes arrondies au supérieur, valeur en jaune ; « Bâton (12) · Bouclier 14 s · Mode furie 9 s » avec le bouclier) ; bannière courte sans flèche « MODE FURIE ! » à l’activation. Son : carillon clair quand la jauge est pleine, montée synthétique au début, bourdonnement grave pendant le mode (une voix du plafond, coupé par la sourdine et la pause), descente à la fin.
+Presentation: additive yellow-white spiked aura behind Paul with pulsation, rising flame-shaped sparks, warm tint of the sprite and golden outline, thin timer ring at the feet; the aura weakens and blinks during the last 2 seconds. The flown bodies whirl for about 0.7 s (damped path, arc, slight squash, trail of stars and dust) above the scenery, then fall back at the free point farthest along their path, never off the map nor into a wall, and stay on the ground like the other bodies. Each hit that connects during the mode displays a short pixel bubble « POW ! » / « BOUM ! » (reused) and a very slight camera shake, suppressed with `prefers-reduced-motion`. HUD: « ÉNERGIE » line (section 14.1) whose bar empties over the 18 s (`durationSec`); « ARME » line « Bâton (12) · Mode furie 9 s » (seconds rounded up, value in yellow; « Bâton (12) · Bouclier 14 s · Mode furie 9 s » with the shield); short arrowless banner « MODE FURIE ! » on activation. Sound: clear chime when the gauge is full, synthetic rise at the start, low hum during the mode (one voice from the cap, cut by mute and pause), descent at the end.
 
-### 8.9 Bouclier et onde d’énergie
+### 8.9 Shield and energy wave
 
-**Confirmé (v1.9.7), modifié (v1.9.14, v1.9.16) :** le **bouclier** reste le seul spécial ramassé : il se ramasse en passant dessus. **Modifié (v1.9.16, demande du porteur du projet : « le bouclier doit juste protéger, pas faire des dégâts supplémentaires ») :** il **ne remplace plus l’arme tenue** et **ne frappe plus** : le ramasser lance un minuteur de protection par-dessus l’arme tenue (ou les mains nues), comme le faisait l’ancien minuteur du mode furie ; Frapper reste exactement le coup normal de Paul. L’**onde d’énergie** n’est plus une arme : c’est le second pouvoir de la jauge d’énergie (section 8.8), sans emplacement d’arme ni compteur d’usages ; elle se combine avec l’arme tenue et le bouclier. Visuels originaux en pixel art, sans emprunt à une franchise existante ; l’identifiant interne de l’onde reste `kamehame`, le nom en jeu est « Onde d’énergie ».
+**Confirmed (v1.9.7), changed (v1.9.14, v1.9.16):** the **shield** remains the only special picked up: it is picked up by walking over it. **Changed (v1.9.16, project owner's request: « le bouclier doit juste protéger, pas faire des dégâts supplémentaires » — the shield must just protect, not deal extra damage):** it **no longer replaces the held weapon** and **no longer strikes**: picking it up starts a protection timer on top of the held weapon (or bare hands), as the former fury mode timer did; Strike remains exactly Paul's normal hit. The **energy wave** is no longer a weapon: it is the second power of the energy gauge (section 8.8), with no weapon slot or use counter; it combines with the held weapon and the shield. Original pixel-art visuals, with no borrowing from an existing franchise; the internal identifier of the wave remains `kamehame`, the in-game name is « Onde d’énergie » (Energy wave).
 
-| Règle | Bouclier (`CONFIG.bouclier`) | Onde d’énergie (`CONFIG.kamehame`, coût `CONFIG.energy.ondeCost`) |
+| Rule | Shield (`CONFIG.bouclier`) | Energy wave (`CONFIG.kamehame`, cost `CONFIG.energy.ondeCost`) |
 | --- | --- | --- |
-| Durée / usages | 20 s de temps de jeu actif (`durationSec`), la pause gèle le minuteur ; un second bouclier ramassé le remet à 20 s ; Paul KO l’arrête aussitôt ; à la fin, la bulle éclate (« ShieldEnded », v1.9.16) et l’arme tenue reste en main avec ses coups ; aucun compteur de coups | Disponible dès que la jauge atteint 50 ; chaque tir coûte 50, payés au départ du rayon (deux tirs depuis une jauge pleine) |
-| Effet | **Modifié (v1.9.12, demande du porteur du projet : « il faut que le bouclier soit une sorte de bulle de protection ») :** une **bulle de protection** autour de Paul, dans toutes les directions (360°, plus de cône ni d’orientation) : toute pierre, toute bouteille des lanceurs sur Paul et (v1.9.15) toute balle des tireurs qui l’atteindrait est bloquée, de face, de côté ou de dos (même pendant l’invulnérabilité ; une balle bloquée disparaît). Une pierre bloquée tombe au point d’impact, récupérable, sans dégât ; une bouteille bloquée s’éteint sans flaque (« ShieldBlocked » sur le bord de Paul, du côté du lanceur). Une pierre qui passe à côté de Paul n’est pas arrêtée. Coups au contact et flaques déjà au sol : non bloqués | **Modifié (v1.9.23, retour du porteur du projet : il n’arrivait pas à lancer l’onde) :** **un seul appui** sur C (téléphone : bouton Onde) lance une charge de 0,7 s (`chargeSec`, avant 1 s) qui **se termine seule** : la touche n’a pas à rester enfoncée et la relâcher n’annule plus rien. La charge démarre sur un nouvel appui (front montant) ; un nouvel appui pendant la charge ne change rien. Paul ne se déplace pas pendant la charge (la visée à la souris l’oriente). Seuls **le KO de Paul** ou **le déclenchement du mode furie** l’annulent, **sans rien dépenser** ; **prendre un coup ne l’annule plus**. À 0,7 s le rayon part seul et 50 d’énergie sont dépensés (rien avant) : 320 px (`length`) dans l’orientation de Paul, 16 px de demi-largeur (`halfWidth`), arrêté au premier obstacle (bâtiment, objet, tronc, socle du monument, groupe pacifique) ; tous les casseurs actifs à moins de 16 px + leur rayon de la ligne sont KO (+1 chacun, sans gain d’énergie) ; jamais les victimes ni le groupe. Un tir sans cible coûte quand même son énergie. Le mode furie ne bloque pas la charge, mais la jauge y est vide (elle a été dépensée et ne se remplit pas pendant le mode) |
-| Frappe | **Modifié (v1.9.16) :** plus de coup de bouclier (paramètres `bashRange` et `knockback` retirés) : Frapper est le coup normal de Paul, avec l’arme tenue (portée, dégâts et usure de l’arme) ou à mains nues ; aucun dégât, aucune portée ni aucun repoussement en plus ; la bulle ne blesse personne | Frapper (Espace) reste le coup circulaire ; aucun coup pendant la charge ni à l’appui qui la lance ; **modifié (v1.9.8) :** les casseurs KO par le rayon sont **satellisés** (voir ci-dessous) |
-| HUD | **Modifié (v1.9.16) :** la ligne « ARME » garde l’arme tenue et ajoute le temps du bouclier : « Bâton (12) · Bouclier 14 s », « Mains nues · Bouclier 14 s » (secondes arrondies au supérieur) ; instantané `shield: { secondsLeft } \| null` | Ligne « ÉNERGIE » (**modifié v1.9.23 :** « C · Onde », la touche d’abord, qui clignote doucement dès 50 ; « R · Furie » à 100) ; petite barre de charge pixel sous la barre d’énergie de Paul pendant la charge |
-| Présentation | **Modifié (v1.9.12) :** bulle de savon translucide autour de Paul (rayon d’environ 24 px, voile bleu clair et blanc, lueur douce additive, liseré plus clair de 1 px, reflet en arc qui tourne lentement, légère pulsation de ±1 px), dessinée au-dessus de Paul et sous sa barre de santé, en pixels entiers ; à chaque blocage, le liseré s’éclaire, une onde (anneau) et des étincelles partent du point touché sur la bulle ; les 3 dernières secondes elle pâlit et clignote de plus en plus vite, puis éclate (« pop » : anneau qui s’élargit et gouttelettes). `prefers-reduced-motion` : ni pulsation ni clignotement, reflet fixe | Lueur bleu-blanc qui grandit dans les mains ; **modifié (v1.9.23) :** un **anneau de charge** autour de Paul (rayon 20 px, piste sombre, arc bleu clair qui se referme dans le sens des aiguilles d’une montre depuis midi, tête blanche) montre la progression, à la place du fin anneau qui se resserrait dans les mains ; rayon de dessin animé bleu-blanc (≈ 250 ms, largeurs par paliers, lueur additive) et légère secousse de caméra (aucune avec `prefers-reduced-motion`) |
-| Objet au sol | Bouclier rond bleu et acier avec reflet, flottant et pulsant (inchangé ; indicateur « BOUCLIER », icône bouclier) | Aucun (plus d’orbe au sol) |
-| Son | Choc métallique bref au blocage | Petit « ping » doux quand la jauge atteint 50 ; bourdonnement montant pendant la charge, décharge au tir (WebAudio, dans le plafond de voix) |
+| Duration / uses | 20 s of active game time (`durationSec`), the pause freezes the timer; a second shield picked up resets it to 20 s; Paul KO stops it at once; at the end, the bubble bursts (« ShieldEnded », v1.9.16) and the held weapon stays in hand with its hits; no hit counter | Available as soon as the gauge reaches 50; each shot costs 50, paid when the ray leaves (two shots from a full gauge) |
+| Effect | **Changed (v1.9.12, project owner's request: « il faut que le bouclier soit une sorte de bulle de protection » — the shield must be a sort of protection bubble):** a **protection bubble** around Paul, in all directions (360°, no more cone or facing): any stone, any bottle from the throwers aimed at Paul and (v1.9.15) any ball from the shooters that would reach him is blocked, from the front, side or back (even during invulnerability; a blocked ball disappears). A blocked stone falls at the impact point, recoverable, without damage; a blocked bottle goes out with no pool (« ShieldBlocked » on Paul's edge, on the thrower's side). A stone that passes beside Paul is not stopped. Contact hits and pools already on the ground: not blocked | **Changed (v1.9.23, project owner's feedback: they could not launch the wave):** **a single press** of C (phone: Onde button) starts a 0.7 s charge (`chargeSec`, previously 1 s) that **ends by itself**: the key does not have to stay held and releasing it no longer cancels anything. The charge starts on a new press (rising edge); a new press during the charge changes nothing. Paul does not move during the charge (mouse aiming orients him). Only **Paul's KO** or **the triggering of fury mode** cancel it, **spending nothing**; **taking a hit no longer cancels it**. At 0.7 s the ray leaves by itself and 50 energy is spent (nothing before): 320 px (`length`) in Paul's facing direction, 16 px of half-width (`halfWidth`), stopped at the first obstacle (building, object, trunk, monument base, peaceful group); all active rioters within 16 px + their radius of the line are KO (+1 each, with no energy gain); never the victims nor the group. A shot with no target still costs its energy. Fury mode does not block the charge, but the gauge is empty then (it was spent and does not fill during the mode) |
+| Strike | **Changed (v1.9.16):** no more shield bash (`bashRange` and `knockback` parameters removed): Strike is Paul's normal hit, with the held weapon (reach, damage and weapon wear) or bare-handed; no extra damage, reach or knockback; the bubble hurts no one | Strike (Space) remains the circular hit; no hit during the charge nor on the press that starts it; **changed (v1.9.8):** the rioters KO'd by the ray are **launched into orbit** (see below) |
+| HUD | **Changed (v1.9.16):** the « ARME » line keeps the held weapon and adds the shield time: « Bâton (12) · Bouclier 14 s », « Mains nues · Bouclier 14 s » (seconds rounded up); snapshot `shield: { secondsLeft } \| null` | « ÉNERGIE » line (**changed v1.9.23:** « C · Onde », the key first, which blinks softly from 50; « R · Furie » at 100); small pixel charge bar under Paul's energy bar during the charge |
+| Presentation | **Changed (v1.9.12):** translucent soap bubble around Paul (radius of about 24 px, light blue and white veil, soft additive glow, lighter 1 px edge, arc-shaped highlight turning slowly, slight pulsation of ±1 px), drawn above Paul and under his health bar, in whole pixels; on each block, the edge lights up, a wave (ring) and sparks leave from the point hit on the bubble; during the last 3 seconds it fades and blinks faster and faster, then bursts ("pop": widening ring and droplets). `prefers-reduced-motion`: no pulsation or blinking, fixed highlight | Blue-white glow growing in the hands; **changed (v1.9.23):** a **charge ring** around Paul (radius 20 px, dark track, light blue arc closing clockwise from twelve o'clock, white head) shows the progress, in place of the thin ring that used to tighten in the hands; blue-white cartoon ray (≈ 250 ms, widths in steps, additive glow) and slight camera shake (none with `prefers-reduced-motion`) |
+| Object on the ground | Round blue and steel shield with a highlight, floating and pulsing (unchanged; « BOUCLIER » indicator, shield icon) | None (no more orb on the ground) |
+| Sound | Brief metallic clang on block | Soft little "ping" when the gauge reaches 50; rising hum during the charge, discharge on firing (WebAudio, within the voice cap) |
 
-**Satellisation (v1.9.8, demande du porteur du projet : « j’ai envie que les émeutiers soient satellisés »).** Chaque casseur mis KO par l’onde d’énergie est expédié dans le ciel le long du rayon, au lieu du tourbillon du mode furie : envol `satellite` de la charge visuelle (`launch.kind`), 1 100 à 1 800 px (`satellitePower`), 6 à 10 tours (`satelliteSpin`), ± 0,15 rad autour du rayon (`satelliteJitter`), tirés du flux aléatoire séparé des envols (déterministe, aucune autre séquence décalée). À l’écran : environ 1,3 s d’accélération (lente puis très rapide) en tournoyant, en montant et en rapetissant jusqu’à 25 %, petite traînée d’étoiles et de poussière, au-dessus de tout, sans limite de carte (il peut sortir du monde et de l’écran). L’étoile est toujours vue : une petite étoile pixel « ✦ » scintille (avec une fois sur deux une minuscule bulle « PING ! », à l’échelle du zoom comme les autres bulles) au point où le corps quitte l’écran, ramené à l’intérieur du bord (8 px), ou là où il finit s’il finit à l’écran ; jamais deux étoiles pour un même corps. Les corps d’un même rayon décollent l’un après l’autre (0, 30, 60, 90, 120 ms selon leur rang, sans hasard). Le corps est ensuite retiré : aucun corps ne reste au sol. Seize satellites au plus en vol à la fois (au-delà, le corps disparaît aussitôt avec son étoile) ; étoiles et bulles réutilisées. `prefers-reduced-motion` : vol de 0,5 s sans rotation. Purement visuel : chaque KO compte toujours +1, aucun point en plus ; le mode furie garde son tourbillon (`tumble`), les KO à mains nues, à l’arme ou à la pierre n’ont pas d’envol.
+**Launch into orbit (v1.9.8, project owner's request: « j’ai envie que les émeutiers soient satellisés » — I want the rioters to be launched into orbit).** Each rioter knocked out by the energy wave is shot into the sky along the ray, instead of the fury mode whirl: `satellite` flight in the visual payload (`launch.kind`), 1,100 to 1,800 px (`satellitePower`), 6 to 10 turns (`satelliteSpin`), ± 0.15 rad around the ray (`satelliteJitter`), drawn from the separate flight random stream (deterministic, no other sequence shifted). On screen: about 1.3 s of acceleration (slow then very fast) while whirling, rising and shrinking down to 25%, small trail of stars and dust, above everything, with no map limit (it may leave the world and the screen). The star is always seen: a small pixel star « ✦ » twinkles (with, one time in two, a tiny « PING ! » bubble, scaled to the zoom like the other bubbles) at the point where the body leaves the screen, brought back inside the edge (8 px), or where it ends if it ends on screen; never two stars for the same body. The bodies of a same ray take off one after the other (0, 30, 60, 90, 120 ms according to their rank, no randomness). The body is then removed: no body stays on the ground. At most sixteen satellites in flight at once (beyond that, the body disappears at once with its star); stars and bubbles reused. `prefers-reduced-motion`: 0.5 s flight with no rotation. Purely visual: each KO still counts +1, no extra point; fury mode keeps its whirl (`tumble`), KOs bare-handed, with a weapon or by stone have no flight.
 
-**Qui dépose le bouclier.** **Modifié (v1.9.14) :** le bouclier est le seul spécial au sol. Le retournement a lieu à **chaque** manche dès la manche 2 (les manches impaires dès la 3 y ajoutent la seconde urgence, section 12.2) : dès la manche 3, un tirage (graine) donne le bouclier une fois sur deux (`bouclier.dropShare`) ; sinon (et toujours en manche 2), **modifié (v1.9.16) :** une arme ordinaire une fois sur deux (`weapons.twistRegularShare`), rien sinon (le retournement est alors annoncé sans arme). Dans la rue, le bouclier s’ajoute aux armes ordinaires avec un poids d’environ un sur six dès la manche 5 (`spawnShare`) ; un bouclier de la rue ne disparaît pas, celui du retournement après 15 s. Le mode furie et l’onde d’énergie ne sont jamais déposés.
+**Who drops the shield.** **Changed (v1.9.14):** the shield is the only special on the ground. The twist happens in **every** round from round 2 (odd rounds from 3 add the second emergency to it, section 12.2): from round 3, a draw (seed) gives the shield one time in two (`bouclier.dropShare`); otherwise (and always in round 2), **changed (v1.9.16):** an ordinary weapon one time in two (`weapons.twistRegularShare`), nothing otherwise (the twist is then announced without a weapon). In the street, the shield is added to the ordinary weapons with a weight of about one in six from round 5 (`spawnShare`); a street shield does not disappear, the twist's after 15 s. Fury mode and the energy wave are never dropped.
 
-**Indicateur.** Seul le bouclier au sol a un indicateur de bord d’écran (« BOUCLIER », icône bouclier, quelle que soit son origine) et seul un bouclier du retournement a une bannière : « BOUCLIER DISPONIBLE ! » / « Fonce le ramasser ». Les armes ordinaires (bâton, marteau, panneau, gant de boxe, flashball), y compris celle du retournement, n’ont ni bannière ni indicateur ; seul le flashball garanti du premier tireur a sa bannière d’une ligne « FLASHBALL AU SOL » (section 12.14). Le retournement, la fin de manche et le Caïd, quand ils déposent une arme ordinaire (v1.9.16 : pas toujours, section 8.7), en déposent une des trois de départ ; le gant et le flashball viennent de la rue (et du premier tireur).
+**Indicator.** Only the shield on the ground has a screen-edge indicator (« BOUCLIER », shield icon, whatever its origin) and only a twist shield has a banner: « BOUCLIER DISPONIBLE ! » (Shield available!) / « Fonce le ramasser » (Run and grab it). Ordinary weapons (stick, hammer, road sign, boxing glove, flashball), including the twist's, have neither banner nor indicator; only the first shooter's guaranteed flashball has its one-line banner « FLASHBALL AU SOL » (Flashball on the ground) (section 12.14). The twist, the end of round and the Caïd, when they drop an ordinary weapon (v1.9.16: not always, section 8.7), drop one of the three starting ones; the boxing glove and the flashball come from the street (and from the first shooter).
 
-## 9. Personnages, hordes et intelligence artificielle
+## 9. Characters, hordes and artificial intelligence
 
-### 9.1 Catégories visuelles
+### 9.1 Visual categories
 
-| Catégorie | Fonction | Score et compteur « Casseurs neutralisés » |
+| Category | Function | Score and « Casseurs neutralisés » counter |
 | --- | --- | --- |
-| Casseur classique | Contact, dégradation ou lancer selon rôle | +1 point et +1 au compteur au KO |
-| Casseur avec drapeau palestinien | Même familles de rôles, drapeau distinct | +1 point et +1 au compteur au KO |
-| Casseur avec drapeau Antifa | Même familles de rôles, drapeau distinct | +1 point et +1 au compteur au KO |
-| Groupe de manifestants pacifiques | Groupe neutre à contourner et protéger ; secours possible si menacé | Jamais |
-| Victime individuelle ou couple âgé | Vol/intimidation pendant un événement de secours, jamais adversaire | Jamais |
-| Étudiants / professeurs | Présence pacifique et retour à l’école | Jamais |
-| Police / pompiers / soignants / commerçants | Présence et fonctions protégées | Jamais |
+| Classic rioter | Contact, damage or throwing depending on role | +1 point and +1 on the counter at KO |
+| Rioter with Palestinian flag | Same role families, distinct flag | +1 point and +1 on the counter at KO |
+| Rioter with Antifa flag | Same role families, distinct flag | +1 point and +1 on the counter at KO |
+| Group of peaceful demonstrators | Neutral group to go around and protect; rescue possible if threatened | Never |
+| Individual victim or elderly couple | Theft/intimidation during a rescue event, never an opponent | Never |
+| Students / teachers | Peaceful presence and return to school | Never |
+| Police / firefighters / healthcare workers / shopkeepers | Protected presence and functions | Never |
 
-Les teints des PNJ varient dans toutes les catégories. La tenue, la pancarte ou le drapeau ne remplace pas la logique d’entité et son comportement hostile ou neutre. **Confirmé :** le drapeau est purement cosmétique ; il ne modifie ni le score, ni le compteur, ni les statistiques.
+NPC skin tones vary in all categories. The outfit, placard or flag does not replace the entity logic and its hostile or neutral behaviour. **Confirmed:** the flag is purely cosmetic; it changes neither the score, nor the counter, nor the statistics.
 
-### 9.2 Rôles d’ennemis
+### 9.2 Enemy roles
 
-- Contact : rejoint Paul, prépare puis frappe à portée.
-- Dégradeur : rejoint une façade tant que l’objectif est actif, puis change de cible si elle est perdue.
-- **Attirés par Paul (v1.9.1) :** un dégradeur ou un agresseur de victime s’en prend à Paul quand il passe à 220 px au plus avec une ligne dégagée, et retourne à son poste au-delà de 320 px (hystérésis). Quand il ne reste que trois hostiles actifs au plus, un dégradeur qui tient son poste depuis plus de 6 s le quitte pour Paul, définitivement. **Modifié (v1.9.5) :** un agresseur de victime n’est plus concerné : il reste sur la victime (et la vole, section 12.12) tant que Paul ne s’approche pas à 220 px ; un petit secours seul sur la carte perd donc ses objets si Paul tarde. Un Molotov n’est jamais détourné avant son lancer. Paramètres `hostile.aggroRadius`, `aggroRelease`, `fewLeft`, `postSec`.
-- Lanceur : cherche une distance de lancer et une ligne lisible, prépare puis projette ; revient au contact si nécessaire.
+- Contact: joins Paul, prepares then strikes within range.
+- Degrader: joins a facade as long as the objective is active, then changes target if it is lost.
+- **Drawn to Paul (v1.9.1):** a degrader or a victim's aggressor goes after Paul when he passes within 220 px at most with a clear line, and returns to its post beyond 320 px (hysteresis). When only three active hostiles at most remain, a degrader that has held its post for more than 6 s leaves it for Paul, permanently. **Changed (v1.9.5):** a victim's aggressor is no longer concerned: it stays on the victim (and robs them, section 12.12) as long as Paul does not come within 220 px; a small rescue alone on the map therefore loses its items if Paul is slow. A Molotov is never diverted before its throw. Parameters `hostile.aggroRadius`, `aggroRelease`, `fewLeft`, `postSec`.
+- Thrower: looks for a throwing distance and a readable line, prepares then hurls; returns to contact if necessary.
 
-La première manche enseigne le contact seul ; les lanceurs apparaissent à partir de la manche 2 (section 12.2). Une horde mélange ensuite les rôles. Aucun état de reddition, de fuite comptée comme victoire ou de disparition donnant gratuitement un KO.
+The first round teaches contact alone; throwers appear from round 2 (section 12.2). A horde then mixes the roles. No surrender state, no flight counted as a victory, no disappearance giving a KO for free.
 
-### 9.3 Hordes et pression
+### 9.3 Hordes and pressure
 
-Les hordes sont plus nombreuses que dans la version 3D prévue. Dans une manche, les casseurs entrent un par un (1,5 seconde d’écart), par les trois points d’entrée les plus proches de Paul parmi ceux situés à 320 px au moins (v1.9.1), et seulement tant que moins de douze hostiles sont actifs sur la carte (`round.gate`) ; les suivants attendent dans une file d’entrée. Les agresseurs d’un secours apparaissent directement autour de la victime (48 à 80 px d’elle, à 160 px au moins de Paul), hors de cette file. Le plafond technique reste de quarante hostiles actifs, agresseurs d’événements compris, à valider par les budgets mobile. Ce plafond reste une règle commune aux qualités graphiques, pas un nombre réduit automatiquement sur les appareils lents.
+The hordes are larger than in the planned 3D version. Within a round, the rioters enter one by one (1.5 seconds apart), through the three entry points nearest to Paul among those located at least 320 px away (v1.9.1), and only while fewer than twelve hostiles are active on the map (`round.gate`); the following ones wait in an entry queue. The aggressors of a rescue appear directly around the victim (48 to 80 px from them, at least 160 px from Paul), outside this queue. The technical cap remains forty active hostiles, event aggressors included, to be validated against mobile budgets. This cap remains a rule common to all graphics qualities, not a number automatically reduced on slow devices.
 
-Le directeur limite les préparations d’attaques simultanées : au départ deux frappes de contact et deux lancers ; augmentation progressive plafonnée à quatre contacts et quatre lancers en préparation. Les autres ennemis approchent, se repositionnent ou dégradent. Le total de projectiles en vol est plafonné séparément.
+The director limits simultaneous attack preparations: at the start two contact hits and two throws; progressive increase capped at four contacts and four throws in preparation. The other enemies approach, reposition or degrade. The total of projectiles in flight is capped separately.
 
 ### 9.4 Navigation
 
-Grille orthogonale, empreintes de bâtiments et volumes de groupes pacifiques. Évitement local et partage des chemins ou champs de direction pour ne pas recalculer une recherche complète pour chaque ennemi à chaque image.
+Orthogonal grid, building footprints and volumes of peaceful groups. Local avoidance and sharing of paths or direction fields so as not to recompute a full search for every enemy at every frame.
 
-Partition spatiale pour voisinage, contacts et projectiles. Aucun parcours quadratique de toute la foule à chaque image comme solution de production. Les apparitions sont hors du champ proche, dans un emplacement libre, jamais au milieu d’un groupe pacifique.
+Spatial partitioning for neighbourhood, contacts and projectiles. No quadratic traversal of the whole crowd at every frame as a production solution. Spawns are outside the near field, in a free location, never in the middle of a peaceful group.
 
-Une horde ne doit pas bloquer définitivement son propre trajet. Un agent coincé recalcule ou rejoint une autre cible valide ; pas de téléportation visible près de Paul.
+A horde must not permanently block its own path. A stuck agent recomputes or joins another valid target; no visible teleportation near Paul.
 
-### 9.5 Groupes pacifiques
+### 9.5 Peaceful groups
 
-Trois groupes proposés sur la carte, de six à huit sprites chacun, sur des emplacements non obligatoires. La première tranche n’en a qu’un, de six manifestants, au centre de la carte (les deux autres sont à faire). Déplacements lents de groupe possibles après validation, sans couper brutalement la seule voie d’esquive.
+Three groups proposed on the map, of six to eight sprites each, in non-mandatory locations. The first slice has only one, of six demonstrators, at the centre of the map (the other two are to do). Slow group movements possible after validation, without abruptly cutting off the only dodge route.
 
-Leurs pancartes et leur densité les distinguent des hordes. Ils restent neutres même quand Paul passe près ou se fait poursuivre. Un événement peut les faire appeler à l’aide ou se replier ; ils ne deviennent pas hostiles et ne sont pas exposés à des dégâts libres de Paul. Ils ne nourrissent pas les systèmes de butin, de soins ou de score de KO.
+Their placards and their density distinguish them from the hordes. They remain neutral even when Paul passes close or is being chased. An event may make them call for help or fall back; they do not become hostile and are not exposed to free damage from Paul. They do not feed the loot, heal or KO score systems.
