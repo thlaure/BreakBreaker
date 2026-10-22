@@ -8,8 +8,8 @@ import { DEPTH, inRect } from './depth';
 
 const T = CONFIG.tile;
 const N = DISTRICT.tiles;
-/** Height of a building's front wall, drawn at the bottom of its footprint. */
-export const FACADE_H = 32;
+import { FACADE_H } from './geometry';
+export { FACADE_H };
 /** Roofs overhang the street behind the building so actors there are hidden (and the roof fades). */
 const ROOF_OVERHANG = 24;
 const ROOF_FADED = 0.35;

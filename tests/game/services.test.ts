@@ -105,26 +105,34 @@ describe('truck and officers', () => {
 describe('contextPrompt: booths', () => {
   const front = { x: door('boothRed').x, y: door('boothRed').y + 32 };
 
-  test('in front of the red booth: call the fire truck (touch: Agir labelled « Appeler »)', () => {
-    const s = snap((x) => {
-      x.player.pos = { ...front };
-    });
-    expect(contextPrompt(s)).toEqual({ text: 'F — Appeler les pompiers', label: 'Appeler' });
-    expect(contextPrompt(s, true)).toEqual({ text: 'Appeler les pompiers', label: 'Appeler' });
+  /** A real sim: Paul at `pos`, a fire burning (the fire call is accepted). */
+  function at(pos: { x: number; y: number }, patch: (sim: Sim) => void = () => {}): Snapshot {
+    const sim = new Sim(1);
+    sim.player.pos = { ...pos };
+    patch(sim);
+    return sim.snapshot();
+  }
+
+  test('in front of the red booth, a fire burning: call the fire truck (touch: Agir labelled « Appeler »)', () => {
+    const s = at(front, (sim) => sim.targets.ignite('school', 'x'));
+    expect(contextPrompt(s)).toEqual({ text: 'F — Appeler les pompiers', label: 'Appeler', inWorld: true });
+    expect(contextPrompt(s, true)).toEqual({ text: 'Appeler les pompiers', label: 'Appeler', inWorld: true });
   });
 
-  test('in front of the blue booth: call the police', () => {
-    const s = snap((x) => {
-      x.player.pos = { x: door('boothBlue').x, y: door('boothBlue').y + 32 };
+  test('in front of the red booth with nothing burning: the call would be refused, no prompt', () => {
+    expect(contextPrompt(at(front))).toBeNull();
+  });
+
+  test('in front of the blue booth with enough rioters: call the police', () => {
+    const blue = { x: door('boothBlue').x, y: door('boothBlue').y + 32 };
+    const s = at(blue, (sim) => {
+      for (let i = 0; i < 12; i++) sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { x: 200 + i * 20, y: 200 } });
     });
-    expect(contextPrompt(s)).toEqual({ text: 'F — Appeler la police', label: 'Appeler' });
+    expect(contextPrompt(s)).toEqual({ text: 'F — Appeler la police', label: 'Appeler', inWorld: true });
   });
 
   test('out of reach: no prompt', () => {
-    const s = snap((x) => {
-      x.player.pos = { x: front.x, y: front.y + 20 };
-    });
-    expect(contextPrompt(s)).toBeNull();
+    expect(contextPrompt(at({ x: front.x, y: front.y + 20 }, (sim) => sim.targets.ignite('school', 'x')))).toBeNull();
   });
 
   test('a ruined booth: informational « Cabine hors service »', () => {
@@ -136,13 +144,10 @@ describe('contextPrompt: booths', () => {
   });
 
   test('a repair at the same door wins the tie', () => {
-    const s = snap((x) => {
-      x.player.pos = { ...front };
-      x.toolboxes.carried = true;
-      x.toolboxes.repairTarget = 'boothRed';
-      x.toolboxes.canRepair = true;
-      x.toolboxes.repairKind = 'fire';
+    const s = at(front, (sim) => {
+      sim.targets.ignite('boothRed', 'x');
+      sim.toolboxes.carried = true;
     });
-    expect(contextPrompt(s)).toEqual({ text: 'F — Éteindre le feu', label: 'Éteindre' });
+    expect(contextPrompt(s)).toEqual({ text: 'F — Éteindre le feu', label: 'Éteindre', inWorld: true });
   });
 });

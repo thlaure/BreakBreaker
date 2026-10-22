@@ -336,6 +336,7 @@ export class Hud {
     if (this.actBtn) {
       this.actBtn.textContent = DEFAULT_ACT_LABEL;
       this.actBtn.style.display = 'none';
+      this.actBtn.classList.remove('bb-act-ready');
     }
   }
 
@@ -357,10 +358,14 @@ export class Hud {
     // the booth's own line (under the booth, in the world) replaces the prompt text for a moment; Agir stays
     this.prompt.hidden = !p || performance.now() < this.boothLineUntil;
     c.text(this.prompt, p?.text ?? '');
+    // the bubble above the target is the cue: the line under Paul stays for screen readers only
+    c.cls(this.prompt, p?.inWorld ? 'bb-prompt bb-sr' : 'bb-prompt');
     if (this.actBtn) {
-      // Only an actionable prompt (repair / put out a fire) shows the touch Agir button, labelled with the action.
+      // Only an actionable prompt (repair, put out a fire, a booth call) shows the touch Agir button, labelled with
+      // the action and pulsing.
       c.style(this.actBtn, p?.label ? '' : 'display:none');
       c.text(this.actBtn, p?.label ?? DEFAULT_ACT_LABEL);
+      this.actBtn.classList.toggle('bb-act-ready', !!p?.label);
     }
 
     const active = s.ended ? [] : activeIncidents(s);

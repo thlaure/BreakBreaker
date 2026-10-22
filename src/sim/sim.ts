@@ -33,6 +33,16 @@ import { WEAPONS, Weapons, type HeldKind, type PickupKind } from './weapons';
 /** How long a thrown bottle is drawn in flight (render only; the fire starts on the throw). */
 export const MOLOTOV_FLIGHT_SEC = 0.6;
 
+/** What a fresh Agir press does (or what it lacks) right now: the in-world prompt above `at` (a target's door). */
+export type ActionHintKind = 'repair' | 'extinguish' | 'callFire' | 'callPolice' | 'needToolbox';
+export interface ActionHint {
+  kind: ActionHintKind;
+  target: TargetId;
+  at: Vec;
+  /** needToolbox: the nearest toolbox on the ground (null when none, or for the other kinds). */
+  toolbox: Vec | null;
+}
+
 export interface Telegraph {
   from: Vec;
   to: Vec;
@@ -185,6 +195,12 @@ export interface Snapshot {
   allies: AlliesView;
   /** The prison: Caïds jailed, its guards (by post), whether it stands. */
   prison: PrisonView;
+  /**
+   * What a fresh Agir press would do now, by the same rules as the press itself (Sim.agirChoice): a repair or an
+   * extinguish that would start, a booth call that would be accepted; or `needToolbox` next to a ruin or a fire without
+   * a toolbox. Null otherwise (nothing in reach, a rioter too close, a call that would be refused, cinematic, KO, end).
+   */
+  actionHint: ActionHint | null;
 }
 
 const SERVICE_KINDS: readonly ServiceKind[] = ['fire', 'police'];
@@ -641,7 +657,30 @@ export class Sim {
         calls: { ...this.services.calls },
         hint: { fire: this.services.check('fire', this.callCtx('fire')).ok, police: this.services.check('police', this.callCtx('police')).ok },
       },
+      actionHint: this.actionHint(),
     };
+  }
+
+  /** Snapshot.actionHint: the press's own choice (agirChoice), then the toolbox it lacks. */
+  private actionHint(): ActionHint | null {
+    if (this.rules.ended || this.player.ko || this.school.suspended()) return null;
+    const p = this.player.pos;
+    const doorOf = (id: TargetId): Vec => v(DISTRICT.targets.find((t) => t.id === id)!.door);
+    const choice = this.agirChoice();
+    if (choice?.kind === 'repair') {
+      const kind = this.targets.get(choice.target).state === 'ruined' ? 'repair' : 'extinguish';
+      return { kind, target: choice.target, at: doorOf(choice.target), toolbox: null };
+    }
+    if (choice?.kind === 'booth' && this.services.check(choice.service, this.callCtx(choice.service)).ok) {
+      const target = BOOTH_OF[choice.service];
+      return { kind: choice.service === 'fire' ? 'callFire' : 'callPolice', target, at: doorOf(target), toolbox: null };
+    }
+    if (this.toolboxes.carried) return null;
+    const target = this.toolboxes.repairTarget(p, this.targets);
+    if (target === null) return null;
+    let toolbox: Vec | null = null;
+    for (const g of this.toolboxes.ground) if (!toolbox || dist(p, g.pos) < dist(p, toolbox)) toolbox = g.pos;
+    return { kind: 'needToolbox', target, at: doorOf(target), toolbox: toolbox ? v(toolbox) : null };
   }
 
   /** What a call of `kind` from its booth would weigh now. */
@@ -658,12 +697,11 @@ export class Sim {
   }
 
   /**
-   * A fresh Agir press: the nearest of a repair that would start (Toolboxes.startable, at its target's door) and the
-   * booths whose door is within CONFIG.services.callRange of Paul; ties go to the repair, then red, then blue. A booth
-   * that wins makes the call (ServiceCalled, or ServiceRefused with the reason) and returns its kind; null leaves the
-   * press to the toolbox.
+   * What a fresh Agir press goes to: the nearest of a repair that would start (Toolboxes.startable, at its target's
+   * door) and the booths whose door is within CONFIG.services.callRange of Paul; ties go to the repair, then red, then
+   * blue. Null: nothing in reach.
    */
-  private agirAtBooth(ev: SimEvent[]): ServiceKind | null {
+  private agirChoice(): { kind: 'booth'; service: ServiceKind } | { kind: 'repair'; target: TargetId } | null {
     const p = this.player.pos;
     const repair = this.toolboxes.startable(p, this.horde, this.targets);
     let best: ServiceKind | null = null;
@@ -676,7 +714,18 @@ export class Sim {
         bestD = d;
       }
     }
-    if (best === null) return null;
+    if (best !== null) return { kind: 'booth', service: best };
+    return repair === null ? null : { kind: 'repair', target: repair };
+  }
+
+  /**
+   * A fresh Agir press (agirChoice): a booth that wins makes the call (ServiceCalled, or ServiceRefused with the
+   * reason) and returns its kind; null leaves the press to the toolbox.
+   */
+  private agirAtBooth(ev: SimEvent[]): ServiceKind | null {
+    const choice = this.agirChoice();
+    if (choice?.kind !== 'booth') return null;
+    const best = choice.service;
     const r = this.services.tryCall(best, this.callCtx(best));
     if (r.ok) {
       ev.push({ type: 'ServiceCalled', kind: best });

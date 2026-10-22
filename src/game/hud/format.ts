@@ -6,6 +6,7 @@ import type { CasseKind, ServiceKind, TargetId, Vec } from '../../sim/types';
 import { HELD_LABELS } from '../../sim/weapons';
 import { casseurs, type IncidentKind, type RoundHeadline } from './alerts';
 import { jailedText } from '../render/prisonMath';
+import { ACTION_WORDS, REPAIRING_VERB } from '../render/actionHintMath';
 
 /**
  * Rescue: 'en cours' | 'interrompu' | 'sécurisé'. Attacked target: 'en feu' | 'attaquée' |
@@ -89,43 +90,39 @@ export interface Prompt {
   text: string;
   /** Short label for the touch Agir button; null for an informational prompt (the button stays hidden). */
   label: string | null;
+  /**
+   * The in-world bubble above the target already says it (Snapshot.actionHint, or the repair running): the line under
+   * Paul steps aside, the touch Agir button keeps the label.
+   */
+  inWorld?: boolean;
 }
 
 export const DEFAULT_ACT_LABEL = 'Agir';
 
 /**
- * Contextual prompt under Paul. With a toolbox next to a ruin or a burning target and no hostile close, an actionable
- * prompt: « F — Réparer » / « F — Éteindre le feu » (touch: no key, the Agir button takes the label). Informational
- * ones (no button): the repair in progress, the toolbox messages, the heal stations. Next to a standing phone booth
- * (door within CONFIG.services.callRange): « F — Appeler les pompiers » / « F — Appeler la police », label « Appeler »,
- * when it is what a press would do (the sim's Agir priority: the nearest wins, a repair on a tie, red before blue); a
- * ruined booth: « Cabine hors service » (no button).
+ * Contextual prompt. The actionable ones come from Snapshot.actionHint (the sim's own Agir rules, so it never lies):
+ * « F — Réparer » / « F — Éteindre le feu » / « F — Appeler les pompiers » / « F — Appeler la police » (touch: no key,
+ * the Agir button takes the label), and « Il faut une caisse à outils » next to a ruin or a fire without one (no
+ * button); all of them, and the repair in progress (« Réparation… »), are drawn in the world above the target
+ * (`inWorld`). Informational ones under Paul (no button): a ruined booth in call range (« Cabine hors service »), the
+ * toolbox messages, the heal stations.
  */
 export function contextPrompt(s: Snapshot, touch = false): Prompt | null {
   const kit = s.toolboxes;
-  if (kit.repairTarget && kit.started) return { text: 'Réparation…', label: null };
-  const booth = nearestBooth(s);
-  if (booth) {
-    const repairDoor = kit.repairTarget && kit.canRepair ? DISTRICT.targets.find((t) => t.id === kit.repairTarget)?.door : undefined;
-    const repairD = repairDoor ? Math.hypot(repairDoor.x - s.player.pos.x, repairDoor.y - s.player.pos.y) : Infinity;
-    if (booth.d < repairD - 1e-9) {
-      if (booth.ruined) return { text: 'Cabine hors service', label: null };
-      const text = BOOTH_PROMPTS[booth.kind];
-      return { text: touch ? text : `F — ${text}`, label: 'Appeler' };
-    }
+  if (kit.repairTarget && kit.started) return { text: REPAIRING_VERB, label: null, inWorld: true };
+  const h = s.actionHint;
+  if (h) {
+    const w = ACTION_WORDS[h.kind];
+    if (w.button === null) return { text: w.line, label: null, inWorld: true };
+    return { text: touch ? w.line : `F — ${w.line}`, label: w.button, inWorld: true };
   }
+  if (nearestBooth(s)?.ruined) return { text: 'Cabine hors service', label: null };
   if (kit.message) return { text: kit.message, label: null };
-  if (kit.repairTarget && kit.canRepair) {
-    const [text, label] = kit.repairKind === 'fire' ? ['Éteindre le feu', 'Éteindre'] : ['Réparer', 'Réparer'];
-    return { text: touch ? text : `F — ${text}`, label };
-  }
   if (s.stationMessage) return { text: s.stationMessage, label: null };
   return null;
 }
 
-const BOOTH_PROMPTS: Readonly<Record<ServiceKind, string>> = { fire: 'Appeler les pompiers', police: 'Appeler la police' };
-
-/** The booth whose door is nearest Paul within callRange (red first on a tie; a ruin still takes the press), or null. */
+/** The booth whose door is nearest Paul within callRange (red first on a tie), or null. */
 function nearestBooth(s: Snapshot): { kind: ServiceKind; d: number; ruined: boolean } | null {
   let best: { kind: ServiceKind; d: number; ruined: boolean } | null = null;
   for (const kind of ['fire', 'police'] as const) {

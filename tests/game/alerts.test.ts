@@ -688,7 +688,7 @@ describe('Hud alerts and edge indicators', () => {
     expect(btn.style.display).toBe('none');
     hud.update(snap((x) => { x.toolboxes.carried = true; x.toolboxes.message = 'Abords non sécurisés'; }), view);
     expect(prompt().textContent).toBe('Abords non sécurisés');
-    hud.update(snap((x) => { x.toolboxes.carried = true; x.toolboxes.repairTarget = 'car1'; x.toolboxes.canRepair = true; x.toolboxes.repairKind = 'ruin'; }), view);
+    hud.update(snap((x) => { x.toolboxes.carried = true; x.toolboxes.repairTarget = 'car1'; x.toolboxes.canRepair = true; x.toolboxes.repairKind = 'ruin'; x.actionHint = { kind: 'repair', target: 'car1', at: { x: 0, y: 0 }, toolbox: null }; }), view);
     // touch: no key in the text, the Agir button shows with the action's label
     expect(prompt().textContent).toBe('Réparer');
     expect(btn.style.display).toBe('');

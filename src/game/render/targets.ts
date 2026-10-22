@@ -5,6 +5,7 @@ import type { SimEvent, TargetId, Vec } from '../../sim/types';
 import { FLAG } from '../assets';
 import { schoolFlagShown } from './targetMath';
 import { DEPTH } from './depth';
+import { PROP_RISE, type PropKind } from './geometry';
 import { FACADE_H, buildingIndex, type BuildingPart, type WorldView } from './world';
 
 type TargetSnap = Snapshot['targets'][number];
@@ -13,9 +14,7 @@ type BuildingParts = WorldView['buildingParts'];
 const OUTLINE = 0x14121c;
 /** Props are drawn from 1-px logical textures scaled ×2, like the city tiles. */
 const PX = 2;
-type PropKind = 'car' | 'busStop' | 'kiosk' | 'booth';
-/** World px a prop texture rises above its footprint (it is anchored on the footprint's bottom edge). */
-export const PROP_RISE: Record<PropKind, number> = { car: 10, busStop: 16, kiosk: 16, booth: 24 };
+export { PROP_RISE };
 /** The look of a prop target: cars, the bus shelter, the newspaper kiosk and the phone booths. */
 function propKind(kind: TargetDef['kind']): PropKind {
   return kind === 'busStop' || kind === 'kiosk' || kind === 'booth' ? kind : 'car';
