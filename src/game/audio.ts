@@ -644,6 +644,10 @@ export class GameAudio {
         case 'TruckDestroyed':
           this.play('land', 0, HEAVY_RATE);
           break;
+        case 'CaidArrived':
+          // his banner comes with the alarm, like any danger
+          this.play('alarm');
+          break;
         case 'CaidJailed':
           // the jail van's siren
           this.siren('police');

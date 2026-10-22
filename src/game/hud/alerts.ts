@@ -74,10 +74,12 @@ function isDrop(kind: AlertKind): kind is DropKind {
 }
 /** How long the position-less « MODE FURIE ! » banner stays (short: Paul is busy hitting). */
 export const FURIE_ALERT_MS = 2200;
+/** The shortest a warning banner stays on screen (its alarm rang: give the player time to read it). */
+export const ALERT_MIN_MS = 3500;
 /** How long the short « DRAPEAU RÉCUPÉRÉ ! » banner stays. */
-export const FLAG_ALERT_MS = 2600;
+export const FLAG_ALERT_MS = ALERT_MIN_MS;
 /** How long the short, position-less « LE CAÏD ARRIVE ! » banner stays. */
-export const CAID_ALERT_MS = 2600;
+export const CAID_ALERT_MS = ALERT_MIN_MS;
 
 /** How long the « ÉVASION ! » banner stays. */
 export const BREAKOUT_ALERT_MS = 3600;
@@ -315,6 +317,36 @@ export function activeIncidents(s: Snapshot): Incident[] {
   return out;
 }
 
+export type GuideKind = 'ruin' | 'toolbox';
+export type GuideIcon = 'wrench' | 'toolbox';
+/** A repair-guidance edge indicator: a ruin to rebuild, or a toolbox to fetch. */
+export interface GuideMark {
+  id: string;
+  kind: GuideKind;
+  pos: Vec;
+}
+export const GUIDE_LOOK: Readonly<Record<GuideKind, { label: string; icon: GuideIcon }>> = {
+  ruin: { label: 'RÉPARER', icon: 'wrench' },
+  toolbox: { label: 'OUTILS', icon: 'toolbox' },
+};
+
+/**
+ * Repair guidance: Paul carrying a toolbox, every ruin (at its door); without one, while at least one ruin waits,
+ * every toolbox on the ground. Nothing once the session ended.
+ */
+export function guideMarks(s: Snapshot): GuideMark[] {
+  if (s.ended) return [];
+  const ruins = s.targets.filter((t) => t.state === 'ruined');
+  if (ruins.length === 0) return [];
+  if (s.toolboxes.carried) return ruins.map((t) => ({ id: `ruin:${t.id}`, kind: 'ruin', pos: { ...t.door } }));
+  return s.toolboxes.ground.map((g) => ({ id: `toolbox:${g.id}`, kind: 'toolbox', pos: { ...g.pos } }));
+}
+
+/** Events that start a new danger: the red edge glow flashes once (several in one frame: once). */
+export function isNewAttack(e: SimEvent): boolean {
+  return e.type === 'CasseStarted' || e.type === 'SchoolStarted' || e.type === 'TargetIgnited' || e.type === 'RescueStarted' || e.type === 'MonumentAttacked';
+}
+
 /** Distance in metres (1 tile = 32 px = 1 m), rounded. */
 export function meters(from: Vec, to: Vec): number {
   return Math.round(Math.hypot(to.x - from.x, to.y - from.y) / CONFIG.tile);
@@ -394,7 +426,7 @@ const PALETTE: Record<string, string> = {
   C: 'currentColor',
 };
 
-type Sprite = AlertIcon | 'arrow' | 'arrowDiag';
+type Sprite = AlertIcon | GuideIcon | 'arrow' | 'arrowDiag';
 
 const SPRITES: Record<Sprite, string[]> = {
   flame: [
@@ -525,6 +557,31 @@ const SPRITES: Record<Sprite, string[]> = {
     '..KSSK....',
     '.KSSSK....',
     '.KKKKK....',
+  ],
+  // a gold wrench: a ruin to repair
+  wrench: [
+    '..KKK.....',
+    '.KYYK.....',
+    'KYK.K.....',
+    'KYYKKK....',
+    '.KKYYYK...',
+    '...KYYYK..',
+    '....KYYYK.',
+    '.....KYYYK',
+    '......KYYK',
+    '.......KK.',
+  ],
+  // a red toolbox with its handle: a toolbox on the ground
+  toolbox: [
+    '...KKKK...',
+    '...K..K...',
+    'KKKKKKKKKK',
+    'KRRRRRRRRK',
+    'KRRRRRRRRK',
+    'KKKKYYKKKK',
+    'KRRRYYRRRK',
+    'KRRRRRRRRK',
+    'KKKKKKKKKK',
   ],
   // points right (0°); rotated toward the target
   arrow: ['....C...', '....CC..', 'CCCCCCC.', 'CCCCCCCC', 'CCCCCCC.', '....CC..', '....C...'],
@@ -678,7 +735,9 @@ export class AlertBanner {
   private show(incident: Alert): void {
     const spec = incidentAlert(incident.kind, incident.wave, incident.total, incident.headline);
     this.current = incident;
-    this.el.className = `bb-alert tone-${spec.tone}`;
+    // a danger shakes once on entry (CSS, off under prefers-reduced-motion)
+    const danger = spec.tone === 'fire' || spec.tone === 'warn';
+    this.el.className = `bb-alert tone-${spec.tone}${danger ? ' shake' : ''}`;
     this.ico.innerHTML = pixelSvg(spec.icon, 3);
     this.title.textContent = spec.title;
     this.sub.textContent = spec.sub;

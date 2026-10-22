@@ -9,16 +9,21 @@ import {
   alertFromEvent,
   bearingDeg,
   edgePosition,
+  GUIDE_LOOK,
   formatMeters,
+  guideMarks,
   hintIds,
+  isNewAttack,
   incidentAlert,
   incidentLook,
   pixelSvg,
   setArrow,
   type AlertIcon,
   type Box,
+  type GuideMark,
   type Incident,
 } from './alerts';
+import { alarmPeriodMs, firstRuinHelp } from '../render/actionHintMath';
 import {
   DEFAULT_ACT_LABEL,
   ENERGY_REFUSED_HINT,
@@ -46,7 +51,11 @@ export interface CameraView {
 }
 
 /** Half-size (px) of an edge indicator and its distance from the screen border. */
-const EDGE_HALF: Vec = { x: 66, y: 20 };
+const EDGE_HALF: Vec = { x: 84, y: 26 };
+/** How long the first-ruin help line stays (once per game). */
+export const HELP_MS = 7000;
+/** How long the red screen-edge glow of a new attack lasts (matches bb-glow in hud.css). */
+const GLOW_MS = 700;
 const EDGE_PAD = 8;
 /** Touch buttons in the bottom-right corner (see jouer/index.html), kept clear of the edge indicators. */
 const TOUCH_PAD_W = 200;
@@ -199,6 +208,15 @@ export class Hud {
   private lastRescue = Number.POSITIVE_INFINITY;
   private rescueDrain: 'en cours' | 'interrompu' = 'en cours';
 
+  /** Red screen-edge glow on each new attack. */
+  private readonly glow = el('div', 'bb-glow');
+  private glowTimer: ReturnType<typeof setTimeout> | null = null;
+  /** One-line help the first time a ruin stands (once per game: this Hud lives as long as the game). */
+  private readonly help = el('div', 'bb-help');
+  private helpShown = false;
+  private helpUntil = 0;
+  private readonly guideEls = new Map<string, Edge>();
+
   private readonly tools = el('div', 'bb-tools');
   private intro: HTMLElement | null = null;
   private introCleanup: (() => void) | null = null;
@@ -240,7 +258,11 @@ export class Hud {
     cmd.setAttribute('aria-label', 'Commandes'); // keeps its name when it shrinks to a "?" on touch
     cmd.addEventListener('click', () => this.opts.onControls?.());
     this.tools.append(cmd);
-    this.root.append(top, this.prompt, this.edges, this.banner, this.tools, this.round.root);
+    this.glow.hidden = true;
+    this.glow.setAttribute('aria-hidden', 'true');
+    this.help.hidden = true;
+    this.help.setAttribute('role', 'status');
+    this.root.append(this.glow, top, this.prompt, this.help, this.edges, this.banner, this.tools, this.round.root);
     this.alert = new AlertBanner(this.root);
     parent.append(this.root);
     this.touchRoot = touchRoot;
@@ -264,6 +286,32 @@ export class Hud {
       const inc = alertFromEvent(e);
       if (inc) this.alert.push(inc);
     }
+    if (events.some(isNewAttack)) this.flashGlow();
+  }
+
+  /** The red glow round the screen edges, restarted on each new attack (CSS; a soft static glow under reduced motion). */
+  private flashGlow(): void {
+    this.glow.hidden = false;
+    this.glow.classList.remove('on');
+    void this.glow.offsetWidth;
+    this.glow.classList.add('on');
+    if (this.glowTimer !== null) clearTimeout(this.glowTimer);
+    this.glowTimer = setTimeout(() => {
+      this.glow.hidden = true;
+      this.glow.classList.remove('on');
+      this.glowTimer = null;
+    }, GLOW_MS);
+  }
+
+  /** The first time a ruin stands in this game: « Ramasse une caisse à outils, puis appuie sur F… » for HELP_MS. */
+  private updateHelp(s: Snapshot, touch: boolean): void {
+    const now = performance.now();
+    if (!this.helpShown && !s.ended && s.targets.some((t) => t.state === 'ruined')) {
+      this.helpShown = true;
+      this.helpUntil = now + HELP_MS;
+      this.c.text(this.help, firstRuinHelp(touch));
+    }
+    this.help.hidden = s.ended || now >= this.helpUntil;
   }
 
   /** « Énergie insuffisante » in the ÉNERGIE row for ENERGY_HINT_MS (a new refusal restarts it). */
@@ -330,6 +378,7 @@ export class Hud {
     this.hideIntro();
     this.alert.destroy();
     if (this.refusedTimer !== null) clearTimeout(this.refusedTimer);
+    if (this.glowTimer !== null) clearTimeout(this.glowTimer);
     for (const b of [this.furieBtn, this.ondeBtn]) b?.classList.remove('ready', 'dim');
     window.removeEventListener('resize', this.onResize);
     this.root.remove();
@@ -375,6 +424,8 @@ export class Hud {
     this.placeAlert();
     this.updateRound(roundPanel(s));
     this.updateEdges(active, s, view, touch);
+    this.updateGuides(guideMarks(s), s, view, touch);
+    this.updateHelp(s, touch);
   }
 
   /** The score list: values, the score pop (only when it goes up) and the round pulse (when the round changes). */
@@ -626,19 +677,30 @@ export class Hud {
     this.c.style(p, y > 0 ? `top:${Math.round(y)}px` : '');
   }
 
-  /** One pixel indicator per active incident, at the screen edge toward it, only while it is off-screen. */
-  private updateEdges(list: Incident[], s: Snapshot, view: CameraView, touch: boolean): void {
-    const seen = new Set<string>();
+  /** The boxes edge indicators keep clear of: the stats panel, the Commandes button, the touch controls. */
+  private edgeAvoid(view: CameraView, touch: boolean): Box[] {
     const { top, tools } = this.boxes();
     const avoid: Box[] = [top, { left: tools.left, top: 0, right: view.width, bottom: tools.bottom }];
     if (touch) avoid.push({ left: view.width - TOUCH_PAD_W, top: view.height - TOUCH_PAD_H, right: view.width, bottom: view.height });
+    return avoid;
+  }
+
+  /**
+   * One pixel indicator per active incident, at the screen edge toward it, only while it is off-screen. A target under
+   * attack pulses faster as its health falls (--pulse).
+   */
+  private updateEdges(list: Incident[], s: Snapshot, view: CameraView, touch: boolean): void {
+    const seen = new Set<string>();
+    const avoid = this.edgeAvoid(view, touch);
     for (const inc of list) {
       const screen = { x: (inc.pos.x - view.x) * view.zoom, y: (inc.pos.y - view.y) * view.zoom };
       const at = edgePosition(screen, view, EDGE_HALF, EDGE_PAD, avoid);
       if (!at) continue;
       seen.add(inc.id);
       const e = this.edge(inc);
-      this.c.style(e.root, `left:${at.x}px;top:${at.y}px`);
+      const t = s.targets.find((x) => x.id === inc.id);
+      const pulse = t ? `;--pulse:${alarmPeriodMs(t.hp / t.maxHp)}ms` : '';
+      this.c.style(e.root, `left:${at.x}px;top:${at.y}px${pulse}`);
       setArrow(e.arrow, bearingDeg(at, screen));
       this.c.text(e.dist, formatMeters(s.player.pos, inc.pos));
     }
@@ -646,6 +708,41 @@ export class Hud {
       if (seen.has(id)) continue;
       e.root.remove();
       this.edgeEls.delete(id);
+    }
+  }
+
+  /** Repair guidance (guideMarks): the ruins to rebuild or the toolboxes to fetch, at the screen edge while off-screen. */
+  private updateGuides(list: GuideMark[], s: Snapshot, view: CameraView, touch: boolean): void {
+    const seen = new Set<string>();
+    const avoid = this.edgeAvoid(view, touch);
+    for (const g of list) {
+      const screen = { x: (g.pos.x - view.x) * view.zoom, y: (g.pos.y - view.y) * view.zoom };
+      const at = edgePosition(screen, view, EDGE_HALF, EDGE_PAD, avoid);
+      if (!at) continue;
+      seen.add(g.id);
+      let e = this.guideEls.get(g.id);
+      if (!e) {
+        const look = GUIDE_LOOK[g.kind];
+        const root = el('div', `bb-guide k-${g.kind}`);
+        const arrow = el('span', 'arrow');
+        const ico = el('span', 'ico');
+        ico.innerHTML = pixelSvg(look.icon, 2);
+        const txt = el('span', 'txt');
+        const dist = el('span', 'dist');
+        txt.append(el('b', 'lbl', look.label), dist);
+        root.append(arrow, ico, txt);
+        this.edges.append(root);
+        e = { root, arrow, dist };
+        this.guideEls.set(g.id, e);
+      }
+      this.c.style(e.root, `left:${at.x}px;top:${at.y}px`);
+      setArrow(e.arrow, bearingDeg(at, screen));
+      this.c.text(e.dist, formatMeters(s.player.pos, g.pos));
+    }
+    for (const [id, e] of this.guideEls) {
+      if (seen.has(id)) continue;
+      e.root.remove();
+      this.guideEls.delete(id);
     }
   }
 

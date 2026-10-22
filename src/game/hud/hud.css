@@ -105,8 +105,8 @@
   --edge: var(--bb-accent); --tint: #2a2210;
   position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; top: calc(12px + env(safe-area-inset-top));
   box-sizing: border-box; max-width: calc(100vw - 24px); display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px; background: var(--bb-ink); background-image: linear-gradient(var(--tint), var(--tint));
-  color: #fff; font: 8px/1.6 var(--bb-pixel); text-shadow: none; pointer-events: none; border-radius: 0;
+  padding: 12px 16px; background: var(--bb-ink); background-image: linear-gradient(var(--tint), var(--tint));
+  color: #fff; font: 10px/1.6 var(--bb-pixel); text-shadow: none; pointer-events: none; border-radius: 0;
   box-shadow:
     0 calc(-1 * var(--bb-px)) 0 0 var(--edge), 0 var(--bb-px) 0 0 var(--edge),
     calc(-1 * var(--bb-px)) 0 0 0 var(--edge), var(--bb-px) 0 0 0 var(--edge),
@@ -121,7 +121,7 @@
 .bb-alert.tone-win { --edge: var(--bb-ok); --flash: #fff7e0; --tint: #0f2a18; }
 .bb-alert .ico { display: inline-flex; flex: none; }
 .bb-alert .txt { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.bb-alert .title { font-size: 16px; line-height: 1.25; font-weight: 400; color: var(--edge); text-shadow: 2px 2px 0 #000; }
+.bb-alert .title { font-size: 20px; line-height: 1.25; font-weight: 400; color: var(--edge); text-shadow: 2px 2px 0 #000; }
 .bb-alert .sub { color: #fff; }
 .bb-alert .meta { color: var(--bb-accent); }
 .bb-alert .dir[hidden], .bb-alert .meta[hidden] { display: none; }
@@ -143,8 +143,8 @@
 
 .bb-edge {
   position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 4px;
-  padding: 4px 6px; background: var(--bb-ink); color: #fff; font: 8px/1.5 var(--bb-pixel); text-shadow: none; white-space: nowrap;
-  border: 2px solid var(--edge); box-shadow: 2px 2px 0 0 #000; animation: bb-edge-pulse 0.8s steps(1, end) infinite;
+  padding: 6px 8px; background: var(--bb-ink); color: #fff; font: 10px/1.5 var(--bb-pixel); text-shadow: none; white-space: nowrap;
+  border: 3px solid var(--edge); box-shadow: 3px 3px 0 0 #000; animation: bb-edge-pulse var(--pulse, 0.8s) steps(1, end) infinite;
 }
 .bb-edge.tone-fire { --edge: var(--bb-fire); }
 .bb-edge.tone-warn { --edge: var(--bb-accent); }
@@ -256,3 +256,31 @@
 #touch-ui [data-action="act"].bb-act-ready { border-color: #ffd166; color: #fff7e0; font-size: 11px; box-shadow: 0 0 0 3px rgba(255, 209, 102, 0.55), 0 0 14px 2px rgba(255, 209, 102, 0.7); animation: bb-act-pulse 0.7s steps(1, end) infinite; }
 @keyframes bb-act-pulse { 50% { transform: scale(1.08); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4); } }
 @media (prefers-reduced-motion: reduce) { #touch-ui [data-action="act"].bb-act-ready { animation: none; } }
+.bb-alert.shake { animation: bb-alert-in 0.24s steps(3, end) both, bb-alert-shake 0.36s steps(6, end) 0.24s 1, bb-alert-flash 0.5s steps(1, end) 0.6s 6; }
+@keyframes bb-alert-shake { 0%, 100% { transform: none; } 17% { transform: translateX(-4px); } 33% { transform: translateX(4px); } 50% { transform: translateX(-3px); } 67% { transform: translateX(3px); } 83% { transform: translateX(-1px); } }
+@media (max-width: 560px) { .bb-alert .title { font-size: 13px; } .bb-alert .sub { font-size: 9px; } }
+@media (max-width: 400px) { .bb-alert .title { font-size: 11px; } .bb-alert .sub, .bb-alert .meta { font-size: 8px; } }
+.bb-edge .arrow { width: 20px; height: 20px; }
+/* repair guidance at the screen edge: the ruins to rebuild (wrench) or the toolboxes to fetch, steady gold */
+.bb-guide {
+  --edge: #ffd166;
+  position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 4px;
+  padding: 5px 7px; background: var(--bb-ink); color: #fff; font: 9px/1.5 var(--bb-pixel); text-shadow: none; white-space: nowrap;
+  border: 2px dashed var(--edge); box-shadow: 2px 2px 0 0 #000; animation: bb-guide-pulse 1.2s steps(1, end) infinite;
+}
+.bb-guide .arrow { display: inline-flex; width: 16px; height: 16px; align-items: center; justify-content: center; color: var(--edge); }
+.bb-guide .ico { display: inline-flex; }
+.bb-guide .txt { display: flex; flex-direction: column; }
+.bb-guide .lbl { font-weight: 400; color: var(--edge); }
+@keyframes bb-guide-pulse { 50% { border-style: solid; } }
+/* a new attack: the screen edges glow red once */
+.bb-glow { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 6px rgba(255, 59, 48, 0.85), inset 0 0 48px 16px rgba(255, 59, 48, 0.55); opacity: 0; }
+.bb-glow.on { animation: bb-glow 0.7s steps(5, end) both; }
+@keyframes bb-glow { 0% { opacity: 1; } 40% { opacity: 0.8; } 100% { opacity: 0; } }
+/* first ruin of the game: one line of help (once) */
+.bb-help { position: absolute; left: 50%; bottom: calc(18% + env(safe-area-inset-bottom)); transform: translateX(-50%); max-width: calc(100vw - 32px); box-sizing: border-box; padding: 8px 12px; background: var(--bb-ink); color: #fff; font: 9px/1.6 var(--bb-pixel); text-shadow: none; text-align: center; border: 2px solid var(--bb-accent); box-shadow: 3px 3px 0 0 #000; }
+@media (prefers-reduced-motion: reduce) {
+  .bb-alert.shake { animation: none; }
+  .bb-edge, .bb-guide { animation: none; }
+  .bb-glow.on { animation: none; opacity: 0.45; }
+}

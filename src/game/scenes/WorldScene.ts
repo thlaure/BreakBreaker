@@ -19,6 +19,7 @@ import { FirePatchLayer, MolotovFx, RockLayer, TelegraphLayer } from '../render/
 import { MonumentView, makeMonumentTextures } from '../render/monument';
 import { TargetsLayer, makeTargetTextures } from '../render/targets';
 import { BoothsLayer } from '../render/booths';
+import { ActionHintLayer, makeActionHintTextures } from '../render/actionHint';
 import { ServicesLayer, makeServiceTextures } from '../render/services';
 import { PrisonLayer, makePrisonTextures } from '../render/prison';
 import { FieldHealView, StationsView, ToolboxView, WorldView, makeRockTextures, makeTextures } from '../render/world';
@@ -38,6 +39,9 @@ const FURIE_SHAKE: Shake = { ms: 90, px: 1.5 };
 /** Small shake when the onde d’énergie fires (none under prefers-reduced-motion). */
 const BEAM_SHAKE_MS = 160;
 const BEAM_SHAKE_PX = 2;
+/** Light shake with a new danger's banner. */
+const ALERT_SHAKE: Shake = { ms: 220, px: 1.5 };
+const NEW_DANGER: ReadonlySet<SimEvent['type']> = new Set(['TargetIgnited', 'CasseStarted', 'RescueStarted', 'MonumentAttacked', 'CaidArrived']);
 const BASE_W = 640;
 const BASE_H = 360;
 const PAN_IN_MS = 700;
@@ -102,6 +106,8 @@ export class WorldScene extends Phaser.Scene {
   private bullets!: BulletLayer;
   /** The spring-loaded glove's punch. */
   private glove!: GloveFx;
+  /** The in-world « F · Réparer » bubble, the toolbox arrow, the ruins' wrenches, the attacked places' red alarm. */
+  private actionHint!: ActionHintLayer;
   private reducedMotion = false;
 
   private hitStopUntil = 0;
@@ -208,6 +214,7 @@ export class WorldScene extends Phaser.Scene {
     makeRoleTextures(this);
     makeServiceTextures(this);
     makePrisonTextures(this);
+    makeActionHintTextures(this);
     this.reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.world = new WorldView(this);
     this.targetViews = new TargetsLayer(this, this.world.buildingParts);
@@ -245,6 +252,7 @@ export class WorldScene extends Phaser.Scene {
     this.bullets = new BulletLayer(this);
     this.glove = new GloveFx(this);
     this.toolboxes = new ToolboxView(this);
+    this.actionHint = new ActionHintLayer(this, this.reducedMotion);
     this.services = new ServicesLayer(this, (x, y, t) => this.pows.spawn(x, y, t, 'PAF !'));
     this.prison = new PrisonLayer(this, (x, y, t, word, big) => this.pows.spawn(x, y, t, word, big), this.reducedMotion);
 
@@ -398,7 +406,11 @@ export class WorldScene extends Phaser.Scene {
         this.monument.onEvent(e);
       } else if (e.type === 'FireOut' || e.type === 'BuildingDestroyed' || e.type === 'TargetRepaired') {
         this.targetViews.onEvent(e, time);
-      } else if (e.type === 'PrisonBreakout') {
+      } else if (NEW_DANGER.has(e.type)) {
+        // a new attack, fire, rescue or occupation: a light shake with the banner (none under reduced motion)
+        this.shake(ALERT_SHAKE, time);
+      }
+      if (e.type === 'PrisonBreakout') {
         // the prison fell with Caïds inside: they burst out
         this.shake(SHAKE_BIG, time);
       }
@@ -441,6 +453,7 @@ export class WorldScene extends Phaser.Scene {
     this.firePatches.update(snap.firePatches, time);
     this.firebombFx.update(snap.firebombs, snap.now, time);
     this.toolboxes.update(snap.toolboxes, snap.player, time);
+    this.actionHint.update(snap, time);
     this.stations.update(snap.stations, time);
     this.fieldHeals.update(snap.fieldHeals, time, snap.now);
     this.world.update(snap.player.pos);
