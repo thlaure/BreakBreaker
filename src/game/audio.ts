@@ -37,6 +37,24 @@ export function threatLevel(s: Snapshot): number {
 /** Playback rate of the heavier hits (brute, Caïd). */
 export const HEAVY_RATE = 0.7;
 
+/**
+ * Impact one-shots (hits, hurt, thuds and the synthesised tock / pop / thump / boing / clank) play at a slightly random
+ * pitch, ±PITCH_JITTER of their rate, so a run of hits does not sound mechanical. Render only (Math.random, never the
+ * sim's stream); sirens, the alarm, chimes and the hums keep their exact pitch.
+ */
+export const PITCH_JITTER = 0.06;
+const IMPACT_SFX: ReadonlySet<Sfx> = new Set<Sfx>(['hit1', 'hit2', 'hit3', 'hurt', 'land']);
+
+/** The sample is an impact one-shot whose pitch is jittered. */
+export function isImpactSfx(key: Sfx): boolean {
+  return IMPACT_SFX.has(key);
+}
+
+/** Rate factor for one draw `r` in [0, 1): 1 ± PITCH_JITTER. */
+export function pitchJitter(r: number): number {
+  return 1 + (r * 2 - 1) * PITCH_JITTER;
+}
+
 export class GameAudio {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -152,6 +170,7 @@ export class GameAudio {
     void this.ctx?.suspend().catch(() => undefined);
   }
 
+  /** An impact sample (isImpactSfx) gets a random ±PITCH_JITTER on top of `rate` (only when it actually plays). */
   play(key: Sfx, delaySec = 0, rate = 1): void {
     const ctx = this.ctx;
     const buf = this.buffers.get(key);
@@ -159,7 +178,7 @@ export class GameAudio {
     try {
       const src = ctx.createBufferSource();
       src.buffer = buf;
-      src.playbackRate.value = rate;
+      src.playbackRate.value = isImpactSfx(key) ? rate * this.pitch() : rate;
       src.connect(this.sfxBus);
       this.voices += 1;
       src.onended = (): void => {
@@ -170,6 +189,11 @@ export class GameAudio {
     } catch {
       /* silent */
     }
+  }
+
+  /** Random pitch factor of an impact (1 when muted: nothing is drawn); called only once a voice actually plays. */
+  private pitch(): number {
+    return this.muted ? 1 : pitchJitter(Math.random());
   }
 
   /** Short voice on the sfx bus (synthesised cues share the voice cap with the samples). */
@@ -238,15 +262,16 @@ export class GameAudio {
     });
   }
 
-  /** Furie / Onde refused (too little energy): a dull 0.08 s low square « tock » (220 → 110 Hz, low-passed). */
+  /** Furie / Onde refused (too little energy): a dull 0.08 s low square « tock » (220 → 110 Hz, low-passed; jittered). */
   tock(): void {
     this.voice((ctx, out, t) => {
+      const k = this.pitch();
       const osc = ctx.createOscillator();
       const lp = ctx.createBiquadFilter();
       const g = ctx.createGain();
       osc.type = 'square';
-      osc.frequency.setValueAtTime(220, t);
-      osc.frequency.exponentialRampToValueAtTime(110, t + 0.07);
+      osc.frequency.setValueAtTime(220 * k, t);
+      osc.frequency.exponentialRampToValueAtTime(110 * k, t + 0.07);
       lp.type = 'lowpass';
       lp.frequency.value = 700;
       g.gain.setValueAtTime(0.0001, t);
@@ -259,9 +284,10 @@ export class GameAudio {
     });
   }
 
-  /** A shooter's bullet: a tiny cartoon « pop » (0.06 s noise click through a band-pass, quiet: bursts of 3). */
+  /** A shooter's bullet: a tiny cartoon « pop » (0.06 s noise click through a band-pass, quiet: bursts of 3; jittered). */
   pop(): void {
     this.voice((ctx, out, t) => {
+      const k = this.pitch();
       const len = Math.floor(ctx.sampleRate * 0.06);
       const buf = ctx.createBuffer(1, len, ctx.sampleRate);
       const data = buf.getChannelData(0);
@@ -270,7 +296,7 @@ export class GameAudio {
       src.buffer = buf;
       const bp = ctx.createBiquadFilter();
       bp.type = 'bandpass';
-      bp.frequency.value = 1500;
+      bp.frequency.value = 1500 * k;
       bp.Q.value = 1.4;
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.0001, t);
@@ -282,14 +308,15 @@ export class GameAudio {
     });
   }
 
-  /** Flashball shot: a low « thump » (sine 150 → 55 Hz, 0.16 s) with a soft click on top. */
+  /** Flashball shot: a low « thump » (sine 150 → 55 Hz, 0.16 s; jittered). */
   thump(): void {
     this.voice((ctx, out, t) => {
+      const k = this.pitch();
       const osc = ctx.createOscillator();
       const g = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(150, t);
-      osc.frequency.exponentialRampToValueAtTime(55, t + 0.15);
+      osc.frequency.setValueAtTime(150 * k, t);
+      osc.frequency.exponentialRampToValueAtTime(55 * k, t + 0.15);
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(0.6, t + 0.006);
       g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
@@ -300,18 +327,19 @@ export class GameAudio {
     });
   }
 
-  /** The glove lands: a springy « boing » (triangle wobbling 220 ↔ 330 Hz at 18 Hz, falling, 0.3 s). */
+  /** The glove lands: a springy « boing » (triangle wobbling 220 ↔ 330 Hz at 18 Hz, falling, 0.3 s; jittered). */
   boing(): void {
     this.voice((ctx, out, t) => {
+      const k = this.pitch();
       const osc = ctx.createOscillator();
       const lfo = ctx.createOscillator();
       const depth = ctx.createGain();
       const g = ctx.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(330, t);
-      osc.frequency.exponentialRampToValueAtTime(180, t + 0.28);
+      osc.frequency.setValueAtTime(330 * k, t);
+      osc.frequency.exponentialRampToValueAtTime(180 * k, t + 0.28);
       lfo.frequency.value = 18;
-      depth.gain.value = 60;
+      depth.gain.value = 60 * k;
       lfo.connect(depth).connect(osc.frequency);
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(0.45, t + 0.01);
@@ -490,19 +518,20 @@ export class GameAudio {
     });
   }
 
-  /** Bouclier block: a short metallic clank (two detuned squares through a high band-pass, 0.18 s). */
+  /** Bouclier block: a short metallic clank (two detuned squares through a high band-pass, 0.18 s; jittered). */
   clank(): void {
     this.voice((ctx, out, t) => {
+      const k = this.pitch();
       const a = ctx.createOscillator();
       const b = ctx.createOscillator();
       const bp = ctx.createBiquadFilter();
       const g = ctx.createGain();
       a.type = 'square';
       b.type = 'square';
-      a.frequency.value = 820;
-      b.frequency.value = 1235;
+      a.frequency.value = 820 * k;
+      b.frequency.value = 1235 * k;
       bp.type = 'bandpass';
-      bp.frequency.value = 2400;
+      bp.frequency.value = 2400 * k;
       bp.Q.value = 2;
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(0.4, t + 0.005);
