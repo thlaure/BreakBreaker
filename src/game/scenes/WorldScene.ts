@@ -216,7 +216,7 @@ export class WorldScene extends Phaser.Scene {
     makePrisonTextures(this);
     makeActionHintTextures(this);
     this.reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    this.world = new WorldView(this);
+    this.world = new WorldView(this, this.reducedMotion);
     this.targetViews = new TargetsLayer(this, this.world.buildingParts);
     this.booths = new BoothsLayer(this, this.targetViews);
     this.monument = new MonumentView(this);
@@ -456,6 +456,6 @@ export class WorldScene extends Phaser.Scene {
     this.actionHint.update(snap, time);
     this.stations.update(snap.stations, time);
     this.fieldHeals.update(snap.fieldHeals, time, snap.now);
-    this.world.update(snap.player.pos);
+    this.world.update(snap.player.pos, time);
   }
 }

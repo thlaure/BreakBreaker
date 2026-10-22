@@ -4,6 +4,7 @@ import { DISTRICT, type Rect } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
 import type { Vec } from '../../sim/types';
 import { TILE } from '../assets';
+import { buildCafFront, buildTastyFront, type DecorAnim } from './decor';
 import { DEPTH, inRect } from './depth';
 import { pickupBlinkOff } from './pickupBlink';
 
@@ -89,15 +90,21 @@ export class WorldView {
   private readonly roofs: Roof[] = [];
   /** Parts of each target building (school, shop, nursery, town hall, library) by building index, for its ruin look. */
   readonly buildingParts = new Map<number, BuildingPart[]>();
+  /** Animated bits of the decor fronts (CAF queue, TASTY CROUSTY sign). */
+  private readonly decor: DecorAnim[] = [];
 
-  constructor(private readonly scene: Phaser.Scene) {
+  constructor(
+    private readonly scene: Phaser.Scene,
+    private readonly reducedMotion = false,
+  ) {
     this.buildGround();
     DISTRICT.buildings.forEach((b, i) => this.buildBuilding(b, i));
     this.buildTrees();
   }
 
-  /** Fades the roof / tree canopy whose rect contains Paul's feet. */
-  update(feet: Vec): void {
+  /** Fades the roof / tree canopy whose rect contains Paul's feet; steps the decor fronts' idle animation. */
+  update(feet: Vec, timeMs = 0): void {
+    for (const d of this.decor) d.update(timeMs);
     for (const r of this.roofs) {
       const a = inRect(feet, r.rect) ? ROOF_FADED : 1;
       for (const p of r.parts) p.setAlpha(a);
@@ -172,6 +179,12 @@ export class WorldView {
     else if (kind === 'townHall') this.buildingParts.set(i, [facade, roof, base, ...this.buildTownHallFront(b, parts)]);
     else if (kind === 'library') this.buildingParts.set(i, [facade, roof, base, ...this.buildLibraryFront(b, parts)]);
     else if (kind === 'prison') this.buildingParts.set(i, [facade, roof, base, ...this.buildPrisonFront(b, parts)]);
+    else {
+      // decor fronts: never targets, so not in buildingParts (no ruin look)
+      const decor = DISTRICT.decor.find((d) => buildingIndex(d.footprint) === i);
+      if (decor?.id === 'caf') this.decor.push(buildCafFront(this, s, decor, parts, this.reducedMotion));
+      else if (decor?.id === 'tastyCrousty') this.decor.push(buildTastyFront(this, s, decor, parts, this.reducedMotion));
+    }
     this.roofs.push({ rect, parts });
   }
 
@@ -250,7 +263,7 @@ export class WorldView {
   }
 
   /** Pixel-art graphics on a building's front wall (depth just above the wall) and its `r(colour, x, y, w, h)` painter. */
-  private frontPainter(b: Rect): { g: Phaser.GameObjects.Graphics; r: Paint; top: number; front: number } {
+  frontPainter(b: Rect): { g: Phaser.GameObjects.Graphics; r: Paint; top: number; front: number } {
     const front = b.y + b.h;
     const g = this.scene.add.graphics().setDepth(front + 0.02);
     const r: Paint = (c, x, y, w, h, a = 1) => {
@@ -263,7 +276,7 @@ export class WorldView {
    * A sign plate on the front edge of a building's roof (it fades with the roof): an outlined plate of `w` px, a
    * pixel icon drawn by `icon` (plate-local coordinates, the plate centred on 0,0) and a label. Returns its parts.
    */
-  private roofSign(
+  roofSign(
     b: Rect,
     roofParts: Roof['parts'],
     o: { w: number; rim: number; plate: number; label: string; color: string; textX: number; icon: (p: Paint) => void },
@@ -284,7 +297,7 @@ export class WorldView {
   }
 
   /** Warm light spilling from lit windows onto the sidewalk (goes dark on a ruin: named 'glow'). */
-  private windowGlow(b: Rect, colour: number, alpha: number): Phaser.GameObjects.Ellipse {
+  windowGlow(b: Rect, colour: number, alpha: number): Phaser.GameObjects.Ellipse {
     return this.scene.add
       .ellipse(b.x + b.w / 2, b.y + b.h + 6, b.w - 8, 14, colour, alpha)
       .setBlendMode(Phaser.BlendModes.ADD)
