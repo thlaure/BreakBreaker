@@ -302,9 +302,26 @@ export const CONFIG = {
   /**
    * Emergency services (phone booths): `calls` fire calls and as many police calls per session; Paul calls within
    * `callRange` px of a booth's door; the police come only with `policeMinHostiles` active rioters or more (the entry
-   * line not counted), the fire truck only while a target burns.
+   * line not counted), the fire truck only while a target burns. At most one truck and one police group on the map at
+   * a time; both come in from one of the rioters' entry points (own random stream) and are allies outside the hostile
+   * cap. A rioter after Paul (no place to attack) goes for the nearest of Paul, the truck and an officer within
+   * `hostileTargetRadius` px with a clear line; its blows take their damage off the ally's hp.
+   * `truck`: `hp`, `speed` px/s along the street graph, collision `radius` against solids only (Paul and rioters go
+   * through it), `reach` = its body for the rioters' blows; parked within `sprayRadius` px of a burning target's door it
+   * puts out `sprayRate` of the fire per second (every door in that radius at once), never repairs, keeps the hp left;
+   * it leaves by the nearest entry point when nothing burns, or after `maxStaySec` s.
+   * `police`: `count` officers of `hp` (one blow knocks one out: down, gone after `downSec` s), `speed` px/s; within
+   * `reach` px of a rioter it winds up `windup` s and hits (a weapon hit: KO but for a brute or the Caïd) if still within
+   * `hitRange` px, every `cooldown` s; the group leaves after `staySec` s, or once every officer is gone.
    */
-  services: { calls: 3, callRange: 40, policeMinHostiles: 8 },
+  services: {
+    calls: 3,
+    callRange: 40,
+    policeMinHostiles: 8,
+    hostileTargetRadius: 160,
+    truck: { hp: 60, speed: 160, radius: 7, reach: 16, sprayRadius: 80, sprayRate: 0.5, maxStaySec: 60 },
+    police: { count: 5, hp: 1, speed: 150, staySec: 40, reach: 18, hitRange: 26, windup: 0.3, cooldown: 0.8, downSec: 3 },
+  },
   pressureMax: 12,
   rulesVersion: 'slice-0.2.0',
 } as const;

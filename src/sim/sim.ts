@@ -1,3 +1,4 @@
+import { Allies, type AlliesView } from './allies';
 import { Bullets } from './bullets';
 import { CONFIG } from './config';
 import { Director, spawnPoints, type RoundPhase, type RoundSummary } from './director';
@@ -176,6 +177,11 @@ export interface Snapshot {
    * standing, a call left, no help of that kind on the map, a fire burning / enough rioters).
    */
   services: { calls: { fire: number; police: number }; hint: { fire: boolean; police: boolean } };
+  /**
+   * The emergency services on the map: the fire truck (null when none; `target` = the fire it drives to or sprays) and
+   * the police officers (`down` = knocked out, carried off a few seconds later).
+   */
+  allies: AlliesView;
 }
 
 const SERVICE_KINDS: readonly ServiceKind[] = ['fire', 'police'];
@@ -247,6 +253,8 @@ export class Sim {
   readonly toolboxes = new Toolboxes();
   /** Phone booth calls (fire truck, police): counters and acceptance. */
   readonly services = new Services();
+  /** The fire truck and the police group on the map (own random stream for their entry point). */
+  readonly allies: Allies;
   readonly firePatches = new FirePatches();
   /** The equestrian monument's flag and capture the flag (persists across rounds). */
   readonly monument = new Monument();
@@ -300,6 +308,7 @@ export class Sim {
     this.launchRand = rng((seed ^ 0x85ebca6b) >>> 0);
     this.fallRand = rng((seed ^ 0x9e3779b1) >>> 0);
     this.fieldHeals = new FieldHeals(this.grid, rng((seed ^ 0xc2b2ae35) >>> 0));
+    this.allies = new Allies(this.grid, rng((seed ^ 0x27d4eb2f) >>> 0));
     this.invulnerable = opts.invulnerable ?? false;
     this.fields = { player: new FlowField(this.grid), victim: new FlowField(this.grid) };
     for (const t of DISTRICT.targets) this.siteFields.set(t.id, new FlowField(this.grid));
@@ -387,7 +396,9 @@ export class Sim {
       sites: this.sites(),
       victimPos,
       pressure: this.director.pressure(this.rules.kos),
+      allies: { list: this.allies.targetsFor(), hit: (id, amount) => ev.push(...this.allies.damage(id, amount)) },
     });
+    this.syncServices();
     this.updateFacings(prev);
     for (const h of this.queue.step(dt, this.horde, spawnPoints(p.pos))) {
       if (h.role === 'boss') ev.push({ type: 'CaidArrived', lifeId: h.lifeId, pos: v(h.pos), round: h.round ?? this.director.round });
@@ -484,6 +495,17 @@ export class Sim {
     const kit = this.toolboxes.step(dt, { player: p, horde: this.horde, targets: this.targets, rules: this.rules, act: kitAct });
     ev.push(...kit.events);
     this.toolboxMessage = kit.message;
+    // the truck and the police: drive, spray, fight (an officer's KO scores +1 like any KO, without energy)
+    ev.push(
+      ...this.allies.step(dt, {
+        now,
+        horde: this.horde,
+        targets: this.targets,
+        rules: this.rules,
+        strike: (lifeId, from) => this.policeStrike(lifeId, from, ev),
+      }),
+    );
+    this.syncServices();
     const heal = this.stations.step({ player: p, rules: this.rules });
     ev.push(...heal.events);
     this.stationMessage = heal.message;
@@ -602,6 +624,7 @@ export class Sim {
       energy: { value: this.energy.value, max: CONFIG.energy.max, ready: this.energy.ready() },
       monument: this.monumentView(),
       stats: { ...this.rules.stats },
+      allies: this.allies.view(),
       services: {
         calls: { ...this.services.calls },
         hint: { fire: this.services.check('fire', this.callCtx('fire')).ok, police: this.services.check('police', this.callCtx('police')).ok },
@@ -617,6 +640,7 @@ export class Sim {
       burning,
       activeHostiles: this.horde.active().length,
       boothStanding: this.targets.standing(BOOTH_OF[kind]),
+      // kept in step with the allies (syncServices)
       busy: this.services.active[kind],
     };
   }
@@ -642,8 +666,28 @@ export class Sim {
     }
     if (best === null) return null;
     const r = this.services.tryCall(best, this.callCtx(best));
-    ev.push(r.ok ? { type: 'ServiceCalled', kind: best } : { type: 'ServiceRefused', kind: best, reason: r.reason });
+    if (r.ok) {
+      ev.push({ type: 'ServiceCalled', kind: best });
+      ev.push(...this.allies.call(best, this.now));
+      this.syncServices();
+    } else ev.push({ type: 'ServiceRefused', kind: best, reason: r.reason });
     return best;
+  }
+
+  /** Services.active follows the allies: a truck / a police group on the map makes a new call of that kind 'busy'. */
+  private syncServices(): void {
+    for (const kind of SERVICE_KINDS) this.services.active[kind] = this.allies.onMap(kind);
+  }
+
+  /**
+   * An officer's baton blow from `from`: a weapon hit (KO but for a brute or the Caïd, damageOn), the KO scored +1 by
+   * Rules like any (a Caïd's bonus too), falling away from the officer; it never fills the energy gauge.
+   */
+  private policeStrike(lifeId: number, from: Vec, ev: SimEvent[]): void {
+    const h = this.horde.list.find((x) => x.lifeId === lifeId);
+    if (!h || h.state === 'ko') return;
+    const away = sub(h.pos, from);
+    this.hit(lifeId, this.damageTo(lifeId, 'weapon'), ev, 'baton', undefined, len(away) > 1e-6 ? norm(away) : undefined, false);
   }
 
   private monumentView(): Snapshot['monument'] {
@@ -889,11 +933,11 @@ export class Sim {
    * (no chain refills). A WTF 'domino' then knocks its neighbours down (dominoVictims) through this same path, as
    * 'knocked' (which never chains); none: 'faceplant'. True on a KO.
    */
-  private hit(lifeId: number, dmg: number, ev: SimEvent[], source: FallSource, along?: Vec, dir?: Vec): boolean {
+  private hit(lifeId: number, dmg: number, ev: SimEvent[], source: FallSource, along?: Vec, dir?: Vec, energy = true): boolean {
     if (this.horde.applyHit(lifeId, dmg) !== 'ko') return false;
     const h = this.horde.list.find((x) => x.lifeId === lifeId);
     const counted = this.rules.onKnockout(lifeId, h?.pos);
-    if (counted && h && !this.weapons.furie() && source !== 'beam') ev.push(...this.energy.gain(h.role));
+    if (counted && h && energy && !this.weapons.furie() && source !== 'beam') ev.push(...this.energy.gain(h.role));
     if (h?.role === 'boss') this.caidDown(h, ev);
     const launched = source === 'furie' || source === 'gant' || source === 'beam';
     const launch = h && launched ? this.launch(h.pos, along, source === 'gant') : undefined;
@@ -905,7 +949,7 @@ export class Sim {
     ev.push(launch ? { type: 'ActorKnockedOut', lifeId, launch, fall } : { type: 'ActorKnockedOut', lifeId, fall });
     if (victims.length > 0) {
       ev.push({ type: 'DominoTriggered', from: v(h!.pos), lifeIds: victims.map((x) => x.lifeId) });
-      for (const x of victims) this.hit(x.lifeId, KO_DAMAGE, ev, 'knocked', undefined, fall.dir);
+      for (const x of victims) this.hit(x.lifeId, KO_DAMAGE, ev, 'knocked', undefined, fall.dir, energy);
     }
     return true;
   }

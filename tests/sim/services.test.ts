@@ -41,6 +41,14 @@ function crowd(sim: Sim, n: number): void {
   }
 }
 
+/** The help called is off the map again (the truck gone, the police group gone): the next call is not 'busy'. */
+function gone(sim: Sim): void {
+  sim.allies.truck = null;
+  sim.allies.policeUntil = null;
+  sim.allies.fighters.length = 0;
+  sim.step(IDLE);
+}
+
 describe('the phone booths (targets)', () => {
   test('two 60 hp prop booths side by side, kind booth, on the centre-west plaza', () => {
     expect(def('boothRed')).toMatchObject({ kind: 'booth', prop: true, maxHp: 60, footprint: R(4, 22, 1, 1) });
@@ -226,7 +234,10 @@ describe('calling from a booth in the sim (Agir)', () => {
   test('three calls then « no calls »; a new Sim starts again from 3 + 3', () => {
     const { sim, press } = simAt(C(4, 23));
     sim.targets.ignite('car2', 'car2#x');
-    for (let i = 0; i < 3; i++) expect(of(press(), 'ServiceCalled')).toHaveLength(1);
+    for (let i = 0; i < 3; i++) {
+      expect(of(press(), 'ServiceCalled')).toHaveLength(1);
+      gone(sim);
+    }
     expect(of(press(), 'ServiceRefused')).toEqual([{ type: 'ServiceRefused', kind: 'fire', reason: 'noCalls' }]);
     expect(sim.snapshot().services.hint.fire).toBe(false);
     expect(new Sim(7).services.calls).toEqual({ fire: 3, police: 3 });
@@ -277,6 +288,8 @@ describe('calling from a booth in the sim (Agir)', () => {
     expect(of(press(), 'ServiceRefused')).toEqual([{ type: 'ServiceRefused', kind: 'fire', reason: 'ruined' }]);
     expect(sim.snapshot().services).toMatchObject({ calls: { fire: 2 }, hint: { fire: false } });
     sim.targets.repair('boothRed');
+    gone(sim);
+    sim.step(IDLE);
     expect(sim.snapshot().services.hint.fire).toBe(true);
     expect(of(press(), 'ServiceCalled')).toHaveLength(1);
     expect(sim.services.calls.fire).toBe(1);

@@ -57,6 +57,16 @@ export class Targets {
     return incident;
   }
 
+  /** Puts the fire out and keeps the hp left (the fire truck: it never repairs); returns the incident that set it. */
+  douse(id: TargetId): string | null {
+    const s = this.get(id);
+    if (!s.burning) return null;
+    const incident = s.fireIncidentId;
+    s.burning = false;
+    s.fireIncidentId = null;
+    return incident;
+  }
+
   ruin(id: TargetId, incidentId: string): void {
     const s = this.get(id);
     s.hp = 0;

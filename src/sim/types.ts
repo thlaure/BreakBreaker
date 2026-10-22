@@ -225,6 +225,20 @@ export type SimEvent =
   | { type: 'ServiceCalled'; kind: ServiceKind }
   /** A booth call was refused (nothing spent): see ServiceRefusal. */
   | { type: 'ServiceRefused'; kind: ServiceKind; reason: ServiceRefusal }
+  /** The fire truck came in at the entry point `from` (siren). */
+  | { type: 'TruckArrived'; from: Vec }
+  /** The parked truck started spraying `target` (water); its FireOut follows when the fire is out. */
+  | { type: 'TruckSprayed'; target: TargetId }
+  /** Rioters brought the truck's hp to 0 at `pos`: it is gone (smoke), the call stays spent. */
+  | { type: 'TruckDestroyed'; pos: Vec }
+  /** The truck drove off the map (nothing left burning, or its time is up). */
+  | { type: 'TruckLeft' }
+  /** `count` police officers came in at the entry point `from` (siren). */
+  | { type: 'PoliceArrived'; from: Vec; count: number }
+  /** A rioter knocked officer `id` out (stun stars; it is lost). */
+  | { type: 'PoliceDown'; id: number }
+  /** The police group left (its time is up, or every officer was knocked out). */
+  | { type: 'PoliceLeft' }
   | { type: 'ToolboxSpawned'; id: number; pos: Vec }
   | { type: 'ToolboxPickedUp'; id: number }
   /** `rescueKind`: set when the headline is the rescue (its variant, drawn at round start; RescueStarted has the same). */
