@@ -20,6 +20,7 @@ import { MonumentView, makeMonumentTextures } from '../render/monument';
 import { TargetsLayer, makeTargetTextures } from '../render/targets';
 import { BoothsLayer } from '../render/booths';
 import { ServicesLayer, makeServiceTextures } from '../render/services';
+import { PrisonLayer, makePrisonTextures } from '../render/prison';
 import { FieldHealView, StationsView, ToolboxView, WorldView, makeRockTextures, makeTextures } from '../render/world';
 import { HeldWeaponView, WeaponLayer, makeWeaponTextures } from '../render/weapons';
 import { ItemLayer, makeItemTextures } from '../render/items';
@@ -68,6 +69,8 @@ export class WorldScene extends Phaser.Scene {
   private booths!: BoothsLayer;
   /** The fire truck, its water and the police officers. */
   private services!: ServicesLayer;
+  /** The prison's counter, searchlight, jail van and breakout burst (the guards are drawn with the services). */
+  private prison!: PrisonLayer;
   private monument!: MonumentView;
   private toolboxes!: ToolboxView;
   private molotovFx!: MolotovFx;
@@ -204,6 +207,7 @@ export class WorldScene extends Phaser.Scene {
     makeMonumentTextures(this);
     makeRoleTextures(this);
     makeServiceTextures(this);
+    makePrisonTextures(this);
     this.reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.world = new WorldView(this);
     this.targetViews = new TargetsLayer(this, this.world.buildingParts);
@@ -242,6 +246,7 @@ export class WorldScene extends Phaser.Scene {
     this.glove = new GloveFx(this);
     this.toolboxes = new ToolboxView(this);
     this.services = new ServicesLayer(this, (x, y, t) => this.pows.spawn(x, y, t, 'PAF !'));
+    this.prison = new PrisonLayer(this, (x, y, t, word, big) => this.pows.spawn(x, y, t, word, big), this.reducedMotion);
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.world.width, this.world.height);
@@ -393,12 +398,16 @@ export class WorldScene extends Phaser.Scene {
         this.monument.onEvent(e);
       } else if (e.type === 'FireOut' || e.type === 'BuildingDestroyed' || e.type === 'TargetRepaired') {
         this.targetViews.onEvent(e, time);
+      } else if (e.type === 'PrisonBreakout') {
+        // the prison fell with Caïds inside: they burst out
+        this.shake(SHAKE_BIG, time);
       }
     }
     if (scored.length > 0) this.scorePopups.spawn(scored, time);
     this.bullets.onEvents(events, snap);
     this.booths.onEvents(events, time);
     this.services.onEvents(events);
+    this.prison.onEvents(events, snap, time);
     if (furieHit) this.shake(FURIE_SHAKE, time);
   }
 
@@ -426,6 +435,7 @@ export class WorldScene extends Phaser.Scene {
     this.targetViews.update(snap, time, dtMs);
     this.booths.update(snap, time);
     this.services.update(snap, time, dtMs);
+    this.prison.update(snap, time);
     this.monument.update(snap.monument, time);
     this.molotovFx.update(snap.molotovs, snap.now, time);
     this.firePatches.update(snap.firePatches, time);

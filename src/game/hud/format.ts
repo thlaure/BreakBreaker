@@ -5,6 +5,7 @@ import type { Snapshot } from '../../sim/sim';
 import type { CasseKind, ServiceKind, TargetId, Vec } from '../../sim/types';
 import { HELD_LABELS } from '../../sim/weapons';
 import { casseurs, type IncidentKind, type RoundHeadline } from './alerts';
+import { jailedText } from '../render/prisonMath';
 
 /**
  * Rescue: 'en cours' | 'interrompu' | 'sécurisé'. Attacked target: 'en feu' | 'attaquée' |
@@ -181,7 +182,9 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
     if (t.state !== 'attacked' && t.state !== 'burning') continue;
     const hp = Math.max(0, Math.min(100, (100 * t.hp) / t.maxHp));
     const status: IncidentStatus = t.id === 'school' && s.school.stage === 'cinematic' ? 'renforts' : t.burning ? 'en feu' : 'attaquée';
-    out.push({ key: t.id, kind: t.kind, name: TARGET_CARD_NAMES[t.id] ?? TARGET_NAMES[t.kind], time: `${Math.ceil(hp - 1e-9)} %`, hp, status, target: t.door, items: null });
+    // the prison's card tells what is at stake: the Caïds who would walk out
+    const items = t.id === 'prison' && s.prison.jailed > 0 ? jailedText(s.prison.jailed) : null;
+    out.push({ key: t.id, kind: t.kind, name: TARGET_CARD_NAMES[t.id] ?? TARGET_NAMES[t.kind], time: `${Math.ceil(hp - 1e-9)} %`, hp, status, target: t.door, items });
   }
   const r = s.rescue;
   if (r && (r.stage === 'threat' || r.stage === 'secured')) {

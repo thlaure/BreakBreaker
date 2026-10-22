@@ -20,6 +20,7 @@ import {
   type OfficerFrame,
 } from './serviceMath';
 import { HpBar } from './targets';
+import { hpSegmentFills, hpSegments } from './roleLook';
 
 const OUTLINE = 0x14121c;
 /** Logical pixels drawn ×2, like the props. */
@@ -32,7 +33,7 @@ const JET_MS = 420;
 
 type Fill = (c: number, x: number, y: number, w: number, h: number, a?: number) => void;
 
-/** Caps by shape (CapShape): the police képi; a beret ready for another role. Drawn at `ox` on the 22-px frame. */
+/** Caps by shape (CapShape): the police képi; the guard's beret, slouched back with a badge at the front. Drawn at `ox` on the 22-px frame. */
 const CAP_DRAW: Readonly<Record<CapShape, (r: Fill, look: AllyLook, ox: number, oy: number) => void>> = {
   kepi: (r, look, ox, oy) => {
     r(OUTLINE, ox + 3, oy, 8, 5);
@@ -42,9 +43,13 @@ const CAP_DRAW: Readonly<Record<CapShape, (r: Fill, look: AllyLook, ox: number, 
     r(0xffd23f, ox + 6, oy + 1, 2, 1); // badge
   },
   beret: (r, look, ox, oy) => {
-    r(OUTLINE, ox + 2, oy + 1, 9, 4);
-    r(look.capColor, ox + 3, oy + 2, 7, 2);
-    r(look.band, ox + 4, oy + 2, 1, 1);
+    r(OUTLINE, ox + 1, oy + 1, 10, 4);
+    r(OUTLINE, ox + 2, oy, 7, 1);
+    r(look.capColor, ox + 2, oy + 2, 8, 2);
+    r(look.capColor, ox + 3, oy + 1, 5, 1);
+    r(0xffffff, ox + 3, oy + 1, 2, 1, 0.35); // sheen on the felt
+    r(OUTLINE, ox + 3, oy + 4, 8, 1); // headband
+    r(look.band, ox + 8, oy + 2, 2, 2); // badge at the front
   },
 };
 
@@ -165,7 +170,8 @@ export function makeServiceTextures(scene: Phaser.Scene): void {
         r(OUTLINE, 0, 10, 6, 4);
         r(look.capColor, 1, 11, 4, 2);
         r(look.band, 1, 12, 4, 1);
-        r(look.baton, 13, 21, 8, 1);
+        if (look.baton !== null) r(look.baton, 13, 21, 8, 1);
+        if (look.keys !== null) r(look.keys, 12, 19, 2, 2);
         g.generateTexture(officerTexture(role, frame), 22, 22);
         continue;
       }
@@ -184,6 +190,14 @@ export function makeServiceTextures(scene: Phaser.Scene): void {
       r(look.uniformLo, ox + 3, 13, 8, 1);
       r(OUTLINE, ox + 3, 13, 8, 1);
       r(0xffd23f, ox + 8, 10, 1, 1);
+      if (look.shoulder !== null) {
+        r(look.shoulder, ox + 3, 9, 2, 1); // shoulder boards
+        r(look.shoulder, ox + 9, 9, 2, 1);
+      }
+      if (look.keys !== null) {
+        r(look.keys, ox + 4, 14, 2, 2); // key ring at the belt
+        r(OUTLINE, ox + 5, 15, 1, 1);
+      }
       // head
       r(OUTLINE, ox + 3, 3, 8, 6);
       r(SKIN, ox + 4, 4, 6, 4);
@@ -194,16 +208,22 @@ export function makeServiceTextures(scene: Phaser.Scene): void {
         // baton raised high behind the head, arm up
         r(OUTLINE, ox + 10, 3, 3, 7);
         r(look.uniform, ox + 11, 4, 1, 5);
-        r(SKIN, ox + 11, 3, 1, 1);
-        r(look.baton, ox + 9, 0, 2, 4);
-        r(look.baton, ox + 11, 0, 4, 2);
+        if (look.baton !== null) {
+          r(SKIN, ox + 11, 3, 1, 1);
+          r(look.baton, ox + 9, 0, 2, 4);
+          r(look.baton, ox + 11, 0, 4, 2);
+        } else {
+          // bare hands: a raised fist
+          r(OUTLINE, ox + 10, 0, 4, 4);
+          r(SKIN, ox + 11, 1, 2, 2);
+        }
       } else {
         // arm swinging, baton hanging from the hand
         const sw = frame === 'walk1' ? 1 : 0;
         r(OUTLINE, ox + 10, 9, 3, 5);
         r(look.uniform, ox + 11, 9, 1, 4);
         r(SKIN, ox + 11, 13 - sw, 1, 1);
-        r(look.baton, ox + 12, 12 - sw, 1, 6);
+        if (look.baton !== null) r(look.baton, ox + 12, 12 - sw, 1, 6);
       }
       g.generateTexture(officerTexture(role, frame), 22, 22);
     }
@@ -327,11 +347,51 @@ class TruckView {
 /** Every target's door, for the jets. */
 const DOORS = new Map<TargetId, Vec>(DISTRICT.targets.map((t) => [t.id, t.door]));
 
-/** One officer: role look, walk / strike / down frames, stun stars while down, a bar if it can take more than one blow. */
+/** Segmented bar of a foot ally with several hp (a prison guard): the Caïd's bar (one segment per 2 hp), in green. */
+const SEG_W = 2;
+const SEG_H = 4;
+const SEG_FILL = 0x5ee07a;
+const SEG_TRACK = 0x3a3448;
+
+class SegBar {
+  readonly g: Phaser.GameObjects.Graphics;
+  private drawn = -1;
+
+  constructor(scene: Phaser.Scene) {
+    this.g = scene.add.graphics().setDepth(DEPTH.overlay - 1).setVisible(false);
+  }
+
+  update(hp: number, maxHp: number, cx: number, top: number, visible: boolean): void {
+    this.g.setVisible(visible);
+    if (!visible) return;
+    const n = hpSegments(maxHp);
+    const w = n * (SEG_W + 1) + 1;
+    this.g.setPosition(Math.round(cx - w / 2), Math.round(top));
+    const key = hp * 1000 + maxHp;
+    if (key === this.drawn) return;
+    this.drawn = key;
+    this.g.clear().fillStyle(OUTLINE, 1).fillRect(0, 0, w, SEG_H);
+    const fills = hpSegmentFills(hp, maxHp, SEG_W);
+    for (let i = 0; i < n; i++) {
+      const sx = 1 + i * (SEG_W + 1);
+      this.g.fillStyle(SEG_TRACK, 1).fillRect(sx, 1, SEG_W, SEG_H - 2);
+      if (fills[i]! > 0) this.g.fillStyle(SEG_FILL, 1).fillRect(sx, 1, fills[i]!, SEG_H - 2);
+    }
+  }
+
+  destroy(): void {
+    this.g.destroy();
+  }
+}
+
+/**
+ * One officer: role look, walk / strike / down frames, stun stars while down; an ally with several hp (a prison guard:
+ * a Caïd's hp) always shows a segmented bar like the Caïd's while up.
+ */
 class OfficerView {
   readonly sprite: Phaser.GameObjects.Image;
   private readonly stars: Phaser.GameObjects.Image[] = [];
-  private readonly bar: HpBar;
+  private readonly bar: SegBar;
   private last: Vec;
   private flip = false;
   prevState: string | undefined;
@@ -340,7 +400,7 @@ class OfficerView {
   constructor(scene: Phaser.Scene, o: OfficerSnap) {
     this.sprite = scene.add.image(o.pos.x, o.pos.y, officerTexture(o.role, 'walk0')).setOrigin(0.5, 1).setScale(PX);
     for (let i = 0; i < STAR_COUNT; i++) this.stars.push(scene.add.image(0, 0, 'stun_star').setScale(PX).setVisible(false));
-    this.bar = new HpBar(scene, 0, 0, 20, 6);
+    this.bar = new SegBar(scene);
     this.last = { ...o.pos };
   }
 
@@ -358,8 +418,7 @@ class OfficerView {
       const a = nowMs / 220 + (i * Math.PI * 2) / STAR_COUNT;
       s.setVisible(down).setPosition(Math.round(x - 10 + Math.cos(a) * 10), Math.round(y - 18 + Math.sin(a) * 3)).setDepth(y + 0.1);
     });
-    this.bar.moveTo(x, y - 50);
-    this.bar.update(o.hp / o.maxHp, !down && o.maxHp > 1 && o.hp < o.maxHp, nowMs, dtMs);
+    this.bar.update(o.hp, o.maxHp, x, y - 50, !down && o.maxHp > 1);
   }
 
   fade(nowMs: number): boolean {
@@ -367,19 +426,20 @@ class OfficerView {
     const a = 1 - (nowMs - this.goneAt) / FADE_MS;
     this.sprite.setAlpha(Math.max(0, a));
     for (const s of this.stars) s.setAlpha(Math.max(0, a));
-    this.bar.update(1, false, nowMs, 0);
+    this.bar.update(0, 1, 0, 0, false);
     return a > 0;
   }
 
   destroy(): void {
     this.sprite.destroy();
     for (const s of this.stars) s.destroy();
+    this.bar.destroy();
   }
 }
 
 /**
- * The emergency services on the map (Snapshot.allies): the fire truck and its water, the police officers (role looks),
- * a spark when an officer's blow lands (the sim sends no HitConfirmed for it), smoke when the truck is destroyed.
+ * The emergency services on the map (Snapshot.allies): the fire truck and its water, the police officers and the
+ * prison's guards (Snapshot.prison.guards; role looks, a bar for the guards' several hp), a spark when a blow lands (the sim sends no HitConfirmed for it), smoke when the truck is destroyed.
  */
 export class ServicesLayer {
   private readonly truck: TruckView;
@@ -422,7 +482,10 @@ export class ServicesLayer {
   update(s: Snapshot, nowMs: number, dtMs: number): void {
     this.truck.update(s.ended ? null : s.allies.truck, s, nowMs, dtMs);
     const seen = new Set<number>();
-    for (const o of s.allies.police) {
+    // the police group's officers and the prison's guards (same foot brain, their own look); a guard's blow lands like
+    // an officer's (spark + « PAF ! »)
+    const guards = s.prison.guards.map((g): OfficerSnap => ({ ...g, role: 'guard' }));
+    for (const o of [...s.allies.police, ...guards]) {
       seen.add(o.id);
       let v = this.officers.get(o.id);
       if (!v) {

@@ -1,6 +1,7 @@
 import { CONFIG } from '../../sim/config';
 import type { Snapshot } from '../../sim/sim';
 import type { CasseKind, PickupKind, SimEvent, SpecialKind, Vec } from '../../sim/types';
+import { releasedText } from '../render/prisonMath';
 
 /**
  * Incident alerts: a pixel banner when a target is set on fire, a rescue, a round or a special drop starts, and one
@@ -19,11 +20,11 @@ export type IncidentKind = CasseKind | 'groupHarassed' | 'elderlyRobbed' | 'monu
 export type DropKind = 'bouclierDrop';
 /**
  * Everything the banner can announce: positioned incidents and drops, and position-less round starts and mode furie
- * starts (`furie`).
+ * starts (`furie`); `breakout` = the prison fell and its Caïds burst out (pointing at its gate).
  */
-export type AlertKind = IncidentKind | 'round' | DropKind | 'furie' | 'flagCaptured' | 'flashball';
+export type AlertKind = IncidentKind | 'round' | DropKind | 'furie' | 'flagCaptured' | 'flashball' | 'breakout';
 export type AlertTone = 'fire' | 'warn' | 'round' | 'drop' | 'furie' | 'win';
-export type AlertIcon = 'flame' | 'alert' | 'horde' | 'glass' | 'bolt' | 'flag' | 'shield' | 'crown' | 'flashball';
+export type AlertIcon = 'flame' | 'alert' | 'horde' | 'glass' | 'bolt' | 'flag' | 'shield' | 'crown' | 'flashball' | 'bars';
 /** What a round is about (its first beat), shown under « MANCHE N ! ». */
 export type RoundHeadline = CasseKind | 'rescue' | 'monument';
 /** A round headline as the banner words it: a rescue headline names its variant when known. */
@@ -77,6 +78,9 @@ export const FURIE_ALERT_MS = 2200;
 export const FLAG_ALERT_MS = 2600;
 /** How long the short, position-less « LE CAÏD ARRIVE ! » banner stays. */
 export const CAID_ALERT_MS = 2600;
+
+/** How long the « ÉVASION ! » banner stays. */
+export const BREAKOUT_ALERT_MS = 3600;
 
 /** How long the one-line « FLASHBALL AU SOL » hint stays. */
 export const FLASHBALL_ALERT_MS = 3200;
@@ -174,6 +178,18 @@ export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: 
       ms: FLAG_ALERT_MS,
     };
   if (kind === 'caid') return { ...INCIDENT_ALERTS.caid, meta: '', positioned: false, ms: CAID_ALERT_MS };
+  // the prison fell: `total` = the Caïds released, the arrow points at its gate
+  if (kind === 'breakout')
+    return {
+      title: 'ÉVASION !',
+      sub: releasedText(total),
+      label: 'ÉVASION',
+      tone: 'round',
+      icon: 'bars',
+      meta: '',
+      positioned: true,
+      ms: BREAKOUT_ALERT_MS,
+    };
   // the flashball guaranteed with the first shooter: one line, with the arrow and distance to it (no edge indicator)
   if (kind === 'flashball')
     return { title: 'FLASHBALL AU SOL', sub: '', label: 'FLASHBALL', tone: 'drop', icon: 'flashball', meta: '', positioned: true, ms: FLASHBALL_ALERT_MS };
@@ -260,6 +276,9 @@ export function alertFromEvent(e: SimEvent): Alert | null {
     const id = flashballHintId(e.pos);
     return { id, kind: 'flashball', pos: { ...e.pos }, wave: 0, total: 0, incident: id };
   }
+  // the prison fell with Caïds inside (they send no CaidArrived: each gets the Caïd's edge indicator from activeIncidents)
+  if (e.type === 'PrisonBreakout')
+    return { id: `breakout@${e.pos.x},${e.pos.y}#${e.count}`, kind: 'breakout', pos: { ...e.pos }, wave: 0, total: e.count };
   // the Caïd walks in: short banner without arrow, dropped once he is KO
   if (e.type === 'CaidArrived') {
     const id = caidId(e.lifeId);
@@ -480,6 +499,19 @@ const SPRITES: Record<Sprite, string[]> = {
     'KYYYYYYYK.',
     'KOOOOOOOK.',
     'KKKKKKKKK.',
+  ],
+  // prison bars bent apart: the breakout
+  bars: [
+    'KKKKKKKKKK',
+    'KSKSK.KSKK',
+    'KSKSK..KSK',
+    'KSKK....SK',
+    'KSK.....SK',
+    'KSK.....SK',
+    'KSKK...KSK',
+    'KSKSK.KSKK',
+    'KSKSK.KSKK',
+    'KKKKKKKKKK',
   ],
   // the cartoon flashball launcher: grey body, orange muzzle
   flashball: [

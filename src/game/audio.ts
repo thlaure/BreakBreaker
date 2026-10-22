@@ -644,6 +644,15 @@ export class GameAudio {
         case 'TruckDestroyed':
           this.play('land', 0, HEAVY_RATE);
           break;
+        case 'CaidJailed':
+          // the jail van's siren
+          this.siren('police');
+          break;
+        case 'PrisonBreakout':
+          // the wall gives way, the alarm rings
+          this.play('land', 0, HEAVY_RATE);
+          this.play('alarm');
+          break;
         case 'TargetSaved':
         case 'TargetRepaired':
         case 'RoundCompleted':

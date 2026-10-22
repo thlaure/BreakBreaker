@@ -51,7 +51,7 @@ export function sirenFrame(nowMs: number): 0 | 1 {
   return Math.floor(nowMs / SIREN_MS) % 2 === 0 ? 0 : 1;
 }
 
-/** The cap an officer wears. A later role (the prison's guard) adds its own shape here and in CAP_ROWS. */
+/** The cap an officer wears: the police képi, the prison guard's beret. */
 export type CapShape = 'kepi' | 'beret';
 
 /** How a foot ally reads on screen, by role (uniform colours, cap, what it holds). */
@@ -64,13 +64,19 @@ export interface AllyLook {
   capColor: number;
   /** Cap band / badge colour. */
   band: number;
-  /** Baton colour. */
-  baton: number;
+  /** Baton colour; null = bare hands (a raised fist on the strike frame). */
+  baton: number | null;
+  /** Shoulder boards colour (null = none). */
+  shoulder: number | null;
+  /** The ring of keys hanging at the belt (null = none). */
+  keys: number | null;
 }
 
 /**
  * One look per foot role (Record over FighterRole: a new role does not compile without its look). 'police' = blue
- * uniform, navy trousers, a blue képi with a white band and a black baton. A guard would be e.g. grey with a beret.
+ * uniform, navy trousers, a blue képi with a white band and a black baton. 'guard' (the prison's) = a dark-grey
+ * uniform with silver shoulder boards, black trousers, a burgundy beret with a silver badge, bare hands (their blows
+ * take 1 hp) and a ring of gold keys at the belt: never mistaken for the blue police.
  */
 export const ALLY_LOOKS: Readonly<Record<FighterRole, AllyLook>> = {
   police: {
@@ -82,17 +88,20 @@ export const ALLY_LOOKS: Readonly<Record<FighterRole, AllyLook>> = {
     capColor: 0x24346a,
     band: 0xf4f4f0,
     baton: 0x14121c,
+    shoulder: null,
+    keys: null,
   },
-  // the prison guards: a placeholder look (grey uniform, navy beret) until the prison render task polishes it
   guard: {
-    uniform: 0x6e7480,
-    uniformHi: 0x9aa0aa,
-    uniformLo: 0x4c515a,
-    trousers: 0x23262e,
+    uniform: 0x585e68,
+    uniformHi: 0x7c828c,
+    uniformLo: 0x3c4048,
+    trousers: 0x1c1e24,
     cap: 'beret',
-    capColor: 0x1f2a4a,
-    band: 0xd8c24a,
-    baton: 0x14121c,
+    capColor: 0x8a2433,
+    band: 0xd8dce4,
+    baton: null,
+    shoulder: 0xb8bcc4,
+    keys: 0xffd23f,
   },
 };
 

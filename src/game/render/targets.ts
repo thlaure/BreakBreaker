@@ -430,7 +430,8 @@ const BAR_COLORS: [number, number][] = [
 
 /**
  * One destructible target: hp bar, fire + smoke while `burning`, ruin (scorched, debris, smoke wisps) while ruined,
- * back to normal once repaired. A building (school, retro video-game shop, nursery, town hall, library) dims its own parts when ruined, and the
+ * back to normal once repaired. A building (school, retro video-game shop, nursery, town hall, library, prison) dims its
+ * own parts when ruined (parts named 'intact' hide, parts named 'ruin' show), and the
  * school flies the French flag while it stands and is not on fire (schoolFlagShown); props
  * (cars, bus shelter, newspaper kiosk) are drawn on their solid footprint and swap to a wreck texture.
  */
@@ -597,7 +598,10 @@ class TargetView {
     if (this.sprite && this.textures) this.sprite.setTexture(ruined ? this.textures.ruined : this.textures.intact);
     if (this.def.prop) return;
     for (const p of this.parts) {
-      if (p instanceof Phaser.GameObjects.TileSprite) {
+      // a building's own ruin art (the prison's fallen watchtower, its gate burst open) swaps with its standing art
+      if (p.name === 'intact') p.setVisible(!ruined);
+      else if (p.name === 'ruin') p.setVisible(ruined);
+      else if (p instanceof Phaser.GameObjects.TileSprite) {
         if (ruined) p.setTint(0x3a3438);
         else p.clearTint();
       } else if (p.name === 'glow') p.setVisible(!ruined);
