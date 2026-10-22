@@ -158,7 +158,7 @@ export interface Snapshot {
   shield: { secondsLeft: number } | null;
   /** Onde d’énergie charging: `progress` in [0, 1] of CONFIG.kamehame.chargeSec; null when not charging. */
   charge: { progress: number } | null;
-  /** `expiresAt` = sim time a special drop vanishes (null = never). */
+  /** `expiresAt` = sim time the weapon vanishes (special drops 15 s, the others 60 s; null = never). */
   weaponsOnGround: { id: number; kind: PickupKind; pos: Vec; expiresAt: number | null }[];
   /** Mode furie on (seconds left), or null. */
   furie: { secondsLeft: number } | null;

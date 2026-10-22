@@ -5,6 +5,7 @@ import type { Snapshot } from '../../sim/sim';
 import type { Vec } from '../../sim/types';
 import { TILE } from '../assets';
 import { DEPTH, inRect } from './depth';
+import { pickupBlinkOff } from './pickupBlink';
 
 const T = CONFIG.tile;
 const N = DISTRICT.tiles;
@@ -707,12 +708,9 @@ export class StationsView {
   }
 }
 
-/** A field heal blinks during its last seconds on the ground (faster in the very last one), like the special drops. */
-const FIELD_HEAL_BLINK_SEC = 3;
-
 /**
  * Small field heals: the station's heal kit at a smaller size, bobbing over a green glow, with a « +10 » tag; it
- * blinks during its last FIELD_HEAL_BLINK_SEC s on the ground.
+ * blinks during its last PICKUP_BLINK_SEC s on the ground (pickupBlinkOff, like the weapons).
  */
 export class FieldHealView {
   private readonly items = new Map<
@@ -749,8 +747,7 @@ export class FieldHealView {
       it.icon.setY(h.pos.y - 2 - bob);
       it.tag.setY(h.pos.y - 10 - bob);
       it.glow.setAlpha(0.15 + 0.3 * pulse);
-      const left = h.expiresAt - simNow;
-      const off = left < FIELD_HEAL_BLINK_SEC && Math.floor(nowMs / (left < 1 ? 70 : 140)) % 2 === 0;
+      const off = pickupBlinkOff(h.expiresAt, simNow, nowMs);
       it.icon.setAlpha(off ? 0.2 : 1);
       it.tag.setAlpha(off ? 0.2 : 1);
       if (off) it.glow.setAlpha(0.05);

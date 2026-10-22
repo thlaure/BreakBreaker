@@ -72,6 +72,9 @@ export const CONFIG = {
    * the Caïd's) while one already lies within `clearRadius` px of Paul (no piles; the bouclier and the first shooter's
    * flashball are exempt). The twist drop, when it is not a bouclier, is a regular weapon `twistRegularShare` of the
    * time (else nothing); the breather drop comes at the end of every `breatherEvery`-th round only (even rounds).
+   * A weapon nobody picks up vanishes: the special drops (twist, breather, the Caïd's, a dropped bouclier) after
+   * `dropLifetime` s, the street spawns and the first shooter's flashball after `groundLifetime` s (which frees the
+   * `maxGround` cap); the render blinks the last 3 s of either.
    */
   weapons: {
     firstSpawn: 20,
@@ -81,6 +84,7 @@ export const CONFIG = {
     minDist: 160,
     maxDist: 480,
     dropLifetime: 15,
+    groundLifetime: 60,
     clearRadius: 200,
     twistRegularShare: 0.5,
     breatherEvery: 2,
@@ -232,7 +236,7 @@ export const CONFIG = {
    * else the facing snapped to the nearest active rioter within ±`assistDeg`° and `assistRange` px (clear line). The first
    * rioter hit takes a weapon hit (one-hit KO; CONFIG.toughWeaponDamage on a brute or the Caïd); solids, the peaceful group
    * and the victim stop it. In the street pool from `fromRound`; one is dropped `dropMin`–`dropMax` px from Paul when the
-   * session's first shooter enters (never expires).
+   * session's first shooter enters (it vanishes after CONFIG.weapons.groundLifetime s like the street spawns).
    */
   flashball: { speed: 420, range: 480, radius: 4, assistDeg: 12, assistRange: 320, fromRound: 5, dropMin: 120, dropMax: 220 },
   /**
