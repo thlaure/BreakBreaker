@@ -1,0 +1,15 @@
+name: Idea
+description: Suggest a feature, an enemy, a place, a gag
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: Describe the moment in the game where it would shine.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why would it be fun?
