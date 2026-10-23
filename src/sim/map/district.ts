@@ -177,6 +177,13 @@ export const DISTRICT: District = {
       maxHp: CONFIG.prison.hp,
       repairShare: CONFIG.prison.repairShare,
     },
+    // the church at the heart of the main square (building 6): CONFIG.church.hp, open from round 3, rebuilt to 60 %;
+    // attacked from the street row below its front wall (row 30), its arched door in the middle of it
+    {
+      ...building('church', 'church', R(25, 25, 4, 5), [C(25, 30), C(26, 30), C(27, 30), C(28, 30)], C(27, 30)),
+      maxHp: CONFIG.church.hp,
+      repairShare: CONFIG.church.repairShare,
+    },
   ],
   // decor only: solid buildings like the others, drawn with their own front (src/game/render/decor.ts)
   decor: [

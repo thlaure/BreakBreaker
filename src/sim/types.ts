@@ -84,9 +84,22 @@ export type Variant = 'classic' | 'palestinian' | 'antifa';
  */
 export type Role = 'contact' | 'thrower' | 'degrader' | 'aggressor' | 'molotov' | 'firebomber' | 'runner' | 'brute' | 'boss' | 'shooter';
 export type TargetId =
-  'school' | 'car1' | 'car2' | 'busStop' | 'shop' | 'nursery' | 'kiosk' | 'townHall' | 'library' | 'boothRed' | 'boothBlue' | 'prison';
+  | 'school'
+  | 'car1'
+  | 'car2'
+  | 'busStop'
+  | 'shop'
+  | 'nursery'
+  | 'kiosk'
+  | 'townHall'
+  | 'library'
+  | 'boothRed'
+  | 'boothBlue'
+  | 'prison'
+  | 'church';
 /** What kind of attack a round's "casse" is (Phase C extends both unions; 'booth' = the two phone booths). */
-export type CasseKind = 'school' | 'car' | 'busStop' | 'shop' | 'nursery' | 'kiosk' | 'townHall' | 'library' | 'booth' | 'prison';
+export type CasseKind =
+  'school' | 'car' | 'busStop' | 'shop' | 'nursery' | 'kiosk' | 'townHall' | 'library' | 'booth' | 'prison' | 'church';
 /** The emergency services a phone booth calls: the red one the fire truck, the blue one the police. */
 export type ServiceKind = 'fire' | 'police';
 /** Why a booth call was refused (nothing spent). */

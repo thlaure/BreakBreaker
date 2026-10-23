@@ -94,6 +94,7 @@ export class Director {
     library: 0,
     booth: 0,
     prison: 0,
+    church: 0,
     rescue: 0,
     monument: 0,
   };
