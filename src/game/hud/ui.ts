@@ -2,6 +2,7 @@ import { onLocaleChange, t } from '../../content/i18n';
 import type { Sim, Snapshot } from '../../sim/sim';
 import type { SimEvent } from '../../sim/types';
 import { GameAudio, threatLevel } from '../audio';
+import { stageDistance } from '../stageMusicMath';
 import { SITE_BASE } from '../assets';
 import { loadPrefs, loadRecord, saveRecord, savePrefs, type Prefs } from '../storage';
 import { formatSummary } from './format';
@@ -100,6 +101,7 @@ export class GameUi {
     this.host.events.off('sim-events', this.onEvents as never);
     document.removeEventListener('visibilitychange', this.onVisibility);
     this.audio.setThreat(0);
+    this.audio.setStageProximity(null);
     this.hud.destroy();
     this.menus.destroy();
   }
@@ -174,6 +176,8 @@ export class GameUi {
   private frame(s: Snapshot): void {
     this.hud.update(s, this.host.cameraView());
     this.audio.setThreat(threatLevel(s));
+    // the stage band: louder near the stage, silent while paused or once the game is over
+    this.audio.setStageProximity(this.phase === 'playing' && !s.ended ? stageDistance(s.player.pos) : null);
     if (s.ended && this.phase === 'playing') {
       this.phase = 'ending';
       this.host.releaseInputs();
@@ -186,6 +190,7 @@ export class GameUi {
     this.phase = 'ended';
     this.host.sim.pause();
     this.host.releaseInputs();
+    this.audio.setStageProximity(null);
     this.audio.suspend();
     const s = this.host.sim.snapshot();
     const cause = s.endCause ?? 'quit';
