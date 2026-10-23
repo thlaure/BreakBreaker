@@ -237,6 +237,24 @@ describe('toolboxes', () => {
   });
 });
 
+describe('a hit interrupts the repair', () => {
+  test('interrupt() resets the progress and the start but keeps the toolbox', () => {
+    const { kit, targets, player, step } = setup('school');
+    kit.carried = true;
+    player.pos = { ...door('school') };
+    step(true);
+    for (let i = 0; i < 30; i++) step();
+    expect(kit.progress).toBeGreaterThan(0);
+    kit.interrupt();
+    expect(kit).toMatchObject({ progress: 0, started: false, repairing: null, carried: true });
+    for (let i = 0; i < 180; i++) step(); // no press: nothing resumes
+    expect(kit.progress).toBe(0);
+    expect(targets.get('school').state).toBe('ruined');
+    step(true); // a fresh press starts again, with the same toolbox
+    expect(kit.started).toBe(true);
+  });
+});
+
 describe('Agir is a press, not a hold (rising edge tracked by the Sim)', () => {
   const IDLE = {
     move: { x: 0, y: 0 },
@@ -322,5 +340,39 @@ describe('Agir is a press, not a hold (rising edge tracked by the Sim)', () => {
     sim.toolboxes.carried = true;
     for (let i = 0; i < 30; i++) sim.step(HOLD);
     expect(kit()).toMatchObject({ canRepair: true, started: false });
+  });
+});
+
+describe('in the Sim, damage taken while repairing interrupts it', () => {
+  const IDLE = {
+    move: { x: 0, y: 0 },
+    aim: null,
+    run: false,
+    strike: false,
+    chargeHeld: false,
+    throwRock: false,
+    act: false,
+    furie: false,
+  };
+  test('ground fire on Paul stops the repair; the toolbox stays; a new press resumes from zero', () => {
+    const sim = new Sim(12);
+    const d = door('busStop');
+    sim.targets.ruin('busStop', 'busStop#x');
+    sim.toolboxes.carried = true;
+    sim.player.pos = { ...d };
+    sim.step(IDLE);
+    sim.step({ ...IDLE, act: true });
+    for (let i = 0; i < 30; i++) sim.step(IDLE);
+    expect(sim.snapshot().toolboxes).toMatchObject({ started: true });
+    expect(sim.snapshot().toolboxes.progress).toBeGreaterThan(0);
+    // a bottle lands on Paul: he takes ground-fire damage
+    sim.firePatches.throwBottle(sim.player.pos, sim.player.pos, sim.snapshot().now + 0.05);
+    const ev: SimEvent[] = [];
+    for (let i = 0; i < 60 && !ev.some((e) => e.type === 'PlayerDamaged'); i++) ev.push(...sim.step(IDLE));
+    expect(ev.some((e) => e.type === 'PlayerDamaged')).toBe(true);
+    const kit = sim.snapshot().toolboxes;
+    expect(kit).toMatchObject({ started: false, progress: 0 });
+    expect(sim.toolboxes.carried).toBe(true);
+    expect(ev.filter((e) => e.type === 'TargetRepaired')).toHaveLength(0);
   });
 });

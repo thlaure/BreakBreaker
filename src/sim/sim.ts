@@ -267,6 +267,7 @@ export class Sim {
       if (e.type === 'PlayerDamaged') {
         const amount = this.weapons.furie() ? e.amount * CONFIG.furie.damageTakenMul : e.amount;
         if (!this.invulnerable && damagePlayer(p, amount, now)) {
+          this.toolboxes.interrupt();
           ev.push({ ...e, amount });
           // a brute's or the Caïd's blow: Paul is pushed through the player move (solids block it)
           if (e.push && !p.ko) p.pos = moveCircle(this.grid, p.pos, e.push, CONFIG.player.radius);
@@ -309,6 +310,7 @@ export class Sim {
         (amount) => {
           const a = this.weapons.furie() ? amount * CONFIG.furie.damageTakenMul : amount;
           if (this.invulnerable || !damagePlayer(p, a, now)) return false;
+          this.toolboxes.interrupt();
           ev.push({ type: 'PlayerDamaged', amount: a });
           return true;
         },
