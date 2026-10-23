@@ -21,11 +21,11 @@ const inside = (r: Rect, p: Vec): boolean => p.x >= r.x && p.x < r.x + r.w && p.
 /** Decor buildings keep at least this far from every other site of the map. */
 const CLEAR = 64;
 
-describe('decor buildings (CAF, TASTY CROUSTY)', () => {
+describe('decor buildings (CAF, POULET CROUSTI)', () => {
   test('two decor fronts on existing free buildings, their door on the street below the front', () => {
     expect(DISTRICT.decor.map((d) => [d.id, d.sign])).toEqual([
       ['caf', 'CAF'],
-      ['tastyCrousty', 'TASTY CROUSTY'],
+      ['pouletCrousti', 'POULET CROUSTI'],
     ]);
     expect(DISTRICT.decor[0]!.footprint).toEqual(R(26, 4, 7, 5));
     expect(DISTRICT.decor[0]!.door).toEqual(C(29, 9));

@@ -154,7 +154,7 @@ a:focus-visible, button:focus-visible, .table-wrap:focus-visible { outline: 3px 
 .btn-secondary { background: var(--surface); color: var(--accent); }
 
 /* ---------- Commandes modal (HTML popover, no JavaScript) ---------- */
-#commandes {
+#commandes, #changelog {
   width: min(46rem, calc(100vw - 2.5rem)); max-height: calc(100svh - 2.5rem); overflow: auto; margin: auto;
   padding: 1.25rem 1.25rem 1.75rem;
   background: var(--surface); color: var(--text); border: 0; border-radius: 0;
@@ -164,21 +164,35 @@ a:focus-visible, button:focus-visible, .table-wrap:focus-visible { outline: 3px 
     calc(-1 * var(--px)) 0 0 0 var(--accent),
     var(--px) 0 0 0 var(--accent);
 }
-#commandes::backdrop {
+#commandes::backdrop, #changelog::backdrop {
   background: rgba(5, 4, 10, 0.82);
   background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.25) 0 2px, rgba(0, 0, 0, 0) 2px 4px);
 }
-#commandes h2 { margin: 0.25rem 0 1.25rem; font: 400 1.1rem/1.4 var(--pixel); color: var(--accent); text-shadow: 3px 3px 0 var(--ink); }
+#commandes h2, #changelog h2 { margin: 0.25rem 0 1.25rem; font: 400 1.1rem/1.4 var(--pixel); color: var(--accent); text-shadow: 3px 3px 0 var(--ink); }
 .table-wrap { overflow-x: auto; margin-bottom: 1.5rem; }
 table { border-collapse: collapse; width: 100%; min-width: 34rem; }
 th, td { text-align: left; vertical-align: top; padding: 0.55rem 0.75rem; border: 2px solid var(--border); }
 thead th { background: var(--surface-2); color: var(--accent); }
 tbody th { color: var(--text); }
-#commandes .btn { margin: var(--px); }
+#commandes .btn, #changelog .btn { margin: var(--px); }
 /* browsers without the popover API: the controls simply stay visible under the content */
 @supports not selector(:popover-open) {
   .btn-commandes, #commandes [popovertargetaction] { display: none; }
-  #commandes { position: relative; z-index: 4; margin: 0 auto 2rem; }
+  #commandes, #changelog { position: relative; z-index: 4; margin: 0 auto 2rem; }
+}
+
+/* ---------- Nouveautés teaser + Changelog list ---------- */
+.news { max-width: 34rem; margin: 2rem 0 0; font-size: 0.95rem; line-height: 1.45; color: var(--muted); text-shadow: 2px 2px 0 var(--ink); }
+.news-title { margin: 0 0 0.4rem; font: 400 0.8rem/1.4 var(--pixel); color: var(--accent); }
+.news-title span { color: var(--muted); }
+.news ul { margin: 0; padding-left: 1.1rem; }
+.release { margin-bottom: 1.25rem; }
+.release h3 { margin: 0 0 0.4rem; font: 400 0.9rem/1.4 var(--pixel); color: var(--text); }
+.release time { font: 400 0.85rem/1.4 system-ui, sans-serif; color: var(--muted); margin-left: 0.5rem; }
+.release ul { margin: 0; padding-left: 1.2rem; line-height: 1.5; }
+.link-btn {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0; border: 0; background: none;
+  font: inherit; color: inherit; text-decoration: underline; cursor: pointer;
 }
 
 /* ---------- footer ---------- */

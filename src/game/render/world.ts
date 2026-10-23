@@ -4,7 +4,7 @@ import { DISTRICT, type Rect } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
 import type { Vec } from '../../sim/types';
 import { TILE } from '../assets';
-import { buildCafFront, buildTastyFront, type DecorAnim } from './decor';
+import { buildCafFront, buildPouletFront, type DecorAnim } from './decor';
 import { DEPTH, inRect } from './depth';
 import { pickupBlinkOff } from './pickupBlink';
 
@@ -90,7 +90,7 @@ export class WorldView {
   private readonly roofs: Roof[] = [];
   /** Parts of each target building (school, shop, nursery, town hall, library) by building index, for its ruin look. */
   readonly buildingParts = new Map<number, BuildingPart[]>();
-  /** Animated bits of the decor fronts (CAF queue, TASTY CROUSTY sign). */
+  /** Animated bits of the decor fronts (CAF queue, POULET CROUSTI sign). */
   private readonly decor: DecorAnim[] = [];
 
   constructor(
@@ -183,7 +183,7 @@ export class WorldView {
       // decor fronts: never targets, so not in buildingParts (no ruin look)
       const decor = DISTRICT.decor.find((d) => buildingIndex(d.footprint) === i);
       if (decor?.id === 'caf') this.decor.push(buildCafFront(this, s, decor, parts, this.reducedMotion));
-      else if (decor?.id === 'tastyCrousty') this.decor.push(buildTastyFront(this, s, decor, parts, this.reducedMotion));
+      else if (decor?.id === 'pouletCrousti') this.decor.push(buildPouletFront(this, s, decor, parts, this.reducedMotion));
     }
     this.roofs.push({ rect, parts });
   }

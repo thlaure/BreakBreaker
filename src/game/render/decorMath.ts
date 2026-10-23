@@ -1,4 +1,4 @@
-/** Pure helpers of the decor fronts (CAF, TASTY CROUSTY): no Phaser import here. */
+/** Pure helpers of the decor fronts (CAF, POULET CROUSTI): no Phaser import here. */
 
 /** Gap (px) between two people of a queue, feet to feet. */
 export const QUEUE_GAP = 13;
@@ -25,7 +25,7 @@ export function queueBob(timeMs: number, k: number, reducedMotion: boolean): num
   return Math.sin(timeMs / 800 + k * 1.7) > 0.7 ? -1 : 0;
 }
 
-/** Fryer smoke rising from the TASTY CROUSTY chimney: a slow particle plume, or none under reduced motion. */
+/** Fryer smoke rising from the POULET CROUSTI chimney: a slow particle plume, or none under reduced motion. */
 export interface SmokeSpec {
   /** ms between two puffs. */
   frequency: number;

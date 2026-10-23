@@ -27,7 +27,7 @@ export interface TargetDef {
 }
 
 /** Decor fronts (render only): ordinary solid buildings, never targets, no interaction. */
-export type DecorId = 'caf' | 'tastyCrousty';
+export type DecorId = 'caf' | 'pouletCrousti';
 export interface DecorDef {
   id: DecorId;
   /** The sign text painted on its roof edge. */
@@ -98,7 +98,7 @@ export const DISTRICT: District = {
     R(12, 15, 4, 4), // 5: retro video-game shop
     R(14, 26, 6, 5),
     R(30, 28, 7, 5),
-    R(38, 16, 6, 6), // 8: « TASTY CROUSTY » fast food (decor)
+    R(38, 16, 6, 6), // 8: « POULET CROUSTI » fast food (decor)
     R(6, 30, 7, 6), // 9: nursery school (south-west)
     R(22, 38, 8, 5), // 10: library (south)
     R(38, 36, 6, 6), // 11: prison (south-east)
@@ -179,7 +179,7 @@ export const DISTRICT: District = {
   // decor only: solid buildings like the others, drawn with their own front (src/game/render/decor.ts)
   decor: [
     { id: 'caf', sign: 'CAF', footprint: R(26, 4, 7, 5), door: C(29, 9) },
-    { id: 'tastyCrousty', sign: 'TASTY CROUSTY', footprint: R(38, 16, 6, 6), door: C(41, 22) },
+    { id: 'pouletCrousti', sign: 'POULET CROUSTI', footprint: R(38, 16, 6, 6), door: C(41, 22) },
   ],
   kitSites: [C(18, 12), C(28, 25), C(8, 26), C(36, 44)],
   monument: {
