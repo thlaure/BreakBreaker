@@ -52,7 +52,12 @@ describe('pixel flags', () => {
     expect(colourAt(15, FLAG_H - 1)).toBe(colourAt(15, 0));
     // the canton holds white stars on blue
     const canton = f.rows.slice(0, 5).map((r) => r.slice(0, 7));
-    const cols = new Set(canton.join('').split('').map((c) => f.palette[c]));
+    const cols = new Set(
+      canton
+        .join('')
+        .split('')
+        .map((c) => f.palette[c]),
+    );
     expect(cols.has('#ffffff')).toBe(true);
     expect(colourAt(0, 0)).not.toBe(colourAt(15, 0));
   });

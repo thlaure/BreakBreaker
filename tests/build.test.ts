@@ -134,7 +134,8 @@ test('no text of the other language leaks into a landing (scan against the catal
 });
 
 test('the English landing shares the built stylesheet of the French one', () => {
-  const sheets = (page: string) => [...readFileSync(out(page), 'utf8').matchAll(/<link[^>]+rel="stylesheet"[^>]*href="([^"]+)"/g)].map((m) => m[1]);
+  const sheets = (page: string) =>
+    [...readFileSync(out(page), 'utf8').matchAll(/<link[^>]+rel="stylesheet"[^>]*href="([^"]+)"/g)].map((m) => m[1]);
   expect(sheets('en/index.html')).toEqual(sheets('index.html'));
   for (const h of sheets('en/index.html')) expect(existsSync(out(h ?? ''))).toBe(true);
 });
