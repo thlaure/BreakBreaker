@@ -171,11 +171,12 @@ test('KO bodies are capped at 16, oldest removed first', () => {
 });
 
 test('stuck hostile still reaches Paul around the group within 20 s', () => {
-  // group area x 768..896, y 576..672: Paul north of it, hostile south of it
-  const player = createPlayer({ x: 832, y: 540 });
+  // Paul north of the first group's area, hostile south of it
+  const g = DISTRICT.peacefulGroups[0]!.area;
+  const player = createPlayer({ x: g.x + g.w / 2, y: g.y - 36 });
   const ctx = mkCtx(player);
   const horde = new Horde();
-  const h = horde.spawn({ variant: 'classic', role: 'contact', pos: { x: 832, y: 700 } })!;
+  const h = horde.spawn({ variant: 'classic', role: 'contact', pos: { x: g.x + g.w / 2, y: g.y + g.h + 28 } })!;
   let reached = false;
   for (let i = 0; i < 20 * 60 && !reached; i++) {
     horde.step(DT, i * DT, ctx);

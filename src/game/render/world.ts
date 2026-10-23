@@ -77,7 +77,7 @@ export class WorldView {
       for (let tx = 0; tx < N; tx++) {
         const paved =
           DISTRICT.buildings.some((b) => near(tx, ty, b, 1)) ||
-          near(tx, ty, DISTRICT.peacefulGroup.area, 1) ||
+          DISTRICT.peacefulGroups.some((g) => near(tx, ty, g.area, 1)) ||
           DISTRICT.trunks.some((c) => Math.abs(c.x / T - 0.5 - tx) <= 1 && Math.abs(c.y / T - 0.5 - ty) <= 1);
         row.push(paved ? TILE.streets.sidewalk : TILE.streets.road);
       }

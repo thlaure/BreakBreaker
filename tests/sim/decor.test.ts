@@ -21,16 +21,22 @@ const inside = (r: Rect, p: Vec): boolean => p.x >= r.x && p.x < r.x + r.w && p.
 /** Decor buildings keep at least this far from every other site of the map. */
 const CLEAR = 64;
 
-describe('decor buildings (CAF, POULET CROUSTI)', () => {
-  test('two decor fronts on existing free buildings, their door on the street below the front', () => {
+describe('decor buildings (CAF, POULET CROUSTI, CHÂTEAU, SAUNA)', () => {
+  test('four decor fronts on existing free buildings, their door on the street below the front', () => {
     expect(DISTRICT.decor.map((d) => [d.id, d.sign])).toEqual([
       ['caf', 'CAF'],
       ['pouletCrousti', 'POULET CROUSTI'],
+      ['chateau', 'CHÂTEAU'],
+      ['sauna', 'SAUNA'],
     ]);
     expect(DISTRICT.decor[0]!.footprint).toEqual(R(26, 4, 7, 5));
     expect(DISTRICT.decor[0]!.door).toEqual(C(29, 9));
     expect(DISTRICT.decor[1]!.footprint).toEqual(R(38, 16, 6, 6));
     expect(DISTRICT.decor[1]!.door).toEqual(C(41, 22));
+    expect(DISTRICT.decor[2]!.footprint).toEqual(R(27, 14, 6, 4));
+    expect(DISTRICT.decor[2]!.door).toEqual(C(30, 18));
+    expect(DISTRICT.decor[3]!.footprint).toEqual(R(31, 29, 4, 3));
+    expect(DISTRICT.decor[3]!.door).toEqual(C(33, 32));
     for (const d of DISTRICT.decor) {
       expect(DISTRICT.buildings).toContainEqual(d.footprint);
       const f = d.footprint;
@@ -85,7 +91,7 @@ describe('decor buildings (CAF, POULET CROUSTI)', () => {
     for (const d of DISTRICT.decor) {
       for (const p of points) expect(rectDist(d.footprint, p)).toBeGreaterThanOrEqual(CLEAR);
       for (const t of DISTRICT.targets) expect(rectGap(t.footprint, d.footprint)).toBeGreaterThanOrEqual(CLEAR);
-      expect(rectGap(DISTRICT.peacefulGroup.area, d.footprint)).toBeGreaterThanOrEqual(CLEAR);
+      for (const gr of DISTRICT.peacefulGroups) expect(rectGap(gr.area, d.footprint)).toBeGreaterThanOrEqual(CLEAR);
       expect(rectDist(d.footprint, z)).toBeGreaterThan(z.r);
       // the two decor fronts do not share a block either
       for (const o of DISTRICT.decor) if (o !== d) expect(rectGap(o.footprint, d.footprint)).toBeGreaterThanOrEqual(CLEAR);

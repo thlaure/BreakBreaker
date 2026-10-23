@@ -6,7 +6,7 @@ import { roleHp } from '../../src/sim/hostiles';
 import { DISTRICT } from '../../src/sim/map/district';
 import { Grid } from '../../src/sim/map/grid';
 import { norm, sub } from '../../src/sim/math';
-import { segmentRectEntry, Sim } from '../../src/sim/sim';
+import { groupsEntry, Sim } from '../../src/sim/sim';
 import type { InputFrame, SimEvent, Vec } from '../../src/sim/types';
 import { IDLE, autopilot } from './autopilot';
 
@@ -200,7 +200,7 @@ describe('bullets', () => {
   const ctx = (o: Partial<BulletCtx> = {}, player: Partial<BulletCtx['player']> = {}): BulletCtx => ({
     player: { pos: { x: -500, y: -500 }, r: CONFIG.player.radius, invulnerable: false, shield: false, ...player },
     hostiles: [],
-    groupBlocks: (a, b) => segmentRectEntry(a, b, DISTRICT.peacefulGroup.area),
+    groupBlocks: groupsEntry,
     victimPos: null,
     ...o,
   });
@@ -232,7 +232,7 @@ describe('bullets', () => {
     expect(imp[0]!.pos.x).toBeLessThanOrEqual(from.x + wall + 1);
     expect(b.enemy()).toEqual([]);
 
-    const g = DISTRICT.peacefulGroup.area;
+    const g = DISTRICT.peacefulGroups[0]!.area;
     const left = { x: g.x - 60, y: g.y + g.h / 2 };
     const c = new Bullets(grid);
     c.fire(left, { x: 1, y: 0 });

@@ -171,7 +171,7 @@ describe('flashball', () => {
     expect(of(ev, 'BulletImpact')).toHaveLength(1);
     expect(of(ev, 'BulletImpact')[0]!.owner).toBe('player');
 
-    const g = DISTRICT.peacefulGroup.area;
+    const g = DISTRICT.peacefulGroups[0]!.area;
     const s2 = armed('flashball');
     s2.player.pos = { x: g.x - 60, y: g.y + g.h / 2 };
     const behind = rioter(s2, { x: g.x + g.w + 30, y: g.y + g.h / 2 });
@@ -284,7 +284,7 @@ describe('gant de boxe à ressort', () => {
     wall = 100;
     expect(of(ev, 'GlovePunched')[0]!.to.x).toBeLessThan(sim.player.pos.x + wall);
 
-    const g = DISTRICT.peacefulGroup.area;
+    const g = DISTRICT.peacefulGroups[0]!.area;
     const s2 = armed('gant');
     s2.player.pos = { x: g.x - 40, y: g.y + g.h / 2 };
     // the glove stops at the group's edge (it is wider than the reach: nobody behind it is ever in reach)

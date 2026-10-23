@@ -70,7 +70,8 @@ export interface Snapshot {
   bullets: { id: number; pos: Vec; dir: Vec }[];
   /** Paul's flashball shots in flight (`dir` unit). */
   flashballs: { id: number; pos: Vec; dir: Vec }[];
-  group: { area: Rect; members: Vec[] };
+  /** The peaceful groups on the main square. */
+  groups: { area: Rect; members: Vec[] }[];
   victim: Vec | null;
   /** `attacked` = an urgent attack on it; `burning` = on fire with no urgent attack (smouldering until put out). */
   targets: {
@@ -235,7 +236,7 @@ export function buildSnapshot(sim: Sim, x: SnapshotExtras): Snapshot {
     aims: x.aims.map((t) => ({ from: v(t.from), to: v(t.to), until: t.until })),
     bullets: sim.bullets.enemy().map((b) => ({ id: b.id, pos: v(b.pos), dir: v(b.dir) })),
     flashballs: sim.bullets.player().map((b) => ({ id: b.id, pos: v(b.pos), dir: v(b.dir) })),
-    group: { area: { ...DISTRICT.peacefulGroup.area }, members: DISTRICT.peacefulGroup.members.map(v) },
+    groups: DISTRICT.peacefulGroups.map((g) => ({ area: { ...g.area }, members: g.members.map(v) })),
     victim,
     targets: DISTRICT.targets.map((def) => {
       const t = sim.targets.get(def.id);

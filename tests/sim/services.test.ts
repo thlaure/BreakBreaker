@@ -97,8 +97,7 @@ describe('the phone booths (targets)', () => {
     const centre = { x: 5 * 32, y: 22 * 32 + 16 };
     for (const q of [...DISTRICT.hostileSpawns, ...DISTRICT.stations, ...DISTRICT.rescueSites, DISTRICT.playerSpawn])
       expect(hyp(q, centre)).toBeGreaterThan(160);
-    const g = DISTRICT.peacefulGroup.area;
-    expect(hyp(g, centre)).toBeGreaterThan(320);
+    for (const { area: g } of DISTRICT.peacefulGroups) expect(hyp(g, centre)).toBeGreaterThan(320);
   });
 
   test('scores +4 / −2 / +3 like a prop, open from round 3, at most 2 Molotovs, prop lineup', () => {
