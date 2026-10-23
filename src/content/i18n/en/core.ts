@@ -1,0 +1,32 @@
+import type { frCore } from '../fr/core';
+
+/** American English of src/content/i18n/fr/core.ts (same keys, checked by the type and by tests). */
+export const enCore: Record<keyof typeof frCore, string> = {
+  'toolbox.toolboxRequired': 'Toolbox required',
+  'toolbox.areaUnsafe': 'Area not secured',
+  'station.fullHealth': 'Health already full',
+  'station.spent': 'Used up',
+  'school.burning': 'on fire',
+  'school.attacked': 'under attack',
+  'school.reinforcements': 'backup coming',
+  'school.lost': 'lost',
+  'school.saved': 'saved',
+  'objective.won': 'success',
+  'objective.lost': 'failed',
+  'held.baton': 'Baton',
+  'held.marteau': 'Hammer',
+  'held.panneau': 'Street sign',
+  'held.gant': 'Boxing glove',
+  'held.flashball': 'Flashball',
+  'held.bouclier': 'Shield',
+  'item.handbag': 'purse',
+  'item.hat': 'hat',
+  'item.cane': 'cane',
+  'item.backpack': 'backpack',
+  'item.scarf': 'scarf',
+  'item.cap': 'ball cap',
+  'sign.caf': 'CAF',
+  'sign.pouletCrousti': 'POULET CROUSTI',
+  'sign.chateau': 'CASTLE',
+  'sign.sauna': 'SAUNA',
+};
