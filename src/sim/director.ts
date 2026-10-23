@@ -1,277 +1,54 @@
 import { CONFIG } from './config';
-import type { EntryQueue, SpawnRequest, Spawner } from './entry';
-import type { Stations } from './healing';
-import type { Horde } from './hostiles';
+import { caidLast, fillGroups, roundFill, type FillGroup, type FillState } from './directorFill';
+import {
+  FLOW_KEEPER_SEC,
+  RESCUE_COUNT,
+  TARGETS_OF,
+  TWO_URGENCIES_FROM,
+  casseOpen,
+  chooseRescueSite,
+  fillReserve,
+  pressure,
+  roundPlan,
+  tableTotal,
+  urgentCap,
+  type BeatKind,
+  type RoundPhase,
+  type RoundPlan,
+} from './directorPlan';
+import { settled, succeeded, urgent, windingDown, type DirectorHost, type Objective, type RoundSummary } from './directorObjectives';
 import { RescueIncident, drawRescueKind } from './incidents/rescue';
 import { SchoolIncident } from './incidents/school';
 import { TargetAttack, lineup } from './incidents/targetAttack';
 import { DISTRICT } from './map/district';
-import { FlowField } from './map/flowfield';
-import { MonumentIncident, occupierCount, type Monument } from './monument';
-import type { Grid } from './map/grid';
-import { dist } from './math';
-import type { Player } from './player';
-import type { Toolboxes } from './repair';
-import type { Rules } from './rules';
-import type { Targets } from './targets';
-import type { CasseKind, Role, SimEvent, TargetId, Variant, Vec } from './types';
-import type { Weapons } from './weapons';
+import { MonumentIncident, occupierCount } from './monument';
+import type { CasseKind, SimEvent, TargetId, Variant } from './types';
 
-export type RoundPhase = 'intro' | 'play' | 'breather';
-export type BeatKind = CasseKind | 'rescue' | 'monument';
-export type Twist = 'weaponDrop' | 'secondUrgency';
+export {
+  FLOW_KEEPER_SEC,
+  RESCUE_COUNT,
+  RESCUE_PATH_MAX,
+  RESCUE_PATH_MIN,
+  SPAWN_MIN_DIST,
+  SPAWN_NEAREST,
+  THROWER_SHARE,
+  TWO_URGENCIES_FROM,
+  bruteCount,
+  casseOpen,
+  chooseRescueSite,
+  fillReserve,
+  pressure,
+  roundPlan,
+  shooterCount,
+  spawnPoints,
+  tableTotal,
+  urgentCap,
+} from './directorPlan';
+export type { DirectorHost, RoundSummary } from './directorObjectives';
+export type { BeatKind, MonumentPlan, RoundPhase, RoundPlan, Twist } from './directorPlan';
 
-/**
- * What a round brings: its headline, its beats (each beat = incidents started together) and its twists, fired together
- * at half the roster in this order (none in round 1; a weapon drop from round 2; plus a second urgency on odd rounds
- * from round 3).
- */
-export interface RoundPlan {
-  headline: BeatKind;
-  beats: BeatKind[][];
-  twists: Twist[];
-}
-
-export interface RoundSummary {
-  index: number;
-  kos: number;
-  objectives: { kind: BeatKind; result: 'réussi' | 'perdu' }[];
-  /** Score earned during the round, bonus included. */
-  points: number;
-  bonus: boolean;
-}
-
-/** What the director reads and drives on the Sim (kept as an interface to avoid an import cycle). */
-export interface DirectorHost {
-  readonly player: Player;
-  readonly horde: Horde;
-  readonly rules: Rules;
-  readonly grid: Grid;
-  readonly rand: () => number;
-  readonly targets: Targets;
-  readonly queue: EntryQueue;
-  /** Puts objective rioters at the front of the entry queue. */
-  readonly objectiveSpawner: Spawner;
-  readonly stations: Stations;
-  readonly toolboxes: Toolboxes;
-  readonly weapons: Weapons;
-  /** Every target attack of the session still worth stepping, smouldering ones included (the director prunes resolved ones). */
-  readonly attacks: TargetAttack[];
-  school: SchoolIncident;
-  rescue: RescueIncident | null;
-  /** The equestrian monument's flag and capture (lasting state). */
-  readonly monument: Monument;
-  /** Monument occupations of the session still worth stepping (the director prunes finished ones at round start). */
-  readonly occupations: MonumentIncident[];
-}
-
-export const SPAWN_MIN_DIST = 320;
-export const RESCUE_PATH_MIN = 300;
-export const RESCUE_PATH_MAX = 900;
-/** RC-94 flow keeper: this long with no active hostile and nothing queued → someone enters at once. */
-export const FLOW_KEEPER_SEC = 1.5;
-/** Share of rock throwers in a round's fill, from round 2 (round 1 teaches the fight first). */
-export const THROWER_SHARE = 0.2;
-/** Aggressors of every rescue from round 2 (round 1 keeps the random CONFIG.rescue.aggressors range). */
-export const RESCUE_COUNT = 3;
 const VARIANTS: Variant[] = ['classic', 'palestinian', 'antifa'];
-const CASSE_KINDS: CasseKind[] = ['school', 'car', 'busStop', 'shop', 'nursery', 'kiosk', 'townHall', 'library', 'booth', 'prison'];
-const TARGETS_OF: Readonly<Record<CasseKind, TargetId[]>> = {
-  school: ['school'],
-  car: ['car1', 'car2'],
-  busStop: ['busStop'],
-  shop: ['shop'],
-  nursery: ['nursery'],
-  kiosk: ['kiosk'],
-  townHall: ['townHall'],
-  library: ['library'],
-  booth: ['boothRed', 'boothBlue'],
-  prison: ['prison'],
-};
-
-/** A kind of casse can be attacked in `round` (CONFIG.casse.fromRound: the phone booths from 3, the prison from 4, the nursery and the kiosk from 5, the town hall from 7, the library from 9). */
-export function casseOpen(kind: CasseKind, round: number): boolean {
-  return round >= CONFIG.casse.fromRound[kind];
-}
 const EPS = 1e-9;
-
-/** Brutes in a round's fill (CONFIG.brute.counts): none before round 4, 1, 2 from round 6, 3 from round 8. */
-export function bruteCount(round: number): number {
-  let n = 0;
-  for (const [from, count] of CONFIG.brute.counts) if (round >= from) n = count;
-  return n;
-}
-
-/** Shooters in a round's fill (CONFIG.shooter.counts): none before round 6, 1 in rounds 6–7, 2 in rounds 8–9, 3 from round 10, ≤ maxPerRound. */
-export function shooterCount(round: number): number {
-  let n = 0;
-  for (const [from, count] of CONFIG.shooter.counts) if (round >= from) n = count;
-  return Math.min(CONFIG.shooter.maxPerRound, n);
-}
-
-/** Rises one step every 2 rounds and every 30 session KOs, capped. */
-export function pressure(round: number, kos: number): number {
-  return Math.min(CONFIG.pressureMax, 1 + Math.floor(round / 2) + Math.floor(kos / 30));
-}
-
-/** Round roster before objectives: 10, 14, 18, 22, then +4 per round, capped at 40. */
-export function tableTotal(round: number): number {
-  const t: readonly number[] = CONFIG.round.totals;
-  return t[round - 1] ?? Math.min(CONFIG.round.maxTotal, t[t.length - 1]! + CONFIG.round.growth * (round - t.length));
-}
-
-/**
- * Fill rioters a round keeps at least from TWO_URGENCIES_FROM (when two attacks would leave less, the roster grows,
- * past CONFIG.round.maxTotal if need be, like an objective-heavy roster): the round's runner pack (as roundFill sizes it) plus the smallest rest whose contact slots
- * (after the rock throwers and firebombers fillGroups hands out) hold the Caïd, the brutes and the shooters.
- */
-export function fillReserve(round: number): number {
-  const [lo, hi] = CONFIG.runner.pack;
-  const pack = round >= CONFIG.runner.fromRound ? Math.min(hi, lo + (round % (hi - lo + 1))) : 0;
-  const need = (round >= CONFIG.caid.fromRound ? 1 : 0) + bruteCount(round) + shooterCount(round);
-  const share = round >= 2 ? THROWER_SHARE : 0;
-  const fb = CONFIG.firebomber;
-  for (let n = need; ; n++) {
-    const firebombers = round >= fb.fromRound ? Math.min(fb.maxPerRound, Math.floor((n + fb.fillEvery / 2) / fb.fillEvery)) : 0;
-    if (n - Math.floor(n * share) - firebombers >= need) return pack + n;
-  }
-}
-
-/** Urgent incidents allowed at once: 1 in rounds 1–2, then 2. */
-export function urgentCap(round: number): number {
-  return round < 3 ? 1 : 2;
-}
-
-/** What the monument allows when a round is planned: its flag, and whether last round's second beat was the monument. */
-export interface MonumentPlan {
-  french: boolean;
-  lastWasMonument: boolean;
-}
-
-/** From this round, two places are attacked at once from the round start (the first beat holds two casses). */
-export const TWO_URGENCIES_FROM = 5;
-
-/**
- * The round catalogue. r1: the school (tutorial: first Molotov, cinematic, reinforcements) then rescue. From r2 the
- * headline casse is a seeded random draw among every kind open this round (casseOpen: school, shop, car, bus stop from
- * r2, the phone booths from r3, nursery and kiosk from r5, town hall from r7, library from r9) with a free target (standing, not burning), weight
- * 2, or 1 if it was in `last` round's first beat (it may repeat, rarely; nothing is forced). From round
- * TWO_URGENCIES_FROM the first beat holds two casses on distinct targets, started together: the kinds opening this very
- * round first (round 5 nursery then kiosk, round 7 the town hall, round 9 the library), then the same weighted draw
- * (another kind when one has a free target, else a second target of the same kind: the two cars); a single free target
- * → a single casse. Second beat: the rescue; from round CONFIG.monument.fromRound the monument occupation instead when
- * the flag is French and last round's second beat was not the monument (they alternate; never while the flag is
- * Palestinian). Twists: from round 2 always a weapon drop (from round 3 a bouclier half the time; otherwise a regular
- * weapon one time in two, else nothing; never a bouclier in round 2), and on odd rounds from r3 a second urgency as
- * well (when the urgency cap allows: never a third while two run). No free target → the second beat alone (its kind is
- * the headline).
- */
-export function roundPlan(
-  round: number,
-  rand: () => number,
-  targets: Targets,
-  last: CasseKind | readonly CasseKind[] | null = null,
-  monument: MonumentPlan | null = null,
-  isFree: (id: TargetId) => boolean = (id) => targets.standing(id) && !targets.get(id).burning,
-): RoundPlan {
-  const lastKinds: readonly CasseKind[] =
-    last === null ? [] : typeof last === 'string' ? [last as CasseKind] : (last as readonly CasseKind[]);
-  // a kind is drawn only with a free target (the director's free(): standing, not burning, no unresolved attack)
-  const freeTargets = (k: CasseKind): number => TARGETS_OF[k].filter(isFree).length;
-  const picks: CasseKind[] = [];
-  if (round === 1) {
-    if (freeTargets('school') > 0) picks.push('school');
-  } else {
-    const want = round >= TWO_URGENCIES_FROM ? 2 : 1;
-    for (let n = 0; n < want; n++) {
-      const room = (k: CasseKind): boolean => casseOpen(k, round) && freeTargets(k) > picks.filter((p) => p === k).length;
-      let kinds = CASSE_KINDS.filter((k) => room(k) && !picks.includes(k));
-      if (kinds.length === 0) kinds = CASSE_KINDS.filter(room);
-      if (kinds.length === 0) break;
-      const fresh = want > 1 ? kinds.find((k) => CONFIG.casse.fromRound[k] === round) : undefined;
-      if (fresh) {
-        picks.push(fresh);
-        continue;
-      }
-      const weights = kinds.map((k) => (lastKinds.includes(k) ? 1 : 2));
-      let r = rand() * weights.reduce((a, b) => a + b, 0);
-      for (let i = 0; i < kinds.length; i++) {
-        r -= weights[i]!;
-        if (r < 0 || i === kinds.length - 1) {
-          picks.push(kinds[i]!);
-          break;
-        }
-      }
-    }
-  }
-  const twists: Twist[] = round === 1 ? [] : round >= 3 && round % 2 === 1 ? ['weaponDrop', 'secondUrgency'] : ['weaponDrop'];
-  const second: BeatKind =
-    monument && round >= CONFIG.monument.fromRound && monument.french && !monument.lastWasMonument ? 'monument' : 'rescue';
-  return { headline: picks[0] ?? second, beats: picks.length > 0 ? [picks, [second]] : [[second]], twists };
-}
-
-/** Newcomers enter by the nearest this many eligible edge points (so they arrive closer to Paul). */
-export const SPAWN_NEAREST = 3;
-
-/**
- * Edge spawn points >= 320 px from Paul, nearest first, at most the 3 nearest (the entry line cycles over them);
- * if none qualifies, the farthest one.
- */
-export function spawnPoints(playerPos: Vec): Vec[] {
-  const all = DISTRICT.hostileSpawns;
-  const far = all
-    .map((p) => ({ p, d: dist(p, playerPos) }))
-    .filter((x) => x.d >= SPAWN_MIN_DIST)
-    .sort((a, b) => a.d - b.d)
-    .slice(0, SPAWN_NEAREST)
-    .map((x) => x.p);
-  if (far.length > 0) return far;
-  let best = all[0]!;
-  for (const p of all) if (dist(p, playerPos) > dist(best, playerPos)) best = p;
-  return [best];
-}
-
-/**
- * Rescue site whose path distance from Paul (BFS steps × tile) is within 300–900 px, chosen with `rand` among
- * qualifying sites; otherwise the closest one above 300 px; otherwise the farthest reachable (or the first).
- */
-export function chooseRescueSite(grid: Grid, playerPos: Vec, rand: () => number): Vec {
-  const field = new FlowField(grid);
-  field.rebuild(playerPos);
-  const sites = DISTRICT.rescueSites.map((p) => {
-    const steps = field.stepsAt(p);
-    return { p, d: steps < 0 ? Infinity : steps * grid.tile };
-  });
-  const ok = sites.filter((s) => s.d >= RESCUE_PATH_MIN && s.d <= RESCUE_PATH_MAX);
-  if (ok.length > 0) return ok[Math.floor(rand() * ok.length) % ok.length]!.p;
-  const above = sites.filter((s) => s.d > RESCUE_PATH_MIN && s.d !== Infinity).sort((a, b) => a.d - b.d);
-  if (above.length > 0) return above[0]!.p;
-  const reachable = sites.filter((s) => s.d !== Infinity).sort((a, b) => b.d - a.d);
-  return (reachable[0] ?? sites[0]!).p;
-}
-
-/** One incident of a round: prepared at round start (its rioters count in the total), launched by its beat. */
-interface Objective {
-  kind: BeatKind;
-  attack: TargetAttack | null;
-  rescue: RescueIncident | null;
-  occupation?: MonumentIncident | null;
-  /** Rioters it brings. */
-  count: number;
-  launched: boolean;
-  /** Its target was gone at launch time: its rioters joined the fill instead. */
-  dropped: boolean;
-}
-
-/** A group of fill rioters, tagged with its own incident id so the director knows when it is entirely down. */
-interface FillGroup {
-  id: string;
-  reqs: SpawnRequest[];
-  climax: boolean;
-  /** A runner pack: it enters in a tight bunch (CONFIG.round.climaxInterval apart). */
-  pack: boolean;
-  seen: Set<number>;
-}
 
 /**
  * Session sequencing in rounds (manches). Intro 4 s → round 1. A round: plan → RoundStarted → beat 0 at once,
@@ -463,7 +240,7 @@ export class Director {
     }
     // flow keeper (RC-94): nobody on the map and nobody waiting → someone enters at once. Not while every open
     // objective is only winding down (fire dying out, victim thanking Paul): the next beat or the breather is seconds away.
-    if (host.horde.active().length > 0 || host.queue.length > 0 || this.windingDown()) {
+    if (host.horde.active().length > 0 || host.queue.length > 0 || windingDown(this.objectives)) {
       this.idle = 0;
       return;
     }
@@ -517,8 +294,8 @@ export class Director {
     while (this.beat < this.beats.length) {
       const items = this.beats[this.beat]!;
       if (this.beat > 0) {
-        if (!this.beats[this.beat - 1]!.every((o) => this.settled(o))) return;
-        if (this.urgent(host) + items.length > urgentCap(this.round)) return;
+        if (!this.beats[this.beat - 1]!.every((o) => settled(o))) return;
+        if (urgent(host) + items.length > urgentCap(this.round)) return;
       }
       for (const o of items) this.launch(o, host, ev);
       this.beat += 1;
@@ -571,162 +348,29 @@ export class Director {
       ev.push({ type: 'CasseStarted', incidentId: a.id, kind: a.kind, target: a.target, pos: door, round: this.round, total: this.total });
   }
 
-  /** Every launched, unsettled objective is in its timed wind-down with no rioter left (a victim thanking Paul). */
-  private windingDown(): boolean {
-    let open = 0;
-    for (const o of this.objectives) {
-      if (this.settled(o)) continue;
-      open++;
-      if (o.attack || o.occupation || o.rescue!.stage !== 'secured') return false;
-    }
-    return open > 0;
+  private fillState(): FillState {
+    return { round: this.round, fill: this.fill, firebombers: this.firebombers, variant: () => this.variant() };
   }
 
-  /** Over for this round: an attack saved, destroyed or smouldering (its fire outlives the round), a rescue resolved. */
-  private settled(o: Objective): boolean {
-    if (o.dropped) return true;
-    if (o.attack) return o.attack.settled();
-    if (o.occupation) return o.occupation.settled();
-    const st = o.rescue!.stage;
-    return st === 'completed' || st === 'failed';
-  }
-
-  /** A smouldering target still stands: réussi (until it burns down). */
-  private succeeded(o: Objective): boolean {
-    if (o.occupation) return o.occupation.stage === 'defended';
-    return o.attack ? o.attack.stage === 'saved' || o.attack.stage === 'smoulder' : o.rescue!.stage === 'completed';
-  }
-
-  private urgent(host: DirectorHost): number {
-    let n = host.rescue?.stage === 'threat' ? 1 : 0;
-    for (const a of host.attacks) if (a.urgent()) n++;
-    for (const m of host.occupations) if (m.urgent()) n++;
-    return n;
-  }
-
-  /**
-   * Splits `n` fill rioters into groups of about groupSize (bigger ones last: the last group is the climax). Roles:
-   * rock throwers (THROWER_SHARE, from round 2), and from CONFIG.firebomber.fromRound firebombers: the round's fill
-   * slot 4, 12, 20… (1 in `fillEvery`, rounded: at least 1 once the fill has 4) unless that slot throws rocks, then the
-   * next contact slot; at most `maxPerRound` per round.
-   */
-  private fillGroups(n: number, prefix = `round#${this.round}:fill`): FillGroup[] {
-    if (n <= 0) return [];
-    const groups = Math.ceil(n / CONFIG.round.groupSize);
-    const base = Math.floor(n / groups);
-    const extra = n - base * groups;
-    const share = this.round >= 2 ? THROWER_SHARE : 0;
-    // the runner pack is not part of the fill the throwers and firebombers are drawn over
-    const first = this.fill.reduce((m, g) => m + (g.pack ? 0 : g.reqs.length), 0);
-    const out: FillGroup[] = [];
-    const fb = CONFIG.firebomber;
-    const fbWanted = this.round >= fb.fromRound ? Math.min(fb.maxPerRound, Math.floor((first + n + fb.fillEvery / 2) / fb.fillEvery)) : 0;
-    let owed = 0;
-    let i = first;
-    for (let g = 0; g < groups; g++) {
-      const size = base + (g >= groups - extra ? 1 : 0);
-      const reqs: SpawnRequest[] = [];
-      for (let k = 0; k < size; k++, i++) {
-        // floor((i+1)·s) > floor(i·s) marks exactly floor(n·s) throwers, spread through the fill
-        let role: Role = Math.floor((i + 1) * share) > Math.floor(i * share) ? 'thrower' : 'contact';
-        if (fbWanted > 0 && i % fb.fillEvery === fb.fillEvery / 2 - 1) owed++;
-        if (role === 'contact' && owed > 0 && this.firebombers < fbWanted) {
-          role = 'firebomber';
-          owed--;
-          this.firebombers++;
-        }
-        reqs.push({ variant: this.variant(), role, round: this.round, incidentId: `${prefix}#${this.fill.length + g + 1}` });
-      }
-      out.push({ id: reqs[0]!.incidentId!, reqs, climax: false, pack: false, seen: new Set() });
-    }
-    out[out.length - 1]!.climax = true;
-    if (this.fill.length > 0) for (const g of this.fill) g.climax = false;
+  /** See fillGroups (directorFill): splits `n` fill rioters into groups, the last one the climax. */
+  private fillGroups(n: number, prefix?: string): FillGroup[] {
+    const s = this.fillState();
+    const out = fillGroups(s, n, prefix);
+    this.firebombers = s.firebombers;
     return out;
   }
 
-  /**
-   * The round's fill (`n` rioters, the roster never changes). From CONFIG.runner.fromRound a runner pack is carved out
-   * first: 4 + (round mod 3) runners (4–6; fewer extra when the rest of the fill would lack room for the Caïd and the
-   * brutes; none when the fill has less than 4 + the Caïd), one group of its own, the round's second fill group when
-   * the rest makes two groups or more (else the first). The rest is split by fillGroups (throwers and firebombers are
-   * drawn over it), then dressed: the Caïd and the brutes (see `dress`).
-   */
+  /** See roundFill (directorFill): the round's fill, runner pack carved out, then dressed. */
   private roundFill(n: number): FillGroup[] {
-    const [lo, hi] = CONFIG.runner.pack;
-    const boss = this.round >= CONFIG.caid.fromRound ? 1 : 0;
-    let p = 0;
-    if (this.round >= CONFIG.runner.fromRound && n >= lo + boss) {
-      const room = boss + bruteCount(this.round);
-      p = Math.min(hi, lo + (this.round % (hi - lo + 1)));
-      if (n - p < room) p = Math.max(lo, n - room);
-    }
-    const rest = this.fillGroups(n - p);
-    if (p > 0) {
-      const reqs: SpawnRequest[] = [];
-      for (let k = 0; k < p; k++) reqs.push({ variant: this.variant(), role: 'runner', round: this.round });
-      const pack: FillGroup = { id: '', reqs, climax: rest.length === 0, pack: true, seen: new Set() };
-      rest.splice(rest.length >= 2 ? 1 : 0, 0, pack);
-      // group ids follow the entry order
-      rest.forEach((g, i) => {
-        g.id = `round#${this.round}:fill#${i + 1}`;
-        for (const q of g.reqs) q.incidentId = g.id;
-      });
-    }
-    this.dress(rest);
-    return rest;
+    const s = this.fillState();
+    const out = roundFill(s, n);
+    this.firebombers = s.firebombers;
+    return out;
   }
 
-  /**
-   * From CONFIG.caid.fromRound the Caïd is the very last fill rioter; bruteCount brutes take contact slots, one per group
-   * from the last group back (never in the pack); then shooterCount shooters take contact slots of the last group (the
-   * climax), earlier groups when it has none left. A rock thrower or firebomber on the Caïd's slot trades its role with
-   * a contact slot elsewhere, so their counts never change.
-   */
-  private dress(groups: FillGroup[]): void {
-    const last = groups[groups.length - 1];
-    if (!last) return;
-    if (this.round >= CONFIG.caid.fromRound) {
-      const boss = last.reqs[last.reqs.length - 1]!;
-      if (boss.role !== 'contact') {
-        const spare = groups.flatMap((g) => g.reqs).find((r) => r.role === 'contact' && r !== boss);
-        if (spare) spare.role = boss.role;
-      }
-      boss.role = 'boss';
-    }
-    let brutes = bruteCount(this.round);
-    while (brutes > 0) {
-      let placed = false;
-      for (let gi = groups.length - 1; gi >= 0 && brutes > 0; gi--) {
-        const q = groups[gi]!.reqs.find((r) => r.role === 'contact');
-        if (!q) continue;
-        q.role = 'brute';
-        brutes--;
-        placed = true;
-      }
-      if (!placed) break;
-    }
-    let shooters = shooterCount(this.round);
-    for (let gi = groups.length - 1; gi >= 0 && shooters > 0; gi--)
-      for (const q of groups[gi]!.reqs) {
-        if (shooters === 0) break;
-        if (q.role !== 'contact') continue;
-        q.role = 'shooter';
-        shooters--;
-      }
-  }
-
-  /** Fill groups added later (an objective dropped): the Caïd's role moves to the new last fill slot, so he still closes. */
+  /** See caidLast (directorFill): the Caïd's role moves to the new last fill slot. */
   private caidLast(): void {
-    const last = this.fill[this.fill.length - 1];
-    if (!last) return;
-    for (let gi = this.nextFill; gi < this.fill.length - 1; gi++) {
-      const g = this.fill[gi]!;
-      const q = g.reqs.find((r) => r.role === 'boss');
-      if (!q) continue;
-      const tail = last.reqs[last.reqs.length - 1]!;
-      q.role = tail.role;
-      tail.role = 'boss';
-    }
+    caidLast(this.fill, this.nextFill);
   }
 
   private queueFill(host: DirectorHost, now: boolean): void {
@@ -756,7 +400,7 @@ export class Director {
    * cap allows and one is free (preferably one not attacked yet this round); otherwise nothing more happens.
    */
   private secondUrgency(host: DirectorHost, ev: SimEvent[]): void {
-    if (this.urgent(host) >= urgentCap(this.round)) return;
+    if (urgent(host) >= urgentCap(this.round)) return;
     const reserved = new Set<TargetId>();
     for (const b of this.beats) for (const o of b) if (o.attack && !o.launched) reserved.add(o.attack.target);
     const open = DISTRICT.targets.filter((t) => casseOpen(t.kind, this.round) && this.free(t.id, host) && !reserved.has(t.id));
@@ -789,7 +433,7 @@ export class Director {
   /** Every beat settled, nothing of the round still to queue, queued or standing. */
   private complete(host: DirectorHost): boolean {
     if (this.beat < this.beats.length || this.nextFill < this.fill.length) return false;
-    if (!this.objectives.every((o) => this.settled(o))) return false;
+    if (!this.objectives.every((o) => settled(o))) return false;
     if (host.queue.pendingForRound(this.round) > 0) return false;
     return !host.horde.list.some((h) => h.round === this.round && h.state !== 'ko');
   }
@@ -797,7 +441,7 @@ export class Director {
   private finish(host: DirectorHost, ev: SimEvent[]): void {
     const objectives = this.objectives.map((o) => ({
       kind: o.kind,
-      result: this.succeeded(o) ? ('réussi' as const) : ('perdu' as const),
+      result: succeeded(o) ? ('réussi' as const) : ('perdu' as const),
     }));
     const bonus = objectives.every((o) => o.result === 'réussi');
     if (bonus) host.rules.award(`round#${this.round}:bonus`, CONFIG.round.bonus, host.player.pos);
