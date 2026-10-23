@@ -129,7 +129,7 @@ export function buildPrisonFront(kit: WorldView, s: Phaser.Scene, b: Rect, roofP
     w: 96,
     rim: PRISON.concreteHi,
     plate: 0x2a2f3a,
-    label: 'PRISON',
+    label: 'world.sign.prison',
     color: '#f4ecd8',
     textX: 8,
     icon: (p) => {

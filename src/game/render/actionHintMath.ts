@@ -1,3 +1,4 @@
+import { onLocaleChange, t } from '../../content/i18n';
 import { DISTRICT } from '../../sim/map/district';
 import type { ActionHintKind } from '../../sim/sim';
 import type { TargetId, Vec } from '../../sim/types';
@@ -17,22 +18,47 @@ export interface ActionWords {
   button: string | null;
 }
 
+/** The words of `kind` in the current language, read at each access (catalog keys `world.action.<kind>.*`). */
+function words(kind: ActionHintKind, button: boolean): ActionWords {
+  return {
+    get verb() {
+      return t(`world.action.${kind}.verb`);
+    },
+    get line() {
+      return t(`world.action.${kind}.line`);
+    },
+    get button() {
+      return button ? t(`world.action.${kind as Exclude<ActionHintKind, 'needToolbox'>}.button`) : null;
+    },
+  };
+}
+
+/** Each hint kind's words; the getters follow the language (a locale switch shows at the next frame). */
 export const ACTION_WORDS: Readonly<Record<ActionHintKind, ActionWords>> = {
-  repair: { verb: 'Réparer', line: 'Réparer', button: 'Réparer' },
-  extinguish: { verb: 'Éteindre', line: 'Éteindre le feu', button: 'Éteindre' },
-  callFire: { verb: 'Appeler les pompiers', line: 'Appeler les pompiers', button: 'Appeler' },
-  callPolice: { verb: 'Appeler la police', line: 'Appeler la police', button: 'Appeler' },
-  needToolbox: { verb: 'Il faut une caisse à outils', line: 'Il faut une caisse à outils', button: null },
+  repair: words('repair', true),
+  extinguish: words('extinguish', true),
+  callFire: words('callFire', true),
+  callPolice: words('callPolice', true),
+  needToolbox: words('needToolbox', false),
 };
 
-/** The bubble's text while the repair runs (the ring fills around the keycap). */
-export const REPAIRING_VERB = 'Réparation…';
+/** The bubble's text while the repair runs (the ring fills around the keycap), in the current language. */
+export function repairingVerb(): string {
+  return t('world.action.repairing');
+}
+
+/**
+ * Same as repairingVerb(), kept as a live binding for older importers (src/game/hud/format.ts): reassigned on every
+ * language switch. Prefer repairingVerb().
+ */
+export let REPAIRING_VERB = repairingVerb();
+onLocaleChange(() => {
+  REPAIRING_VERB = repairingVerb();
+});
 
 /** One-line help shown once per game, the first time a ruin stands on the map. */
 export function firstRuinHelp(touch: boolean): string {
-  return touch
-    ? 'Ramasse une caisse à outils, puis touche Agir devant le bâtiment.'
-    : 'Ramasse une caisse à outils, puis appuie sur F devant le bâtiment.';
+  return t(touch ? 'world.help.firstRuin.touch' : 'world.help.firstRuin.keys');
 }
 
 /** Gap (px) between the top of a target's drawing and the bottom of its bubble (clear of its hp bar). */

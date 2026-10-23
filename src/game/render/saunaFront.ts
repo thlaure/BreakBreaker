@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
+import { t } from '../../content/i18n';
 import { CONFIG } from '../../sim/config';
 import type { DecorDef } from '../../sim/map/district';
 import type { DecorAnim, FrontKit, Paint, RoofPart } from './decor';
 import { DEPTH } from './depth';
 import { FACADE_H, ROOF_OVERHANG } from './geometry';
-import { SAUNA_SIGN, lanternGlow, silhouetteDrift, steamSpec } from './squareMath';
+import { localeBound } from './localeText';
+import { lanternGlow, silhouetteDrift, steamSpec } from './squareMath';
 
 const T = CONFIG.tile;
 const OUTLINE = 0x14121c;
@@ -183,7 +185,9 @@ export function buildSaunaFront(kit: FrontKit, s: Phaser.Scene, d: DecorDef, roo
   p(SAUNA.dark, -bw / 2, -7, bw, 14);
   p(SAUNA.pineHi, -bw / 2 + 2, -5, bw - 4, 10);
   p(SAUNA.pine, -bw / 2 + 2, 2, bw - 4, 3);
-  const text = s.add.text(0, 0, SAUNA_SIGN, { fontFamily: 'monospace', fontSize: '8px', color: '#3a1f0e' }).setOrigin(0.5);
+  const text = localeBound(s.add.text(0, 0, '', { fontFamily: 'monospace', fontSize: '8px', color: '#3a1f0e' }).setOrigin(0.5), () =>
+    t('world.sign.saunaBoard'),
+  );
   roofParts.push(s.add.container(b.x + b.w / 2, top - 9, [board, text]).setDepth(DEPTH.roof + 0.5));
 
   return {

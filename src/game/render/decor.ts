@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { t } from '../../content/i18n';
+import type { Key } from '../../content/i18n';
 import type { DecorDef, Rect } from '../../sim/map/district';
 import { CONFIG } from '../../sim/config';
 import { DEPTH } from './depth';
@@ -22,7 +22,7 @@ export interface FrontKit {
   roofSign(
     b: Rect,
     roofParts: RoofPart[],
-    o: { w: number; rim: number; plate: number; label: string; color: string; textX: number; icon: (p: Paint) => void },
+    o: { w: number; rim: number; plate: number; label: Key; color: string; textX: number; icon: (p: Paint) => void },
   ): unknown[];
   windowGlow(b: Rect, colour: number, alpha: number): Phaser.GameObjects.Ellipse;
 }
@@ -210,7 +210,7 @@ export function buildCafFront(kit: FrontKit, scene: Phaser.Scene, d: DecorDef, r
     w: 64,
     rim: CAF.stone,
     plate: CAF.plate,
-    label: t(`sign.${d.id}`),
+    label: `sign.${d.id}`,
     color: '#f4ecd8',
     textX: 7,
     icon: (p) => {
@@ -377,7 +377,7 @@ export function buildPouletFront(kit: FrontKit, scene: Phaser.Scene, d: DecorDef
     w: 120,
     rim: POULET.yellow,
     plate: POULET.red,
-    label: t(`sign.${d.id}`),
+    label: `sign.${d.id}`,
     color: '#fff6d0',
     textX: 8,
     icon: (p) => {

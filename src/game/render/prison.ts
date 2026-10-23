@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { t } from '../../content/i18n';
 import { DISTRICT } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
 import type { PrisonInmate } from '../../sim/prison';
@@ -20,6 +21,7 @@ import {
 } from './prisonMath';
 import { CROWN_SINK, HEAD_TOP, JailVans, type PrisonBodies } from './prisonVans';
 import { rioterSheet } from './roleLook';
+import { localeBound } from './localeText';
 import { jetPoint } from './serviceMath';
 import { FACADE_H, PRISON, PRISON_TOWER, ROOF_OVERHANG } from './world';
 
@@ -115,16 +117,20 @@ export class PrisonLayer {
       .setDepth(DEPTH.roof + 0.27)
       .setVisible(false);
     this.lamp = { x: f.x + PRISON_TOWER.dx + PRISON_TOWER.lampDx, y: top + PRISON_TOWER.lampDy };
-    this.counter = scene.add
-      .text(f.x + f.w / 2, top - 34, jailedText(0), {
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        color: '#ffd23f',
-        backgroundColor: '#14121c',
-        padding: { left: 4, right: 4, top: 3, bottom: 2 },
-      })
-      .setOrigin(0.5)
-      .setDepth(DEPTH.roof + 0.6);
+    // the roof counter follows the language (its count stays: this.shown, set by update)
+    this.counter = localeBound(
+      scene.add
+        .text(f.x + f.w / 2, top - 34, '', {
+          fontFamily: 'monospace',
+          fontSize: '10px',
+          color: '#ffd23f',
+          backgroundColor: '#14121c',
+          padding: { left: 4, right: 4, top: 3, bottom: 2 },
+        })
+        .setOrigin(0.5)
+        .setDepth(DEPTH.roof + 0.6),
+      () => jailedText(Math.max(0, this.shown)),
+    );
     this.beam = scene.add
       .graphics()
       .setDepth(DEPTH.roof + 0.3)
@@ -257,7 +263,7 @@ export class PrisonLayer {
         this.vans.clear();
         this.startEscape(nowMs);
         this.burst.emitParticleAt(e.pos.x, e.pos.y - 16, 36);
-        this.pow(e.pos.x, e.pos.y - 30, nowMs, 'ÉVASION !', true);
+        this.pow(e.pos.x, e.pos.y - 30, nowMs, t('world.prison.breakout'), true);
       }
     }
   }

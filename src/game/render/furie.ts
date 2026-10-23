@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { t } from '../../content/i18n';
 import { CONFIG } from '../../sim/config';
 import type { Snapshot } from '../../sim/sim';
 import { DEPTH } from './depth';
@@ -126,7 +127,8 @@ export class FurieAura {
 
 const POW_MS = 450;
 const POW_POOL = 10;
-const POW_WORDS = ['POW !', 'BOUM !'] as const;
+/** The default pops, in turn (read in the current language at each spawn). */
+const POW_WORDS = ['world.pow.a', 'world.pow.b'] as const;
 
 interface Pow {
   root: Phaser.GameObjects.Container;
@@ -164,7 +166,7 @@ export class PowBubbles {
   }
 
   /** `word`: a given word (the gant's « BOING ! »), else the next of POW_WORDS; `big`: ×1.5 (WTF falls, domino). */
-  spawn(x: number, y: number, nowMs: number, word: string = POW_WORDS[this.count % POW_WORDS.length]!, big = false): void {
+  spawn(x: number, y: number, nowMs: number, word: string = t(POW_WORDS[this.count % POW_WORDS.length]!), big = false): void {
     let p = this.pool[0]!;
     for (const q of this.pool) if (q.born < p.born) p = q;
     this.count++;
