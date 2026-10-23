@@ -149,6 +149,11 @@ export class Toolboxes {
     return { events, message: null };
   }
 
+  /** Paul was hit: the repair stops (a new press is needed) but the toolbox is kept. */
+  interrupt(): void {
+    this.reset();
+  }
+
   private reset(): void {
     this.progress = 0;
     this.repairing = null;
