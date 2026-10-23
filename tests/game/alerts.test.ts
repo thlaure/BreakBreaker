@@ -167,6 +167,12 @@ describe('pure helpers', () => {
         { title: 'BIBLIOTHÈQUE EN FEU !', sub: 'Sauve les livres', label: 'BIBLIOTHÈQUE', tone: 'fire', icon: 'flame' },
         'Bibliothèque menacée',
       ],
+      [
+        'church',
+        3,
+        { title: 'ÉGLISE ATTAQUÉE !', sub: 'Défends l’église', label: 'ÉGLISE', tone: 'fire', icon: 'flame' },
+        'Église menacée',
+      ],
     ] as const;
     expect(incidentAlert('booth', 3)).toMatchObject({
       title: 'CABINE SACCAGÉE !',

@@ -186,19 +186,42 @@ describe('the Phase C places in the round plan', () => {
 
   test('a place is never drawn before its round, then is part of the draw', () => {
     expect([...headlines(2)].sort()).toEqual(['busStop', 'car', 'school', 'shop']);
-    // the phone booths from round 3 (spec §7.5)
-    expect([...headlines(3)].sort()).toEqual(['booth', 'busStop', 'car', 'school', 'shop']);
+    // the phone booths (spec §7.5) and the church from round 3
+    expect([...headlines(3)].sort()).toEqual(['booth', 'busStop', 'car', 'church', 'school', 'shop']);
     // the prison from round 4
-    expect([...headlines(4)].sort()).toEqual(['booth', 'busStop', 'car', 'prison', 'school', 'shop']);
+    expect([...headlines(4)].sort()).toEqual(['booth', 'busStop', 'car', 'church', 'prison', 'school', 'shop']);
     // round 5: its two new places come first, together
     expect([...headlines(5)].sort()).toEqual(['kiosk', 'nursery']);
-    expect([...headlines(6)].sort()).toEqual(['booth', 'busStop', 'car', 'kiosk', 'nursery', 'prison', 'school', 'shop']);
-    expect([...headlines(7)].sort()).toEqual(['booth', 'busStop', 'car', 'kiosk', 'nursery', 'prison', 'school', 'shop', 'townHall']);
-    expect([...headlines(8)].sort()).toEqual(['booth', 'busStop', 'car', 'kiosk', 'nursery', 'prison', 'school', 'shop', 'townHall']);
+    expect([...headlines(6)].sort()).toEqual(['booth', 'busStop', 'car', 'church', 'kiosk', 'nursery', 'prison', 'school', 'shop']);
+    expect([...headlines(7)].sort()).toEqual([
+      'booth',
+      'busStop',
+      'car',
+      'church',
+      'kiosk',
+      'nursery',
+      'prison',
+      'school',
+      'shop',
+      'townHall',
+    ]);
+    expect([...headlines(8)].sort()).toEqual([
+      'booth',
+      'busStop',
+      'car',
+      'church',
+      'kiosk',
+      'nursery',
+      'prison',
+      'school',
+      'shop',
+      'townHall',
+    ]);
     expect([...headlines(9)].sort()).toEqual([
       'booth',
       'busStop',
       'car',
+      'church',
       'kiosk',
       'library',
       'nursery',
@@ -217,10 +240,10 @@ describe('the Phase C places in the round plan', () => {
       const h = roundPlan(10, rng(s), t, 'library').headline;
       n[h] = (n[h] ?? 0) + 1;
     }
-    // 10 kinds: 1 / 19 ≈ 5.3 %, the others 2 / 19 ≈ 10.5 %
+    // 11 kinds: 1 / 21 ≈ 4.8 %, the others 2 / 21 ≈ 9.5 %
     expect(n.library! / N).toBeLessThan(0.075);
-    for (const k of ['school', 'car', 'busStop', 'shop', 'nursery', 'kiosk', 'townHall', 'booth', 'prison'])
-      expect(n[k]! / N).toBeGreaterThan(0.085);
+    for (const k of ['school', 'car', 'busStop', 'shop', 'nursery', 'kiosk', 'townHall', 'booth', 'prison', 'church'])
+      expect(n[k]! / N).toBeGreaterThan(0.08);
   });
 
   test('the draw stays seeded: same seed, same plan', () => {
@@ -237,6 +260,7 @@ describe('the Phase C places in the round plan', () => {
     t.ruin('boothRed', 'boothRed#x');
     t.ruin('boothBlue', 'boothBlue#x');
     t.ruin('prison', 'prison#x');
+    t.ruin('church', 'church#x');
     for (let s = 1; s <= 80; s++) expect(['school', 'car', 'busStop', 'shop']).toContain(roundPlan(9, rng(s), t).headline);
   });
 });

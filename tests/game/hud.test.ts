@@ -406,19 +406,21 @@ describe('incidentLines', () => {
     ]);
   });
 
-  test('the Phase C places have their cards (Maternelle, Kiosque, Mairie, Bibliothèque)', () => {
+  test('the Phase C places have their cards (Maternelle, Kiosque, Mairie, Bibliothèque, Église)', () => {
     const s = snap((x) => {
       calm(x);
       attacked(x, 'nursery', 50);
       attacked(x, 'kiosk', 30, true);
       attacked(x, 'townHall', 99.2);
       attacked(x, 'library', 10, true);
+      attacked(x, 'church', 60, true); // 60 of 150 hp
     });
     expect(incidentLines(s, 'en cours')).toEqual([
       expect.objectContaining({ key: 'nursery', kind: 'nursery', name: 'Maternelle', time: '50 %', status: 'attaquée' }),
       expect.objectContaining({ key: 'kiosk', kind: 'kiosk', name: 'Kiosque', time: '50 %', status: 'en feu' }),
       expect.objectContaining({ key: 'townHall', kind: 'townHall', name: 'Mairie', time: '100 %', status: 'attaquée' }),
       expect.objectContaining({ key: 'library', kind: 'library', name: 'Bibliothèque', time: '10 %', status: 'en feu' }),
+      expect.objectContaining({ key: 'church', kind: 'church', name: 'Église', time: '40 %', status: 'en feu' }),
     ]);
   });
 

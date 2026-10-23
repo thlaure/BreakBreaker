@@ -1,3 +1,9 @@
+/**
+ * The church on the main square (building slot 6): a `hp` building target attacked from `fromRound`
+ * (CONFIG.casse.fromRound.church), scored like the town hall, rebuilt by a toolbox to `repairShare` of its hp.
+ */
+const CHURCH = { hp: 150, fromRound: 3, repairShare: 0.6 } as const;
+
 export const CONFIG = {
   step: 1 / 60,
   maxCatchUpSteps: 5,
@@ -315,9 +321,22 @@ export const CONFIG = {
       library: [8, -3, 5],
       booth: [4, -2, 3],
       prison: [8, -3, 5],
+      church: [8, -3, 5],
     },
     /** First round a kind can be attacked (headline draw and second urgency; round 1 is always the school). */
-    fromRound: { school: 1, car: 2, busStop: 2, shop: 2, nursery: 5, kiosk: 5, townHall: 7, library: 9, booth: 3, prison: 4 },
+    fromRound: {
+      school: 1,
+      car: 2,
+      busStop: 2,
+      shop: 2,
+      nursery: 5,
+      kiosk: 5,
+      townHall: 7,
+      library: 9,
+      booth: 3,
+      prison: 4,
+      church: CHURCH.fromRound,
+    },
   },
   /**
    * Emergency services (phone booths): `calls` fire calls and as many police calls per session; Paul calls within
@@ -351,6 +370,7 @@ export const CONFIG = {
    * breather unless the prison is ruined. A jailed Caïd's KO body is carried off by the jail van `pickupSec` s after his
    * KO (it leaves the horde; the render's van picks it up just before: prisonMath.VAN_PICKUP_DELAY_MS + the drive-in + the hop).
    */
+  church: CHURCH,
   prison: { hp: 400, guards: 5, postRadius: 160, fromRound: 4, repairShare: 0.6, pickupSec: 1.6 },
   pressureMax: 12,
   /** Keys the browser records: bump only when the rules change enough to reset them. Not the displayed game version. */

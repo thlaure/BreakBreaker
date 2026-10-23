@@ -138,6 +138,7 @@ export const TARGET_NAMES: Readonly<Record<CasseKind, string>> = {
   library: 'Bibliothèque',
   booth: 'Cabine',
   prison: 'Prison',
+  church: 'Église',
 };
 /** Card names of the targets a kind's name does not tell apart: the two phone booths. */
 const TARGET_CARD_NAMES: Readonly<Partial<Record<TargetId, string>>> = { boothRed: 'Cabine rouge', boothBlue: 'Cabine bleue' };
