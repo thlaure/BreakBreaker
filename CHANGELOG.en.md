@@ -8,7 +8,7 @@ The first three bullets of the latest version are shown on the landing page.
 
 ## 1.4.1 - 2026-10-24
 
-- The changelog on the landing page now follows the language: `/en/` shows the English notes.
+- The changelog on the landing page now follows the language: the /en/ page shows the English notes.
 
 ## 1.4.0 - 2026-10-24
 
@@ -22,7 +22,7 @@ The first three bullets of the latest version are shown on the landing page.
 - The game is available in American English: two small flags (French, American) at the top left of the landing page, lined up with the first "B", and in the pause menu.
 - The one-liners are adapted for English (the President, the ringleaders, the crowd), not translated word for word.
 - Your language is remembered, and you can switch in the middle of a game without losing anything.
-- Two landing pages: `/` in French and `/en/` in English.
+- Two landing pages: / in French and /en/ in English.
 
 ## 1.2.1 - 2026-10-23
 

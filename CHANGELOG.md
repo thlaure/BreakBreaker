@@ -8,7 +8,7 @@ Les trois premiers points de la version la plus récente sont affichés sur la p
 
 ## 1.4.1 - 2026-10-24
 
-- Le changelog de la page d'accueil suit la langue : `/en/` affiche les notes en anglais.
+- Le changelog de la page d'accueil suit la langue : la page /en/ affiche les notes en anglais.
 
 ## 1.4.0 - 2026-10-24
 
@@ -22,7 +22,7 @@ Les trois premiers points de la version la plus récente sont affichés sur la p
 - Le jeu est disponible en anglais américain : deux petits drapeaux (français, américain) en haut à gauche de la page d'accueil, alignés sur le premier « B », et dans le menu pause.
 - Les répliques sont adaptées en anglais (le Président, les Caïds, la foule), pas traduites mot à mot.
 - La langue choisie est mémorisée, et on peut en changer en pleine partie, sans rien perdre.
-- Deux pages d'accueil : `/` en français et `/en/` en anglais.
+- Deux pages d'accueil : / en français et /en/ en anglais.
 
 ## 1.2.1 - 2026-10-23
 
