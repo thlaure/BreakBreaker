@@ -45,8 +45,8 @@ describe('Sim facade', () => {
     expect(pressure(0, 0)).toBe(1);
     expect(pressure(3, 24)).toBe(2);
     expect(pressure(50, 500)).toBe(12);
-    expect(pressure(0, 29)).toBe(1);
-    expect(pressure(0, 30)).toBe(2);
+    expect(pressure(0, 44)).toBe(1);
+    expect(pressure(0, 45)).toBe(2);
   });
 
   test('scripted bot survives intro: school incident starts within 6 s, no hostile in strike range before 4 s', () => {

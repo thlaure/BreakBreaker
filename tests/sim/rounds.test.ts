@@ -31,15 +31,18 @@ const urgent = (sim: Sim): number => sim.attacks.filter((a) => a.urgent()).lengt
 
 describe('round catalogue', () => {
   test('totals, urgency cap and pressure', () => {
-    expect([1, 2, 3, 4, 5, 6, 10, 20].map(tableTotal)).toEqual([10, 14, 18, 22, 26, 30, 40, 40]);
+    // 1.1.1: +3 per round after round 4 (was +4)
+    expect([1, 2, 3, 4, 5, 6, 10, 20].map(tableTotal)).toEqual([10, 14, 18, 22, 25, 28, 40, 40]);
     expect([1, 2, 3, 4].map(urgentCap)).toEqual([1, 1, 2, 2]);
     expect(pressure(1, 0)).toBe(1);
     expect(pressure(2, 29)).toBe(2);
-    expect(pressure(3, 30)).toBe(3);
+    // 1.1.1: one step per 45 session KOs (was 30)
+    expect(pressure(3, 44)).toBe(2);
+    expect(pressure(3, 45)).toBe(3);
     expect(pressure(50, 500)).toBe(CONFIG.pressureMax);
   });
 
-  test('round 1 = school then rescue; from round 2 a random casse then rescue; a weapon drop every round, plus a second urgency on odd rounds from 3', () => {
+  test('round 1 = school then rescue; from round 2 a random casse then rescue; a weapon drop every round, plus a second urgency in round 3', () => {
     const t = new Targets();
     for (let s = 1; s <= 30; s++)
       expect(roundPlan(1, rng(s), t)).toEqual({ headline: 'school', beats: [['school'], ['rescue']], twists: [] });
@@ -48,7 +51,8 @@ describe('round catalogue', () => {
       // from round 5 two casses open the round together (tests/sim/twoUrgencies.test.ts)
       if (r < 5) expect(p.beats).toEqual([[p.headline], ['rescue']]);
       else expect(p.beats).toEqual([[p.headline, p.beats[0]![1]], ['rescue']]);
-      expect(p.twists).toEqual(r >= 3 && r % 2 === 1 ? ['weaponDrop', 'secondUrgency'] : ['weaponDrop']);
+      // 1.1.1: no second-urgency twist once rounds open on two places (TWO_URGENCIES_FROM)
+      expect(p.twists).toEqual(r === 3 ? ['weaponDrop', 'secondUrgency'] : ['weaponDrop']);
     }
   });
 
