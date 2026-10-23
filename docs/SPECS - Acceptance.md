@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Acceptance
 
 > **Purpose of this file:** validation and acceptance cases (RC), gap with the current prototype.  
-> Part of the BreakBreaker specifications (version 1.1.1), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.1.2), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 21. Validation and acceptance criteria
 

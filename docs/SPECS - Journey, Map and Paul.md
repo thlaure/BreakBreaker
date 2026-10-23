@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Journey, Map and Paul
 
 > **Purpose of this file:** the player's journey, map and objectives, Paul (movement and camera), landing page and access to the game.  
-> Part of the BreakBreaker specifications (version 1.1.1), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.1.2), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 4. Player journey
 

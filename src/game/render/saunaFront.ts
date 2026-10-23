@@ -37,7 +37,7 @@ function layer(s: Phaser.Scene, depth: number): { gr: Phaser.GameObjects.Graphic
 
 /**
  * One blurry silhouette behind the steamed glass (local px, feet of the bust at 0,0): a soft head and shoulders, no
- * face, a towel over the shoulders, and one generic prop telling them apart: 0 a wooden bucket, 1 sunglasses, 2 a fur hat.
+ * face, a towel over the shoulders, and props only (no physique, no dress): 0 a red cap and a long red tie, 1 a judo belt and a hockey stick, 2 dark glasses and a small tricolour pennant.
  */
 function silhouette(p: Paint, k: number): void {
   const f = SAUNA.figure;
@@ -48,22 +48,30 @@ function silhouette(p: Paint, k: number): void {
   p(f, -5, -7, 10, 7, 0.85); // shoulders
   p(0xf4f4f0, -5, -7, 10, 2, 0.7); // towel
   if (k === 0) {
-    // a wooden bucket on the bench beside them, a ladle in it
-    p(SAUNA.dark, 6, -5, 6, 5, 0.9);
-    p(0xb8b0a0, 6, -4, 6, 1, 0.9);
-    p(SAUNA.dark, 9, -9, 1, 5, 0.9);
+    // a red baseball cap and a very long red tie over the towel
+    p(0xc0392b, -5, -17, 10, 4, 0.9);
+    p(0xc0392b, -9, -14, 5, 1, 0.9); // the peak
+    p(0xc0392b, -1, -7, 2, 9, 0.9);
+    p(0x8e1f16, -1, 1, 2, 1, 0.9);
   } else if (k === 1) {
-    p(OUTLINE, -4, -11, 8, 2, 0.9); // sunglasses
-    p(0x3a6aa8, -3, -11, 2, 1, 0.7);
+    // a black judo belt around the towel and an ice-hockey stick leaning on the bench
+    p(0x1a1a1a, -5, -3, 10, 2, 0.95);
+    p(0x1a1a1a, -1, -1, 2, 4, 0.95);
+    p(0x8a6a3a, 7, -12, 1, 12, 0.9);
+    p(0x8a6a3a, 7, 0, 4, 1, 0.9);
   } else {
-    p(0x4a3020, -5, -16, 10, 5, 0.9); // a fur hat
-    p(0x6a4a30, -4, -15, 3, 3, 0.8);
+    // dark glasses and a small green-white-red pennant on a stick (a country wink, no dress, no face)
+    p(OUTLINE, -4, -11, 8, 2, 0.9);
+    p(0x8a6a3a, 7, -12, 1, 12, 0.9);
+    p(0x2e8b3a, 8, -12, 5, 1, 0.95);
+    p(0xf4f4f0, 8, -11, 5, 1, 0.95);
+    p(0xc0392b, 8, -10, 5, 1, 0.95);
   }
 }
 
 /**
- * The sauna (decor): a warm pine-plank front with a steamed window showing three blurry silhouettes (a bucket,
- * sunglasses, a fur hat), a plank door with a fogged porthole and a towel on its hook, a lantern with a flickering
+ * The sauna (decor): a warm pine-plank front with a steamed window showing three blurry silhouettes (told apart
+ * by props only), a plank door with a fogged porthole and a towel on its hook, a lantern with a flickering
  * glow, a stack of firewood, a shingle roof with a stove pipe puffing steam (none under reduced motion), and the board
  * « Sauna – Ne pas déranger » on the roof edge.
  */

@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Places, Monument and Services
 
 > **Purpose of this file:** threatened buildings, defence, repair and the monument objective.  
-> Part of the BreakBreaker specifications (version 1.1.1), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.1.2), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 10. Threatened buildings, defence and repair
 
@@ -119,7 +119,7 @@ Two **decor fronts** (section 5.1: ordinary solid buildings in `DISTRICT.decor`,
 - **Culling and pause:** nothing is drawn, animated or stepped while the balcony is outside the camera view (area of 220 × 170 px around the balcony floor), so his timers do not advance meanwhile.
 - **Reduced motion:** mood frozen on one frame (no hop, no frame swap); the quote bubbles are still displayed.
 
-**The sauna** (building 12, R(31,29,4,3), door C(33,32)): an Easter egg with no effect on the game (not a place, Paul cannot enter, no interaction). Pine-plank front with a shingle roof, a lantern with a gently pulsing glow, a hanging board « Sauna – Ne pas déranger » (Sauna – Do not disturb), steam rising from the stove pipe (particles) and **three blurry silhouettes behind a steamed window**, each with a distinctive accessory (for example a bucket, sunglasses, a fur hat) and slowly drifting; they are never recognisable by their physique and name nobody. **Reduced motion:** no steam particles, silhouettes and lantern fixed. Rendering: `src/game/render/saunaFront.ts`; pure helpers `steamSpec`, `lanternGlow`, `silhouetteDrift` and `SAUNA_SIGN` in `squareMath.ts`.
+**The sauna** (building 12, R(31,29,4,3), door C(33,32)): an Easter egg with no effect on the game (not a place, Paul cannot enter, no interaction). Pine-plank front with a shingle roof, a lantern with a gently pulsing glow, a hanging board « Sauna – Ne pas déranger » (Sauna – Do not disturb), steam rising from the stove pipe (particles) and **three blurry silhouettes behind a steamed window**, each told apart by props only (a red cap and a long red tie; a judo belt and a hockey stick; dark glasses and a small green-white-red pennant) and slowly drifting; they have no face, are never shown through their physique, ethnicity or religious dress, and name nobody. **Reduced motion:** no steam particles, silhouettes and lantern fixed. Rendering: `src/game/render/saunaFront.ts`; pure helpers `steamSpec`, `lanternGlow`, `silhouetteDrift` and `SAUNA_SIGN` in `squareMath.ts`.
 
 **Satire boundaries.** Nothing identifies a real person, party or religion: no name, no attribution of the phrases, no caricature of the physique, origin or religion, no sexualised or degrading depiction; accessories and attitudes only.
 
