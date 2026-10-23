@@ -1,6 +1,6 @@
 # BreakBreaker — Specifications (index)
 
-**Version:** 1.0.2 — 23 October 2026  
+**Version:** 1.1.0 — 23 October 2026  
 **Scope:** 2D pixel-art web game, non-isometric top-down view, arcade mode in rounds with no time limit, Paris, Paul (a fictional shopkeeper) as the only hero, computer and phone  
 **Status:** reference specification; decisions confirmed by the project owner and design recommendations are identified. A first playable slice exists (section 24); this document is neither a production sign-off nor a statement that all requirements are already implemented.  
 **Launch language:** French  
@@ -31,6 +31,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
   - [5.2 Free movement](SPECS%20-%20Journey%2C%20Map%20and%20Paul.md#52-free-movement)
   - [5.3 Layers](SPECS%20-%20Journey%2C%20Map%20and%20Paul.md#53-layers)
   - [5.4 States](SPECS%20-%20Journey%2C%20Map%20and%20Paul.md#54-states)
+  - [5.5 Main square](SPECS%20-%20Journey%2C%20Map%20and%20Paul.md#55-main-square-v110)
 - [6. Paul, movement and camera](SPECS%20-%20Journey%2C%20Map%20and%20Paul.md#6-paul-movement-and-camera) — *SPECS - Journey, Map and Paul.md*
   - [6.1 Hero](SPECS%20-%20Journey%2C%20Map%20and%20Paul.md#61-hero)
   - [6.2 Movement](SPECS%20-%20Journey%2C%20Map%20and%20Paul.md#62-movement)
@@ -62,6 +63,8 @@ The BreakBreaker specifications are split into an index (this file) and nine the
   - [10.7 Result of a repair](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#107-result-of-a-repair)
   - [10.8 Students and training courses](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#108-students-and-training-courses)
   - [10.9 Throwers aimed at Paul](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#109-throwers-aimed-at-paul)
+  - [10.10 The church](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#1010-the-church-v110)
+  - [10.11 The château, the President and the sauna](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#1011-the-château-the-president-and-the-sauna-v110)
 - [11. Monument objective](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#11-monument-objective) — *SPECS - Places, Monument and Services.md*
   - [11.1 Presentation](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#111-presentation)
   - [11.2 Occupation (« MONUMENT ATTAQUÉ ! »)](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#112-occupation--monument-attaqué--)
@@ -170,7 +173,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
 - **Section numbers:** each section keeps the number it had in the single specification; the sections of a given file are therefore not always consecutive (for example 1, 2, 3, 22, 23 and 25 in the vision file). “Section 12.2” and “§12.2” refer to the same subsection; the file map above indicates where to find it.
 - **Statuses:** “Confirmé” (Confirmed), “Proposé” (Proposed), “Paramètre initial” (Initial parameter) and “Extension” are defined in [section 2.1](SPECS%20-%20Vision%20and%20Scope.md#21-status).
 - **EX-nn:** confirmed requirements ([section 2.2](SPECS%20-%20Vision%20and%20Scope.md#22-confirmed-requirements)).
-- **RC-nn:** acceptance cases ([section 21.2](SPECS%20-%20Acceptance.md#212-acceptance-cases)). Numbering is continuous and an identifier is never reused; a new case takes the number following the highest one (RC-169 in version 1.9.25). A changed case keeps its number and the history entry flags it (“RC-nn modifiée”, i.e. RC-nn changed).
+- **RC-nn:** acceptance cases ([section 21.2](SPECS%20-%20Acceptance.md#212-acceptance-cases)). Numbering is continuous and an identifier is never reused; a new case takes the number following the highest one (RC-181 in version 1.1.0). A changed case keeps its number and the history entry flags it (“RC-nn modifiée”, i.e. RC-nn changed).
 - **Versions:** 1.x for major revisions, 1.9.y for delivered slices; each revision adds a line to the history below and updates the version header of this index.
 - **Links:** links between files are relative, with spaces encoded (`SPECS%20-%20Index.md`).
 
@@ -178,6 +181,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
 
 ### 25.4 History
 
+- **1.1.0 — 23 October 2026 (medium):** the main square (sections 5.1, 5.5, 9.5, 10.10, 10.11, 12.2, 18.3, 18.4, 24; RC-170 to RC-181; RC-134 changed), project-owner request (a big square with a church, the town hall, a château and peaceful protesters): **the church**, a new place to defend in the middle of the map (building 6, R(25,25,4,5), door C(27,30)), **150 HP**, drawn from **round 3**, +8 / −3 / +5, counted for the two-emergency rule, rebuilt to **60 %** by the toolbox, with a front with bell tower, slate roof, arched door and stained glass and the banner « ÉGLISE ATTAQUÉE ! » (Church under attack!); **central square layout change**: the two filler buildings R(14,26,6,5) and R(30,28,7,5) are removed, the town hall moves from the north to R(14,27,6,4) (door C(17,31)), the bus stop to R(23,11,2,1) and the first toolbox site to C(23,28), and the plaza around the church, the town hall and the château stays open; **three peaceful groups** of six (`DISTRICT.peacefulGroups`: group(22,16), group(30,25), group(22,32)) instead of one; **the château** (decor, building 7, R(27,14,6,4), door C(30,18)) with a **balcony President**, a fictional generic figure in a navy suit (no real person) who loops through four moods and shows short French public phrases in quote bubbles (render only, nothing in the simulation); **the sauna** (decor, building 12, R(31,29,4,3), door C(33,32)), an Easter egg with steam and three blurry silhouettes behind a steamed window, no effect on the game. New modules `src/content/quotes.ts`, `squareMath.ts`, `presidentMath.ts` (pure) and `churchFront.ts`, `chateauFront.ts`, `saunaFront.ts`, `president.ts` (render). **Changed:** the town hall, the bus stop and the toolbox site move and the church enters the draw from round 3, so earlier seeds no longer replay identically; `rulesVersion` stays `1.0.0`, `appVersion` becomes `1.1.0`.
 - **1.0.2 — 23 October 2026 (patch):** the game route is `/play/` (the old `/jouer/` forwards to it), « MICRO RÉTRO » shop sign, shorter landing tagline; ESLint and Prettier added, `Sim`, `WorldView` and the actor views split into focused modules (no behaviour change).
 - **1.0.1 — 23 October 2026 (patch):** compact HUD on phones, « POULET CROUSTI » front, `CHANGELOG.md` shown on the landing page; `CONFIG.appVersion` is the displayed version, `rulesVersion` stays `1.0.0` so browser records are kept.
 - **1.0.0 — 22 October 2026 (game release):** first public release. The game and the specifications are renumbered to 1.0.0 and share one version number. The entries below are the earlier revisions of the specification document (1.0 to 1.9.25) and are kept as history; the browser records restart under the rules version `1.0.0`.

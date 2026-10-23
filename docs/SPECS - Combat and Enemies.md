@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Combat and Enemies
 
 > **Purpose of this file:** combat, projectiles, weapons, energy, protected groups, characters, hordes and artificial intelligence.  
-> Part of the BreakBreaker specifications (version 1.0.2), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.1.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 8. Combat, projectiles and protected groups
 
@@ -206,6 +206,6 @@ A horde must not permanently block its own path. A stuck agent recomputes or joi
 
 ### 9.5 Peaceful groups
 
-Three groups proposed on the map, of six to eight sprites each, in non-mandatory locations. The first slice has only one, of six demonstrators, at the centre of the map (the other two are to do). Slow group movements possible after validation, without abruptly cutting off the only dodge route.
+Three groups proposed on the map, of six to eight sprites each, in non-mandatory locations. **Delivered (v1.1.0):** the map has three groups of six demonstrators on the main square, at group(22,16), group(30,25) and group(22,32) (section 5.5); the first slice had only one, at the centre. Slow group movements possible after validation, without abruptly cutting off the only dodge route.
 
 Their placards and their density distinguish them from the hordes. They remain neutral even when Paul passes close or is being chased. An event may make them call for help or fall back; they do not become hostile and are not exposed to free damage from Paul. They do not feed the loot, heal or KO score systems.

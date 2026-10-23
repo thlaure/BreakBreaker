@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Places, Monument and Services
 
 > **Purpose of this file:** threatened buildings, defence, repair and the monument objective.  
-> Part of the BreakBreaker specifications (version 1.0.2), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.1.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 10. Threatened buildings, defence and repair
 
@@ -32,7 +32,7 @@ flowchart TD
 
 ### 10.2 Alert, Molotov and health
 
-Each place has a **health bar**: buildings 100 HP (school, retro games shop, nursery school, town hall, library; v1.9.18), street furniture (two cars, bus shelter, newsstand; v1.9.18; two phone booths, v1.9.19) 60 HP, the **prison** (v1.9.20) 400 HP, four times an ordinary building (section 12.17). It is drawn above the place on the map and repeated in the HUD incident card (« École 64 % »); the HUD displays no countdown for a place.
+Each place has a **health bar**: buildings 100 HP (school, retro games shop, nursery school, town hall, library; v1.9.18), the **church** (v1.1.0) 150 HP (section 10.10), street furniture (two cars, bus shelter, newsstand; v1.9.18; two phone booths, v1.9.19) 60 HP, the **prison** (v1.9.20) 400 HP, four times an ordinary building (section 12.17). It is drawn above the place on the map and repeated in the HUD incident card (« École 64 % »); the HUD displays no countdown for a place.
 
 An attack begins with a **Molotov rioter**: he walks toward the place, stops at 96 px at most with a clear line, raises a lit bottle for 1.5 s (visible wind-up), then throws it; the place **catches fire**. Knocking him out during the wind-up prevents this fire. **Changed (v1.9.1):** an attack includes several Molotov throwers, in addition to its other rioters: min(4, 1 + round ÷ 2 rounded down), that is 1 in round 1, 2 in rounds 2–3, 3 in rounds 4–5, 4 afterwards (also for the retro games shop, v1.9.4, which is a building), two at most for a car or the bus shelter; they arrive at the head of the front line, except for the round 1 school whose second thrower comes with the reinforcements, after the cutscene. Several throwers at the same place never throw together: each keeps its bottle raised 0.25 s longer than the previous one. A bottle on a place already on fire does not relight it (no new banner or alarm) but removes 8 HP at once (`molotov.burstDamage`), with a visible burst of flames; at zero, same ruin and same one-time penalty as for fire. The other rioters of the attack split between **degraders** (they hit the facade) and rioters who go after Paul; this mix is the balancing setting. Composition delivered (excluding the round 1 school, section 10.4): the Molotov throwers, two degraders and one contact rioter, plus, for a building, min(6, 2 + ⌊pressure ÷ 3⌋) degraders and contact rioters alternating, and for a car or the bus shelter min(3, ⌊pressure ÷ 4⌋) contact rioters; variants alternating.
 
@@ -90,6 +90,38 @@ Arrivals are suspended if the school is attacked or destroyed. The counters alre
 - **Pool of fire:** where the bottle lands, a pool of 30 px radius burns for **3.5 s** (six at most at once: a new one drives out the oldest). A bottle that would land in an obstacle ignites at the nearest free point (no pool otherwise). Paul standing in it loses **4 HP every 0.5 s** through the normal damage path: invulnerability frames apply (a refused hit is retried as soon as they end) and fury mode halves them. The pool hurts no rioter and never sets a place on fire. The pause freezes it.
 - **Who:** never in rounds 1–2. From round 3, about **one filler rioter in eight** (at least one as soon as the filler counts four, three at most per round; counted outside the runner pack since v1.9.13, section 12.14); and, in each place attack, the **last Molotov thrower** of the composition, after his bottle on the place (unchanged), becomes a thrower aimed at Paul instead of a simple contact rioter. These are ordinary rioters of the round: they count in K/T, must be knocked out, +1 each; their variants alternate like the others.
 - **Rendering and sound:** bottle in hand like the Molotov rioter, same bottle trajectory, pixel-art pool (glow, flames, sparks, slight danger ring) that fades over its last half-second; same whoosh as the Molotov at the throw. No banner or new HUD element.
+
+### 10.10 The church (v1.1.0)
+
+**Project-owner request:** a place to defend at the centre of the map, in the middle of the main square (section 5.5). It follows the loop of section 10.1 (Molotov, fire, health, ruin, toolbox) with the rules below.
+
+- **Place:** building 6, R(25,25,4,5); arched door in the middle of the front wall at C(27,30); four attack points C(25,30), C(26,30), C(27,30), C(28,30) on the street row below. Display name « Église » (Church), HUD label « ÉGLISE ».
+- **Health and fire:** **150 HP** (`CONFIG.church.hp`, within the 120–200 range left to the builder); fire, degraders and ruin as for any building.
+- **Opening:** from **round 3** (`CONFIG.church.fromRound`, mirrored in `CONFIG.casse.fromRound.church`): never drawn in rounds 1 and 2, then part of the weighted draw of the headline incident, of the twist emergency and of the double sequence.
+- **Two-urgency rule:** the church counts as a free place for the two simultaneous urgencies from round 5 (`TWO_URGENCIES_FROM`), like the other places; a church in ruin or on fire is never drawn; the two attacks are always on two distinct places.
+- **Lineup:** sized like a building: min(4, 1 + round ÷ 2 rounded down) Molotov throwers and a first line of 3 + 3 + 6 rioters, entering through the entry queue.
+- **Scoring:** like a big building, **+8 saved / −3 lost / +5 repaired** (`CONFIG.casse.scores.church`), once per occurrence; every KO is still worth +1 and the « Casseurs neutralisés » counter stays neutral.
+- **Repair:** the toolbox (2 s on Act, safe surroundings) rebuilds a ruined church to **60 % of its health** (`CONFIG.church.repairShare`, as the prison), and puts out its fire (+5) when the rioters are already down.
+- **Display:** pixel-art front (limestone courses and buttresses, three lancet stained-glass windows, arched oak door up a stone step, slate nave roof, porch bell tower with belfry, round window, slate spire and weathercock, « ÉGLISE » plate on the roof edge); the tower and windows swap for wrecked art when it is in ruins and the rest dims like any ruin; health bar above the place; banner « ÉGLISE ATTAQUÉE ! » (Church under attack!) / « Défends l’église » (Defend the church); screen-edge indicator « ÉGLISE »; orange/red palette with a flame icon. Rendering: `src/game/render/churchFront.ts`. **Satire boundary:** the church is a place to defend like any other, never a mocked symbol; no religious text or symbol is used to mock anyone.
+
+### 10.11 The château, the President and the sauna (v1.1.0)
+
+Two **decor fronts** (section 5.1: ordinary solid buildings in `DISTRICT.decor`, never targets) and one render-side character complete the main square. None of them has any effect on the simulation, the score, the snapshot or the simulation's random streams.
+
+**The château** (building 7, R(27,14,6,4), door C(30,18)). Sign « CHÂTEAU », pale ashlar front with a blue slate roof and corner towers, an oak gate and a **balcony** jutting out over the gate and facing the square (south), with a French window and a balustrade (`src/game/render/chateauFront.ts`; the balcony position comes from the pure `chateauBalcony` of `squareMath.ts`). It is never attacked, burnt or repaired.
+
+**The President** (`src/game/render/president.ts`, pure logic in `presidentMath.ts`). A **fictional, generic** figure on the balcony: navy suit, white shirt, red tie, plain short hair; no real person, no name. Render only:
+- **Moods:** four moods in a loop, each change picking a different one at random: **arms** (arms up, waving), **cry** (tears), **angry** (flushed face, fist), **calm**; a mood lasts 3 to 6 s. Two animation frames per pose and a small hop (calm only breathes).
+- **Agitation:** when Paul is within **6 tiles** (192 px) of the balcony the animation runs faster and higher (factor 1 at the limit, up to 2 right under it).
+- **Quote bubble:** the first one 1.5 s after he appears, then one every **8 to 14 s**, shown for 4.5 s, drawn at random in the dictionary `QUOTES` of `src/content/quotes.ts`, never the same line twice in a row. White pixel bubble with a navy border and a tail towards his head, text wrapped, French spacing kept (no lone « ! » or « ? » on a line).
+- **Dictionary rules:** 20 to 30 entries (26 delivered), each **at most 60 characters**, all distinct; **short French public phrases** (widely known ones or invented pompous, tearful or furious lines); **no real name**, of a person or of a party, **no attribution**, nothing aimed at a group of people (a test rejects a list of names, `tests/content/quotes.test.ts`). In-game texts stay in French (examples: « Abracadabrantesque ! », « Moi, président de la République… », « On est en guerre ! », « Mon mouchoir ! Où est mon mouchoir ? »).
+- **Random stream:** moods, delays and quotes use a **render-side generator** (`presidentRng`, mulberry32), never the simulation's `rng`, so the replays of a seed are unchanged.
+- **Culling and pause:** nothing is drawn, animated or stepped while the balcony is outside the camera view (area of 220 × 170 px around the balcony floor), so his timers do not advance meanwhile.
+- **Reduced motion:** mood frozen on one frame (no hop, no frame swap); the quote bubbles are still displayed.
+
+**The sauna** (building 12, R(31,29,4,3), door C(33,32)): an Easter egg with no effect on the game (not a place, Paul cannot enter, no interaction). Pine-plank front with a shingle roof, a lantern with a gently pulsing glow, a hanging board « Sauna – Ne pas déranger » (Sauna – Do not disturb), steam rising from the stove pipe (particles) and **three blurry silhouettes behind a steamed window**, each with a distinctive accessory (for example a bucket, sunglasses, a chef's hat) and slowly drifting; they are never recognisable by their physique and name nobody. **Reduced motion:** no steam particles, silhouettes and lantern fixed. Rendering: `src/game/render/saunaFront.ts`; pure helpers `steamSpec`, `lanternGlow`, `silhouetteDrift` and `SAUNA_SIGN` in `squareMath.ts`.
+
+**Satire boundaries.** Nothing identifies a real person, party or religion: no name, no attribution of the phrases, no caricature of the physique, origin or religion, no sexualised or degrading depiction; accessories and attitudes only.
 
 ## 11. Monument objective
 

@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Controls and Interface
 
 > **Purpose of this file:** controls, interface (HUD, alerts, menus) and accessibility.  
-> Part of the BreakBreaker specifications (version 1.0.2), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.1.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 7. Controls
 
@@ -63,6 +63,7 @@ Peaceful groups have a readable sign of neutrality and a distinct alert if a vic
 | Booth wrecked (delivered, v1.9.19) | « CABINE SACCAGÉE ! » (Booth wrecked!) | « Protège la cabine » (Protect the booth) | CABINE | yellow, broken glass |
 | Prison under attack (delivered, v1.9.20) | « PRISON ATTAQUÉE ! » (Prison under attack!) | « Défends la prison » (Defend the prison) | PRISON | orange/red, flame |
 | Breakout (delivered, v1.9.20) | « ÉVASION ! » (Breakout!; on `PrisonBreakout`, 3.6 s, arrow and distance toward the door) | « N Caïds libérés » (N Caïds freed; « 1 Caïd libéré » in the singular) | CAÏD (one indicator per freed Caïd, crown) | red, bars |
+| Church under attack (delivered, v1.1.0) | « ÉGLISE ATTAQUÉE ! » (Church under attack!) | « Défends l’église » (Defend the church) | ÉGLISE | orange/red, flame |
 | Town hall under attack (delivered, v1.9.18) | « MAIRIE ATTAQUÉE ! » (Town hall under attack!) | « Défends la mairie » (Defend the town hall) | MAIRIE | orange/red, flame |
 | Library on fire (delivered, v1.9.18) | « BIBLIOTHÈQUE EN FEU ! » (Library on fire!) | « Sauve les livres » (Save the books) | BIBLIOTHÈQUE | orange/red, flame |
 
