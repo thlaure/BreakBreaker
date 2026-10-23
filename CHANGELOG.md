@@ -6,6 +6,15 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.1.0 - 2026-10-23
+
+- Une grande place au cœur du quartier : l'église, la mairie et le château l'entourent.
+- L'église est un nouveau lieu à défendre (feu, ruine, réparation), à partir de la manche 3.
+- Le château du Président : un Président inventé s'agite au balcon et lance des répliques décalées.
+- Trois groupes de manifestants pacifiques sur la place.
+- Un sauna mystérieux avec trois silhouettes dans la vapeur.
+- La mairie change de place ; l'arrêt de bus et quelques bâtiments aussi.
+
 ## 1.0.2 - 2026-10-23
 
 - L'adresse du jeu devient /play/ (l'ancienne adresse /jouer/ redirige).
