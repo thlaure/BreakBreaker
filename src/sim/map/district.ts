@@ -27,7 +27,7 @@ export interface TargetDef {
 }
 
 /** Decor fronts (render only): ordinary solid buildings, never targets, no interaction. */
-export type DecorId = 'caf' | 'pouletCrousti' | 'chateau' | 'sauna';
+export type DecorId = 'caf' | 'pouletCrousti' | 'chateau' | 'sauna' | 'stage';
 export interface DecorDef {
   /** Also keys its roof sign text (src/content/i18n `sign.<id>`). */
   id: DecorId;
@@ -100,7 +100,7 @@ export const DISTRICT: District = {
     R(4, 4, 8, 5), // 0: school (north-west)
     R(14, 27, 6, 4), // 1: town hall (south-west of the main square)
     R(26, 4, 7, 5), // 2: « CAF » office (decor)
-    R(36, 3, 8, 5),
+    R(36, 3, 8, 5), // 3: the rock stage (decor, north-east, its front facing the street to the south)
     R(4, 14, 6, 5),
     R(12, 15, 4, 4), // 5: retro video-game shop
     R(25, 25, 4, 5), // 6: church (south-east of the central plaza, the heart of the main square)
@@ -164,11 +164,12 @@ export const DISTRICT: District = {
     prop('kiosk', 'kiosk', R(34, 40, 2, 1), [C(33, 40), C(36, 40), C(34, 41), C(35, 41)]),
     building('townHall', 'townHall', R(14, 27, 6, 4), [C(15, 31), C(16, 31), C(18, 31), C(19, 31)], C(17, 31)),
     building('library', 'library', R(22, 38, 8, 5), [C(24, 43), C(25, 43), C(27, 43), C(28, 43)], C(26, 43)),
-    // the two phone booths side by side on the centre-west plaza (red: fire truck, blue: police), a free tile all
-    // around the island; open to attacks from round 3 (CONFIG.casse.fromRound.booth). Paul calls from the street row
-    // in front (row 23), within CONFIG.services.callRange of the booth's door (its centre).
-    prop('boothRed', 'booth', R(4, 22, 1, 1), [C(3, 22), C(4, 23), C(4, 21)]),
-    prop('boothBlue', 'booth', R(5, 22, 1, 1), [C(6, 22), C(5, 23), C(5, 21)]),
+    // the two phone booths side by side on the south-west edge of the main square, east of the town hall (red: fire
+    // truck, blue: police), a free tile all around the island; open to attacks from round 3
+    // (CONFIG.casse.fromRound.booth). Paul calls from the row in front (row 31), within CONFIG.services.callRange of
+    // the booth's door (its centre).
+    prop('boothRed', 'booth', R(21, 30, 1, 1), [C(20, 30), C(21, 31), C(21, 29)]),
+    prop('boothBlue', 'booth', R(22, 30, 1, 1), [C(23, 30), C(22, 31), C(22, 29)]),
     // the prison on the south-east block (building 11): CONFIG.prison.hp, open from round 4, rebuilt to 60 % of its hp;
     // its door on the street row below (row 42), its guards' posts in src/sim/prison.ts
     {
@@ -190,6 +191,7 @@ export const DISTRICT: District = {
     { id: 'pouletCrousti', footprint: R(38, 16, 6, 6), door: C(41, 22) },
     { id: 'chateau', footprint: R(27, 14, 6, 4), door: C(30, 18) },
     { id: 'sauna', footprint: R(31, 29, 4, 3), door: C(33, 32) },
+    { id: 'stage', footprint: R(36, 3, 8, 5), door: C(40, 8) },
   ],
   kitSites: [C(18, 12), C(23, 28), C(8, 26), C(36, 44)],
   monument: {

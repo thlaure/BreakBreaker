@@ -27,8 +27,8 @@ type Ev<T extends SimEvent['type']> = Extract<SimEvent, { type: T }>;
 const of = <T extends SimEvent['type']>(ev: SimEvent[], type: T): Ev<T>[] => ev.filter((e): e is Ev<T> => e.type === type);
 const hyp = (a: Vec, b: Vec) => Math.hypot(a.x - b.x, a.y - b.y);
 const door = (id: TargetId) => DISTRICT.targets.find((t) => t.id === id)!.door;
-const RED_FRONT = C(4, 23);
-const BLUE_FRONT = C(5, 23);
+const RED_FRONT = C(21, 31);
+const BLUE_FRONT = C(22, 31);
 
 /**
  * A quiet sim (the director silenced: no round, no rioter walks in) with Paul invulnerable at `pos`. `press()` = one

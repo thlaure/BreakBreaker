@@ -22,14 +22,15 @@ const inside = (r: Rect, p: Vec): boolean => p.x >= r.x && p.x < r.x + r.w && p.
 /** Decor buildings keep at least this far from every other site of the map. */
 const CLEAR = 64;
 
-describe('decor buildings (CAF, POULET CROUSTI, CHÂTEAU, SAUNA)', () => {
-  test('four decor fronts on existing free buildings, their door on the street below the front', () => {
+describe('decor buildings (CAF, POULET CROUSTI, CHÂTEAU, SAUNA, SCÈNE)', () => {
+  test('five decor fronts on existing free buildings, their door on the street below the front', () => {
     // the sim keeps ids only; the sign text is the catalog's (French shown)
     expect(DISTRICT.decor.map((d) => [d.id, t(`sign.${d.id}` as Key)])).toEqual([
       ['caf', 'CAF'],
       ['pouletCrousti', 'POULET CROUSTI'],
       ['chateau', 'CHÂTEAU'],
       ['sauna', 'SAUNA'],
+      ['stage', 'SCÈNE'],
     ]);
     expect(DISTRICT.decor[0]!.footprint).toEqual(R(26, 4, 7, 5));
     expect(DISTRICT.decor[0]!.door).toEqual(C(29, 9));
@@ -39,6 +40,9 @@ describe('decor buildings (CAF, POULET CROUSTI, CHÂTEAU, SAUNA)', () => {
     expect(DISTRICT.decor[2]!.door).toEqual(C(30, 18));
     expect(DISTRICT.decor[3]!.footprint).toEqual(R(31, 29, 4, 3));
     expect(DISTRICT.decor[3]!.door).toEqual(C(33, 32));
+    // the stage on the plain north-east block, its front (and door) facing the street to the south
+    expect(DISTRICT.decor[4]!.footprint).toEqual(R(36, 3, 8, 5));
+    expect(DISTRICT.decor[4]!.door).toEqual(C(40, 8));
     for (const d of DISTRICT.decor) {
       expect(DISTRICT.buildings).toContainEqual(d.footprint);
       const f = d.footprint;

@@ -29,4 +29,5 @@ export const enCore: Record<keyof typeof frCore, string> = {
   'sign.pouletCrousti': 'POULET CROUSTI',
   'sign.chateau': 'CASTLE',
   'sign.sauna': 'SAUNA',
+  'sign.stage': 'STAGE',
 };

@@ -166,6 +166,7 @@ export class WorldView {
         this.chateauBalcony = buildChateauFront(this, s, decor, parts).balcony;
         this.president = new PresidentView(s, this.chateauBalcony, parts, this.reducedMotion, Date.now() >>> 0);
       } else if (decor?.id === 'sauna') this.decor.push(buildSaunaFront(this, s, decor, parts, this.reducedMotion));
+      // any other decor ('stage' until its front is drawn): the plain building shell above, nothing more
     }
     this.roofs.push({ rect, parts });
   }

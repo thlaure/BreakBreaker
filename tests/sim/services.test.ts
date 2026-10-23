@@ -59,9 +59,9 @@ function gone(sim: Sim): void {
 }
 
 describe('the phone booths (targets)', () => {
-  test('two 60 hp prop booths side by side, kind booth, on the centre-west plaza', () => {
-    expect(def('boothRed')).toMatchObject({ kind: 'booth', prop: true, maxHp: 60, footprint: R(4, 22, 1, 1) });
-    expect(def('boothBlue')).toMatchObject({ kind: 'booth', prop: true, maxHp: 60, footprint: R(5, 22, 1, 1) });
+  test('two 60 hp prop booths side by side, kind booth, on the south-west edge of the main square', () => {
+    expect(def('boothRed')).toMatchObject({ kind: 'booth', prop: true, maxHp: 60, footprint: R(21, 30, 1, 1) });
+    expect(def('boothBlue')).toMatchObject({ kind: 'booth', prop: true, maxHp: 60, footprint: R(22, 30, 1, 1) });
     expect(BOOTH_OF).toEqual({ fire: 'boothRed', police: 'boothBlue' });
     expect(new Targets().get('boothRed')).toMatchObject({ hp: 60, maxHp: 60, state: 'intact', burning: false });
   });
@@ -70,10 +70,10 @@ describe('the phone booths (targets)', () => {
     const grid = new Grid(DISTRICT);
     const ff = new FlowField(grid);
     ff.rebuild(DISTRICT.playerSpawn);
-    expect(grid.isSolid(4, 22)).toBe(true);
-    expect(grid.isSolid(5, 22)).toBe(true);
-    for (let tx = 3; tx <= 6; tx++)
-      for (let ty = 21; ty <= 23; ty++) if (ty !== 22 || tx === 3 || tx === 6) expect(grid.isSolid(tx, ty)).toBe(false);
+    expect(grid.isSolid(21, 30)).toBe(true);
+    expect(grid.isSolid(22, 30)).toBe(true);
+    for (let tx = 20; tx <= 23; tx++)
+      for (let ty = 29; ty <= 31; ty++) if (ty !== 30 || tx === 20 || tx === 23) expect(grid.isSolid(tx, ty)).toBe(false);
     for (const id of BOOTHS) {
       const d = def(id);
       expect(d.attackPoints.length).toBeGreaterThanOrEqual(3);
@@ -85,19 +85,20 @@ describe('the phone booths (targets)', () => {
     }
     // Paul on the street row in front of a booth is within the call range of its door
     for (const [id, front] of [
-      ['boothRed', C(4, 23)],
-      ['boothBlue', C(5, 23)],
+      ['boothRed', C(21, 31)],
+      ['boothBlue', C(22, 31)],
     ] as const) {
       expect(ff.stepsAt(front)).toBeGreaterThanOrEqual(0);
       expect(hyp(front, def(id).door)).toBeLessThanOrEqual(CONFIG.services.callRange);
     }
   });
 
-  test('away from the spawns, stations, rescue sites and the peaceful group', () => {
-    const centre = { x: 5 * 32, y: 22 * 32 + 16 };
+  test('away from the spawns, stations, rescue sites and Paul’s start; not on a peaceful group', () => {
+    const centre = { x: 22 * 32, y: 30 * 32 + 16 };
     for (const q of [...DISTRICT.hostileSpawns, ...DISTRICT.stations, ...DISTRICT.rescueSites, DISTRICT.playerSpawn])
       expect(hyp(q, centre)).toBeGreaterThan(160);
-    for (const { area: g } of DISTRICT.peacefulGroups) expect(hyp(g, centre)).toBeGreaterThan(320);
+    const grid = new Grid(DISTRICT);
+    for (const id of BOOTHS) for (const q of def(id).attackPoints) expect(grid.isGroup(q)).toBe(false);
   });
 
   test('scores +4 / −2 / +3 like a prop, open from round 3, at most 2 Molotovs, prop lineup', () => {
@@ -212,7 +213,7 @@ describe('calling from a booth in the sim (Agir)', () => {
   });
 
   test('red booth: a fire burns → ServiceCalled fire, one call spent; nothing burns → ServiceRefused noFire', () => {
-    const { sim, press } = simAt(C(4, 23));
+    const { sim, press } = simAt(C(21, 31));
     expect(of(press(), 'ServiceRefused')).toEqual([{ type: 'ServiceRefused', kind: 'fire', reason: 'noFire' }]);
     expect(sim.services.calls.fire).toBe(3);
     sim.targets.ignite('car2', 'car2#x');
@@ -224,7 +225,7 @@ describe('calling from a booth in the sim (Agir)', () => {
   });
 
   test('blue booth: fewer than 8 active rioters → fewRioters; 8 → ServiceCalled police', () => {
-    const { sim, press } = simAt(C(5, 23));
+    const { sim, press } = simAt(C(22, 31));
     crowd(sim, 7);
     expect(of(press(), 'ServiceRefused')).toEqual([{ type: 'ServiceRefused', kind: 'police', reason: 'fewRioters' }]);
     crowd(sim, 1);
@@ -234,7 +235,7 @@ describe('calling from a booth in the sim (Agir)', () => {
   });
 
   test('Agir is a press: holding it does not call again; out of range (> 40 px) nothing happens', () => {
-    const { sim } = simAt(C(4, 23));
+    const { sim } = simAt(C(21, 31));
     sim.targets.ignite('car2', 'car2#x');
     const ev: SimEvent[] = [];
     for (let i = 0; i < 120; i++) ev.push(...sim.step(PRESS));
@@ -244,7 +245,7 @@ describe('calling from a booth in the sim (Agir)', () => {
   });
 
   test('three calls then « no calls »; a new Sim starts again from 3 + 3', () => {
-    const { sim, press } = simAt(C(4, 23));
+    const { sim, press } = simAt(C(21, 31));
     sim.targets.ignite('car2', 'car2#x');
     for (let i = 0; i < 3; i++) {
       expect(of(press(), 'ServiceCalled')).toHaveLength(1);
@@ -256,17 +257,17 @@ describe('calling from a booth in the sim (Agir)', () => {
   });
 
   test('Paul between both doors (a tie) calls the red booth; nearer the blue one, the blue one', () => {
-    const { sim, press } = simAt({ x: 5 * 32, y: 23 * 32 + 16 });
+    const { sim, press } = simAt({ x: 22 * 32, y: 31 * 32 + 16 });
     sim.targets.ignite('car2', 'car2#x');
     crowd(sim, 8);
     expect(hyp(sim.player.pos, def('boothRed').door)).toBeCloseTo(hyp(sim.player.pos, def('boothBlue').door), 9);
     expect(of(press(), 'ServiceCalled')).toEqual([{ type: 'ServiceCalled', kind: 'fire' }]);
-    sim.player.pos = { x: 5 * 32 + 4, y: 23 * 32 + 16 };
+    sim.player.pos = { x: 22 * 32 + 4, y: 31 * 32 + 16 };
     expect(of(press(), 'ServiceCalled')).toEqual([{ type: 'ServiceCalled', kind: 'police' }]);
   });
 
   test('a repair that can start at the same distance wins over the booth (tie: repair > red > blue)', () => {
-    const { sim, press } = simAt(C(4, 23));
+    const { sim, press } = simAt(C(21, 31));
     sim.targets.ignite('boothRed', 'boothRed#x');
     sim.toolboxes.carried = true;
     const ev = press();
@@ -276,14 +277,14 @@ describe('calling from a booth in the sim (Agir)', () => {
   });
 
   test('without a toolbox the same press goes to the booth (the burning booth itself is a fire to put out)', () => {
-    const { sim, press } = simAt(C(4, 23));
+    const { sim, press } = simAt(C(21, 31));
     sim.targets.ignite('boothRed', 'boothRed#x');
     expect(of(press(), 'ServiceCalled')).toEqual([{ type: 'ServiceCalled', kind: 'fire' }]);
     expect(sim.toolboxes.started).toBe(false);
   });
 
   test('the nearest wins: the blue booth nearer than a repairable red booth gets the press', () => {
-    const { sim, press } = simAt(C(5, 23));
+    const { sim, press } = simAt(C(22, 31));
     sim.targets.ruin('boothRed', 'boothRed#x');
     sim.toolboxes.carried = true;
     expect(sim.snapshot().toolboxes.repairTarget).toBe('boothRed');
@@ -293,7 +294,7 @@ describe('calling from a booth in the sim (Agir)', () => {
   });
 
   test('a ruined booth refuses (no call spent); repaired, it calls again with the uses it had left', () => {
-    const { sim, press } = simAt(C(4, 23));
+    const { sim, press } = simAt(C(21, 31));
     sim.targets.ignite('car2', 'car2#x');
     expect(of(press(), 'ServiceCalled')).toHaveLength(1);
     sim.targets.ruin('boothRed', 'boothRed#x');
