@@ -73,11 +73,13 @@ describe('the Phase C places (nursery, kiosk, town hall, library)', () => {
     const grid = new Grid(DISTRICT);
     expect(grid.isSolid(34, 40)).toBe(true);
     expect(grid.isSolid(35, 40)).toBe(true);
-    for (let tx = 33; tx <= 36; tx++) for (let ty = 39; ty <= 41; ty++) if (ty !== 40 || tx === 33 || tx === 36) expect(grid.isSolid(tx, ty)).toBe(false);
+    for (let tx = 33; tx <= 36; tx++)
+      for (let ty = 39; ty <= 41; ty++) if (ty !== 40 || tx === 33 || tx === 36) expect(grid.isSolid(tx, ty)).toBe(false);
     // away from spawns, stations and the peaceful group
     const f = def('kiosk').footprint;
     const centre = { x: f.x + f.w / 2, y: f.y + f.h / 2 };
-    for (const q of [...DISTRICT.hostileSpawns, ...DISTRICT.stations]) expect(Math.hypot(q.x - centre.x, q.y - centre.y)).toBeGreaterThan(160);
+    for (const q of [...DISTRICT.hostileSpawns, ...DISTRICT.stations])
+      expect(Math.hypot(q.x - centre.x, q.y - centre.y)).toBeGreaterThan(160);
     const g = DISTRICT.peacefulGroup.area;
     expect(Math.hypot(g.x - centre.x, g.y - centre.y)).toBeGreaterThan(320);
   });
@@ -192,7 +194,18 @@ describe('the Phase C places in the round plan', () => {
     expect([...headlines(6)].sort()).toEqual(['booth', 'busStop', 'car', 'kiosk', 'nursery', 'prison', 'school', 'shop']);
     expect([...headlines(7)].sort()).toEqual(['booth', 'busStop', 'car', 'kiosk', 'nursery', 'prison', 'school', 'shop', 'townHall']);
     expect([...headlines(8)].sort()).toEqual(['booth', 'busStop', 'car', 'kiosk', 'nursery', 'prison', 'school', 'shop', 'townHall']);
-    expect([...headlines(9)].sort()).toEqual(['booth', 'busStop', 'car', 'kiosk', 'library', 'nursery', 'prison', 'school', 'shop', 'townHall']);
+    expect([...headlines(9)].sort()).toEqual([
+      'booth',
+      'busStop',
+      'car',
+      'kiosk',
+      'library',
+      'nursery',
+      'prison',
+      'school',
+      'shop',
+      'townHall',
+    ]);
   });
 
   test('round 10: weights 2 each, 1 for last round’s headline', () => {
@@ -205,7 +218,8 @@ describe('the Phase C places in the round plan', () => {
     }
     // 10 kinds: 1 / 19 ≈ 5.3 %, the others 2 / 19 ≈ 10.5 %
     expect(n.library! / N).toBeLessThan(0.075);
-    for (const k of ['school', 'car', 'busStop', 'shop', 'nursery', 'kiosk', 'townHall', 'booth', 'prison']) expect(n[k]! / N).toBeGreaterThan(0.085);
+    for (const k of ['school', 'car', 'busStop', 'shop', 'nursery', 'kiosk', 'townHall', 'booth', 'prison'])
+      expect(n[k]! / N).toBeGreaterThan(0.085);
   });
 
   test('the draw stays seeded: same seed, same plan', () => {

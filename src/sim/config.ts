@@ -183,7 +183,16 @@ export const CONFIG = {
    * Brutes: contact rioters at `speedMul` × speed with `hp` HP; a blow that lands pushes Paul `knockback` px away
    * (blocked by solids, no extra damage). `counts`: [from round, brutes per round] (replacing contact slots of the fill).
    */
-  brute: { speedMul: 0.75, hp: 4, knockback: 28, counts: [[4, 1], [6, 2], [8, 3]] as const },
+  brute: {
+    speedMul: 0.75,
+    hp: 4,
+    knockback: 28,
+    counts: [
+      [4, 1],
+      [6, 2],
+      [8, 3],
+    ] as const,
+  },
   /**
    * « Le Caïd » (mini-boss, role 'boss'): HP grow with the round, `hp` + floor((round − `fromRound`) / `hpEvery`) ×
    * `hpStep`, capped at `hpMax` (round 3 → 14, round 5 → 16, …, 26 from round 15). `damageFrom`: the damage he takes per
@@ -222,7 +231,11 @@ export const CONFIG = {
     burst: 3,
     burstGap: 0.12,
     reloadSec: 3,
-    counts: [[6, 1], [8, 2], [10, 3]] as const,
+    counts: [
+      [6, 1],
+      [8, 2],
+      [10, 3],
+    ] as const,
     maxPerRound: 3,
   },
   /**

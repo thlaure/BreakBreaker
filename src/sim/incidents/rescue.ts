@@ -116,14 +116,7 @@ export class RescueIncident {
   }
 
   /** `count` fixes the number of aggressors (default: random within CONFIG.rescue.aggressors); `round` tags them. */
-  start(
-    horde: Horde,
-    site: Vec,
-    rand: () => number,
-    playerPos: Vec,
-    grid: Grid,
-    opts: { count?: number; round?: number } = {},
-  ): void {
+  start(horde: Horde, site: Vec, rand: () => number, playerPos: Vec, grid: Grid, opts: { count?: number; round?: number } = {}): void {
     this.rand = rand;
     this.grid = grid;
     this.victimPos = { ...site };

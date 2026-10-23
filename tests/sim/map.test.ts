@@ -60,8 +60,7 @@ describe('map', () => {
     ];
     for (const p of pts) expect(ff.stepsAt(p)).toBeGreaterThanOrEqual(0);
     // a prop door sits inside the solid footprint; its neighbours must still be reachable
-    for (const t of DISTRICT.targets.filter((x) => x.prop))
-      expect(t.attackPoints.every((p) => !grid.isSolidPx(p))).toBe(true);
+    for (const t of DISTRICT.targets.filter((x) => x.prop)) expect(t.attackPoints.every((p) => !grid.isSolidPx(p))).toBe(true);
   });
   test('props block movement and line of sight: walking into car1 from the left keeps x < 544', () => {
     const car = DISTRICT.targets.find((t) => t.id === 'car1')!.footprint;
@@ -98,10 +97,7 @@ describe('map', () => {
   });
   test('all listed points are on walkable, non-group tiles', () => {
     const d = DISTRICT;
-    const pts = [
-      d.playerSpawn, d.school.door, ...d.school.facadePoints, ...d.stations,
-      ...d.hostileSpawns, ...d.rescueSites,
-    ];
+    const pts = [d.playerSpawn, d.school.door, ...d.school.facadePoints, ...d.stations, ...d.hostileSpawns, ...d.rescueSites];
     for (const p of pts) {
       expect(grid.isSolid(Math.floor(p.x / 32), Math.floor(p.y / 32))).toBe(false);
       expect(grid.isSolidPx(p)).toBe(false);

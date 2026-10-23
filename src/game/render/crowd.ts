@@ -26,10 +26,7 @@ export class GroupView {
     const { area, members } = DISTRICT.peacefulGroup;
     members.forEach((m, i) => {
       const sheet = `protester_${(i % 4) + 1}`;
-      const sprite = scene.add
-        .sprite(m.x, m.y, sheet, idleFrame(sheet, 's'))
-        .setOrigin(0.5, FEET_ORIGIN_Y)
-        .setDepth(m.y);
+      const sprite = scene.add.sprite(m.x, m.y, sheet, idleFrame(sheet, 's')).setOrigin(0.5, FEET_ORIGIN_Y).setDepth(m.y);
       const stick = scene.add.rectangle(0, 0, 1, 14, 0x6b5440).setOrigin(0.5, 0);
       const board = scene.add
         .rectangle(0, 0, 16, 10, SIGN_COLORS[i % SIGN_COLORS.length]!)
@@ -44,7 +41,10 @@ export class GroupView {
     const cy = area.y - 44;
     icon.fillStyle(0x2f6fd6, 1).fillCircle(cx, cy, 7);
     icon.lineStyle(1, 0xffffff, 1).strokeCircle(cx, cy, 7);
-    icon.fillStyle(0xffffff, 1).fillRect(cx - 1, cy - 1, 2, 5).fillRect(cx - 1, cy - 4, 2, 2);
+    icon
+      .fillStyle(0xffffff, 1)
+      .fillRect(cx - 1, cy - 1, 2, 5)
+      .fillRect(cx - 1, cy - 4, 2, 2);
     this.bubble = new Bubble(scene);
     this.bubbleX = cx;
     this.bubbleY = area.y + GROUP_BUBBLE_Y;

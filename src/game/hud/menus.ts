@@ -34,7 +34,11 @@ export class Menus {
   private soundBtn: HTMLButtonElement | null = null;
   private credits: string | null = null;
 
-  constructor(parent: HTMLElement, private readonly act: MenuActions, private muted: boolean) {
+  constructor(
+    parent: HTMLElement,
+    private readonly act: MenuActions,
+    private muted: boolean,
+  ) {
     this.root.hidden = true;
     this.root.addEventListener('keydown', (e) => this.keydown(e));
     this.root.addEventListener('click', (e) => {
@@ -67,7 +71,11 @@ export class Menus {
     const p = this.begin('start', 'BreakBreaker');
     p.append(h('p', 'notice', SATIRE_NOTICE));
     const row = h('div', 'row');
-    row.append(this.btn('Commencer', () => this.act.start(), 'primary'), this.sound(), this.btn('Retour au site', () => this.act.leave()));
+    row.append(
+      this.btn('Commencer', () => this.act.start(), 'primary'),
+      this.sound(),
+      this.btn('Retour au site', () => this.act.leave()),
+    );
     p.append(row, h('h2', '', 'Règles'), this.rules(), h('h2', '', 'Commandes'), this.controls());
     this.end('Commencer');
   }
@@ -103,7 +111,13 @@ export class Menus {
 
   private showHelp(): void {
     const p = this.begin('help', 'Aide');
-    p.append(h('h2', '', 'Règles'), this.rules(), h('h2', '', 'Commandes'), this.controls(), this.btn('Retour', () => this.showPause('help')));
+    p.append(
+      h('h2', '', 'Règles'),
+      this.rules(),
+      h('h2', '', 'Commandes'),
+      this.controls(),
+      this.btn('Retour', () => this.showPause('help')),
+    );
     this.end('Retour');
   }
 
@@ -113,7 +127,10 @@ export class Menus {
     body.tabIndex = 0;
     body.setAttribute('role', 'region');
     body.setAttribute('aria-label', 'Crédits');
-    p.append(body, this.btn('Retour', () => this.showPause('credits')));
+    p.append(
+      body,
+      this.btn('Retour', () => this.showPause('credits')),
+    );
     this.end('Retour');
     const fill = (html: string): void => {
       if (this.panel === 'credits') body.innerHTML = html;
@@ -135,7 +152,10 @@ export class Menus {
     const p = this.begin('confirm', 'Retour au site', 'alertdialog');
     p.append(h('p', '', 'La partie en cours sera abandonnée.'));
     const row = h('div', 'row');
-    row.append(this.btn('Continuer la partie', () => this.showPause('confirm'), 'primary'), this.btn('Quitter la partie', () => this.act.leave()));
+    row.append(
+      this.btn('Continuer la partie', () => this.showPause('confirm'), 'primary'),
+      this.btn('Quitter la partie', () => this.act.leave()),
+    );
     p.append(row);
     this.end('Continuer la partie');
   }
@@ -151,7 +171,10 @@ export class Menus {
     p.append(dl);
     if (data.newRecord) p.append(h('p', 'record', 'Nouveau record !'));
     const row = h('div', 'row');
-    row.append(this.btn('Rejouer', () => this.act.replay(), 'primary'), this.btn('Retour au site', () => this.act.leave()));
+    row.append(
+      this.btn('Rejouer', () => this.act.replay(), 'primary'),
+      this.btn('Retour au site', () => this.act.leave()),
+    );
     p.append(row);
     this.end('Rejouer');
   }

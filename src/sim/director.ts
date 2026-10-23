@@ -174,7 +174,8 @@ export function roundPlan(
   monument: MonumentPlan | null = null,
   isFree: (id: TargetId) => boolean = (id) => targets.standing(id) && !targets.get(id).burning,
 ): RoundPlan {
-  const lastKinds: readonly CasseKind[] = last === null ? [] : typeof last === 'string' ? [last as CasseKind] : (last as readonly CasseKind[]);
+  const lastKinds: readonly CasseKind[] =
+    last === null ? [] : typeof last === 'string' ? [last as CasseKind] : (last as readonly CasseKind[]);
   // a kind is drawn only with a free target (the director's free(): standing, not burning, no unresolved attack)
   const freeTargets = (k: CasseKind): number => TARGETS_OF[k].filter(isFree).length;
   const picks: CasseKind[] = [];
@@ -420,8 +421,7 @@ export class Director {
     const objective = this.beats.reduce((n, b) => n + b.reduce((m, o) => m + o.count, 0), 0);
     this.total = Math.max(tableTotal(this.round), objective);
     // two attacks at once must not eat the fill its special rioters (runner pack, Caïd, brutes, shooters) live in
-    if (this.round >= TWO_URGENCIES_FROM)
-      this.total = Math.max(this.total, objective + fillReserve(this.round));
+    if (this.round >= TWO_URGENCIES_FROM) this.total = Math.max(this.total, objective + fillReserve(this.round));
     this.fill = [];
     // no fill to close the round: the Caïd comes alone after the objectives, one more rioter in the roster
     if (this.total === objective && this.round >= CONFIG.caid.fromRound) this.total += 1;
@@ -445,7 +445,12 @@ export class Director {
     this.launchBeats(host, ev);
     this.track(host);
     this.advanceFill(host);
-    if (!this.twistDone && this.plan && this.plan.twists.length > 0 && this.roundKos(host) >= Math.ceil(CONFIG.round.twistAt * this.total)) {
+    if (
+      !this.twistDone &&
+      this.plan &&
+      this.plan.twists.length > 0 &&
+      this.roundKos(host) >= Math.ceil(CONFIG.round.twistAt * this.total)
+    ) {
       this.twistDone = true;
       for (const t of this.plan.twists) {
         if (t === 'weaponDrop') this.weaponDrop(host, ev);
@@ -504,11 +509,7 @@ export class Director {
 
   /** Intact, not burning and not under an unresolved attack (at most one live attack per target). */
   private free(id: TargetId, host: DirectorHost): boolean {
-    return (
-      host.targets.standing(id) &&
-      !host.targets.get(id).burning &&
-      !host.attacks.some((a) => a.target === id && !a.resolved())
-    );
+    return host.targets.standing(id) && !host.targets.get(id).burning && !host.attacks.some((a) => a.target === id && !a.resolved());
   }
 
   /** Launches every beat whose predecessor is settled, while the urgency cap allows. */
@@ -619,8 +620,7 @@ export class Director {
     const first = this.fill.reduce((m, g) => m + (g.pack ? 0 : g.reqs.length), 0);
     const out: FillGroup[] = [];
     const fb = CONFIG.firebomber;
-    const fbWanted =
-      this.round >= fb.fromRound ? Math.min(fb.maxPerRound, Math.floor((first + n + fb.fillEvery / 2) / fb.fillEvery)) : 0;
+    const fbWanted = this.round >= fb.fromRound ? Math.min(fb.maxPerRound, Math.floor((first + n + fb.fillEvery / 2) / fb.fillEvery)) : 0;
     let owed = 0;
     let i = first;
     for (let g = 0; g < groups; g++) {

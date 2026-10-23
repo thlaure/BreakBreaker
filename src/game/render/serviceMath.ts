@@ -128,7 +128,13 @@ export function officerFrame(state: 'run' | 'strike' | 'down', moving: boolean, 
  * The sim sends no HitConfirmed for an officer's blow: a strike ending (state 'strike' → anything else) with a rioter
  * still within `range` px is drawn as a hit on the nearest such rioter. Returns its position, or null (a miss).
  */
-export function strikeLanded(prev: string | undefined, now: string, at: Vec, rioters: readonly { pos: Vec; state: string }[], range: number): Vec | null {
+export function strikeLanded(
+  prev: string | undefined,
+  now: string,
+  at: Vec,
+  rioters: readonly { pos: Vec; state: string }[],
+  range: number,
+): Vec | null {
   if (prev !== 'strike' || now === 'strike') return null;
   let best: Vec | null = null;
   let bestD = range;

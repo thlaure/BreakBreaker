@@ -20,6 +20,7 @@ npm install
 npm run dev        # http://localhost:5173
 npm test           # unit tests + production build check
 npm run typecheck
+npm run lint && npm run format:check
 npm run bench      # one simulation step must stay under ~0.3 ms
 ```
 

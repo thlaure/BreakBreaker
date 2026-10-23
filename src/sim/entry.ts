@@ -41,7 +41,15 @@ interface Batch {
 const EPS = 1e-9;
 
 function spawnAt(horde: Horde, r: SpawnRequest, pos: Vec): Hostile | null {
-  return horde.spawn({ variant: r.variant, role: r.role, pos, incidentId: r.incidentId, site: r.site, round: r.round, afterThrow: r.afterThrow });
+  return horde.spawn({
+    variant: r.variant,
+    role: r.role,
+    pos,
+    incidentId: r.incidentId,
+    site: r.site,
+    round: r.round,
+    afterThrow: r.afterThrow,
+  });
 }
 
 /**

@@ -151,7 +151,10 @@ export class WorldView {
       .setOrigin(0)
       .setScale(2)
       .setDepth(front);
-    const base = s.add.rectangle(b.x, front - 3, b.w, 3, 0x1d1a24, 0.9).setOrigin(0).setDepth(front + 0.01);
+    const base = s.add
+      .rectangle(b.x, front - 3, b.w, 3, 0x1d1a24, 0.9)
+      .setOrigin(0)
+      .setDepth(front + 0.01);
 
     const rect: Rect = { x: b.x, y: b.y - ROOF_OVERHANG, w: b.w, h: b.h - FACADE_H + ROOF_OVERHANG };
     const roofFrame = school ? TILE.city.roofs[0] : TILE.city.roofs[1 + (i % 3)]!;
@@ -160,7 +163,10 @@ export class WorldView {
       .setOrigin(0)
       .setScale(2)
       .setDepth(DEPTH.roof);
-    const eave = s.add.rectangle(rect.x, rect.y + rect.h - 4, rect.w, 4, 0x000000, 0.35).setOrigin(0).setDepth(DEPTH.roof);
+    const eave = s.add
+      .rectangle(rect.x, rect.y + rect.h - 4, rect.w, 4, 0x000000, 0.35)
+      .setOrigin(0)
+      .setDepth(DEPTH.roof);
     const parts: Roof['parts'] = [roof, eave];
     if (school) {
       const sign = s.add
@@ -254,9 +260,7 @@ export class WorldView {
     p(0xd8d4cc, jx + 5, -4, 2, 5);
     p(0xff4f6d, jx + 4, -6, 4, 3);
     p(0xffd23f, jx + 9, -1, 2, 1);
-    const text = s.add
-      .text(8, 0, 'JEUX RÉTRO', { fontFamily: 'monospace', fontSize: '10px', color: SHOP.text })
-      .setOrigin(0.5);
+    const text = s.add.text(8, 0, 'JEUX RÉTRO', { fontFamily: 'monospace', fontSize: '10px', color: SHOP.text }).setOrigin(0.5);
     const sign = s.add.container(cx, cy, [plate, text]).setDepth(DEPTH.roof + 0.5);
     roofParts.push(sign);
     return [g, glow, plate, text];
@@ -345,7 +349,10 @@ export class WorldView {
       r(SHOP.outline, x, top + 20, 4, 11);
       r(0xf4f4f0, x + 1, top + 21, 2, 9);
     }
-    for (const [x0, x1] of [[b.x + 2, door], [door + 32, b.x + b.w - 2]] as const) {
+    for (const [x0, x1] of [
+      [b.x + 2, door],
+      [door + 32, b.x + b.w - 2],
+    ] as const) {
       r(SHOP.outline, x0, top + 24, x1 - x0, 3);
       r(0xf4f4f0, x0, top + 25, x1 - x0, 1);
     }
@@ -360,7 +367,16 @@ export class WorldView {
       icon: (p) => {
         // smiling sun on the left
         const sx = -52;
-        for (const [dx, dy] of [[3, -7], [3, 6], [-3, 0], [10, 0], [-2, -6], [9, -6], [-2, 5], [9, 5]] as const)
+        for (const [dx, dy] of [
+          [3, -7],
+          [3, 6],
+          [-3, 0],
+          [10, 0],
+          [-2, -6],
+          [9, -6],
+          [-2, 5],
+          [9, 5],
+        ] as const)
           p(0xff8a3a, sx + dx, dy, 2, 1); // rays
         p(0xff8a3a, sx - 1, -5, 10, 10);
         p(0xffd23f, sx, -4, 8, 8);
@@ -537,7 +553,9 @@ export class WorldView {
       r(PRISON.bars, x + 5, top + 1, 1, 1);
     }
     // barred cell windows, a faint light inside, a sill under each
-    const windows = [b.x + 14, b.x + 42, b.x + 70, door + 40, door + 68].filter((x) => x + 14 <= b.x + b.w - 2 && (x + 12 <= door || x >= door + 32));
+    const windows = [b.x + 14, b.x + 42, b.x + 70, door + 40, door + 68].filter(
+      (x) => x + 14 <= b.x + b.w - 2 && (x + 12 <= door || x >= door + 32),
+    );
     for (const x of windows) {
       r(SHOP.outline, x - 1, top + 7, 14, 12);
       r(PRISON.cell, x, top + 8, 12, 10);
@@ -563,7 +581,11 @@ export class WorldView {
     r(PRISON.lamp, door + 13, top, 6, 2);
     const glow = this.windowGlow(b, 0xe6f7ff, 0.07);
     // ruined front: the gate burst open (the right leaf hanging), bars bent out of two windows, cracks
-    const wreck = s.add.graphics().setDepth(front + 0.03).setName('ruin').setVisible(false);
+    const wreck = s.add
+      .graphics()
+      .setDepth(front + 0.03)
+      .setName('ruin')
+      .setVisible(false);
     const w: Paint = (c, x, y, ww, h, a = 1) => {
       wreck.fillStyle(c, a).fillRect(x, y, ww, h);
     };
@@ -577,7 +599,11 @@ export class WorldView {
       w(PRISON.bars, x + 6, top + 9, 3, 1);
       w(PRISON.bars, x + 9, top + 14, 3, 1);
     }
-    for (const [x, y] of [[b.x + 30, top + 4], [b.x + 130, top + 2], [b.x + 170, top + 10]] as const)
+    for (const [x, y] of [
+      [b.x + 30, top + 4],
+      [b.x + 130, top + 2],
+      [b.x + 170, top + 10],
+    ] as const)
       for (let k = 0; k < 5; k++) w(SHOP.outline, x + (k % 2) + Math.floor(k / 2), y + k * 3, 1, 3);
 
     // a flat concrete roof over the tiles: slab seams, vents (it fades with the roof)
@@ -593,7 +619,11 @@ export class WorldView {
     for (let x = 32; x < b.w; x += 32) q(PRISON.concreteLo, x, 2, 1, rh - 8, 0.6);
     for (let y = 40; y < rh - 8; y += 40) q(PRISON.concreteLo, 0, y, b.w, 1, 0.6);
     // vents clear of the exercise yard in the middle (PrisonLayer draws it and its inmates, prisonMath.YARD)
-    for (const [x, y] of [[150, 16], [162, 62], [148, 112]] as const) {
+    for (const [x, y] of [
+      [150, 16],
+      [162, 62],
+      [148, 112],
+    ] as const) {
       q(SHOP.outline, x, y, 12, 10);
       q(PRISON.steelHi, x + 1, y + 1, 10, 8);
       q(PRISON.steel, x + 1, y + 6, 10, 3);
@@ -650,11 +680,20 @@ export class WorldView {
     };
     u(SHOP.outline, 4, -22, 18, 22);
     u(0x4a4650, 5, -21, 16, 21);
-    for (const [x, y, ww] of [[4, -26, 5], [10, -24, 4], [15, -28, 6]] as const) {
+    for (const [x, y, ww] of [
+      [4, -26, 5],
+      [10, -24, 4],
+      [15, -28, 6],
+    ] as const) {
       u(SHOP.outline, x, y, ww, -y - 20);
       u(0x4a4650, x + 1, y + 1, ww - 2, -y - 21);
     }
-    for (const [x, y] of [[26, -6], [32, -3], [-6, -4], [38, -8]] as const) {
+    for (const [x, y] of [
+      [26, -6],
+      [32, -3],
+      [-6, -4],
+      [38, -8],
+    ] as const) {
       u(SHOP.outline, x, y, 6, 4);
       u(0x6d6a72, x + 1, y + 1, 4, 2);
     }
@@ -672,11 +711,7 @@ export class WorldView {
     for (const t of DISTRICT.trunks) {
       const footY = t.y + 6;
       this.scene.add.ellipse(t.x, footY, 18, 6, 0x000000, 0.25).setDepth(DEPTH.decal);
-      const trunk = this.scene.add
-        .image(t.x, footY, 'city', TILE.city.treeTrunk)
-        .setOrigin(0.5, 1)
-        .setScale(2)
-        .setDepth(footY);
+      const trunk = this.scene.add.image(t.x, footY, 'city', TILE.city.treeTrunk).setOrigin(0.5, 1).setScale(2).setDepth(footY);
       const foliage = this.scene.add
         .image(t.x, footY - 32, 'city', TILE.city.treeTop)
         .setOrigin(0.5, 1)
@@ -691,14 +726,19 @@ export class WorldView {
 
 /** Heal stations: green cross + "Soins"; greyed once used (walking onto a charged one heals). */
 export class StationsView {
-  private readonly items: { icon: Phaser.GameObjects.Image; label: Phaser.GameObjects.Text; glow: Phaser.GameObjects.Ellipse }[] =
-    [];
+  private readonly items: { icon: Phaser.GameObjects.Image; label: Phaser.GameObjects.Text; glow: Phaser.GameObjects.Ellipse }[] = [];
 
   constructor(scene: Phaser.Scene) {
     for (const pos of DISTRICT.stations) {
       const icon = scene.add.image(pos.x, pos.y, 'station').setDepth(pos.y);
       const label = scene.add
-        .text(pos.x, pos.y + 12, 'Soins', { fontFamily: 'monospace', fontSize: '9px', color: '#e8ffe8', stroke: '#14121c', strokeThickness: 2 })
+        .text(pos.x, pos.y + 12, 'Soins', {
+          fontFamily: 'monospace',
+          fontSize: '9px',
+          color: '#e8ffe8',
+          stroke: '#14121c',
+          strokeThickness: 2,
+        })
         .setOrigin(0.5, 0)
         .setDepth(pos.y + 0.1);
       const glow = scene.add.ellipse(pos.x, pos.y + 8, 30, 12, 0x5ee07a, 0.3).setDepth(pos.y - 1);
@@ -795,7 +835,12 @@ export class ToolboxView {
   private popUntil = 0;
 
   constructor(private readonly scene: Phaser.Scene) {
-    this.carried = scene.add.image(0, 0, 'toolbox').setOrigin(0.5, 1).setScale(2).setDepth(DEPTH.overlay - 1).setVisible(false);
+    this.carried = scene.add
+      .image(0, 0, 'toolbox')
+      .setOrigin(0.5, 1)
+      .setScale(2)
+      .setDepth(DEPTH.overlay - 1)
+      .setVisible(false);
     this.ring = scene.add.graphics().setDepth(DEPTH.overlay - 2);
   }
 

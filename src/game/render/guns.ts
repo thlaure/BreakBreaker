@@ -20,14 +20,7 @@ const PAL: Record<string, number> = {
 };
 
 /** Cartoon AK (pointing right, 16×6): dark wooden stock, grey body, curved magazine. */
-const RIFLE = [
-  '..............K.',
-  'KKKKKKKKKKKKKKKK',
-  'KBBBKGGGGGGGGGGK',
-  'KBBKKGKGKKKKKKKK',
-  'KBK.KGKKGK......',
-  'KK...KK.KK......',
-];
+const RIFLE = ['..............K.', 'KKKKKKKKKKKKKKKK', 'KBBBKGGGGGGGGGGK', 'KBBKKGKGKKKKKKKK', 'KBK.KGKKGK......', 'KK...KK.KK......'];
 /** The boxing glove at the end of its spring (pointing right, 10×8): white cuff, red glove. */
 const FIST = ['..KKKKK...', '.KRRRRRK..', 'KWKRHHRRK.', 'KWKRHRRRRK', 'KWKRRRRRRK', 'KWKRRRRRK.', '.KKRRRRK..', '...KKKK...'];
 /** Pickup: the glove on its coiled spring and base (12×15). */

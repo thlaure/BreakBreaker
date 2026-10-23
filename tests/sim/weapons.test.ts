@@ -9,7 +9,16 @@ import type { InputFrame, Vec } from '../../src/sim/types';
 import { WEAPONS, Weapons } from '../../src/sim/weapons';
 
 const grid = new Grid(DISTRICT);
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
+const IDLE: InputFrame = {
+  move: { x: 0, y: 0 },
+  aim: null,
+  run: false,
+  strike: false,
+  chargeHeld: false,
+  throwRock: false,
+  act: false,
+  furie: false,
+};
 const view = (lifeId: number, pos: Vec): HostileView => ({ lifeId, pos, r: CONFIG.hostile.radius, active: true });
 
 describe('weapon pickups', () => {
@@ -159,7 +168,7 @@ describe('special drops', () => {
     for (let i = 1; i < spawns.length; i++) expect(spawns[i]! - spawns[i - 1]!).toBeGreaterThanOrEqual(CONFIG.weapons.groundLifetime);
   });
 
-  test('special drops keep their 15 s; the first shooter\'s flashball lasts 60 s like the street weapons', () => {
+  test("special drops keep their 15 s; the first shooter's flashball lasts 60 s like the street weapons", () => {
     const w = new Weapons(grid, rng(4));
     const paul = createPlayer({ ...DISTRICT.playerSpawn });
     w.step(CONFIG.step, 2, paul);

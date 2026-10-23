@@ -12,7 +12,7 @@ import { Toolboxes } from '../../src/sim/repair';
 import { rng } from '../../src/sim/rng';
 import { Rules } from '../../src/sim/rules';
 import { Targets } from '../../src/sim/targets';
-import type { CasseKind, SimEvent } from '../../src/sim/types';
+import type { SimEvent } from '../../src/sim/types';
 
 const DT = 1 / 60;
 const shop = () => DISTRICT.targets.find((t) => t.id === 'shop')!;
@@ -41,15 +41,35 @@ describe('the retro video-game shop (target « shop »)', () => {
   test('lineup: min(4, 1 + floor(round / 2)) Molotovs (a building, not a prop), then 2 degraders, a contact and the school-like pressure extras', () => {
     expect([1, 2, 3, 4, 5, 6, 7, 12].map((r) => molotovCount('shop', r))).toEqual([1, 2, 2, 3, 3, 4, 4, 4]);
     expect(lineup('shop', 2, 0).firstLine.map((r) => r.role)).toEqual([
-      'molotov', 'molotov', 'degrader', 'degrader', 'contact', 'degrader', 'contact',
+      'molotov',
+      'molotov',
+      'degrader',
+      'degrader',
+      'contact',
+      'degrader',
+      'contact',
     ]);
     expect(lineup('shop', 2, 0).reinforcements).toEqual([]);
     expect(lineup('shop', 6, 6).firstLine.map((r) => r.role)).toEqual([
-      'molotov', 'molotov', 'molotov', 'molotov', 'degrader', 'degrader', 'contact', 'degrader', 'contact', 'degrader', 'contact',
+      'molotov',
+      'molotov',
+      'molotov',
+      'molotov',
+      'degrader',
+      'degrader',
+      'contact',
+      'degrader',
+      'contact',
+      'degrader',
+      'contact',
     ]);
     expect(lineup('shop', 4, 99).firstLine).toHaveLength(3 + 3 + 6);
     // variants always round-robin, never one designated variant
-    expect(lineup('shop', 2, 0).firstLine.map((r) => r.variant).slice(0, 3)).toEqual(['classic', 'palestinian', 'antifa']);
+    expect(
+      lineup('shop', 2, 0)
+        .firstLine.map((r) => r.variant)
+        .slice(0, 3),
+    ).toEqual(['classic', 'palestinian', 'antifa']);
   });
 
   test('scores [saved, lost, repaired] = [6, −2, 4]', () => {
@@ -67,9 +87,7 @@ describe('the retro video-game shop (target « shop »)', () => {
     expect(attack.start()).toBe(true);
     spawner.step();
     const ignite = attack.onMolotov({ type: 'MolotovThrown', from: { x: 0, y: 0 }, to: shop().door, target: 'shop' }, ctx);
-    expect(ignite).toEqual([
-      { type: 'TargetIgnited', target: 'shop', incidentId: 'shop#1', kind: 'shop', pos: shop().door, round: 2 },
-    ]);
+    expect(ignite).toEqual([{ type: 'TargetIgnited', target: 'shop', incidentId: 'shop#1', kind: 'shop', pos: shop().door, round: 2 }]);
     for (const h of horde.list) if (h.incidentId === 'shop#1') horde.applyHit(h.lifeId, 99);
     attack.step(DT, ctx);
     expect(attack.stage).toBe('smoulder');

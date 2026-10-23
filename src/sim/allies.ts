@@ -220,7 +220,7 @@ export class Allies {
     this.now = ctx.now;
     const ev: SimEvent[] = [];
     if (this.truck) this.stepTruck(this.truck, dt, ctx, ev);
-    if (this.fighters.length > 0) this.stepFighters(dt, ctx, ev);
+    if (this.fighters.length > 0) this.stepFighters(dt, ctx);
     if (this.policeUntil !== null) {
       const timeUp = ctx.now >= this.policeUntil - EPS;
       if (timeUp) this.removeFighters((f) => f.role === 'police');
@@ -371,7 +371,7 @@ export class Allies {
     return moveCircle(this.grid, pos, { x: dir.x * s, y: dir.y * s }, r);
   }
 
-  private stepFighters(dt: number, ctx: AlliesCtx, ev: SimEvent[]): void {
+  private stepFighters(dt: number, ctx: AlliesCtx): void {
     const c = CONFIG.services.police;
     const now = ctx.now;
     // the down ones are carried off after downSec

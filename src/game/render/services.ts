@@ -307,7 +307,10 @@ class TruckView {
       .setPosition(Math.round(t.pos.x), y)
       .setDepth(y)
       .setVisible(true);
-    this.shadow.setPosition(t.pos.x, y - 2).setSize(dir === 'east' ? 72 : 44, 14).setVisible(true);
+    this.shadow
+      .setPosition(t.pos.x, y - 2)
+      .setSize(dir === 'east' ? 72 : 44, 14)
+      .setVisible(true);
     const h = this.sprite.displayHeight;
     this.bar.moveTo(t.pos.x, y - h - 12);
     this.bar.update(t.hp / t.maxHp, t.hp < t.maxHp, nowMs, dtMs);
@@ -338,7 +341,9 @@ class TruckView {
       this.jets.fillStyle(0xe6f7ff, 0.35).fillEllipse(to.x, to.y + 2, 18, 8);
       for (let i = 0; i < 6; i++) {
         const a = nowMs / 80 + i * 1.3;
-        this.jets.fillStyle(0xffffff, 0.9).fillRect(Math.round(to.x + Math.cos(a) * 9), Math.round(to.y - Math.abs(Math.sin(a)) * 8), PX, PX);
+        this.jets
+          .fillStyle(0xffffff, 0.9)
+          .fillRect(Math.round(to.x + Math.cos(a) * 9), Math.round(to.y - Math.abs(Math.sin(a)) * 8), PX, PX);
       }
     }
   }
@@ -358,7 +363,10 @@ class SegBar {
   private drawn = -1;
 
   constructor(scene: Phaser.Scene) {
-    this.g = scene.add.graphics().setDepth(DEPTH.overlay - 1).setVisible(false);
+    this.g = scene.add
+      .graphics()
+      .setDepth(DEPTH.overlay - 1)
+      .setVisible(false);
   }
 
   update(hp: number, maxHp: number, cx: number, top: number, visible: boolean): void {
@@ -404,7 +412,7 @@ class OfficerView {
     this.last = { ...o.pos };
   }
 
-  update(o: OfficerSnap, nowMs: number, dtMs: number): void {
+  update(o: OfficerSnap, nowMs: number): void {
     const dx = o.pos.x - this.last.x;
     const moving = Math.hypot(dx, o.pos.y - this.last.y) > 0.05;
     if (Math.abs(dx) > 0.05) this.flip = dx < 0;
@@ -416,7 +424,9 @@ class OfficerView {
     const down = o.state === 'down';
     this.stars.forEach((s, i) => {
       const a = nowMs / 220 + (i * Math.PI * 2) / STAR_COUNT;
-      s.setVisible(down).setPosition(Math.round(x - 10 + Math.cos(a) * 10), Math.round(y - 18 + Math.sin(a) * 3)).setDepth(y + 0.1);
+      s.setVisible(down)
+        .setPosition(Math.round(x - 10 + Math.cos(a) * 10), Math.round(y - 18 + Math.sin(a) * 3))
+        .setDepth(y + 0.1);
     });
     this.bar.update(o.hp, o.maxHp, x, y - 50, !down && o.maxHp > 1);
   }
@@ -454,7 +464,8 @@ export class ServicesLayer {
     private readonly pow: (x: number, y: number, nowMs: number) => void,
   ) {
     this.truck = new TruckView(scene);
-    for (let i = 0; i < 6; i++) this.sparks.push({ img: scene.add.image(0, 0, 'hit_spark').setScale(PX).setDepth(DEPTH.overlay).setVisible(false), born: -Infinity });
+    for (let i = 0; i < 6; i++)
+      this.sparks.push({ img: scene.add.image(0, 0, 'hit_spark').setScale(PX).setDepth(DEPTH.overlay).setVisible(false), born: -Infinity });
     this.smoke = scene.add
       .particles(0, 0, 'px', {
         lifespan: { min: 1200, max: 2200 },
@@ -495,7 +506,7 @@ export class ServicesLayer {
       const at = strikeLanded(v.prevState, o.state, o.pos, s.hostiles, CONFIG.services.police.hitRange + 4);
       if (at) this.hit(at, nowMs);
       v.prevState = o.state;
-      v.update(o, nowMs, dtMs);
+      v.update(o, nowMs);
     }
     for (const [id, v] of this.officers) {
       if (seen.has(id)) continue;
@@ -526,7 +537,11 @@ export class ServicesLayer {
   private hit(at: Vec, nowMs: number): void {
     const sp = this.sparks[this.sparkNext++ % this.sparks.length]!;
     sp.born = nowMs;
-    sp.img.setPosition(Math.round(at.x), Math.round(at.y - 24)).setVisible(true).setAlpha(1).setScale(PX);
+    sp.img
+      .setPosition(Math.round(at.x), Math.round(at.y - 24))
+      .setVisible(true)
+      .setAlpha(1)
+      .setScale(PX);
     this.pow(at.x, at.y, nowMs);
   }
 }

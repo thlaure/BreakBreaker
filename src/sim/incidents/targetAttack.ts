@@ -172,8 +172,7 @@ export class TargetAttack {
     }
 
     const degraders = ctx.horde.list.filter((h) => h.incidentId === this.id && h.state === 'degrade').length;
-    const dps =
-      (st.burning ? CONFIG.target.fireDps : 0) + Math.min(CONFIG.target.maxDegraders, degraders) * CONFIG.target.degradeDps;
+    const dps = (st.burning ? CONFIG.target.fireDps : 0) + Math.min(CONFIG.target.maxDegraders, degraders) * CONFIG.target.degradeDps;
     if (dps > 0 && !this.threatened) {
       // first hp lost: the alarm cue (audio) for this incident
       this.threatened = true;

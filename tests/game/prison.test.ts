@@ -89,7 +89,16 @@ describe('breakout banner', () => {
   });
 
   test('the prison attack banner and card', () => {
-    expect(alertFromEvent({ type: 'TargetIgnited', target: 'prison', kind: 'prison', pos: targetDoor('prison'), incidentId: 'x', round: 4 } as never)).toMatchObject({
+    expect(
+      alertFromEvent({
+        type: 'TargetIgnited',
+        target: 'prison',
+        kind: 'prison',
+        pos: targetDoor('prison'),
+        incidentId: 'x',
+        round: 4,
+      } as never),
+    ).toMatchObject({
       kind: 'prison',
     });
     expect(incidentAlert('prison', 4).title).toBe('PRISON ATTAQUÉE !');

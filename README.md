@@ -63,6 +63,8 @@ npm run build      # production build into dist/
 npm run preview    # preview the build
 npm test           # vitest run (includes a production build check, in a temp folder)
 npm run typecheck  # tsc --noEmit
+npm run lint       # ESLint (a warning above 400 lines per file)
+npm run format     # Prettier (CI checks with `npm run format:check`)
 npm run assets     # download and assemble assets (LPC sprites, tiles, sounds) and regenerate public/CREDITS.md
 npm run hero       # regenerate the landing hero src/site/hero.png from the game tiles and sprites (deterministic, offline)
 npm run bench      # cost of one simulation step under load (40 rioters, 24 rocks in flight)

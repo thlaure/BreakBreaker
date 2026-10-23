@@ -121,7 +121,12 @@ describe('damage rules on tougher rioters', () => {
     expect(of(ev, 'HitConfirmed')).toEqual([{ type: 'HitConfirmed', targetLifeId: h.lifeId, damage: 1, source: 'melee', heavy: true }]);
     const s2 = new Sim(2, { invulnerable: true });
     const c = beside(s2, 'contact');
-    expect(of(s2.step(input({ strike: true })), 'HitConfirmed')[0]).toEqual({ type: 'HitConfirmed', targetLifeId: c.lifeId, damage: 1, source: 'melee' });
+    expect(of(s2.step(input({ strike: true })), 'HitConfirmed')[0]).toEqual({
+      type: 'HitConfirmed',
+      targetLifeId: c.lifeId,
+      damage: 1,
+      source: 'melee',
+    });
   });
 });
 
@@ -323,7 +328,8 @@ describe('the Caïd in play', () => {
   test('CaidArrived once when he walks in', () => {
     const sim = new Sim(4, { invulnerable: true });
     const arrived: Ev<'CaidArrived'>[] = [];
-    for (let i = 0; i < 60 * 60 * 20 && arrived.length === 0; i++) arrived.push(...of(sim.step(autopilot(sim, { koAfterSec: 1 })), 'CaidArrived'));
+    for (let i = 0; i < 60 * 60 * 20 && arrived.length === 0; i++)
+      arrived.push(...of(sim.step(autopilot(sim, { koAfterSec: 1 })), 'CaidArrived'));
     expect(arrived).toHaveLength(1);
     const h = sim.horde.list.find((x) => x.lifeId === arrived[0]!.lifeId)!;
     expect(h.role).toBe('boss');

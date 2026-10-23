@@ -81,7 +81,8 @@ describe('Le Caïd: HP grows with the round', () => {
 describe('Le Caïd: damage he takes per source', () => {
   test('the damage table', () => {
     expect(CONFIG.caid.damageFrom).toEqual({ hands: 1, weapon: 2, rock: 1, furie: 5, beam: 10, bubble: 0 });
-    for (const s of ['hands', 'weapon', 'rock', 'furie', 'beam', 'bubble'] as const) expect(damageOn('boss', s)).toBe(CONFIG.caid.damageFrom[s]);
+    for (const s of ['hands', 'weapon', 'rock', 'furie', 'beam', 'bubble'] as const)
+      expect(damageOn('boss', s)).toBe(CONFIG.caid.damageFrom[s]);
   });
 
   test('brutes and everyone else keep their rules (brute: hands 1, weapons 2, rock 1, furie / beam KO)', () => {
@@ -102,12 +103,21 @@ describe('Le Caïd: damage he takes per source', () => {
 
   test('a held swung weapon: 2 a strike — 7 strikes at round 3, 8 at round 5', () => {
     for (const k of ['baton', 'marteau', 'panneau'] as WeaponKind[]) {
-      for (const [round, n] of [[3, 7], [5, 8]] as const) {
+      for (const [round, n] of [
+        [3, 7],
+        [5, 8],
+      ] as const) {
         const sim = new Sim(2, { invulnerable: true });
         sim.weapons.held = { kind: k, uses: 99 };
         const c = beside(sim, 'boss', 20, round);
         const ev = sim.step(input({ strike: true }));
-        expect(of(ev, 'HitConfirmed')[0]).toEqual({ type: 'HitConfirmed', targetLifeId: c.lifeId, damage: 2, source: 'melee', heavy: true });
+        expect(of(ev, 'HitConfirmed')[0]).toEqual({
+          type: 'HitConfirmed',
+          targetLifeId: c.lifeId,
+          damage: 2,
+          source: 'melee',
+          heavy: true,
+        });
         for (let i = 0; i < COOLDOWN; i++) sim.step(IDLE);
         expect(strikesToKo(sim, c.lifeId) + 1).toBe(n);
       }

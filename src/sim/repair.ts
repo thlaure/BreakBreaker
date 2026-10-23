@@ -88,7 +88,7 @@ export class Toolboxes {
     return horde.active().some((h) => dist(h.pos, player) <= CONFIG.kit.safetyRadius) ? null : target;
   }
 
-  step(dt: number, ctx: ToolboxCtx):{ events: SimEvent[]; message: ToolboxMessage } {
+  step(dt: number, ctx: ToolboxCtx): { events: SimEvent[]; message: ToolboxMessage } {
     const events: SimEvent[] = [];
     const { player, horde, targets, rules } = ctx;
     this.ready = false;

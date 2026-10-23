@@ -4,7 +4,10 @@ export class FixedClock {
   activeTime = 0;
   private acc = 0;
 
-  constructor(private readonly step: number, private readonly maxSteps: number) {}
+  constructor(
+    private readonly step: number,
+    private readonly maxSteps: number,
+  ) {}
 
   /** Returns number of fixed steps to run; excess beyond maxSteps is dropped. */
   advance(realDtSec: number): number {

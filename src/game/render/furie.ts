@@ -89,7 +89,11 @@ export class FurieAura {
     const d = sprite.depth;
     const p1 = Math.sin(nowMs / 85);
     const p2 = Math.sin(nowMs / 85 + 2.1);
-    this.outer.setPosition(x, y + 5).setScale(1.25 + 0.08 * p1, 1.15 + 0.1 * p1).setAlpha(0.9 * a).setDepth(d - 0.03);
+    this.outer
+      .setPosition(x, y + 5)
+      .setScale(1.25 + 0.08 * p1, 1.15 + 0.1 * p1)
+      .setAlpha(0.9 * a)
+      .setDepth(d - 0.03);
     this.inner
       .setPosition(x, y + 3)
       .setScale(0.8 + 0.05 * p2, 0.82 + 0.06 * p2)
@@ -151,7 +155,10 @@ export class PowBubbles {
         .text(0, 0, '', { fontFamily: '"Press Start 2P", ui-monospace, monospace', fontSize: '8px', color: '#c4372b' })
         .setOrigin(0.5, 0.5);
       // over Paul's health bar (a body lies next to him)
-      const root = scene.add.container(0, 0, [burst, text]).setDepth(DEPTH.overlay + 1).setVisible(false);
+      const root = scene.add
+        .container(0, 0, [burst, text])
+        .setDepth(DEPTH.overlay + 1)
+        .setVisible(false);
       this.pool.push({ root, burst, text, size: 1, word: '', born: -Infinity, x: 0, y: 0 });
     }
   }

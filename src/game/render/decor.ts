@@ -253,8 +253,24 @@ function drumstick(p: Paint): void {
     p(k < 3 ? POULET.crustHi : k > 7 ? POULET.crustLo : POULET.crust, x, 2 + k * 2, w, 2);
   });
   // crispy bits
-  for (const [x, y] of [[6, 6], [12, 4], [18, 8], [9, 12], [16, 14], [5, 16], [21, 12], [13, 18]] as const) p(POULET.crustHi, x, y, 2, 1);
-  for (const [x, y] of [[8, 9], [15, 10], [20, 17], [11, 15]] as const) p(POULET.crustLo, x, y, 1, 1);
+  for (const [x, y] of [
+    [6, 6],
+    [12, 4],
+    [18, 8],
+    [9, 12],
+    [16, 14],
+    [5, 16],
+    [21, 12],
+    [13, 18],
+  ] as const)
+    p(POULET.crustHi, x, y, 2, 1);
+  for (const [x, y] of [
+    [8, 9],
+    [15, 10],
+    [20, 17],
+    [11, 15],
+  ] as const)
+    p(POULET.crustLo, x, y, 1, 1);
   p(0xfff6d0, 6, 4, 4, 1, 0.8); // shine
   // the bone: shaft and two knobs
   p(OUTLINE, 24, 9, 16, 6);

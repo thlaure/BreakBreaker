@@ -48,7 +48,10 @@ export class GameUi {
     if (document.visibilityState === 'hidden') this.audio.suspend();
   };
 
-  constructor(private readonly host: UiHost, autostart: boolean) {
+  constructor(
+    private readonly host: UiHost,
+    autostart: boolean,
+  ) {
     this.hud = new Hud(document.body, document.getElementById('touch-ui'), { onControls: () => this.openControls() });
     this.menus = new Menus(
       document.body,

@@ -67,7 +67,8 @@ describe('round balancing', () => {
     const size = (g: number): number => plan[g - 1]!.size;
     // everyone but the fill is knocked out at once (objective rioters would otherwise hold the entry gate)
     const step = (): void => {
-      for (const h of sim.horde.active()) if (!isFill(h.incidentId, R) && sim.horde.applyHit(h.lifeId, 99) === 'ko') sim.rules.onKnockout(h.lifeId);
+      for (const h of sim.horde.active())
+        if (!isFill(h.incidentId, R) && sim.horde.applyHit(h.lifeId, 99) === 'ko') sim.rules.onKnockout(h.lifeId);
       sim.step(IDLE);
     };
     for (let i = 0; i < 60 * 40; i++) step();

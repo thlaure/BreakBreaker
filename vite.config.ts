@@ -49,8 +49,7 @@ function changelogFills(): Record<string, string> {
 function landingContent(): Plugin {
   const fills: Record<string, string> = {
     '<!--controls-->': CONTROLS.map(
-      (c) =>
-        `<tr><th scope="row">${esc(c.action)}</th><td>${esc(c.keyboard)}</td><td>${esc(c.touch)}</td></tr>`,
+      (c) => `<tr><th scope="row">${esc(c.action)}</th><td>${esc(c.keyboard)}</td><td>${esc(c.touch)}</td></tr>`,
     ).join('\n            '),
     '<!--notice-->': esc(SATIRE_NOTICE),
     '<!--version-->': esc(CONFIG.appVersion),

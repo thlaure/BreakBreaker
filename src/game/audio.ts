@@ -577,7 +577,8 @@ export class GameAudio {
    */
   siren(kind: 'fire' | 'police'): void {
     this.voice((ctx, out, t) => {
-      const [lo, hi, note, notes, type] = kind === 'fire' ? [435, 580, 0.32, 4, 'triangle' as const] : [660, 880, 0.18, 6, 'square' as const];
+      const [lo, hi, note, notes, type] =
+        kind === 'fire' ? [435, 580, 0.32, 4, 'triangle' as const] : [660, 880, 0.18, 6, 'square' as const];
       const osc = ctx.createOscillator();
       const lp = ctx.createBiquadFilter();
       const g = ctx.createGain();

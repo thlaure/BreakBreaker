@@ -46,7 +46,7 @@ test('no hp lost while rioters walk and nothing burns (RC-52)', () => {
 });
 
 test('hp drains while degrading and stops when they stop (RC-53)', () => {
-  const { inc, run, hp, mine, degradeAll } = setup();
+  const { run, hp, mine, degradeAll } = setup();
   expect(mine()).toHaveLength(3);
   degradeAll();
   const ev = run(2);
@@ -94,9 +94,15 @@ test('spawn cap keeps reinforcements pending, never dropped', () => {
   run(3.5);
   expect(horde.active().filter((h) => h.incidentId === inc.id)).toHaveLength(2);
   expect(inc.requiredActive(horde)).toBe(true);
-  horde.active().filter((h) => h.incidentId === null).forEach((h) => horde.applyHit(h.lifeId, 9999));
+  horde
+    .active()
+    .filter((h) => h.incidentId === null)
+    .forEach((h) => horde.applyHit(h.lifeId, 9999));
   // the pending ones are not KO: the school is not saved meanwhile
-  horde.active().filter((h) => h.incidentId === inc.id).forEach((h) => horde.applyHit(h.lifeId, 9999));
+  horde
+    .active()
+    .filter((h) => h.incidentId === inc.id)
+    .forEach((h) => horde.applyHit(h.lifeId, 9999));
   run(DT);
   expect(inc.stage).toBe('reinforcements');
   run(1);

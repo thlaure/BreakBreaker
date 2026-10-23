@@ -14,7 +14,16 @@ import type { InputFrame, SimEvent, TargetId, Variant, Vec } from '../../src/sim
 
 const C = (tx: number, ty: number): Vec => ({ x: tx * 32 + 16, y: ty * 32 + 16 });
 const R = (tx: number, ty: number, tw: number, th: number) => ({ x: tx * 32, y: ty * 32, w: tw * 32, h: th * 32 });
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
+const IDLE: InputFrame = {
+  move: { x: 0, y: 0 },
+  aim: null,
+  run: false,
+  strike: false,
+  chargeHeld: false,
+  throwRock: false,
+  act: false,
+  furie: false,
+};
 const PRESS: InputFrame = { ...IDLE, act: true };
 type Ev<T extends SimEvent['type']> = Extract<SimEvent, { type: T }>;
 const of = <T extends SimEvent['type']>(ev: SimEvent[], type: T): Ev<T>[] => ev.filter((e): e is Ev<T> => e.type === type);

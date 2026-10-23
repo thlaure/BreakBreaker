@@ -175,7 +175,10 @@ export class PrisonLayer {
     this.roofRect = { x: f.x, y: f.y - ROOF_OVERHANG, w: f.w, h: f.h - FACADE_H + ROOF_OVERHANG };
     this.yard = scene.add.graphics().setDepth(DEPTH.roof + 0.15);
     this.bars = scene.add.graphics().setDepth(DEPTH.roof + 0.25);
-    this.brokenBars = scene.add.graphics().setDepth(DEPTH.roof + 0.25).setVisible(false);
+    this.brokenBars = scene.add
+      .graphics()
+      .setDepth(DEPTH.roof + 0.25)
+      .setVisible(false);
     this.drawYard();
     for (let i = 0; i < INMATE_SLOTS; i++) {
       const sprite = scene.add.sprite(0, 0, 'rioter_classic_a', 0).setOrigin(0.5, FEET_ORIGIN_Y).setScale(INMATE_SCALE).setVisible(false);
@@ -204,7 +207,10 @@ export class PrisonLayer {
       })
       .setOrigin(0.5)
       .setDepth(DEPTH.roof + 0.6);
-    this.beam = scene.add.graphics().setDepth(DEPTH.roof + 0.3).setBlendMode(Phaser.BlendModes.ADD);
+    this.beam = scene.add
+      .graphics()
+      .setDepth(DEPTH.roof + 0.3)
+      .setBlendMode(Phaser.BlendModes.ADD);
     this.burst = scene.add
       .particles(0, 0, 'px', {
         lifespan: { min: 600, max: 1100 },
@@ -275,7 +281,12 @@ export class PrisonLayer {
       // back row behind the front row, all under the bars
       const depth = DEPTH.roof + 0.2 + at.y * 1e-4;
       slot.sprite.anims.stop();
-      slot.sprite.setFrame(idleFrame(key, pose.dir)).setPosition(x, y + pose.bob).setDepth(depth).setAlpha(alpha).setVisible(true);
+      slot.sprite
+        .setFrame(idleFrame(key, pose.dir))
+        .setPosition(x, y + pose.bob)
+        .setDepth(depth)
+        .setAlpha(alpha)
+        .setVisible(true);
       this.placeCrown(slot.crown, x, y + pose.bob, depth, alpha);
     });
     this.extra.setVisible(extra > 0).setAlpha(alpha);
@@ -284,7 +295,11 @@ export class PrisonLayer {
 
   private placeCrown(crown: Phaser.GameObjects.Image, x: number, y: number, depth: number, alpha: number): void {
     const top = Math.round(y - HEAD_TOP * INMATE_SCALE + CROWN_SINK * INMATE_SCALE);
-    crown.setPosition(x, top).setDepth(depth + 0.00001).setAlpha(alpha).setVisible(true);
+    crown
+      .setPosition(x, top)
+      .setDepth(depth + 0.00001)
+      .setAlpha(alpha)
+      .setVisible(true);
   }
 
   /** The breakout run-out: each inmate dashes from his slot to the gate and fades; false once over. */
@@ -305,7 +320,10 @@ export class PrisonLayer {
       const p = jetPoint(w.from, to, k, 24);
       const x = Math.round(p.x);
       const y = Math.round(p.y);
-      w.sprite.setPosition(x, y).setAlpha(alpha * (1 - k * k)).setDepth(DEPTH.roof + 0.26);
+      w.sprite
+        .setPosition(x, y)
+        .setAlpha(alpha * (1 - k * k))
+        .setDepth(DEPTH.roof + 0.26);
       w.crown.setAlpha(alpha * (1 - k * k));
       this.placeCrown(w.crown, x, y, DEPTH.roof + 0.26, alpha * (1 - k * k));
     }
@@ -336,7 +354,9 @@ export class PrisonLayer {
 
   /** The yard's shown inmates run out to the gate (the sim's released Caïds appear there). */
   private startEscape(nowMs: number): void {
-    const who = this.slots.filter((sl) => sl.id >= 0 && sl.sprite.visible).map((sl) => ({ sprite: sl.sprite, crown: sl.crown, from: { x: sl.sprite.x, y: sl.sprite.y } }));
+    const who = this.slots
+      .filter((sl) => sl.id >= 0 && sl.sprite.visible)
+      .map((sl) => ({ sprite: sl.sprite, crown: sl.crown, from: { x: sl.sprite.x, y: sl.sprite.y } }));
     if (who.length === 0 || this.reducedMotion) {
       for (const sl of this.slots) {
         sl.id = -1;
@@ -364,7 +384,17 @@ export class PrisonLayer {
     this.runs.push(pickup);
     // drop-off: the van comes in from the east and stops west of the gate, facing west: its back (east end) at the gate
     const d = { x: this.door.x - 40, y: this.door.y + 8 };
-    this.runs.push(this.run('drop', start + VAN_RUN_MS + VAN_TRANSFER_MS, d, -1, { x: d.x + 28, y: d.y - 14 }, { x: this.door.x, y: this.door.y - 22 }, inmate));
+    this.runs.push(
+      this.run(
+        'drop',
+        start + VAN_RUN_MS + VAN_TRANSFER_MS,
+        d,
+        -1,
+        { x: d.x + 28, y: d.y - 14 },
+        { x: this.door.x, y: this.door.y - 22 },
+        inmate,
+      ),
+    );
   }
 
   /** The pickup stops east of the body `at`, facing east: its back (west end) by the body, which hops in. */
@@ -377,7 +407,12 @@ export class PrisonLayer {
   private run(kind: Run['kind'], start: number, at: Vec, dir: 1 | -1, from: Vec, to: Vec, sheet: string): Run {
     const s = this.scene;
     const shadow = s.add.ellipse(0, 0, 68, 12, 0x000000, 0.25).setDepth(DEPTH.decal).setVisible(false);
-    const van = s.add.image(0, 0, 'jail_van_0').setOrigin(0.5, 1).setScale(PX).setFlipX(dir < 0).setVisible(false);
+    const van = s.add
+      .image(0, 0, 'jail_van_0')
+      .setOrigin(0.5, 1)
+      .setScale(PX)
+      .setFlipX(dir < 0)
+      .setVisible(false);
     const crown = s.add.image(0, 0, 'badge_crown').setOrigin(0.5, 1).setScale(1.5).setVisible(false);
     const frame = kind === 'pickup' ? koFrame(sheet) : idleFrame(sheet, 'n');
     const body = s.add.sprite(0, 0, sheet, frame).setOrigin(0.5, FEET_ORIGIN_Y).setScale(1.5).setVisible(false);
@@ -404,7 +439,10 @@ export class PrisonLayer {
       .setDepth(y)
       .setAlpha(pose.alpha)
       .setVisible(true);
-    run.shadow.setPosition(x, y - 2).setAlpha(pose.alpha).setVisible(true);
+    run.shadow
+      .setPosition(x, y - 2)
+      .setAlpha(pose.alpha)
+      .setVisible(true);
     const k = hopProgress(pose.stage, pose.t);
     // the van loads the body: the lying sprite on the street goes the moment the hop starts, never left behind
     if (run.kind === 'pickup' && !run.loaded && (pose.stage === 'out' || (pose.stage === 'stop' && pose.t >= HOP_START))) this.load(run);
@@ -415,8 +453,12 @@ export class PrisonLayer {
       const bx = Math.round(c.x);
       const by = Math.round(c.y);
       // shrinking into the van's back / through the gate at the end
-      const sc = 1.5 * (k > 0.7 ? 1 - (k - 0.7) / 0.3 * 0.5 : 1);
-      run.body.setPosition(bx, by).setScale(sc).setDepth(y + 1).setVisible(true);
+      const sc = 1.5 * (k > 0.7 ? 1 - ((k - 0.7) / 0.3) * 0.5 : 1);
+      run.body
+        .setPosition(bx, by)
+        .setScale(sc)
+        .setDepth(y + 1)
+        .setVisible(true);
       run.crown
         .setPosition(bx, Math.round(by - (run.kind === 'pickup' ? 12 : HEAD_TOP - CROWN_SINK) * sc))
         .setScale(sc)

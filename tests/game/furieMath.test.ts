@@ -1,5 +1,20 @@
 import { describe, expect, test } from 'vitest';
-import { FURIE_FADE_SEC, LAUNCH_EDGE_PX, LAUNCH_MS, SATELLITE_END_SCALE, SATELLITE_MS, SATELLITE_MS_REDUCED, SATELLITE_RISE_PX, SATELLITE_DELAY_MAX_MS, auraAlpha, edgeExit, satelliteDelay, landingDistance, launchPose, satellitePose } from '../../src/game/render/furieMath';
+import {
+  FURIE_FADE_SEC,
+  LAUNCH_EDGE_PX,
+  LAUNCH_MS,
+  SATELLITE_END_SCALE,
+  SATELLITE_MS,
+  SATELLITE_MS_REDUCED,
+  SATELLITE_RISE_PX,
+  SATELLITE_DELAY_MAX_MS,
+  auraAlpha,
+  edgeExit,
+  satelliteDelay,
+  landingDistance,
+  launchPose,
+  satellitePose,
+} from '../../src/game/render/furieMath';
 import { DISTRICT } from '../../src/sim/map/district';
 import { Grid } from '../../src/sim/map/grid';
 import type { Launch } from '../../src/sim/types';
@@ -25,7 +40,12 @@ describe('launched KO bodies', () => {
   test('a body never lands off the map', () => {
     const d = landingDistance({ x: 1500, y: 300 }, right, world, () => false);
     expect(1500 + d).toBeLessThanOrEqual(world.width - LAUNCH_EDGE_PX);
-    const corner = landingDistance({ x: 40, y: 40 }, { dir: { x: -Math.SQRT1_2, y: -Math.SQRT1_2 }, power: 400, spin: 2 }, world, () => false);
+    const corner = landingDistance(
+      { x: 40, y: 40 },
+      { dir: { x: -Math.SQRT1_2, y: -Math.SQRT1_2 }, power: 400, spin: 2 },
+      world,
+      () => false,
+    );
     expect(40 - corner * Math.SQRT1_2).toBeGreaterThanOrEqual(LAUNCH_EDGE_PX);
   });
 

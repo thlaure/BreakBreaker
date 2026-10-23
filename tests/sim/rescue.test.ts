@@ -173,7 +173,7 @@ test("Paul's sweep and rocks never touch the victim (RC-63)", () => {
   const rock = rocks.returnRock(near, { x: 1, y: 0 }, 1)!;
   expect(rock).toBeTruthy();
   horde.list.forEach((h) => (h.pos = { x: site.x, y: site.y + 200 }));
-  let ev: SimEvent[] = [];
+  const ev: SimEvent[] = [];
   for (let i = 0; i < 60; i++)
     ev.push(
       ...rocks.step(DT, 1 + i * DT, {

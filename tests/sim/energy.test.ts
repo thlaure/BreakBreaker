@@ -9,7 +9,6 @@ const input = (o: Partial<InputFrame> = {}): InputFrame => ({ ...IDLE, ...o });
 const STEPS = (sec: number): number => Math.round(sec / CONFIG.step);
 type Ev<T extends SimEvent['type']> = Extract<SimEvent, { type: T }>;
 const of = <T extends SimEvent['type']>(ev: SimEvent[], type: T): Ev<T>[] => ev.filter((e): e is Ev<T> => e.type === type);
-const E = CONFIG.energy;
 
 /** A rioter of `role` that stays put and never attacks during the test. */
 function calm(sim: Sim, pos: Vec, role: Role = 'contact') {

@@ -1,16 +1,7 @@
 import Phaser from 'phaser';
 import type { Snapshot } from '../../sim/sim';
 import type { Vec } from '../../sim/types';
-import {
-  BUBBLE_LIFT,
-  HIGHLIGHT_ARC,
-  bubbleAlpha,
-  bubbleRadius,
-  highlightAngle,
-  popRing,
-  rimPoint,
-  rippleRing,
-} from './bubbleMath';
+import { BUBBLE_LIFT, HIGHLIGHT_ARC, bubbleAlpha, bubbleRadius, highlightAngle, popRing, rimPoint, rippleRing } from './bubbleMath';
 import { CHARGE_RING_Y, chargeRing } from './chargeMath';
 import { DEPTH } from './depth';
 
@@ -89,7 +80,9 @@ export class BubbleView {
    * (for the sparks), and starts a ripple there.
    */
   hit(feet: Vec, hit: Vec, nowMs: number): Vec {
-    const at = this.held ? rimPoint(this.center, feet, hit, bubbleRadius(nowMs, this.reducedMotion)) : { x: Math.round(hit.x), y: Math.round(hit.y) };
+    const at = this.held
+      ? rimPoint(this.center, feet, hit, bubbleRadius(nowMs, this.reducedMotion))
+      : { x: Math.round(hit.x), y: Math.round(hit.y) };
     if (this.ripples.length >= 4) this.ripples.shift();
     this.ripples.push({ x: at.x, y: at.y, born: nowMs });
     this.flashUntil = nowMs + HIT_FLASH_MS;
@@ -190,7 +183,11 @@ export class SpecialFx {
   constructor(scene: Phaser.Scene) {
     this.glow = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
     this.ring = scene.add.graphics().setVisible(false);
-    this.beamG = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.overlay - 2).setVisible(false);
+    this.beamG = scene.add
+      .graphics()
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(DEPTH.overlay - 2)
+      .setVisible(false);
     this.rings = scene.add.graphics().setDepth(DEPTH.overlay - 2);
     this.sparks = scene.add.particles(0, 0, 'px', {
       lifespan: { min: 160, max: 320 },
@@ -245,12 +242,17 @@ export class SpecialFx {
     const arc = chargeRing(p);
     const cx = Math.round(body.x);
     const cy = Math.round(body.y - CHARGE_RING_Y);
-    const ring = this.ring.clear().setVisible(true).setDepth(body.depth + 0.1);
+    const ring = this.ring
+      .clear()
+      .setVisible(true)
+      .setDepth(body.depth + 0.1);
     ring.lineStyle(4, INK, 0.6).strokeCircle(cx, cy, arc.radius);
     ring.lineStyle(1, ENERGY, 0.35).strokeCircle(cx, cy, arc.radius);
     if (p > 0) {
       ring.lineStyle(2, ENERGY, 1).beginPath().arc(cx, cy, arc.radius, arc.start, arc.end, false).strokePath();
-      ring.fillStyle(ENERGY_CORE, 1).fillCircle(Math.round(cx + Math.cos(arc.end) * arc.radius), Math.round(cy + Math.sin(arc.end) * arc.radius), 2);
+      ring
+        .fillStyle(ENERGY_CORE, 1)
+        .fillCircle(Math.round(cx + Math.cos(arc.end) * arc.radius), Math.round(cy + Math.sin(arc.end) * arc.radius), 2);
     }
   }
 
@@ -264,7 +266,7 @@ export class SpecialFx {
     }
     const t = (nowMs - b.born) / BEAM_MS;
     // pixel-stepped: grows fast, then thins out; widths are whole pixels
-    const w = Math.max(2, Math.round((t < 0.25 ? t / 0.25 : 1 - (t - 0.25) / 0.75) * 14 / 2) * 2);
+    const w = Math.max(2, Math.round(((t < 0.25 ? t / 0.25 : 1 - (t - 0.25) / 0.75) * 14) / 2) * 2);
     const flick = Math.floor(nowMs / 40) % 2 === 0 ? 1 : 0.8;
     g.clear().setVisible(true);
     g.lineStyle(w + 8, BLUE, 0.35 * flick).lineBetween(b.from.x, b.from.y, b.to.x, b.to.y);

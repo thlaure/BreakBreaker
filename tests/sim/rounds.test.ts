@@ -27,8 +27,7 @@ function drive(sim: Sim, until: (ev: SimEvent[]) => boolean, opts: { koAfterSec?
 }
 const roundStarted = (n: number) => (ev: SimEvent[]) => ev.some((e) => e.type === 'RoundStarted' && e.index === n);
 const roundCompleted = (n: number) => (ev: SimEvent[]) => ev.some((e) => e.type === 'RoundCompleted' && e.index === n);
-const urgent = (sim: Sim): number =>
-  sim.attacks.filter((a) => a.urgent()).length + (sim.rescue?.stage === 'threat' ? 1 : 0);
+const urgent = (sim: Sim): number => sim.attacks.filter((a) => a.urgent()).length + (sim.rescue?.stage === 'threat' ? 1 : 0);
 
 describe('round catalogue', () => {
   test('totals, urgency cap and pressure', () => {
@@ -96,8 +95,10 @@ describe('round catalogue', () => {
       last = second === 'monument';
     }
     expect(seconds).toEqual(['monument', 'rescue', 'monument', 'rescue', 'monument', 'rescue']);
-    for (let r = 2; r <= 3; r++) expect(roundPlan(r, rng(r), t, null, { french: true, lastWasMonument: false }).beats[1]).toEqual(['rescue']);
-    for (let r = 4; r <= 9; r++) expect(roundPlan(r, rng(r), t, null, { french: false, lastWasMonument: false }).beats[1]).toEqual(['rescue']);
+    for (let r = 2; r <= 3; r++)
+      expect(roundPlan(r, rng(r), t, null, { french: true, lastWasMonument: false }).beats[1]).toEqual(['rescue']);
+    for (let r = 4; r <= 9; r++)
+      expect(roundPlan(r, rng(r), t, null, { french: false, lastWasMonument: false }).beats[1]).toEqual(['rescue']);
     // nothing free: the monument alone is the round's headline
     for (const id of ['school', 'car1', 'car2', 'busStop', 'shop', 'boothRed', 'boothBlue', 'prison'] as const) t.ruin(id, `${id}#x`);
     expect(roundPlan(4, rng(1), t, null, { french: true, lastWasMonument: false })).toEqual({
@@ -138,7 +139,13 @@ describe('rounds in the sim', () => {
     const [rs] = of(ev, 'RoundStarted').filter((e) => e.index === 2);
     expect(rs!.headline).toBe('shop');
     const [casse] = of(ev, 'CasseStarted');
-    expect(casse).toMatchObject({ kind: 'shop', target: 'shop', pos: DISTRICT.targets.find((t) => t.id === 'shop')!.door, round: 2, total: rs!.total });
+    expect(casse).toMatchObject({
+      kind: 'shop',
+      target: 'shop',
+      pos: DISTRICT.targets.find((t) => t.id === 'shop')!.door,
+      round: 2,
+      total: rs!.total,
+    });
     expect(rs!.total).toBe(tableTotal(2));
     let twists: Ev<'TwistStarted'>[] = [];
     for (let i = 0; i < 60 * 300 && sim.director.round === 2 && sim.director.phase === 'play'; i++) {
@@ -349,7 +356,8 @@ describe('rounds in the sim', () => {
     drive(sim, () => sim.school.stage === 'reinforcements');
     const mine = () => sim.horde.active().filter((h) => h.incidentId === sim.school.id);
     for (let i = 0; i < 60 * 30 && mine().length < SCHOOL_R1.reinforcements.length; i++) {
-      for (const h of sim.horde.active()) if (h.incidentId !== sim.school.id && sim.horde.applyHit(h.lifeId, 99) === 'ko') sim.rules.onKnockout(h.lifeId);
+      for (const h of sim.horde.active())
+        if (h.incidentId !== sim.school.id && sim.horde.applyHit(h.lifeId, 99) === 'ko') sim.rules.onKnockout(h.lifeId);
       sim.step(IDLE);
     }
     expect(mine()).toHaveLength(SCHOOL_R1.reinforcements.length);
@@ -458,7 +466,7 @@ describe('rounds in the sim', () => {
     expect([...kinds].sort()).toEqual(['elderlyRobbed', 'groupHarassed']);
   });
 
-  test('a casse headline has no rescueKind; the round\'s later rescue keeps its prepared kind (deterministic per seed)', () => {
+  test("a casse headline has no rescueKind; the round's later rescue keeps its prepared kind (deterministic per seed)", () => {
     const run = () => {
       const sim = new Sim(4, { invulnerable: true });
       const ev = drive(sim, (e) => e.some((x) => x.type === 'RescueStarted'));
@@ -537,10 +545,25 @@ describe('snapshot', () => {
     drive(sim, roundStarted(1));
     let s = sim.snapshot();
     expect(s.targets.map((t) => t.id)).toEqual(DISTRICT.targets.map((t) => t.id));
-    expect(s.targets.find((t) => t.id === 'school')).toMatchObject({ kind: 'school', state: 'attacked', hp: 100, maxHp: 100, prop: false, burning: false });
+    expect(s.targets.find((t) => t.id === 'school')).toMatchObject({
+      kind: 'school',
+      state: 'attacked',
+      hp: 100,
+      maxHp: 100,
+      prop: false,
+      burning: false,
+    });
     expect(s.targets.find((t) => t.id === 'busStop')).toMatchObject({ state: 'intact', maxHp: 60, prop: true });
     // toolboxes are placed at round start too (round 1 has some)
-    expect(s.toolboxes).toMatchObject({ carried: false, progress: 0, message: null, repairTarget: null, canRepair: false, repairKind: null, started: false });
+    expect(s.toolboxes).toMatchObject({
+      carried: false,
+      progress: 0,
+      message: null,
+      repairTarget: null,
+      canRepair: false,
+      repairKind: null,
+      started: false,
+    });
     expect(s.toolboxes.ground).toHaveLength(CONFIG.kit.maxGround);
     expect(s.molotovs).toEqual([]);
     let thrown: Ev<'MolotovThrown'> | null = null;
@@ -564,7 +587,15 @@ test('a toolbox repair in the sim: ready until Agir is pressed, then snapshot pr
   sim.toolboxes.carried = true;
   sim.player.pos = { ...door };
   for (let i = 0; i < 30; i++) sim.step(IDLE);
-  expect(sim.snapshot().toolboxes).toMatchObject({ carried: true, repairTarget: 'busStop', message: null, canRepair: true, repairKind: 'ruin', started: false, progress: 0 });
+  expect(sim.snapshot().toolboxes).toMatchObject({
+    carried: true,
+    repairTarget: 'busStop',
+    message: null,
+    canRepair: true,
+    repairKind: 'ruin',
+    started: false,
+    progress: 0,
+  });
   // one press (F / touch Agir), then the key is released
   sim.step({ ...IDLE, act: true });
   expect(sim.snapshot().toolboxes).toMatchObject({ started: true, repairKind: 'ruin' });

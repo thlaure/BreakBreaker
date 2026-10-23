@@ -13,16 +13,7 @@ import { ACTION_WORDS, REPAIRING_VERB } from '../render/actionHintMath';
  * 'renforts' (the school cinematic: reinforcements on their way); 'perdue' | 'sauvée' are kept for the school.
  */
 export type IncidentStatus =
-  | 'en cours'
-  | 'interrompu'
-  | 'renforts'
-  | 'sécurisé'
-  | 'en feu'
-  | 'attaquée'
-  | 'perdue'
-  | 'sauvée'
-  | 'zone contestée'
-  | 'à reprendre';
+  'en cours' | 'interrompu' | 'renforts' | 'sécurisé' | 'en feu' | 'attaquée' | 'perdue' | 'sauvée' | 'zone contestée' | 'à reprendre';
 
 export function formatDuration(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
@@ -181,7 +172,16 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
     const status: IncidentStatus = t.id === 'school' && s.school.stage === 'cinematic' ? 'renforts' : t.burning ? 'en feu' : 'attaquée';
     // the prison's card tells what is at stake: the Caïds who would walk out
     const items = t.id === 'prison' && s.prison.jailed > 0 ? jailedText(s.prison.jailed) : null;
-    out.push({ key: t.id, kind: t.kind, name: TARGET_CARD_NAMES[t.id] ?? TARGET_NAMES[t.kind], time: `${Math.ceil(hp - 1e-9)} %`, hp, status, target: t.door, items });
+    out.push({
+      key: t.id,
+      kind: t.kind,
+      name: TARGET_CARD_NAMES[t.id] ?? TARGET_NAMES[t.kind],
+      time: `${Math.ceil(hp - 1e-9)} %`,
+      hp,
+      status,
+      target: t.door,
+      items,
+    });
   }
   const r = s.rescue;
   if (r && (r.stage === 'threat' || r.stage === 'secured')) {
@@ -196,7 +196,16 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
     const status: IncidentStatus = m.contested ? 'zone contestée' : m.inZone ? 'en cours' : 'à reprendre';
     const held = Math.min(m.captureSec, Math.floor(m.capture + 1e-9));
     const hp = Math.max(0, Math.min(100, (100 * m.capture) / m.captureSec));
-    out.push({ key: 'monument', kind: 'flag', name: 'Drapeau', time: `capture ${held}/${m.captureSec} s`, hp, status, target: m.mast, items: null });
+    out.push({
+      key: 'monument',
+      kind: 'flag',
+      name: 'Drapeau',
+      time: `capture ${held}/${m.captureSec} s`,
+      hp,
+      status,
+      target: m.mast,
+      items: null,
+    });
   }
   return out;
 }
@@ -287,7 +296,6 @@ function weaponText(s: Snapshot, bare: string): string {
   return out;
 }
 
-
 /** State of the HUD « ÉNERGIE » row: under 50 (`low`), the onde available (`onde`), full (`furie`), mode furie on (`active`). */
 export type EnergyState = 'low' | 'onde' | 'furie' | 'active';
 
@@ -315,9 +323,19 @@ export function energyView(s: Pick<Snapshot, 'energy' | 'furie'>, touch = false)
   }
   const pct = e.max > 0 ? (value / e.max) * 100 : 0;
   if (e.ready.furie)
-    return { pct, state: 'furie', tag: touch ? 'FURIE !' : 'R · Furie', aria: `${base}, mode furie disponible (${touch ? 'bouton Furie' : 'touche R'})` };
+    return {
+      pct,
+      state: 'furie',
+      tag: touch ? 'FURIE !' : 'R · Furie',
+      aria: `${base}, mode furie disponible (${touch ? 'bouton Furie' : 'touche R'})`,
+    };
   if (e.ready.onde)
-    return { pct, state: 'onde', tag: touch ? 'ONDE !' : 'C · Onde', aria: `${base}, onde d’énergie disponible (${touch ? 'bouton Onde' : 'appuyer sur C'})` };
+    return {
+      pct,
+      state: 'onde',
+      tag: touch ? 'ONDE !' : 'C · Onde',
+      aria: `${base}, onde d’énergie disponible (${touch ? 'bouton Onde' : 'appuyer sur C'})`,
+    };
   return { pct, state: 'low', tag: '', aria: base };
 }
 

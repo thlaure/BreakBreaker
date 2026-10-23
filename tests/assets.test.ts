@@ -81,7 +81,12 @@ describe('assets', () => {
   it('CREDITS.md has non-empty sections and credits every character layer', () => {
     const md = fs.readFileSync(path.join(pub, 'CREDITS.md'), 'utf8');
     expect(md).toMatch(/^# Crédits/m);
-    const sections = Object.fromEntries(md.split(/^## /m).slice(1).map((s) => [(s.split('\n')[0] ?? '').trim(), s]));
+    const sections = Object.fromEntries(
+      md
+        .split(/^## /m)
+        .slice(1)
+        .map((s) => [(s.split('\n')[0] ?? '').trim(), s]),
+    );
     for (const h of ['Personnages', 'Décors', 'Sons', 'Code']) {
       const sec = sections[h] ?? '';
       expect(sec.split('\n').slice(1).join('').trim().length, h).toBeGreaterThan(20);

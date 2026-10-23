@@ -259,8 +259,7 @@ describe('belongings in the full sim', () => {
       const r = sim.rescue;
       if (r?.stage === 'threat' && threatAt === null) threatAt = sim.now;
       const hold = r?.stage === 'threat' && sim.now - threatAt! < rescueSec;
-      if (!hold)
-        for (const h of sim.horde.active()) if (sim.horde.applyHit(h.lifeId, 99) === 'ko') sim.rules.onKnockout(h.lifeId);
+      if (!hold) for (const h of sim.horde.active()) if (sim.horde.applyHit(h.lifeId, 99) === 'ko') sim.rules.onKnockout(h.lifeId);
       if (fetch && r?.stage === 'secured') {
         const lying = r.items.find((it) => it.state === 'dropped');
         sim.player.pos = lying ? { ...lying.pos } : { ...r.victimPos };

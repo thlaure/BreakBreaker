@@ -194,7 +194,16 @@ export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: 
     };
   // the flashball guaranteed with the first shooter: one line, with the arrow and distance to it (no edge indicator)
   if (kind === 'flashball')
-    return { title: 'FLASHBALL AU SOL', sub: '', label: 'FLASHBALL', tone: 'drop', icon: 'flashball', meta: '', positioned: true, ms: FLASHBALL_ALERT_MS };
+    return {
+      title: 'FLASHBALL AU SOL',
+      sub: '',
+      label: 'FLASHBALL',
+      tone: 'drop',
+      icon: 'flashball',
+      meta: '',
+      positioned: true,
+      ms: FLASHBALL_ALERT_MS,
+    };
   const meta = round <= 0 ? '' : total > 0 ? `Manche ${round} · ${casseurs(total)}` : `Manche ${round}`;
   return { ...INCIDENT_ALERTS[kind], meta, positioned: true };
 }
@@ -313,7 +322,8 @@ export function activeIncidents(s: Snapshot): Incident[] {
     if (kind) out.push({ id: dropId(w.pos), kind, pos: { ...w.pos } });
   }
   // « Le Caïd » while he stands (his indicator follows him)
-  for (const h of s.hostiles) if (h.role === 'boss' && h.state !== 'ko') out.push({ id: caidId(h.lifeId), kind: 'caid', pos: { ...h.pos } });
+  for (const h of s.hostiles)
+    if (h.role === 'boss' && h.state !== 'ko') out.push({ id: caidId(h.lifeId), kind: 'caid', pos: { ...h.pos } });
   return out;
 }
 
@@ -344,7 +354,13 @@ export function guideMarks(s: Snapshot): GuideMark[] {
 
 /** Events that start a new danger: the red edge glow flashes once (several in one frame: once). */
 export function isNewAttack(e: SimEvent): boolean {
-  return e.type === 'CasseStarted' || e.type === 'SchoolStarted' || e.type === 'TargetIgnited' || e.type === 'RescueStarted' || e.type === 'MonumentAttacked';
+  return (
+    e.type === 'CasseStarted' ||
+    e.type === 'SchoolStarted' ||
+    e.type === 'TargetIgnited' ||
+    e.type === 'RescueStarted' ||
+    e.type === 'MonumentAttacked'
+  );
 }
 
 /** Distance in metres (1 tile = 32 px = 1 m), rounded. */
@@ -481,18 +497,7 @@ const SPRITES: Record<Sprite, string[]> = {
     '.......WK.',
   ],
   // a lightning bolt: the mode furie
-  bolt: [
-    '....KKKK.',
-    '...KYYK..',
-    '..KYYK...',
-    '.KYYKKKK.',
-    'KYYYYYYK.',
-    'KKKKYYK..',
-    '...KYK...',
-    '..KYK....',
-    '.KWK.....',
-    '.KK......',
-  ],
+  bolt: ['....KKKK.', '...KYYK..', '..KYYK...', '.KYYKKKK.', 'KYYYYYYK.', 'KKKKYYK..', '...KYK...', '..KYK....', '.KWK.....', '.KK......'],
   // a neutral pennant on a pole (no national flag): the monument
   flag: [
     'KK........',
@@ -522,16 +527,7 @@ const SPRITES: Record<Sprite, string[]> = {
     '....KK....',
   ],
   // a gold crown with a red jewel: « Le Caïd »
-  crown: [
-    'Y...Y...Y.',
-    'KY.KYK.YK.',
-    'KYYKYKYYK.',
-    'KYYYYYYYK.',
-    'KYYRYYRYK.',
-    'KYYYYYYYK.',
-    'KOOOOOOOK.',
-    'KKKKKKKKK.',
-  ],
+  crown: ['Y...Y...Y.', 'KY.KYK.YK.', 'KYYKYKYYK.', 'KYYYYYYYK.', 'KYYRYYRYK.', 'KYYYYYYYK.', 'KOOOOOOOK.', 'KKKKKKKKK.'],
   // prison bars bent apart: the breakout
   bars: [
     'KKKKKKKKKK',
@@ -572,17 +568,7 @@ const SPRITES: Record<Sprite, string[]> = {
     '.......KK.',
   ],
   // a red toolbox with its handle: a toolbox on the ground
-  toolbox: [
-    '...KKKK...',
-    '...K..K...',
-    'KKKKKKKKKK',
-    'KRRRRRRRRK',
-    'KRRRRRRRRK',
-    'KKKKYYKKKK',
-    'KRRRYYRRRK',
-    'KRRRRRRRRK',
-    'KKKKKKKKKK',
-  ],
+  toolbox: ['...KKKK...', '...K..K...', 'KKKKKKKKKK', 'KRRRRRRRRK', 'KRRRRRRRRK', 'KKKKYYKKKK', 'KRRRYYRRRK', 'KRRRRRRRRK', 'KKKKKKKKKK'],
   // points right (0°); rotated toward the target
   arrow: ['....C...', '....CC..', 'CCCCCCC.', 'CCCCCCCC', 'CCCCCCC.', '....CC..', '....C...'],
   // points down-right (45°)

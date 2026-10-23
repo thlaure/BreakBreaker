@@ -30,7 +30,14 @@ function occupation(count = 6) {
   const spawner = {
     request: (reqs: SpawnRequest[]) => {
       for (const r of reqs)
-        horde.spawn({ variant: r.variant, role: r.role, pos: M.attackPoints[i++ % M.attackPoints.length]!, incidentId: r.incidentId, site: r.site, round: r.round });
+        horde.spawn({
+          variant: r.variant,
+          role: r.role,
+          pos: M.attackPoints[i++ % M.attackPoints.length]!,
+          incidentId: r.incidentId,
+          site: r.site,
+          round: r.round,
+        });
     },
   };
   const inc = new MonumentIncident('monument#1', 4, count, spawner);
@@ -78,7 +85,10 @@ describe('monument map', () => {
     ff.rebuild(DISTRICT.playerSpawn);
     const z = M.zone;
     // east, south and north edges (the west edge tile holds a tree trunk)
-    const edge = [0, 1, 3].map((k) => ({ x: z.x + Math.cos((k * Math.PI) / 2) * (z.r - 8), y: z.y + Math.sin((k * Math.PI) / 2) * (z.r - 8) }));
+    const edge = [0, 1, 3].map((k) => ({
+      x: z.x + Math.cos((k * Math.PI) / 2) * (z.r - 8),
+      y: z.y + Math.sin((k * Math.PI) / 2) * (z.r - 8),
+    }));
     for (const p of [...M.attackPoints, ...edge, IN_ZONE]) {
       expect(grid.circleBlocked(p, CONFIG.hostile.radius)).toBe(false);
       expect(ff.stepsAt(p)).toBeGreaterThanOrEqual(0);
@@ -101,7 +111,9 @@ describe('monument occupation', () => {
     expect(occupierCount(5, 30)).toBe(8);
     const { horde } = occupation(6);
     expect(horde.list.map((h) => h.variant)).toEqual(['classic', 'palestinian', 'antifa', 'classic', 'palestinian', 'antifa']);
-    expect(horde.list.every((h) => h.role === 'degrader' && h.site === 'monument' && h.round === 4 && h.incidentId === 'monument#1')).toBe(true);
+    expect(horde.list.every((h) => h.role === 'degrader' && h.site === 'monument' && h.round === 4 && h.incidentId === 'monument#1')).toBe(
+      true,
+    );
   });
 
   test('one occupier at the plinth swaps the flag after 4 s: FlagSwapped, −3 once, settled', () => {

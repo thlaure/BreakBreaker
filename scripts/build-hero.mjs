@@ -70,9 +70,11 @@ function blit(img, sx, sy, w, h, dx, dy, scale = 1, alpha = 1) {
     }
 }
 /** 16-px Kenney city tile, drawn ×2 like the game (TILE.city). */
-const city = (frame, dx, dy) => blit(sheet('city', 'public/assets/tiles/city.png'), (frame % 37) * 16, Math.floor(frame / 37) * 16, 16, 16, dx, dy, 2);
+const city = (frame, dx, dy) =>
+  blit(sheet('city', 'public/assets/tiles/city.png'), (frame % 37) * 16, Math.floor(frame / 37) * 16, 16, 16, dx, dy, 2);
 /** 32-px LPC streets tile (TILE.streets). */
-const street = (frame, dx, dy) => blit(sheet('streets', 'public/assets/tiles/streets.png'), (frame % 10) * 32, Math.floor(frame / 10) * 32, 32, 32, dx, dy);
+const street = (frame, dx, dy) =>
+  blit(sheet('streets', 'public/assets/tiles/streets.png'), (frame % 10) * 32, Math.floor(frame / 10) * 32, 32, 32, dx, dy);
 
 const LAYOUT = JSON.parse(fs.readFileSync(path.join(root, 'public/assets/chars/layout.json'), 'utf8'));
 const FEET_Y = 58; // FEET_ORIGIN_Y = 58/64 in actors.ts
@@ -87,7 +89,7 @@ const SLASH = LAYOUT.anims.slash.rows;
 
 // ---------- tiny bitmap font (signs and labels) ----------
 const GLYPHS = {
-  'É': ['...#.', '..#..', '#####', '#....', '####.', '#....', '#....', '#####'],
+  É: ['...#.', '..#..', '#####', '#....', '####.', '#....', '#....', '#####'],
   E: ['.....', '#####', '#....', '####.', '#....', '#....', '#....', '#####'],
   C: ['.....', '.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'],
   O: ['.....', '.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
@@ -110,7 +112,18 @@ function text(s, x, y, color, outline) {
       cx += g[0].length + 1;
     }
   };
-  if (outline !== undefined) for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, -1], [-1, 1], [1, 1]]) draw(ox, oy, outline);
+  if (outline !== undefined)
+    for (const [ox, oy] of [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1],
+    ])
+      draw(ox, oy, outline);
   draw(0, 0, color);
 }
 
@@ -199,7 +212,8 @@ ellipse(sign.x, sign.y + 6, 26, 10, 0xffe066, 0.35);
     for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) put(xx, yy, c);
   };
   const fc = (cx, cy, r, c) => {
-    for (let yy = 0; yy < sh; yy++) for (let xx = 0; xx < sw; xx++) if ((xx + 0.5 - cx) ** 2 + (yy + 0.5 - cy) ** 2 <= r * r) put(xx, yy, c);
+    for (let yy = 0; yy < sh; yy++)
+      for (let xx = 0; xx < sw; xx++) if ((xx + 0.5 - cx) ** 2 + (yy + 0.5 - cy) ** 2 <= r * r) put(xx, yy, c);
   };
   fr(6, 10, 4, 18, 0x14121c);
   fc(8, 8, 8, 0x14121c);
@@ -329,8 +343,7 @@ for (const L of LAYERS)
         if (v < 0 || v > 1) continue;
         const bend = Math.sin(v * 2.4 + tg.ph) * v * 3; // tips lick sideways
         const u = Math.abs(x + 1 - tg.cx - bend) / (tg.w / 2);
-        if (u <= L.k * profile(v))
-          for (let oy = 0; oy < 2; oy++) for (let ox = 0; ox < 2; ox++) blend(x + ox, y + oy, hex(L.c));
+        if (u <= L.k * profile(v)) for (let oy = 0; oy < 2; oy++) for (let ox = 0; ox < 2; ox++) blend(x + ox, y + oy, hex(L.c));
       }
   }
 // embers

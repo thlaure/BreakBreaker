@@ -44,12 +44,19 @@ export class RockLayer {
   ): void {
     if (r.state === 'LandedRecoverable') {
       const bob = Math.sin(timeMs / 450 + r.id) * 1.5 - 2;
-      v.body.setTexture(`rock_${r.kind}_o`).setPosition(r.pos.x, r.pos.y + bob).setDepth(r.pos.y);
+      v.body
+        .setTexture(`rock_${r.kind}_o`)
+        .setPosition(r.pos.x, r.pos.y + bob)
+        .setDepth(r.pos.y);
       v.shadow.setPosition(r.pos.x, r.pos.y + 2).setScale(1);
       return;
     }
     const h = Math.sin(Math.PI * Math.min(1, Math.max(0, progress(r.id)))) * ARC_PX;
-    v.body.setTexture(`rock_${r.kind}`).setPosition(r.pos.x, r.pos.y - h).setDepth(r.pos.y).setAngle(timeMs / 3);
+    v.body
+      .setTexture(`rock_${r.kind}`)
+      .setPosition(r.pos.x, r.pos.y - h)
+      .setDepth(r.pos.y)
+      .setAngle(timeMs / 3);
     v.shadow.setPosition(r.pos.x, r.pos.y).setScale(1 - h / (ARC_PX * 2.5));
   }
 }
@@ -84,7 +91,11 @@ export class TelegraphLayer {
       this.line.lineStyle(1, 0xff3b30, pulse * 0.5).lineBetween(t.from.x, t.from.y - lift + 1, t.to.x, t.to.y - lift + 1);
       const cx = Math.round(t.to.x);
       const cy = Math.round(t.to.y - lift);
-      this.line.lineStyle(1, 0xff3b30, pulse).strokeCircle(cx, cy, 5).lineBetween(cx - 8, cy, cx + 8, cy).lineBetween(cx, cy - 8, cx, cy + 8);
+      this.line
+        .lineStyle(1, 0xff3b30, pulse)
+        .strokeCircle(cx, cy, 5)
+        .lineBetween(cx - 8, cy, cx + 8, cy)
+        .lineBetween(cx, cy - 8, cx, cy + 8);
       if (!view.contains(t.from.x, t.from.y)) this.arrow(t.from, view);
     }
     const bombers = snap.hostiles.filter((h) => h.role === 'firebomber' && h.state === 'windup');
@@ -229,7 +240,10 @@ export class MolotovFx {
       to: m.to,
       until: m.until,
       seen: 0,
-      bottle: this.scene.add.image(0, 0, 'bottle').setScale(2).setDepth(DEPTH.foliage + 1),
+      bottle: this.scene.add
+        .image(0, 0, 'bottle')
+        .setScale(2)
+        .setDepth(DEPTH.foliage + 1),
       flame: this.scene.add
         .image(0, 0, 'flame')
         .setOrigin(0.5, 1)
@@ -248,9 +262,7 @@ export class MolotovFx {
     // leaves the raised hand (~40 px up) and lands on the door
     const h = Math.sin(Math.PI * t) * peak + 40 * (1 - t);
     f.bottle.setPosition(Math.round(x), Math.round(y - h)).setAngle(t * 720);
-    f.flame
-      .setPosition(Math.round(x), Math.round(y - h) - 6)
-      .setFlipX(Math.floor(timeMs / 70) % 2 === 0);
+    f.flame.setPosition(Math.round(x), Math.round(y - h) - 6).setFlipX(Math.floor(timeMs / 70) % 2 === 0);
     f.shadow.setPosition(Math.round(x), Math.round(y)).setScale(1 - h / 120);
   }
 }
@@ -348,7 +360,10 @@ export class FirePatchLayer {
     return {
       id,
       seen: 0,
-      glow: this.scene.add.ellipse(0, 0, CONFIG.firePatch.radius * 2, CONFIG.firePatch.radius, 0xff7a1a, 0.45).setBlendMode(Phaser.BlendModes.ADD).setDepth(DEPTH.decal + 1),
+      glow: this.scene.add
+        .ellipse(0, 0, CONFIG.firePatch.radius * 2, CONFIG.firePatch.radius, 0xff7a1a, 0.45)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setDepth(DEPTH.decal + 1),
       flames: Array.from({ length: PATCH_FLAMES }, () =>
         this.scene.add.image(0, 0, 'flame').setOrigin(0.5, 1).setBlendMode(Phaser.BlendModes.ADD),
       ),

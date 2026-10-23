@@ -14,7 +14,16 @@ import { autopilot } from './autopilot';
 const grid = new Grid(DISTRICT);
 const DT = 1 / 60;
 const FB = CONFIG.firebomber;
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
+const IDLE: InputFrame = {
+  move: { x: 0, y: 0 },
+  aim: null,
+  run: false,
+  strike: false,
+  chargeHeld: false,
+  throwRock: false,
+  act: false,
+  furie: false,
+};
 type Ev<T extends SimEvent['type']> = Extract<SimEvent, { type: T }>;
 const of = <T extends SimEvent['type']>(ev: SimEvent[], type: T): Ev<T>[] => ev.filter((e): e is Ev<T> => e.type === type);
 
@@ -32,9 +41,8 @@ const mkCtx = (player: Player, over: Partial<HordeCtx> = {}): HordeCtx => ({
 /** Steps the horde `sec` seconds from `t0`, returning [time, event] pairs. */
 function stepHorde(horde: Horde, ctx: HordeCtx, t0: number, sec: number, each?: (now: number) => void) {
   const out: { now: number; e: SimEvent }[] = [];
-  let now = t0;
   for (let i = 0; i < Math.round(sec / DT); i++) {
-    now = t0 + (i + 1) * DT;
+    const now = t0 + (i + 1) * DT;
     each?.(now);
     for (const e of horde.step(DT, now, ctx)) out.push({ now, e });
   }

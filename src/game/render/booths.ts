@@ -38,12 +38,20 @@ class BoothView {
     const depth = DEPTH.overlay - 2;
     // pill on the cabin's upper corner, outward (red on the left of the pair, blue on the right)
     const px = kind === 'fire' ? f.x - 2 : f.x + f.w - 12;
-    this.pill = scene.add.graphics().setPosition(px, top + 2).setDepth(depth);
+    this.pill = scene.add
+      .graphics()
+      .setPosition(px, top + 2)
+      .setDepth(depth);
     this.count = scene.add
       .text(px + 7, top + 8, '', { fontFamily: FONT, fontSize: '8px', color: '#ffffff' })
       .setOrigin(0.5, 0.5)
       .setDepth(depth + 0.1);
-    this.bang = scene.add.image(cx, top - 10, 'bang').setOrigin(0.5, 1).setScale(2).setDepth(depth).setVisible(false);
+    this.bang = scene.add
+      .image(cx, top - 10, 'bang')
+      .setOrigin(0.5, 1)
+      .setScale(2)
+      .setDepth(depth)
+      .setVisible(false);
     this.line = scene.add
       .text(cx, f.y + f.h + 6, '', {
         fontFamily: FONT,
@@ -64,7 +72,14 @@ class BoothView {
     if (key !== this.drawn) {
       this.drawn = key;
       const c = left > 0 ? PILL_COLOR[this.kind] : PILL_SPENT;
-      this.pill.clear().fillStyle(INK, 1).fillRect(0, 0, 14, 12).fillStyle(c, 1).fillRect(2, 2, 10, 8).fillStyle(0xffffff, 0.35).fillRect(2, 2, 10, 2);
+      this.pill
+        .clear()
+        .fillStyle(INK, 1)
+        .fillRect(0, 0, 14, 12)
+        .fillStyle(c, 1)
+        .fillRect(2, 2, 10, 8)
+        .fillStyle(0xffffff, 0.35)
+        .fillRect(2, 2, 10, 2);
       this.count.setText(String(left));
       this.count.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
     }

@@ -17,7 +17,8 @@ test('vector helpers', () => {
   expect(dist({ x: 0, y: 0 }, { x: 3, y: 4 })).toBe(5);
 });
 test('rng is deterministic and in [0,1)', () => {
-  const a = rng(42), b = rng(42);
+  const a = rng(42),
+    b = rng(42);
   for (let i = 0; i < 20; i++) {
     const v = a();
     expect(v).toBe(b());

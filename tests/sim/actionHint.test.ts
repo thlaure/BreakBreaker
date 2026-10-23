@@ -5,7 +5,16 @@ import { Sim } from '../../src/sim/sim';
 import type { InputFrame, TargetId } from '../../src/sim/types';
 
 const door = (id: TargetId) => DISTRICT.targets.find((d) => d.id === id)!.door;
-const idle: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
+const idle: InputFrame = {
+  move: { x: 0, y: 0 },
+  aim: null,
+  run: false,
+  strike: false,
+  chargeHeld: false,
+  throwRock: false,
+  act: false,
+  furie: false,
+};
 
 /** A sim past the school cinematic gate: round 1's school attack is not started at t = 0, so steps run normally. */
 function sim(): Sim {

@@ -41,7 +41,13 @@ const BEAM_SHAKE_MS = 160;
 const BEAM_SHAKE_PX = 2;
 /** Light shake with a new danger's banner. */
 const ALERT_SHAKE: Shake = { ms: 220, px: 1.5 };
-const NEW_DANGER: ReadonlySet<SimEvent['type']> = new Set(['TargetIgnited', 'CasseStarted', 'RescueStarted', 'MonumentAttacked', 'CaidArrived']);
+const NEW_DANGER: ReadonlySet<SimEvent['type']> = new Set([
+  'TargetIgnited',
+  'CasseStarted',
+  'RescueStarted',
+  'MonumentAttacked',
+  'CaidArrived',
+]);
 const BASE_W = 640;
 const BASE_H = 360;
 const PAN_IN_MS = 700;
@@ -61,7 +67,16 @@ export class WorldScene extends Phaser.Scene {
   private stress = 0;
   private stressState = { n: 0 };
   private clock!: FixedClock;
-  private input$: () => InputFrame = () => ({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false });
+  private input$: () => InputFrame = () => ({
+    move: { x: 0, y: 0 },
+    aim: null,
+    run: false,
+    strike: false,
+    chargeHeld: false,
+    throwRock: false,
+    act: false,
+    furie: false,
+  });
   private disposeInput: (() => void) | null = null;
   private ui: GameUi | null = null;
   private sources: InputSource[] = [];

@@ -13,7 +13,16 @@ import { heldOf, isSpecial, spawnSpecials, WEAPONS, Weapons } from '../../src/si
 import { autopilot } from './autopilot';
 
 const grid = new Grid(DISTRICT);
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
+const IDLE: InputFrame = {
+  move: { x: 0, y: 0 },
+  aim: null,
+  run: false,
+  strike: false,
+  chargeHeld: false,
+  throwRock: false,
+  act: false,
+  furie: false,
+};
 const input = (o: Partial<InputFrame> = {}): InputFrame => ({ ...IDLE, ...o });
 const STEPS = (sec: number): number => Math.round(sec / CONFIG.step);
 const DT = CONFIG.step;
@@ -124,7 +133,11 @@ describe('bouclier: blocking', () => {
   });
 
   test('in the Sim, rocks thrown at Paul from in front, the side and behind are all blocked by the bubble', () => {
-    for (const [dx, dy] of [[100, 0], [0, 100], [-100, 0]] as const) {
+    for (const [dx, dy] of [
+      [100, 0],
+      [0, 100],
+      [-100, 0],
+    ] as const) {
       const sim = new Sim(5);
       sim.weapons.startShield();
       sim.player.facing = { x: 1, y: 0 };
@@ -146,7 +159,11 @@ describe('bouclier: blocking', () => {
       const out: SimEvent[] = [];
       for (let k = 0; k < 4; k++) {
         const a = (k * Math.PI) / 2;
-        sim.rocks.spawnEnemy({ x: p.x + Math.cos(a) * 90, y: p.y + Math.sin(a) * 90 }, { x: p.x - Math.cos(a) * 40, y: p.y - Math.sin(a) * 40 }, 0);
+        sim.rocks.spawnEnemy(
+          { x: p.x + Math.cos(a) * 90, y: p.y + Math.sin(a) * 90 },
+          { x: p.x - Math.cos(a) * 40, y: p.y - Math.sin(a) * 40 },
+          0,
+        );
       }
       for (let i = 0; i < 90; i++) out.push(...sim.step(IDLE));
       return of(out, 'ShieldBlocked');
@@ -310,7 +327,12 @@ describe('onde d’énergie: beam geometry', () => {
     let wall = 0;
     while (!grid.isSolidPx({ x: from.x + wall, y: from.y })) wall += 1;
     expect(wall).toBeLessThan(CONFIG.kamehame.length);
-    const b = beam(from, { x: 1, y: 0 }, [view(1, { x: from.x + wall - 30, y: from.y }), view(2, { x: from.x + wall + 40, y: from.y })], grid);
+    const b = beam(
+      from,
+      { x: 1, y: 0 },
+      [view(1, { x: from.x + wall - 30, y: from.y }), view(2, { x: from.x + wall + 40, y: from.y })],
+      grid,
+    );
     expect(b.lifeIds).toEqual([1]);
     expect(b.to.x).toBeLessThan(from.x + wall);
 

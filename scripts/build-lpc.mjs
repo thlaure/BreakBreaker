@@ -55,22 +55,34 @@ function readPng(file) {
 // Minimal RFC4180 CSV parser (quoted fields, doubled quotes, newlines inside quotes).
 function parseCsv(text) {
   const rows = [];
-  let row = [], field = '', q = false;
+  let row = [],
+    field = '',
+    q = false;
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
     if (q) {
-      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
-      else field += c;
+      if (c === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else q = false;
+      } else field += c;
     } else if (c === '"') q = true;
-    else if (c === ',') { row.push(field); field = ''; }
-    else if (c === '\n' || c === '\r') {
+    else if (c === ',') {
+      row.push(field);
+      field = '';
+    } else if (c === '\n' || c === '\r') {
       if (c === '\r' && text[i + 1] === '\n') i++;
-      row.push(field); field = '';
+      row.push(field);
+      field = '';
       if (row.length > 1 || row[0] !== '') rows.push(row);
       row = [];
     } else field += c;
   }
-  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  if (field !== '' || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
   return rows;
 }
 
@@ -80,14 +92,21 @@ const col = Object.fromEntries(header.map((h, i) => [h, i]));
 const credits = new Map();
 for (const r of csvRows) credits.set(r[col.filename].trim(), r);
 
-const split = (s) => s.split(',').map((x) => x.trim()).filter(Boolean);
+const split = (s) =>
+  s
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
 const usedCredits = new Map(); // layer dir -> { authors:Set, licenses:Set, urls:Set, notes:Set }
 const missing = [];
 
 function useCredit(layerPath, file) {
   const rel = `${layerPath}/${file}`;
   const row = credits.get(rel);
-  if (!row) { missing.push(rel); return; }
+  if (!row) {
+    missing.push(rel);
+    return;
+  }
   let e = usedCredits.get(layerPath);
   if (!e) usedCredits.set(layerPath, (e = { authors: new Set(), licenses: new Set(), urls: new Set(), notes: new Set() }));
   split(row[col.authors]).forEach((a) => e.authors.add(a));
@@ -103,13 +122,21 @@ function blit(dst, dstW, src, sx, sy, w, h, dx, dy) {
       const a = src.data[si + 3];
       if (!a) continue;
       const di = ((dy + y) * dstW + dx + x) * 4;
-      const sr = src.data[si], sg = src.data[si + 1], sb = src.data[si + 2];
+      const sr = src.data[si],
+        sg = src.data[si + 1],
+        sb = src.data[si + 2];
       const da = dst[di + 3];
-      if (a === 255 || !da) { dst[di] = sr; dst[di + 1] = sg; dst[di + 2] = sb; dst[di + 3] = a; continue; }
-      const oa = a + da * (255 - a) / 255;
-      dst[di] = (sr * a + dst[di] * da * (255 - a) / 255) / oa;
-      dst[di + 1] = (sg * a + dst[di + 1] * da * (255 - a) / 255) / oa;
-      dst[di + 2] = (sb * a + dst[di + 2] * da * (255 - a) / 255) / oa;
+      if (a === 255 || !da) {
+        dst[di] = sr;
+        dst[di + 1] = sg;
+        dst[di + 2] = sb;
+        dst[di + 3] = a;
+        continue;
+      }
+      const oa = a + (da * (255 - a)) / 255;
+      dst[di] = (sr * a + (dst[di] * da * (255 - a)) / 255) / oa;
+      dst[di + 1] = (sg * a + (dst[di + 1] * da * (255 - a)) / 255) / oa;
+      dst[di + 2] = (sb * a + (dst[di + 2] * da * (255 - a)) / 255) / oa;
       dst[di + 3] = oa;
     }
   }
@@ -139,10 +166,15 @@ for (const [name, recipe] of Object.entries(recipes)) {
         // optional clipY: drop pixels at/below this row of each 64-px frame (e.g. torso-only part of overalls)
         const fy = Math.floor(i / 4 / src.width) % FRAME;
         const a = layer.clipY !== undefined && fy >= layer.clipY ? 0 : src.data[i + 3];
-        let r = src.data[i], g = src.data[i + 1], b = src.data[i + 2];
+        let r = src.data[i],
+          g = src.data[i + 1],
+          b = src.data[i + 2];
         const t = map.get(key(r, g, b));
         if (t) [r, g, b] = t;
-        rc.data[i] = r; rc.data[i + 1] = g; rc.data[i + 2] = b; rc.data[i + 3] = a;
+        rc.data[i] = r;
+        rc.data[i + 1] = g;
+        rc.data[i + 2] = b;
+        rc.data[i + 3] = a;
       }
       blit(out.data, out.width, rc, 0, 0, anim.frames * FRAME, anim.rows * FRAME, 0, anim.outRow * FRAME);
     }

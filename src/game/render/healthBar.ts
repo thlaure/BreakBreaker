@@ -83,11 +83,18 @@ export class PaulHealthBar {
     scene: Phaser.Scene,
     private readonly reducedMotion = false,
   ) {
-    this.g = scene.add.graphics().setDepth(DEPTH.overlay + 1).setVisible(false);
+    this.g = scene.add
+      .graphics()
+      .setDepth(DEPTH.overlay + 1)
+      .setVisible(false);
   }
 
   /** `anchor` = Paul's sprite (feet origin); the bar follows it. */
-  update(s: Pick<Snapshot, 'hp' | 'hpMax' | 'player'> & Partial<Pick<Snapshot, 'charge' | 'energy' | 'furie'>>, anchor: { x: number; y: number }, nowMs: number): void {
+  update(
+    s: Pick<Snapshot, 'hp' | 'hpMax' | 'player'> & Partial<Pick<Snapshot, 'charge' | 'energy' | 'furie'>>,
+    anchor: { x: number; y: number },
+    nowMs: number,
+  ): void {
     const g = this.g;
     const p = { hp: s.hp, ko: s.player.ko };
     const hpMax = s.hpMax;

@@ -1,7 +1,16 @@
 import type { Sim } from '../../src/sim/sim';
 import type { InputFrame } from '../../src/sim/types';
 
-export const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
+export const IDLE: InputFrame = {
+  move: { x: 0, y: 0 },
+  aim: null,
+  run: false,
+  strike: false,
+  chargeHeld: false,
+  throwRock: false,
+  act: false,
+  furie: false,
+};
 
 /** When each hostile was first seen active, per sim (sim time). */
 const seen = new WeakMap<Sim, Map<number, number>>();

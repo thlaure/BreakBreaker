@@ -12,11 +12,7 @@ export type SchoolStage = AttackStage;
 export class SchoolIncident extends TargetAttack {
   constructor(targets: Targets, spawner: Spawner, spec: { id?: string; round?: number; comp?: AttackComposition } = {}) {
     const round = spec.round ?? 1;
-    super(
-      { id: spec.id ?? 'school#1', target: 'school', comp: spec.comp ?? lineup('school', round, 0), round },
-      targets,
-      spawner,
-    );
+    super({ id: spec.id ?? 'school#1', target: 'school', comp: spec.comp ?? lineup('school', round, 0), round }, targets, spawner);
   }
 
   /** School health in percent. */

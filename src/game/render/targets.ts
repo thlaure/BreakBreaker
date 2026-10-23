@@ -204,7 +204,10 @@ export function makeTargetTextures(scene: Phaser.Scene): void {
     }
     // side racks of magazines (left and right of the hatch)
     const mags = [0xff4f6d, 0xffd23f, 0x3fc6e0, 0xf4ecd8, 0x7a5cff, 0xff8a3a];
-    for (const [x0, k0] of [[3, 0], [22, 3]] as const) {
+    for (const [x0, k0] of [
+      [3, 0],
+      [22, 3],
+    ] as const) {
       for (let row = 0; row < 2; row++) {
         r(OUTLINE, x0, 9 + row * 6, 7, 1);
         for (let k = 0; k < 3; k++) {
@@ -368,7 +371,13 @@ export class HpBar {
   private nextFlashAt = 0;
   private drawnKey = -1;
 
-  constructor(scene: Phaser.Scene, cx: number, top: number, private readonly w: number, private readonly h: number) {
+  constructor(
+    scene: Phaser.Scene,
+    cx: number,
+    top: number,
+    private readonly w: number,
+    private readonly h: number,
+  ) {
     this.g = scene.add
       .graphics()
       .setPosition(Math.round(cx - w / 2), Math.round(top))
@@ -472,10 +481,10 @@ class TargetView {
         kind === 'booth'
           ? { ...(BOOTH_TEXTURES[def.id] ?? { intact: 'booth_red', ruined: 'booth_red_broken' }) }
           : kind === 'busStop'
-          ? { intact: 'busstop', ruined: 'busstop_broken' }
-          : kind === 'kiosk'
-            ? { intact: 'kiosk', ruined: 'kiosk_broken' }
-            : { intact: def.id === 'car2' ? 'car_b' : 'car_a', ruined: 'car_burnt' };
+            ? { intact: 'busstop', ruined: 'busstop_broken' }
+            : kind === 'kiosk'
+              ? { intact: 'kiosk', ruined: 'kiosk_broken' }
+              : { intact: def.id === 'car2' ? 'car_b' : 'car_a', ruined: 'car_burnt' };
       scene.add.ellipse(cx, bottom - 2, f.w + 6, 12, 0x000000, 0.25).setDepth(DEPTH.decal);
       this.sprite = scene.add
         .image(cx, bottom + (kind === 'car' ? 2 : 0), this.textures.intact)
@@ -536,7 +545,10 @@ class TargetView {
       const my = bottom - FACADE_H - 2;
       const pole = scene.add.rectangle(0, 0, 2, 34, 0xd8d4cc).setOrigin(0.5, 1);
       const flag = scene.add.image(1, -34, 'flags', FLAG.fr).setOrigin(0, 0).setScale(1.5);
-      this.mast = scene.add.container(mx, my, [pole, flag]).setDepth(DEPTH.roof + 3).setVisible(false);
+      this.mast = scene.add
+        .container(mx, my, [pole, flag])
+        .setDepth(DEPTH.roof + 3)
+        .setVisible(false);
     }
     // a building's bar sits on the front of its roof, just above the flames, so it shows from the door
     const barTop = big ? bottom - FACADE_H - 56 : f.y - PROP_RISE[propKind(def.kind)] - 12;
@@ -631,7 +643,7 @@ class TargetView {
           ? [0xf4ecd8, 0xff4f6d, 0xf4ecd8, 0x2f8a4a] // newspapers and torn magazines
           : this.def.kind === 'booth'
             ? [0x8fcfe8, 0xe6f7ff, this.def.id === 'boothBlue' ? 0x3b6fd2 : 0xd23b3b, 0x3a3438] // glass, paint chips
-          : [0x3a3438, 0x6d6a72, 0x8a4a2b, 0x9fd8ef];
+            : [0x3a3438, 0x6d6a72, 0x8a4a2b, 0x9fd8ef];
     for (let k = 0; k < 18; k++) {
       const a = rnd() * Math.PI * 2;
       const d = 0.55 + rnd() * 0.35;

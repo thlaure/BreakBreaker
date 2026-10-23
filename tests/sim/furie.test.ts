@@ -10,7 +10,16 @@ import { WEAPONS, Weapons } from '../../src/sim/weapons';
 import { autopilot } from './autopilot';
 
 const grid = new Grid(DISTRICT);
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
+const IDLE: InputFrame = {
+  move: { x: 0, y: 0 },
+  aim: null,
+  run: false,
+  strike: false,
+  chargeHeld: false,
+  throwRock: false,
+  act: false,
+  furie: false,
+};
 const input = (o: Partial<InputFrame> = {}): InputFrame => ({ ...IDLE, ...o });
 const STEPS = (sec: number): number => Math.round(sec / CONFIG.step);
 type Ev<T extends SimEvent['type']> = Extract<SimEvent, { type: T }>;
@@ -118,7 +127,11 @@ describe('mode furie effects', () => {
     const ids: number[] = [];
     for (let i = 0; i < 10; i++) {
       const a = (i / 10) * Math.PI * 2;
-      const h = sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { x: p.x + Math.cos(a) * reach, y: p.y + Math.sin(a) * reach } });
+      const h = sim.horde.spawn({
+        variant: 'classic',
+        role: 'contact',
+        pos: { x: p.x + Math.cos(a) * reach, y: p.y + Math.sin(a) * reach },
+      });
       if (h) {
         h.nextAttackAt = 99;
         ids.push(h.lifeId);

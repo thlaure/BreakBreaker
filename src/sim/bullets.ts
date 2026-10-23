@@ -76,7 +76,16 @@ export class Bullets {
 
   private make(owner: Bullet['owner'], from: Vec, dir: Vec, speed: number, radius: number, maxDist: number): Bullet {
     const d = norm(dir);
-    const b: Bullet = { id: this.nextId++, owner, pos: { ...from }, dir: d.x === 0 && d.y === 0 ? { x: 1, y: 0 } : d, speed, radius, flown: 0, maxDist };
+    const b: Bullet = {
+      id: this.nextId++,
+      owner,
+      pos: { ...from },
+      dir: d.x === 0 && d.y === 0 ? { x: 1, y: 0 } : d,
+      speed,
+      radius,
+      flown: 0,
+      maxDist,
+    };
     this.list.push(b);
     return b;
   }

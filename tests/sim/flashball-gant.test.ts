@@ -101,10 +101,10 @@ describe('flashball', () => {
   test('a miss uses the shot too; at 0 the flashball breaks', () => {
     const sim = armed('flashball');
     sim.weapons.held = { kind: 'flashball', uses: 2 };
-    let ev = sim.step(input({ strike: true, aim: { x: 0, y: -1 } }));
+    sim.step(input({ strike: true, aim: { x: 0, y: -1 } }));
     expect(sim.weapons.held).toEqual({ kind: 'flashball', uses: 1 });
     for (let i = 0; i < 30; i++) sim.step(IDLE);
-    ev = sim.step(input({ strike: true, aim: { x: 0, y: -1 } }));
+    const ev = sim.step(input({ strike: true, aim: { x: 0, y: -1 } }));
     expect(of(ev, 'WeaponBroken')).toEqual([{ type: 'WeaponBroken', kind: 'flashball' }]);
     expect(sim.weapons.held).toBeNull();
   });

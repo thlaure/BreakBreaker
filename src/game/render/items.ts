@@ -80,7 +80,12 @@ export class ItemLayer {
   private readonly count: Phaser.GameObjects.Text;
 
   constructor(private readonly scene: Phaser.Scene) {
-    this.carried = scene.add.image(0, 0, 'item_handbag').setOrigin(0.5, 1).setScale(SCALE).setDepth(DEPTH.overlay - 1).setVisible(false);
+    this.carried = scene.add
+      .image(0, 0, 'item_handbag')
+      .setOrigin(0.5, 1)
+      .setScale(SCALE)
+      .setDepth(DEPTH.overlay - 1)
+      .setVisible(false);
     this.count = scene.add
       .text(0, 0, '', { fontFamily: 'monospace', fontSize: '9px', color: '#ffe066', stroke: '#14121c', strokeThickness: 2 })
       .setOrigin(0, 1)
@@ -112,9 +117,15 @@ export class ItemLayer {
         if (it.state === 'carried-by-thief') {
           s.glow.setVisible(false);
           const bob = Math.round(Math.sin(phase * 5));
-          s.icon.setPosition(x, Math.round(it.pos.y) - HEAD_Y - bob).setScale(SCALE).setDepth(DEPTH.overlay - 1);
+          s.icon
+            .setPosition(x, Math.round(it.pos.y) - HEAD_Y - bob)
+            .setScale(SCALE)
+            .setDepth(DEPTH.overlay - 1);
         } else {
-          s.glow.setVisible(true).setPosition(x, Math.round(it.pos.y) + 4).setDepth(it.pos.y - 1);
+          s.glow
+            .setVisible(true)
+            .setPosition(x, Math.round(it.pos.y) + 4)
+            .setDepth(it.pos.y - 1);
           s.glow.setAlpha(0.2 + 0.35 * pulse).setScale(0.9 + 0.25 * pulse);
           const lift = Math.round(4 + 2 * Math.sin(phase * 3));
           s.icon

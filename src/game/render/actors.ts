@@ -91,7 +91,11 @@ export class CharView {
   private flashUntil = 0;
   private slashing = false;
 
-  constructor(scene: Phaser.Scene, readonly sheet: string, pos: Vec) {
+  constructor(
+    scene: Phaser.Scene,
+    readonly sheet: string,
+    pos: Vec,
+  ) {
     this.sprite = scene.add.sprite(pos.x, pos.y, sheet, idleFrame(sheet, 's')).setOrigin(0.5, FEET_ORIGIN_Y);
     this.sprite.on(Phaser.Animations.Events.ANIMATION_COMPLETE, () => (this.slashing = false));
     this.last = { ...pos };
@@ -210,7 +214,10 @@ export class PaulView {
     OUTLINE_OFFSETS.forEach(([dx, dy], i) => {
       const o = this.outline[i]!;
       // hidden on blink-off frames: a white silhouette under a translucent sprite reads as a ghost
-      o.setPosition(s.x + dx, s.y + dy).setDepth(s.depth - 0.01).setFrame(s.frame.name).setVisible(!blinkOff && !p.ko);
+      o.setPosition(s.x + dx, s.y + dy)
+        .setDepth(s.depth - 0.01)
+        .setFrame(s.frame.name)
+        .setVisible(!blinkOff && !p.ko);
     });
   }
 }
@@ -249,13 +256,19 @@ class BottleProp {
     const x = Math.round(h.pos.x);
     const y = Math.round(h.pos.y);
     if (!lit) {
-      this.bottle.setPosition(x + side * 9, y - 14).setAngle(side * 15).setDepth(d);
+      this.bottle
+        .setPosition(x + side * 9, y - 14)
+        .setAngle(side * 15)
+        .setDepth(d);
       return;
     }
     // raised beside the head, rag on fire
     const bx = x + side * 12;
     const by = y - 34;
-    this.bottle.setPosition(bx, by).setAngle(side * 20).setDepth(d);
+    this.bottle
+      .setPosition(bx, by)
+      .setAngle(side * 20)
+      .setDepth(d);
     const tick = Math.floor(nowMs / 70);
     this.flame
       .setPosition(bx + side * 7, by - 18)
@@ -275,9 +288,25 @@ class BottleProp {
 
 const BADGE_PAL: Record<string, number> = { K: 0x14121c, S: 0x8a94a3, W: 0xd6dde6, D: 0x5b6472, Y: 0xffd166, O: 0xe0902a, R: 0xd23b3b };
 /** Brute: a dark steel helmet (18×6). */
-const HELMET = ['....KKKKKKKKKK....', '..KKSSWWSSSSSSKK..', '.KSSWWSSSSSSSSDSK.', '.KSSSSSSSSSSSDDSK.', 'KDDDDDDDDDDDDDDDDK', 'KKKKKKKKKKKKKKKKKK'];
+const HELMET = [
+  '....KKKKKKKKKK....',
+  '..KKSSWWSSSSSSKK..',
+  '.KSSWWSSSSSSSSDSK.',
+  '.KSSSSSSSSSSSDDSK.',
+  'KDDDDDDDDDDDDDDDDK',
+  'KKKKKKKKKKKKKKKKKK',
+];
 /** Caïd: a gold crown with red jewels (14×8). */
-const CROWN = ['K....K..K....K', 'KY..KYKKYK..YK', 'KYYKYYYYYYKYYK', 'KYYYYYYYYYYYYK', 'KYYRYYYYYYRYYK', 'KYYYYYRRYYYYYK', 'KOOOOOOOOOOOOK', 'KKKKKKKKKKKKKK'];
+const CROWN = [
+  'K....K..K....K',
+  'KY..KYKKYK..YK',
+  'KYYKYYYYYYKYYK',
+  'KYYYYYYYYYYYYK',
+  'KYYRYYYYYYRYYK',
+  'KYYYYYRRYYYYYK',
+  'KOOOOOOOOOOOOK',
+  'KKKKKKKKKKKKKK',
+];
 
 /** `badge_helmet` / `badge_crown` textures (pixel rows drawn at runtime, no image file). */
 export function makeRoleTextures(scene: Phaser.Scene): void {
@@ -580,7 +609,9 @@ class HostileView {
       this.playFall(this.falling, dir, nowMs, ctx);
     } else if (h.state === 'ko') {
       v.still(koFrame(v.sheet));
-      s.setPosition(Math.round(h.pos.x + this.restX), Math.round(h.pos.y + this.restY)).setAlpha(0.6).setDepth(h.pos.y + this.restY - 8);
+      s.setPosition(Math.round(h.pos.x + this.restX), Math.round(h.pos.y + this.restY))
+        .setAlpha(0.6)
+        .setDepth(h.pos.y + this.restY - 8);
     } else {
       if (this.falling) this.endFall(ctx);
       this.restX = 0;
@@ -606,7 +637,11 @@ class HostileView {
       const px = h.pos.x + side;
       const py = h.pos.y - Math.round(26 * this.size);
       this.pole.setPosition(px, py).setDepth(s.depth + 0.02);
-      this.flag.setPosition(px, py - 10).setFlipX(dir === 'e').setOrigin(dir === 'e' ? 1 : 0, 1).setDepth(s.depth + 0.03);
+      this.flag
+        .setPosition(px, py - 10)
+        .setFlipX(dir === 'e')
+        .setOrigin(dir === 'e' ? 1 : 0, 1)
+        .setDepth(s.depth + 0.03);
     }
     this.bottle?.update(h, s.depth, nowMs);
     this.rifle?.update(h, s.depth, nowMs);
@@ -624,7 +659,12 @@ class HostileView {
       this.restY = p.dy;
       this.endFall(ctx);
       v.still(koFrame(v.sheet));
-      s.setOrigin(0.5, FEET_ORIGIN_Y).setAngle(0).setScale(this.size).setPosition(Math.round(gx), Math.round(gy)).setAlpha(0.6).setDepth(gy - 8);
+      s.setOrigin(0.5, FEET_ORIGIN_Y)
+        .setAngle(0)
+        .setScale(this.size)
+        .setPosition(Math.round(gx), Math.round(gy))
+        .setAlpha(0.6)
+        .setDepth(gy - 8);
       return;
     }
     v.still(p.frame === 'stand' ? idleFrame(v.sheet, dir) : koFrame(v.sheet));
@@ -687,7 +727,12 @@ class HostileView {
       ctx.trail.emitParticleAt(pose.x, pose.y - 4, 6);
       if (f.boing) ctx.pow(pose.x, pose.y, nowMs, pickWord('glove', Math.random()));
     }
-    s.setOrigin(0.5, FEET_ORIGIN_Y).setAngle(0).setScale(this.size).setPosition(Math.round(pose.x), Math.round(pose.y)).setAlpha(0.6).setDepth(pose.y - 8);
+    s.setOrigin(0.5, FEET_ORIGIN_Y)
+      .setAngle(0)
+      .setScale(this.size)
+      .setPosition(Math.round(pose.x), Math.round(pose.y))
+      .setAlpha(0.6)
+      .setDepth(pose.y - 8);
   }
 
   private satellite(f: Flight, nowMs: number, ctx: LaunchCtx): void {
@@ -783,7 +828,8 @@ export class HostileLayer {
   ) {
     makeFallTextures(scene);
     const cans: Phaser.GameObjects.Image[] = [];
-    for (let i = 0; i < CAN_POOL; i++) cans.push(scene.add.image(0, 0, 'trash_can').setOrigin(0.5, 1).setScale(CAN_SCALE).setVisible(false));
+    for (let i = 0; i < CAN_POOL; i++)
+      cans.push(scene.add.image(0, 0, 'trash_can').setOrigin(0.5, 1).setScale(CAN_SCALE).setVisible(false));
     const trail = scene.add
       .particles(0, 0, 'px', {
         lifespan: { min: 260, max: 520 },
@@ -890,4 +936,3 @@ export class HostileLayer {
     if (v && !v.removed) v.view.flash(nowMs);
   }
 }
-

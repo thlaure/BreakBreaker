@@ -3,7 +3,14 @@ import { norm, sub } from '../math';
 import type { Grid } from './grid';
 
 const NEIGH: ReadonlyArray<readonly [number, number]> = [
-  [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1],
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
 ];
 
 /** BFS distance field over 8-neighbour tiles (no corner cutting). */

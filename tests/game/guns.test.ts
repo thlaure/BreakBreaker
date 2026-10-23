@@ -1,7 +1,16 @@
 // @vitest-environment jsdom
 import { describe, expect, test, vi } from 'vitest';
 import { weaponValue } from '../../src/game/hud/format';
-import { AlertBanner, FLASHBALL_ALERT_MS, activeIncidents, alertFromEvent, flashballHintId, hintIds, incidentAlert, pixelSvg } from '../../src/game/hud/alerts';
+import {
+  AlertBanner,
+  FLASHBALL_ALERT_MS,
+  activeIncidents,
+  alertFromEvent,
+  flashballHintId,
+  hintIds,
+  incidentAlert,
+  pixelSvg,
+} from '../../src/game/hud/alerts';
 import { GLOVE_BACK_MS, GLOVE_OUT_MS, bulletDash, gloveActive, gloveExtent, riflePose, springPoints } from '../../src/game/render/gunMath';
 import { Sim, type Snapshot } from '../../src/sim/sim';
 

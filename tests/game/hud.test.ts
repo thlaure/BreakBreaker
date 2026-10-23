@@ -1,6 +1,17 @@
 import { describe, expect, test, vi } from 'vitest';
 import { CONTROLS, RULES } from '../../src/content/controls';
-import { contextPrompt, formatDuration, formatSummary, hpLabel, incidentLines, roundPanel, roundValue, waveLine, weaponLine, weaponValue } from '../../src/game/hud/format';
+import {
+  contextPrompt,
+  formatDuration,
+  formatSummary,
+  hpLabel,
+  incidentLines,
+  roundPanel,
+  roundValue,
+  waveLine,
+  weaponLine,
+  weaponValue,
+} from '../../src/game/hud/format';
 import { HEALTH_BAR_W, HEALTH_GREEN, HEALTH_RED, HEALTH_YELLOW, chargeFill, healthColor } from '../../src/game/render/healthBar';
 import { renderMarkdown } from '../../src/game/hud/markdown';
 import { RescueIncident } from '../../src/sim/incidents/rescue';
@@ -35,7 +46,17 @@ describe('formatSummary', () => {
       x.kos = 9;
       x.stats = {
         ...x.stats,
-        ...{ schoolsSaved: 1, schoolsLost: 0, rescuesOk: 0, rescuesFailed: 1, healsUsed: 2, rocksPicked: 4, rocksReturned: 3, rocksHit: 2, activeSeconds: 125.4 },
+        ...{
+          schoolsSaved: 1,
+          schoolsLost: 0,
+          rescuesOk: 0,
+          rescuesFailed: 1,
+          healsUsed: 2,
+          rocksPicked: 4,
+          rocksReturned: 3,
+          rocksHit: 2,
+          activeSeconds: 125.4,
+        },
       };
     });
     const f = formatSummary(s, 20);
@@ -87,7 +108,10 @@ describe('formatSummary', () => {
     const r = rows(s, null);
     expect(r['École']).toBe('2 sauvées · 1 perdue');
     expect(r['Secours']).toBe('3 réussis · 1 raté');
-    const t = rows(snap((x) => (x.stats = { ...x.stats, schoolsSaved: 1, schoolsLost: 2, rescuesOk: 0, rescuesFailed: 2 })), null);
+    const t = rows(
+      snap((x) => (x.stats = { ...x.stats, schoolsSaved: 1, schoolsLost: 2, rescuesOk: 0, rescuesFailed: 2 })),
+      null,
+    );
     expect(t['École']).toBe('1 sauvée · 2 perdues');
     expect(t['Secours']).toBe('0 réussi · 2 ratés');
   });
@@ -116,7 +140,16 @@ describe('formatSummary', () => {
     inc.items[0]!.state = 'carried';
     sim.rescue = inc;
     sim.player.pos = { ...site };
-    const ev = sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false });
+    const ev = sim.step({
+      move: { x: 0, y: 0 },
+      aim: null,
+      run: false,
+      strike: false,
+      chargeHeld: false,
+      throwRock: false,
+      act: false,
+      furie: false,
+    });
     expect(ev.filter((e) => e.type === 'ItemReturned')).toHaveLength(1);
     expect(sim.snapshot().stats.itemsReturned).toBe(1);
     expect(rows(sim.snapshot(), null)['Objets rendus']).toBe('1');
@@ -160,7 +193,15 @@ describe('contextPrompt', () => {
 
   test('no "Aider" prompt next to a secured victim: the rescue completes by itself', () => {
     const s = snap((x) => {
-      x.rescue = { id: 'rescue#1', stage: 'secured', remaining: 10, victimPos: { x: 100, y: 100 }, kind: 'groupHarassed', items: [], returnLeft: null };
+      x.rescue = {
+        id: 'rescue#1',
+        stage: 'secured',
+        remaining: 10,
+        victimPos: { x: 100, y: 100 },
+        kind: 'groupHarassed',
+        items: [],
+        returnLeft: null,
+      };
       x.player.pos = { x: 110, y: 100 };
     });
     expect(contextPrompt(s)).toBeNull();
@@ -170,13 +211,15 @@ describe('contextPrompt', () => {
 
 describe('contextPrompt: toolboxes', () => {
   const at = { x: 0, y: 0 };
-  const ready = (kind: 'repair' | 'extinguish') => (x: Snapshot): void => {
-    x.toolboxes.carried = true;
-    x.toolboxes.repairTarget = 'busStop';
-    x.toolboxes.canRepair = true;
-    x.toolboxes.repairKind = kind === 'repair' ? 'ruin' : 'fire';
-    x.actionHint = { kind, target: 'busStop', at, toolbox: null };
-  };
+  const ready =
+    (kind: 'repair' | 'extinguish') =>
+    (x: Snapshot): void => {
+      x.toolboxes.carried = true;
+      x.toolboxes.repairTarget = 'busStop';
+      x.toolboxes.canRepair = true;
+      x.toolboxes.repairKind = kind === 'repair' ? 'ruin' : 'fire';
+      x.actionHint = { kind, target: 'busStop', at, toolbox: null };
+    };
 
   test('with a toolbox next to a ruin or a fire, safe: an actionable F prompt (touch: no key, Agir labelled), drawn in the world', () => {
     expect(contextPrompt(snap(ready('repair')))).toEqual({ text: 'F — Réparer', label: 'Réparer', inWorld: true });
@@ -184,11 +227,28 @@ describe('contextPrompt: toolboxes', () => {
     expect(contextPrompt(snap(ready('extinguish')))).toEqual({ text: 'F — Éteindre le feu', label: 'Éteindre', inWorld: true });
     expect(contextPrompt(snap(ready('extinguish')), true)).toEqual({ text: 'Éteindre le feu', label: 'Éteindre', inWorld: true });
     // started: progress shown, no button
-    expect(contextPrompt(snap((x) => { ready('repair')(x); x.toolboxes.started = true; x.toolboxes.progress = 0.3; }))).toEqual({ text: 'Réparation…', label: null, inWorld: true });
+    expect(
+      contextPrompt(
+        snap((x) => {
+          ready('repair')(x);
+          x.toolboxes.started = true;
+          x.toolboxes.progress = 0.3;
+        }),
+      ),
+    ).toEqual({ text: 'Réparation…', label: null, inWorld: true });
   });
 
   test('the prompt follows actionHint, not the raw toolbox fields (it never promises what the press would not do)', () => {
-    expect(contextPrompt(snap((x) => { x.toolboxes.carried = true; x.toolboxes.repairTarget = 'busStop'; x.toolboxes.canRepair = true; x.toolboxes.repairKind = 'ruin'; }))).toBeNull();
+    expect(
+      contextPrompt(
+        snap((x) => {
+          x.toolboxes.carried = true;
+          x.toolboxes.repairTarget = 'busStop';
+          x.toolboxes.canRepair = true;
+          x.toolboxes.repairKind = 'ruin';
+        }),
+      ),
+    ).toBeNull();
   });
 
   test('needToolbox: « Il faut une caisse à outils », informational, in the world', () => {
@@ -200,8 +260,21 @@ describe('contextPrompt: toolboxes', () => {
   });
 
   test('toolbox messages and the repair in progress are informational (no Agir label)', () => {
-    expect(contextPrompt(snap((x) => { x.toolboxes.message = 'Caisse à outils requise'; }))).toEqual({ text: 'Caisse à outils requise', label: null });
-    expect(contextPrompt(snap((x) => { x.toolboxes.message = 'Abords non sécurisés'; }), true)).toEqual({ text: 'Abords non sécurisés', label: null });
+    expect(
+      contextPrompt(
+        snap((x) => {
+          x.toolboxes.message = 'Caisse à outils requise';
+        }),
+      ),
+    ).toEqual({ text: 'Caisse à outils requise', label: null });
+    expect(
+      contextPrompt(
+        snap((x) => {
+          x.toolboxes.message = 'Abords non sécurisés';
+        }),
+        true,
+      ),
+    ).toEqual({ text: 'Abords non sécurisés', label: null });
     const repairing = snap((x) => {
       x.toolboxes.carried = true;
       x.toolboxes.progress = 1.2;
@@ -218,27 +291,56 @@ describe('roundPanel', () => {
     snap((x) => {
       x.roundPhase = 'breather';
       x.breatherLeft = 5.5;
-      x.lastSummary = { index: 1, kos: 10, objectives: [{ kind: 'school', result: 'réussi' }, { kind: 'rescue', result: 'perdu' }], points: -1, bonus: false };
+      x.lastSummary = {
+        index: 1,
+        kos: 10,
+        objectives: [
+          { kind: 'school', result: 'réussi' },
+          { kind: 'rescue', result: 'perdu' },
+        ],
+        points: -1,
+        bonus: false,
+      };
       patch(x);
     });
 
   test('null outside the breather or once the session ended', () => {
     expect(roundPanel(snap())).toBeNull();
-    expect(roundPanel(breather((x) => { x.ended = true; }))).toBeNull();
-    expect(roundPanel(breather((x) => { x.lastSummary = null; }))).toBeNull();
+    expect(
+      roundPanel(
+        breather((x) => {
+          x.ended = true;
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      roundPanel(
+        breather((x) => {
+          x.lastSummary = null;
+        }),
+      ),
+    ).toBeNull();
   });
 
   test('title, KOs, objectives, signed points, bonus, heals and countdown', () => {
     expect(roundPanel(breather())).toEqual({
       title: 'Manche 1 terminée',
       kos: 'Casseurs neutralisés : 10',
-      objectives: [{ name: 'École', result: 'réussi' }, { name: 'Secours', result: 'perdu' }],
+      objectives: [
+        { name: 'École', result: 'réussi' },
+        { name: 'Secours', result: 'perdu' },
+      ],
       points: '−1 point',
       bonus: null,
       heals: 'Soins rechargés',
       countdown: 'Manche 2 dans 6…',
     });
-    const won = roundPanel(breather((x) => { x.lastSummary = { ...x.lastSummary!, points: 21, bonus: true }; x.breatherLeft = 0.01; }))!;
+    const won = roundPanel(
+      breather((x) => {
+        x.lastSummary = { ...x.lastSummary!, points: 21, bonus: true };
+        x.breatherLeft = 0.01;
+      }),
+    )!;
     expect(won.points).toBe('+21 points');
     expect(won.bonus).toBe('Bonus +5');
     expect(won.countdown).toBe('Manche 2 dans 1…');
@@ -324,16 +426,48 @@ describe('incidentLines', () => {
     const s = snap((x) => {
       calm(x);
       x.school.stage = 'saved';
-      x.rescue = { id: 'rescue#1', stage: 'threat', remaining: 12.1, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed', items: [], returnLeft: null };
+      x.rescue = {
+        id: 'rescue#1',
+        stage: 'threat',
+        remaining: 12.1,
+        victimPos: { x: 0, y: 0 },
+        kind: 'elderlyRobbed',
+        items: [],
+        returnLeft: null,
+      };
     });
     const [rescue, none] = incidentLines(s, 'en cours');
     expect(none).toBeUndefined();
     expect(rescue).toMatchObject({ name: 'Secours', time: '13 s', status: 'en cours' });
-    s.rescue = { id: 'rescue#1', stage: 'secured', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed', items: [], returnLeft: null };
+    s.rescue = {
+      id: 'rescue#1',
+      stage: 'secured',
+      remaining: 12,
+      victimPos: { x: 0, y: 0 },
+      kind: 'elderlyRobbed',
+      items: [],
+      returnLeft: null,
+    };
     expect(incidentLines(s, 'en cours')[0]).toMatchObject({ status: 'sécurisé' });
-    s.rescue = { id: 'rescue#1', stage: 'failed', remaining: 0, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed', items: [], returnLeft: null };
+    s.rescue = {
+      id: 'rescue#1',
+      stage: 'failed',
+      remaining: 0,
+      victimPos: { x: 0, y: 0 },
+      kind: 'elderlyRobbed',
+      items: [],
+      returnLeft: null,
+    };
     expect(incidentLines(s, 'en cours')).toEqual([]);
-    s.rescue = { id: 'rescue#1', stage: 'completed', remaining: 12, victimPos: { x: 0, y: 0 }, kind: 'elderlyRobbed', items: [], returnLeft: null };
+    s.rescue = {
+      id: 'rescue#1',
+      stage: 'completed',
+      remaining: 12,
+      victimPos: { x: 0, y: 0 },
+      kind: 'elderlyRobbed',
+      items: [],
+      returnLeft: null,
+    };
     expect(incidentLines(s, 'en cours')).toEqual([]);
   });
 });
@@ -368,7 +502,11 @@ describe('content', () => {
   });
 
   test('F / Agir repairs or puts out a fire with a toolbox (a press, never held); rescuing needs no key', () => {
-    expect(CONTROLS).toContainEqual({ action: 'Réparer / éteindre (caisse à outils)', keyboard: 'F', touch: 'Bouton Agir (près d’un lieu à réparer)' });
+    expect(CONTROLS).toContainEqual({
+      action: 'Réparer / éteindre (caisse à outils)',
+      keyboard: 'F',
+      touch: 'Bouton Agir (près d’un lieu à réparer)',
+    });
     // nothing is held any more (the onde d’énergie is a C tap too), and never to help or repair
     expect(CONTROLS.some((c) => /aider/i.test(c.action) || /maintenir/i.test(c.keyboard) || /maintenir/i.test(c.touch))).toBe(false);
     for (const r of RULES) expect(r).not.toMatch(/maintenir|reste à côté/);
@@ -381,7 +519,9 @@ describe('GameAudio.reset', () => {
     const { GameAudio } = await import('../../src/game/audio');
     const a = new GameAudio();
     const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
-    const ev = [{ type: 'TargetIgnited', incidentId: 'school#1', kind: 'school', target: 'school', pos: { x: 0, y: 0 }, round: 1 }] as const;
+    const ev = [
+      { type: 'TargetIgnited', incidentId: 'school#1', kind: 'school', target: 'school', pos: { x: 0, y: 0 }, round: 1 },
+    ] as const;
     a.onEvents([...ev]);
     a.onEvents([...ev]);
     expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(1);
@@ -422,7 +562,10 @@ describe('GameAudio.onEvents', () => {
     a.onEvents([{ type: 'RoundCompleted', index: 3, bonus: true }]);
     expect(chime).toHaveBeenCalledTimes(3);
     // the round's last KO saves a target and completes the round in the same step: one chime
-    a.onEvents([{ type: 'TargetSaved', incidentId: 'school#4', target: 'school' }, { type: 'RoundCompleted', index: 4, bonus: true }]);
+    a.onEvents([
+      { type: 'TargetSaved', incidentId: 'school#4', target: 'school' },
+      { type: 'RoundCompleted', index: 4, bonus: true },
+    ]);
     expect(chime).toHaveBeenCalledTimes(4);
     a.onEvents([{ type: 'FireOut', target: 'car1' }, { type: 'StationsRecharged' }]);
     expect(chime).toHaveBeenCalledTimes(4);
@@ -433,7 +576,15 @@ describe('GameAudio.onEvents', () => {
     const a = new GameAudio();
     const play = vi.spyOn(a, 'play').mockImplementation(() => undefined);
     const whoosh = vi.spyOn(a, 'whoosh').mockImplementation(() => undefined);
-    const casse = { type: 'CasseStarted', incidentId: 'car#2', kind: 'car', target: 'car1', pos: { x: 0, y: 0 }, round: 2, total: 14 } as const;
+    const casse = {
+      type: 'CasseStarted',
+      incidentId: 'car#2',
+      kind: 'car',
+      target: 'car1',
+      pos: { x: 0, y: 0 },
+      round: 2,
+      total: 14,
+    } as const;
     a.onEvents([casse, { type: 'BuildingThreatStarted', incidentId: 'car#2' }]);
     expect(play.mock.calls.filter((c) => c[0] === 'alarm')).toHaveLength(0);
     const fire = { type: 'TargetIgnited', incidentId: 'car#2', kind: 'car', target: 'car1', pos: { x: 0, y: 0 }, round: 2 } as const;
@@ -490,36 +641,105 @@ describe('GameAudio.onEvents', () => {
 describe('waveLine', () => {
   test('round number alone without a roster, else « Manche N : K/T casseurs »', () => {
     expect(waveLine(snap())).toBe('Manche 1');
-    expect(waveLine(snap((x) => { x.round = 3; x.roundTotal = 9; x.roundKos = 4; }))).toBe('Manche 3 : 4/9 casseurs');
-    expect(waveLine(snap((x) => { x.round = 7; x.roundTotal = 1; x.roundKos = 0; }))).toBe('Manche 7 : 0/1 casseur');
+    expect(
+      waveLine(
+        snap((x) => {
+          x.round = 3;
+          x.roundTotal = 9;
+          x.roundKos = 4;
+        }),
+      ),
+    ).toBe('Manche 3 : 4/9 casseurs');
+    expect(
+      waveLine(
+        snap((x) => {
+          x.round = 7;
+          x.roundTotal = 1;
+          x.roundKos = 0;
+        }),
+      ),
+    ).toBe('Manche 7 : 0/1 casseur');
   });
 });
 
 describe('score list values', () => {
   test('round value « N · K/T » (just N without a roster); weapon value capitalised, furie seconds kept', () => {
     expect(roundValue(snap())).toBe('1');
-    expect(roundValue(snap((x) => { x.round = 3; x.roundTotal = 18; x.roundKos = 20; }))).toBe('3 · 18/18');
+    expect(
+      roundValue(
+        snap((x) => {
+          x.round = 3;
+          x.roundTotal = 18;
+          x.roundKos = 20;
+        }),
+      ),
+    ).toBe('3 · 18/18');
     expect(weaponValue(snap())).toBe('Mains nues');
-    expect(weaponValue(snap((x) => { x.weapon = { kind: 'baton', uses: 12 }; }))).toBe('Bâton (12)');
-    expect(weaponValue(snap((x) => { x.weapon = { kind: 'baton', uses: 12 }; x.furie = { secondsLeft: 8.2 }; }))).toBe('Bâton (12) · Mode furie 9 s');
+    expect(
+      weaponValue(
+        snap((x) => {
+          x.weapon = { kind: 'baton', uses: 12 };
+        }),
+      ),
+    ).toBe('Bâton (12)');
+    expect(
+      weaponValue(
+        snap((x) => {
+          x.weapon = { kind: 'baton', uses: 12 };
+          x.furie = { secondsLeft: 8.2 };
+        }),
+      ),
+    ).toBe('Bâton (12) · Mode furie 9 s');
   });
 });
 
 describe('weaponLine', () => {
   test('bare hands, then weapon name and strikes left', () => {
     expect(weaponLine(snap())).toBe('Arme : mains nues');
-    expect(weaponLine(snap((x) => { x.weapon = { kind: 'panneau', uses: 3 }; }))).toBe('Arme : Panneau (3)');
+    expect(
+      weaponLine(
+        snap((x) => {
+          x.weapon = { kind: 'panneau', uses: 3 };
+        }),
+      ),
+    ).toBe('Arme : Panneau (3)');
   });
 });
 
 describe('mode furie HUD and audio', () => {
   test('weapon line: the held weapon stays, the furie seconds (rounded up) follow', () => {
-    expect(weaponLine(snap((x) => { x.weapon = { kind: 'baton', uses: 12 }; x.furie = { secondsLeft: 8.2 }; }))).toBe(
-      'Arme : Bâton (12) · Mode furie 9 s',
-    );
-    expect(weaponLine(snap((x) => { x.weapon = null; x.furie = { secondsLeft: 12 }; }))).toBe('Arme : mains nues · Mode furie 12 s');
-    expect(weaponLine(snap((x) => { x.weapon = null; x.furie = { secondsLeft: 0.01 }; }))).toBe('Arme : mains nues · Mode furie 1 s');
-    expect(weaponLine(snap((x) => { x.weapon = null; x.furie = null; }))).toBe('Arme : mains nues');
+    expect(
+      weaponLine(
+        snap((x) => {
+          x.weapon = { kind: 'baton', uses: 12 };
+          x.furie = { secondsLeft: 8.2 };
+        }),
+      ),
+    ).toBe('Arme : Bâton (12) · Mode furie 9 s');
+    expect(
+      weaponLine(
+        snap((x) => {
+          x.weapon = null;
+          x.furie = { secondsLeft: 12 };
+        }),
+      ),
+    ).toBe('Arme : mains nues · Mode furie 12 s');
+    expect(
+      weaponLine(
+        snap((x) => {
+          x.weapon = null;
+          x.furie = { secondsLeft: 0.01 };
+        }),
+      ),
+    ).toBe('Arme : mains nues · Mode furie 1 s');
+    expect(
+      weaponLine(
+        snap((x) => {
+          x.weapon = null;
+          x.furie = null;
+        }),
+      ),
+    ).toBe('Arme : mains nues');
   });
 
   test('a furie started in the sim (full gauge, R) shows in the snapshot and the weapon line', () => {
@@ -555,12 +775,39 @@ describe('mode furie HUD and audio', () => {
 
 describe('special weapons HUD and audio', () => {
   test('weapon row: the held weapon stays, the bouclier time follows (« Bâton (12) · Bouclier 14 s », seconds rounded up); furie suffix kept', () => {
-    expect(weaponValue(snap((x) => { x.weapon = { kind: 'baton', uses: 12 }; x.shield = { secondsLeft: 13.2 }; }))).toBe('Bâton (12) · Bouclier 14 s');
-    expect(weaponValue(snap((x) => { x.weapon = null; x.shield = { secondsLeft: 0.01 }; }))).toBe('Mains nues · Bouclier 1 s');
-    expect(weaponLine(snap((x) => { x.weapon = { kind: 'marteau', uses: 2 }; x.shield = { secondsLeft: 4 }; x.furie = { secondsLeft: 3 }; }))).toBe(
-      'Arme : Marteau (2) · Bouclier 4 s · Mode furie 3 s',
-    );
-    expect(weaponValue(snap((x) => { x.weapon = { kind: 'baton', uses: 12 }; x.shield = null; }))).toBe('Bâton (12)');
+    expect(
+      weaponValue(
+        snap((x) => {
+          x.weapon = { kind: 'baton', uses: 12 };
+          x.shield = { secondsLeft: 13.2 };
+        }),
+      ),
+    ).toBe('Bâton (12) · Bouclier 14 s');
+    expect(
+      weaponValue(
+        snap((x) => {
+          x.weapon = null;
+          x.shield = { secondsLeft: 0.01 };
+        }),
+      ),
+    ).toBe('Mains nues · Bouclier 1 s');
+    expect(
+      weaponLine(
+        snap((x) => {
+          x.weapon = { kind: 'marteau', uses: 2 };
+          x.shield = { secondsLeft: 4 };
+          x.furie = { secondsLeft: 3 };
+        }),
+      ),
+    ).toBe('Arme : Marteau (2) · Bouclier 4 s · Mode furie 3 s');
+    expect(
+      weaponValue(
+        snap((x) => {
+          x.weapon = { kind: 'baton', uses: 12 };
+          x.shield = null;
+        }),
+      ),
+    ).toBe('Bâton (12)');
   });
 
   test('a bouclier picked up in the sim shows its 20 s next to the held weapon', () => {

@@ -12,7 +12,16 @@ import { Sim } from '../../src/sim/sim';
 import type { InputFrame, SimEvent, TargetId, Vec } from '../../src/sim/types';
 
 const C = (tx: number, ty: number): Vec => ({ x: tx * 32 + 16, y: ty * 32 + 16 });
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
+const IDLE: InputFrame = {
+  move: { x: 0, y: 0 },
+  aim: null,
+  run: false,
+  strike: false,
+  chargeHeld: false,
+  throwRock: false,
+  act: false,
+  furie: false,
+};
 const PRESS: InputFrame = { ...IDLE, act: true };
 type Ev<T extends SimEvent['type']> = Extract<SimEvent, { type: T }>;
 const of = <T extends SimEvent['type']>(ev: SimEvent[], type: T): Ev<T>[] => ev.filter((e): e is Ev<T> => e.type === type);
@@ -110,7 +119,6 @@ describe('the fire truck', () => {
     const first = truck.target;
     expect(first === 'car1' || first === 'car2').toBe(true);
     // the other target is not nearer by path from where the truck came in
-    const grid = new Grid(DISTRICT);
     const steps = (id: TargetId) => sim.allies.pathSteps(truck.pos, id);
     expect(steps(first!)).toBeLessThanOrEqual(steps(first === 'car1' ? 'car2' : 'car1'));
     const ev = run(60, (e) => of(e, 'TruckLeft').length > 0);
@@ -128,7 +136,9 @@ describe('the fire truck', () => {
     expect(outs).toEqual(['boothBlue', 'boothRed']);
     // both on the same step: one parked spray reaches both doors
     expect(of(ev, 'FireOut')).toHaveLength(2);
-    const sprayed = of(ev, 'TruckSprayed').map((e) => e.target).sort();
+    const sprayed = of(ev, 'TruckSprayed')
+      .map((e) => e.target)
+      .sort();
     expect(sprayed).toEqual(['boothBlue', 'boothRed']);
   });
 
@@ -186,7 +196,8 @@ describe('the fire truck', () => {
     const truck = sim.allies.truck!;
     expect(truck.state).toBe('spraying');
     truck.hp = 6;
-    for (let i = 0; i < 3; i++) sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { x: truck.pos.x + 6 + i * 3, y: truck.pos.y } });
+    for (let i = 0; i < 3; i++)
+      sim.horde.spawn({ variant: 'classic', role: 'contact', pos: { x: truck.pos.x + 6 + i * 3, y: truck.pos.y } });
     const ev = run(1 / CONFIG.services.truck.sprayRate - 0.1, (e) => of(e, 'TruckDestroyed').length > 0);
     expect(of(ev, 'TruckDestroyed')).toHaveLength(1);
     expect(sim.allies.truck).toBeNull();
@@ -300,11 +311,10 @@ describe('the police', () => {
     press();
     // the officers (the prison guards are fighters too)
     const ids = sim.allies.fighters.filter((f) => f.role === 'police').map((f) => f.id);
-    let downs: number[] = [];
     // every officer takes a blow (as from a rioter)
     const ev: SimEvent[] = [];
     for (const id of ids) ev.push(...sim.allies.damage(id, CONFIG.hostile.contactDamage));
-    downs = of(ev, 'PoliceDown').map((e) => e.id);
+    const downs = of(ev, 'PoliceDown').map((e) => e.id);
     expect(downs.sort()).toEqual([...ids].sort());
     expect(sim.snapshot().allies.police.every((p) => p.state === 'down')).toBe(true);
     const later = run(CONFIG.services.police.downSec + 0.5, (e) => of(e, 'PoliceLeft').length > 0);

@@ -8,7 +8,16 @@ import { dist } from '../../src/sim/math';
 import { Sim } from '../../src/sim/sim';
 import type { InputFrame, SimEvent } from '../../src/sim/types';
 
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
+const IDLE: InputFrame = {
+  move: { x: 0, y: 0 },
+  aim: null,
+  run: false,
+  strike: false,
+  chargeHeld: false,
+  throwRock: false,
+  act: false,
+  furie: false,
+};
 const input = (o: Partial<InputFrame> = {}): InputFrame => ({ ...IDLE, ...o });
 const STRIKE_RANGE = CONFIG.melee.range + CONFIG.hostile.radius;
 const SCHOOL_R1 = lineup('school', 1, 0);
@@ -296,8 +305,7 @@ describe('Sim facade', () => {
       sim.skipCinematic();
       // the round-1 school brings no thrower: two join from the edge
       for (const pos of spawnPoints(sim.player.pos).slice(0, 2)) sim.horde.spawn({ variant: 'antifa', role: 'thrower', pos });
-      for (let i = 0; i < 60 * 30; i++)
-        for (const e of sim.step(IDLE)) if (e.type === 'EnemyRockThrown') thrown.push(e.rockId);
+      for (let i = 0; i < 60 * 30; i++) for (const e of sim.step(IDLE)) if (e.type === 'EnemyRockThrown') thrown.push(e.rockId);
       return thrown;
     };
     const a = run();

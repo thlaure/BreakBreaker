@@ -10,8 +10,7 @@ export const RULES: readonly string[] = [
   'Les pierres lancées par les casseurs tombent au sol : ramasse-les puis renvoie-les. Dès la manche 6, des tireurs visent Paul : une ligne rouge annonce leur rafale, écarte-toi de la ligne. Passe sur une station « Soins » pour récupérer de la santé (une fois par station).',
 ];
 
-export const SATIRE_NOTICE =
-  'BreakBreaker est une fiction satirique.';
+export const SATIRE_NOTICE = 'BreakBreaker est une fiction satirique.';
 
 export interface ControlRow {
   action: string;

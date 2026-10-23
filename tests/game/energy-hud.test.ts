@@ -137,7 +137,16 @@ describe('Hud ÉNERGIE row, refusal hint and touch buttons', () => {
     sim.energy.value = 100;
     hud.update(sim.snapshot(), view);
     expect(row(hud).querySelector('.etag')!.textContent).toBe('R · Furie');
-    const ev = sim.step({ move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: true });
+    const ev = sim.step({
+      move: { x: 0, y: 0 },
+      aim: null,
+      run: false,
+      strike: false,
+      chargeHeld: false,
+      throwRock: false,
+      act: false,
+      furie: true,
+    });
     hud.onEvents(ev);
     hud.update(sim.snapshot(), view);
     expect(row(hud).querySelector('.etag')!.textContent).toBe('EN FURIE');
@@ -156,7 +165,11 @@ describe('audio cues of the gauge', () => {
     const a = new GameAudio();
     const ready = vi.spyOn(a, 'energyReady');
     const tock = vi.spyOn(a, 'tock');
-    a.onEvents([{ type: 'EnergyReady', level: 'onde' }, { type: 'EnergyReady', level: 'furie' }, { type: 'EnergyRefused', need: 100 }]);
+    a.onEvents([
+      { type: 'EnergyReady', level: 'onde' },
+      { type: 'EnergyReady', level: 'furie' },
+      { type: 'EnergyRefused', need: 100 },
+    ]);
     expect(ready.mock.calls).toEqual([['onde'], ['furie']]);
     expect(tock).toHaveBeenCalledTimes(1);
   });

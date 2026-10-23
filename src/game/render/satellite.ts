@@ -38,9 +38,18 @@ export class Twinkles {
   constructor(scene: Phaser.Scene) {
     makeTwinkleTexture(scene);
     for (let i = 0; i < POOL; i++) {
-      const star = scene.add.image(0, 0, 'twinkle').setDepth(DEPTH.overlay + 2).setVisible(false);
+      const star = scene.add
+        .image(0, 0, 'twinkle')
+        .setDepth(DEPTH.overlay + 2)
+        .setVisible(false);
       const ping = scene.add
-        .text(0, 0, 'PING !', { fontFamily: '"Press Start 2P", ui-monospace, monospace', fontSize: '6px', color: '#fff7e0', backgroundColor: '#14121c', padding: { x: 2, y: 1 } })
+        .text(0, 0, 'PING !', {
+          fontFamily: '"Press Start 2P", ui-monospace, monospace',
+          fontSize: '6px',
+          color: '#fff7e0',
+          backgroundColor: '#14121c',
+          padding: { x: 2, y: 1 },
+        })
         .setOrigin(0.5, 1)
         .setDepth(DEPTH.overlay + 2)
         .setVisible(false);

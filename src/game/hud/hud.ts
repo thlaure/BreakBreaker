@@ -548,7 +548,17 @@ export class Hud {
     const fill = el('span', 'fill');
     bar.append(fill);
     bar.setAttribute('aria-hidden', 'true');
-    const c: Card = { root, ico: el('span', 'ico'), name: el('b', 'name'), time: el('span', 'time'), bar, fill, status: el('span', 'status'), items: el('span', 'items'), dist: el('span', 'dist') };
+    const c: Card = {
+      root,
+      ico: el('span', 'ico'),
+      name: el('b', 'name'),
+      time: el('span', 'time'),
+      bar,
+      fill,
+      status: el('span', 'status'),
+      items: el('span', 'items'),
+      dist: el('span', 'dist'),
+    };
     c.items.hidden = true;
     root.append(c.ico, c.name, bar, c.time, c.status, c.items, c.dist);
     return c;

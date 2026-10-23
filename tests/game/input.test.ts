@@ -33,7 +33,13 @@ function key(type: 'keydown' | 'keyup', code: string): KeyboardEvent {
 function setupKeyboard(onPause = vi.fn()) {
   const canvas = document.createElement('canvas');
   document.body.appendChild(canvas);
-  const kb = createKeyboard(window, canvas, (x, y) => ({ x, y }), () => ({ x: 0, y: 0 }), { onPause });
+  const kb = createKeyboard(
+    window,
+    canvas,
+    (x, y) => ({ x, y }),
+    () => ({ x: 0, y: 0 }),
+    { onPause },
+  );
   return { kb, canvas, onPause };
 }
 
@@ -53,7 +59,18 @@ function setupTouch(onPause = vi.fn()) {
   const root = document.getElementById('touch-ui') as HTMLElement;
   const touch = createTouch(root, { onPause });
   const q = (s: string) => root.querySelector(s) as HTMLElement;
-  return { touch, root, stick: q('[data-zone=stick]'), strike: q('[data-action=strike]'), rock: q('[data-action=throw]'), act: q('[data-action=act]'), furie: q('[data-action=furie]'), onde: q('[data-action=onde]'), pause: q('[data-action=pause]'), onPause };
+  return {
+    touch,
+    root,
+    stick: q('[data-zone=stick]'),
+    strike: q('[data-action=strike]'),
+    rock: q('[data-action=throw]'),
+    act: q('[data-action=act]'),
+    furie: q('[data-action=furie]'),
+    onde: q('[data-action=onde]'),
+    pause: q('[data-action=pause]'),
+    onPause,
+  };
 }
 
 describe('keyboard', () => {
@@ -138,7 +155,13 @@ describe('keyboard', () => {
     const canvas = document.createElement('canvas');
     document.body.appendChild(canvas);
     const onPause = vi.fn();
-    const kb = createKeyboard(window, canvas, (x, y) => ({ x, y }), () => ({ x: 0, y: 0 }), { onPause, now: () => t });
+    const kb = createKeyboard(
+      window,
+      canvas,
+      (x, y) => ({ x, y }),
+      () => ({ x: 0, y: 0 }),
+      { onPause, now: () => t },
+    );
     expect(kb.read().aim).toBeNull();
     ptr(canvas, 'pointermove', 1, 30, 40, 'mouse');
     const a = kb.read().aim!;

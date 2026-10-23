@@ -133,7 +133,8 @@ describe('shooter AI: aim, burst, reload', () => {
   test('reloads 3 s before the next aim', () => {
     const { sim } = duel();
     const starts: number[] = [];
-    for (let i = 0; i < 60 * 9; i++) if (of(sim.step(input({ move: { x: 0, y: i % 120 < 60 ? -1 : 1 } })), 'ShooterAimStarted').length) starts.push(sim.now);
+    for (let i = 0; i < 60 * 9; i++)
+      if (of(sim.step(input({ move: { x: 0, y: i % 120 < 60 ? -1 : 1 } })), 'ShooterAimStarted').length) starts.push(sim.now);
     expect(starts.length).toBeGreaterThanOrEqual(2);
     const cycle = CONFIG.shooter.aimSec + (CONFIG.shooter.burst - 1) * CONFIG.shooter.burstGap + CONFIG.shooter.reloadSec;
     expect(starts[1]! - starts[0]!).toBeGreaterThanOrEqual(cycle - 0.02);

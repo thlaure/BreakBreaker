@@ -98,7 +98,12 @@ describe('the van carries the body', () => {
 
 describe('the counter while a van rides', () => {
   test('one Caïd in a van (pickup + drop-off runs) hides one from the count, not two', () => {
-    expect(ridingCount([{ kind: 'pickup', inside: false }, { kind: 'drop', inside: false }])).toBe(1);
+    expect(
+      ridingCount([
+        { kind: 'pickup', inside: false },
+        { kind: 'drop', inside: false },
+      ]),
+    ).toBe(1);
     expect(ridingCount([{ kind: 'drop', inside: false }])).toBe(1);
     expect(ridingCount([{ kind: 'drop', inside: true }])).toBe(0);
     expect(ridingCount([])).toBe(0);

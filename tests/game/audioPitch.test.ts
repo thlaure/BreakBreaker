@@ -7,7 +7,15 @@ import type { SimEvent } from '../../src/sim/types';
 function fakeAudio(muted = false) {
   const rates: { key: string; rate: number }[] = [];
   const freqs: number[] = [];
-  const param = () => ({ value: 0, setValueAtTime: vi.fn(function (this: { value: number }, v: number) { if (this.value === 0) this.value = v; }), exponentialRampToValueAtTime: vi.fn(), setTargetAtTime: vi.fn(), cancelScheduledValues: vi.fn() });
+  const param = () => ({
+    value: 0,
+    setValueAtTime: vi.fn(function (this: { value: number }, v: number) {
+      if (this.value === 0) this.value = v;
+    }),
+    exponentialRampToValueAtTime: vi.fn(),
+    setTargetAtTime: vi.fn(),
+    cancelScheduledValues: vi.fn(),
+  });
   const node = () => ({ connect: vi.fn((n: unknown) => n), disconnect: vi.fn() });
   const ctx = {
     currentTime: 0,
@@ -53,7 +61,7 @@ describe('impact sounds: a slight random pitch on every hit (render only)', () =
 
   test('hits vary their playback rate within ±6 % around 1 (heavy around HEAVY_RATE); the alarm never does', async () => {
     const { a, rates } = fakeAudio();
-    const hit = (heavy: boolean): SimEvent => ({ type: 'HitConfirmed', lifeId: 1, heavy } as unknown as SimEvent);
+    const hit = (heavy: boolean): SimEvent => ({ type: 'HitConfirmed', lifeId: 1, heavy }) as unknown as SimEvent;
     for (let i = 0; i < 6; i++) a.onEvents([hit(false)]);
     a.onEvents([hit(true)]);
     a.onEvents([{ type: 'CaidArrived' } as unknown as SimEvent]);

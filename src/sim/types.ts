@@ -82,30 +82,9 @@ export type Variant = 'classic' | 'palestinian' | 'antifa';
  * 'runner' (fast, fragile), 'brute' (tough, slow, pushes Paul) and 'boss' (« Le Caïd ») fight as contacts; 'shooter'
  * (cartoon AK-47) keeps its distance and fires bursts of bullets along a telegraphed line.
  */
-export type Role =
-  | 'contact'
-  | 'thrower'
-  | 'degrader'
-  | 'aggressor'
-  | 'molotov'
-  | 'firebomber'
-  | 'runner'
-  | 'brute'
-  | 'boss'
-  | 'shooter';
+export type Role = 'contact' | 'thrower' | 'degrader' | 'aggressor' | 'molotov' | 'firebomber' | 'runner' | 'brute' | 'boss' | 'shooter';
 export type TargetId =
-  | 'school'
-  | 'car1'
-  | 'car2'
-  | 'busStop'
-  | 'shop'
-  | 'nursery'
-  | 'kiosk'
-  | 'townHall'
-  | 'library'
-  | 'boothRed'
-  | 'boothBlue'
-  | 'prison';
+  'school' | 'car1' | 'car2' | 'busStop' | 'shop' | 'nursery' | 'kiosk' | 'townHall' | 'library' | 'boothRed' | 'boothBlue' | 'prison';
 /** What kind of attack a round's "casse" is (Phase C extends both unions; 'booth' = the two phone booths). */
 export type CasseKind = 'school' | 'car' | 'busStop' | 'shop' | 'nursery' | 'kiosk' | 'townHall' | 'library' | 'booth' | 'prison';
 /** The emergency services a phone booth calls: the red one the fire truck, the blue one the police. */
@@ -123,7 +102,13 @@ export type MonumentFlag = 'french' | 'palestinian';
 export type SimEvent =
   /** `heavy`: the rioter hit is a brute or the Caïd (render / audio: a heavier hit). */
   /** `source`: 'gant' = the boxing glove's punch, 'flashball' = a flashball shot. */
-  | { type: 'HitConfirmed'; targetLifeId: number; damage: number; source: 'melee' | 'rock' | 'beam' | 'gant' | 'flashball'; heavy?: boolean }
+  | {
+      type: 'HitConfirmed';
+      targetLifeId: number;
+      damage: number;
+      source: 'melee' | 'rock' | 'beam' | 'gant' | 'flashball';
+      heavy?: boolean;
+    }
   | { type: 'EnemyThrowStarted'; from: Vec; to: Vec; until: number }
   /** An enemy rock actually left the thrower's hand (not emitted when the flying cap cancels the throw). */
   | { type: 'EnemyRockThrown'; rockId: number }

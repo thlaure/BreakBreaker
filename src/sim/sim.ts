@@ -225,8 +225,7 @@ export function segmentRectEntry(a: Vec, b: Vec, r: Rect): number | null {
     }
     return true;
   };
-  const hit =
-    clip(-dx, a.x - r.x) && clip(dx, r.x + r.w - a.x) && clip(-dy, a.y - r.y) && clip(dy, r.y + r.h - a.y);
+  const hit = clip(-dx, a.x - r.x) && clip(dx, r.x + r.w - a.x) && clip(-dy, a.y - r.y) && clip(dy, r.y + r.h - a.y);
   return hit ? t0 : null;
 }
 
@@ -398,7 +397,11 @@ export class Sim {
       for (const id of hits) {
         const tough = this.tough(id);
         const damage = this.damageTo(id, source);
-        ev.push(tough ? { type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee', heavy: true } : { type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee' });
+        ev.push(
+          tough
+            ? { type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee', heavy: true }
+            : { type: 'HitConfirmed', targetLifeId: id, damage, source: 'melee' },
+        );
         this.hit(id, damage, ev, fall);
       }
       if (!furie) ev.push(...this.weapons.onSwing(hits.length));
@@ -471,12 +474,18 @@ export class Sim {
     }
     // ground fire: Paul only, through the same damage path (invulnerability frames, mode furie)
     ev.push(
-      ...this.firePatches.step(now, this.grid, p.pos, (amount) => {
-        const a = this.weapons.furie() ? amount * CONFIG.furie.damageTakenMul : amount;
-        if (this.invulnerable || !damagePlayer(p, a, now)) return false;
-        ev.push({ type: 'PlayerDamaged', amount: a });
-        return true;
-      }, this.shield()),
+      ...this.firePatches.step(
+        now,
+        this.grid,
+        p.pos,
+        (amount) => {
+          const a = this.weapons.furie() ? amount * CONFIG.furie.damageTakenMul : amount;
+          if (this.invulnerable || !damagePlayer(p, a, now)) return false;
+          ev.push({ type: 'PlayerDamaged', amount: a });
+          return true;
+        },
+        this.shield(),
+      ),
     );
     // a KO cancels the charge (nothing used); damage alone no longer does
     if (this.charge !== null && p.ko) this.cancelCharge(ev);
@@ -563,9 +572,7 @@ export class Sim {
       roundTotal: d.total,
       roundKos: d.roundKos(this),
       breatherLeft: d.breatherLeft,
-      lastSummary: d.lastSummary
-        ? { ...d.lastSummary, objectives: d.lastSummary.objectives.map((o) => ({ ...o })) }
-        : null,
+      lastSummary: d.lastSummary ? { ...d.lastSummary, objectives: d.lastSummary.objectives.map((o) => ({ ...o })) } : null,
       player: { pos: v(p.pos), facing: v(p.facing), ko: p.ko, invulnerable: this.now < p.invulnUntil },
       hp: p.hp,
       hpMax: CONFIG.player.maxHp,
@@ -655,7 +662,10 @@ export class Sim {
       prison: this.prison.view(this.targets),
       services: {
         calls: { ...this.services.calls },
-        hint: { fire: this.services.check('fire', this.callCtx('fire')).ok, police: this.services.check('police', this.callCtx('police')).ok },
+        hint: {
+          fire: this.services.check('fire', this.callCtx('fire')).ok,
+          police: this.services.check('police', this.callCtx('police')).ok,
+        },
       },
       actionHint: this.actionHint(),
     };
@@ -825,7 +835,12 @@ export class Sim {
     const p = this.player;
     const area = DISTRICT.peacefulGroup.area;
     return {
-      player: { pos: p.pos, r: CONFIG.player.radius, invulnerable: this.invulnerable || p.ko || this.now < p.invulnUntil, shield: this.shield() },
+      player: {
+        pos: p.pos,
+        r: CONFIG.player.radius,
+        invulnerable: this.invulnerable || p.ko || this.now < p.invulnUntil,
+        shield: this.shield(),
+      },
       hostiles: this.horde.views(),
       groupBlocks: (a: Vec, b: Vec) => segmentRectEntry(a, b, area),
       victimPos,

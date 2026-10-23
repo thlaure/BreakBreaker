@@ -35,7 +35,10 @@ describe('rescue belongings in the HUD', () => {
     expect(rescueItemsLine(rescue([]))).toBeNull();
     expect(rescueItemsLine(rescue(['carried-by-thief']))).toBe('Objets 0/3 rendus');
     expect(rescueItemsLine(rescue(['returned', 'dropped', 'carried']))).toBe('Objets 1/3 rendus');
-    const lines = incidentLines(snap((x) => (x.rescue = rescue(['returned', 'carried-by-thief']))), 'en cours');
+    const lines = incidentLines(
+      snap((x) => (x.rescue = rescue(['returned', 'carried-by-thief']))),
+      'en cours',
+    );
     const r = lines.find((l) => l.key === 'rescue')!;
     expect(r.items).toBe('Objets 1/3 rendus');
     expect(r.time).toBe('20 s');
@@ -73,7 +76,9 @@ describe('rescue belongings in the HUD', () => {
     for (const e of evs) expect(alertFromEvent(e)).toBeNull();
     const host = document.createElement('div');
     const b = new AlertBanner(host);
-    b.push(alertFromEvent({ type: 'RescueStarted', incidentId: 'rescue#1', pos: { x: 1, y: 1 }, kind: 'elderlyRobbed', wave: 1, total: 3 })!);
+    b.push(
+      alertFromEvent({ type: 'RescueStarted', incidentId: 'rescue#1', pos: { x: 1, y: 1 }, kind: 'elderlyRobbed', wave: 1, total: 3 })!,
+    );
     b.prune(new Set(activeIncidents(snap((x) => (x.rescue = rescue(['dropped'], { stage: 'secured', returnLeft: 4 })))).map((i) => i.id)));
     expect(b.shown?.id).toBe('rescue#1');
     b.prune(new Set(activeIncidents(snap((x) => (x.rescue = rescue(['lost'], { stage: 'completed' })))).map((i) => i.id)));

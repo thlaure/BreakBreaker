@@ -683,7 +683,8 @@ export class Horde {
       // the n-th of a site's Molotovs raising a bottle at once holds it n × MOLOTOV_STAGGER longer (no windup cap applies)
       let latest = now + CONFIG.molotov.windup - MOLOTOV_STAGGER;
       for (const o of this.list)
-        if (o !== h && o.site === h.site && o.state === 'windup' && this.auxOf(o).windKind === 'molotov') latest = Math.max(latest, o.stateUntil);
+        if (o !== h && o.site === h.site && o.state === 'windup' && this.auxOf(o).windKind === 'molotov')
+          latest = Math.max(latest, o.stateUntil);
       h.state = 'windup';
       h.stateUntil = Math.max(now + CONFIG.molotov.windup, latest + MOLOTOV_STAGGER);
       a.windKind = 'molotov';

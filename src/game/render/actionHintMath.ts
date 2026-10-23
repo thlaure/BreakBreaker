@@ -69,7 +69,7 @@ export function arrowToward(from: Vec, to: Vec, r: number): { x: number; y: numb
  */
 export function steppedPulse(nowMs: number, periodMs: number, reducedMotion = false): number {
   if (reducedMotion) return 1;
-  const phase = ((nowMs % periodMs) + periodMs) % periodMs / periodMs;
+  const phase = (((nowMs % periodMs) + periodMs) % periodMs) / periodMs;
   return [0.25, 0.75, 1, 0.5][Math.floor(phase * 4)]!;
 }
 

@@ -1,0 +1,9 @@
+node_modules
+dist
+public
+assets-source
+package-lock.json
+docs
+*.md
+*.html
+*.css

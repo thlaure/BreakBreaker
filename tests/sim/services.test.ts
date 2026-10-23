@@ -18,7 +18,16 @@ import { autopilot } from './autopilot';
 const C = (tx: number, ty: number): Vec => ({ x: tx * 32 + 16, y: ty * 32 + 16 });
 const R = (tx: number, ty: number, tw: number, th: number) => ({ x: tx * 32, y: ty * 32, w: tw * 32, h: th * 32 });
 const def = (id: TargetId) => DISTRICT.targets.find((t) => t.id === id)!;
-const IDLE: InputFrame = { move: { x: 0, y: 0 }, aim: null, run: false, strike: false, chargeHeld: false, throwRock: false, act: false, furie: false };
+const IDLE: InputFrame = {
+  move: { x: 0, y: 0 },
+  aim: null,
+  run: false,
+  strike: false,
+  chargeHeld: false,
+  throwRock: false,
+  act: false,
+  furie: false,
+};
 const PRESS: InputFrame = { ...IDLE, act: true };
 const BOOTHS = ['boothRed', 'boothBlue'] as const;
 type Ev<T extends SimEvent['type']> = Extract<SimEvent, { type: T }>;
@@ -63,7 +72,8 @@ describe('the phone booths (targets)', () => {
     ff.rebuild(DISTRICT.playerSpawn);
     expect(grid.isSolid(4, 22)).toBe(true);
     expect(grid.isSolid(5, 22)).toBe(true);
-    for (let tx = 3; tx <= 6; tx++) for (let ty = 21; ty <= 23; ty++) if (ty !== 22 || tx === 3 || tx === 6) expect(grid.isSolid(tx, ty)).toBe(false);
+    for (let tx = 3; tx <= 6; tx++)
+      for (let ty = 21; ty <= 23; ty++) if (ty !== 22 || tx === 3 || tx === 6) expect(grid.isSolid(tx, ty)).toBe(false);
     for (const id of BOOTHS) {
       const d = def(id);
       expect(d.attackPoints.length).toBeGreaterThanOrEqual(3);
@@ -74,7 +84,10 @@ describe('the phone booths (targets)', () => {
       }
     }
     // Paul on the street row in front of a booth is within the call range of its door
-    for (const [id, front] of [['boothRed', C(4, 23)], ['boothBlue', C(5, 23)]] as const) {
+    for (const [id, front] of [
+      ['boothRed', C(4, 23)],
+      ['boothBlue', C(5, 23)],
+    ] as const) {
       expect(ff.stepsAt(front)).toBeGreaterThanOrEqual(0);
       expect(hyp(front, def(id).door)).toBeLessThanOrEqual(CONFIG.services.callRange);
     }

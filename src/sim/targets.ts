@@ -1,4 +1,3 @@
-import { CONFIG } from './config';
 import { DISTRICT } from './map/district';
 import type { TargetDef } from './map/district';
 import type { TargetId } from './types';

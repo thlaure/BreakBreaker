@@ -55,7 +55,9 @@ for (const [name, a] of Object.entries(lock.archives)) {
   new AdmZip(buf).extractAllTo(dir, true);
   // License check: CC0 text must be present in the archive for Kenney packs;
   // OpenGameArt packs are CC0 per the page (recorded in lock) and any bundled license file must agree.
-  const lic = fs.readdirSync(dir, { recursive: true }).filter((f) => /licen[cs]e|readme|credits/i.test(String(f)) && /\.(txt|md)$/i.test(String(f)));
+  const lic = fs
+    .readdirSync(dir, { recursive: true })
+    .filter((f) => /licen[cs]e|readme|credits/i.test(String(f)) && /\.(txt|md)$/i.test(String(f)));
   const text = lic.map((f) => fs.readFileSync(path.join(dir, String(f)), 'utf8')).join('\n');
   const cc0 = /CC0|Creative Commons Zero|public domain/i.test(text);
   if (name.startsWith('kenney-') && !cc0) throw new Error(`${name}: license file does not state CC0`);

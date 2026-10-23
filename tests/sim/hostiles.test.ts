@@ -68,10 +68,11 @@ test('no more than 2 contact windups at pressure 1', () => {
   let maxWind = 0;
   let damage = 0;
   for (let i = 0; i < 300; i++) {
-    for (const e of horde.step(DT, i * DT, ctx)) if (e.type === 'PlayerDamaged') {
-      expect(e.amount).toBe(5);
-      damage++;
-    }
+    for (const e of horde.step(DT, i * DT, ctx))
+      if (e.type === 'PlayerDamaged') {
+        expect(e.amount).toBe(5);
+        damage++;
+      }
     const w = horde.list.filter((h) => h.state === 'windup').length;
     expect(w).toBeLessThanOrEqual(2);
     maxWind = Math.max(maxWind, w);
@@ -308,11 +309,11 @@ test('aggro: a victim aggressor engages Paul close by, then goes back to the vic
   expect(h.state).toBe('threaten');
   player.pos = { x: h.pos.x + 150, y: h.pos.y };
   expect(grid.lineClear(h.pos, player.pos)).toBe(true);
-  horde.step(DT, (now += DT), ctx);
+  horde.step(DT, now + DT, ctx);
   expect(h.target).toBe('player');
   expect(h.state).not.toBe('threaten');
   player.pos = { x: 1200, y: 1300 };
-  horde.step(DT, (now += DT), ctx);
+  horde.step(DT, now + 2 * DT, ctx);
   expect(h.target).toBe('victim');
 });
 
@@ -336,7 +337,9 @@ function posted(n: number) {
   const ctx = mkCtx(player);
   const horde = new Horde();
   const pts = DISTRICT.school.facadePoints;
-  const list = Array.from({ length: n }, (_, i) => horde.spawn({ variant: 'classic', role: 'degrader', pos: { ...pts[i % pts.length]! }, site: 'school' })!);
+  const list = Array.from({ length: n }, (_, i) =>
+    horde.spawn({ variant: 'classic', role: 'degrader', pos: { ...pts[i % pts.length]! }, site: 'school' })!,
+  );
   let now = 0;
   const run = (sec: number): void => {
     for (let i = 0; i < Math.round(sec / DT); i++) horde.step(DT, (now += DT), ctx);
@@ -377,6 +380,6 @@ test('no pull for a victim aggressor: alone and Paul far, it stays on the victim
   expect(h.state).toBe('threaten');
   // the 220 px aggro still applies: Paul coming close is the intended defence
   player.pos = { x: h.pos.x + 60, y: h.pos.y };
-  horde.step(DT, (now += DT), ctx);
+  horde.step(DT, now + DT, ctx);
   expect(h.target).toBe('player');
 });

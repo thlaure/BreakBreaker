@@ -241,9 +241,18 @@ export class MonumentView {
     if (frac > 0) {
       // capture arc from the top, clockwise, in the tricolour's blue and white
       const start = -Math.PI / 2;
-      g.lineStyle(6, 0x0f1630, 0.5).beginPath().arc(z.x, z.y, z.r - 4, start, start + frac * Math.PI * 2).strokePath();
-      g.lineStyle(4, 0x5a9cff, 0.95).beginPath().arc(z.x, z.y, z.r - 4, start, start + frac * Math.PI * 2).strokePath();
-      g.lineStyle(2, 0xffffff, 0.9).beginPath().arc(z.x, z.y, z.r - 4, start, start + frac * Math.PI * 2).strokePath();
+      g.lineStyle(6, 0x0f1630, 0.5)
+        .beginPath()
+        .arc(z.x, z.y, z.r - 4, start, start + frac * Math.PI * 2)
+        .strokePath();
+      g.lineStyle(4, 0x5a9cff, 0.95)
+        .beginPath()
+        .arc(z.x, z.y, z.r - 4, start, start + frac * Math.PI * 2)
+        .strokePath();
+      g.lineStyle(2, 0xffffff, 0.9)
+        .beginPath()
+        .arc(z.x, z.y, z.r - 4, start, start + frac * Math.PI * 2)
+        .strokePath();
     }
   }
 }

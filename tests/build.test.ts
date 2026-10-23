@@ -51,7 +51,12 @@ test('production bundle: no dev handle, no stress mode, no cheat', () => {
 });
 
 const decode = (s: string) =>
-  s.replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  s
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
 
 test('landing has one h1, a real relative jouer/ link and no script', () => {
   const html = readFileSync(out('index.html'), 'utf8');
@@ -98,9 +103,7 @@ test('landing never says OQTF or gratuit', () => {
 /** The landing's built CSS (all stylesheets linked from index.html). */
 const landingCss = (): string => {
   const html = readFileSync(out('index.html'), 'utf8');
-  return [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]*href="([^"]+)"/g)]
-    .map((m) => readFileSync(out(m[1] ?? ''), 'utf8'))
-    .join('');
+  return [...html.matchAll(/<link[^>]+rel="stylesheet"[^>]*href="([^"]+)"/g)].map((m) => readFileSync(out(m[1] ?? ''), 'utf8')).join('');
 };
 /** Files referenced by `url(...)` in the landing CSS, resolved inside the build dir (base is '/'). */
 const cssUrls = (re: RegExp): string[] =>

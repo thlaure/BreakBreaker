@@ -1,6 +1,15 @@
 import { describe, expect, test } from 'vitest';
 import { CONFIG } from '../../src/sim/config';
-import { TWO_URGENCIES_FROM, bruteCount, casseOpen, fillReserve, roundPlan, shooterCount, tableTotal, urgentCap } from '../../src/sim/director';
+import {
+  TWO_URGENCIES_FROM,
+  bruteCount,
+  casseOpen,
+  fillReserve,
+  roundPlan,
+  shooterCount,
+  tableTotal,
+  urgentCap,
+} from '../../src/sim/director';
 import { DISTRICT } from '../../src/sim/map/district';
 import { rng } from '../../src/sim/rng';
 import { Sim } from '../../src/sim/sim';
@@ -54,13 +63,15 @@ describe('two urgencies at once from round 5 (plan)', () => {
       for (const k of p.beats[0]!) n[k] = (n[k] ?? 0) + 1;
     }
     // 10 kinds (booths and prison included), two of them at half weight: each favoured kind appears far more often
-    for (const k of ['car', 'busStop', 'nursery', 'kiosk', 'townHall', 'library', 'booth', 'prison']) expect(n[k]!).toBeGreaterThan(n.school! * 1.4);
+    for (const k of ['car', 'busStop', 'nursery', 'kiosk', 'townHall', 'library', 'booth', 'prison'])
+      expect(n[k]!).toBeGreaterThan(n.school! * 1.4);
     expect(n.shop!).toBeLessThan(n.car! / 1.4);
   });
 
   test('never a ruined or burning target, never the same target twice; one free target → one attack; none → the second beat alone', () => {
     const t = new Targets();
-    for (const id of ['school', 'shop', 'nursery', 'kiosk', 'townHall', 'library', 'busStop', 'boothRed', 'boothBlue', 'prison'] as const) t.ruin(id, `${id}#x`);
+    for (const id of ['school', 'shop', 'nursery', 'kiosk', 'townHall', 'library', 'busStop', 'boothRed', 'boothBlue', 'prison'] as const)
+      t.ruin(id, `${id}#x`);
     // only the two cars are free: car + car (two distinct targets)
     for (let s = 1; s <= 20; s++) expect(roundPlan(9, rng(s), t).beats[0]).toEqual(['car', 'car']);
     t.ignite('car1', 'car#x');
@@ -130,7 +141,12 @@ describe('two urgencies at once from round 5 (sim)', () => {
         if (r === 9) expect(targets.map(kindOf)).toContain('library');
         // the roster covers both attacks
         const objective = sim.attacks.filter((a) => a.round === r && targets.includes(a.target));
-        expect(rs!.total).toBeGreaterThanOrEqual(Math.max(tableTotal(r), objective.reduce((n, a) => n + a.total(), 0)));
+        expect(rs!.total).toBeGreaterThanOrEqual(
+          Math.max(
+            tableTotal(r),
+            objective.reduce((n, a) => n + a.total(), 0),
+          ),
+        );
       }
     }
   });

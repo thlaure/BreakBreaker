@@ -68,10 +68,16 @@ export class ActionHintLayer {
     this.key = scene.add.text(0, 0, 'F', { ...style, color: '#14121c' }).setOrigin(0.5, 0.5);
     this.verb = scene.add.text(0, 0, '', style).setOrigin(0, 0.5);
     this.box = scene.add.image(0, 0, 'toolbox').setOrigin(0.5, 0.5).setVisible(false);
-    this.bubble = scene.add.container(0, 0, [this.bg, this.key, this.verb, this.box]).setDepth(DEPTH.popup - 2).setVisible(false);
+    this.bubble = scene.add
+      .container(0, 0, [this.bg, this.key, this.verb, this.box])
+      .setDepth(DEPTH.popup - 2)
+      .setVisible(false);
     this.arrow = scene.add.graphics().setDepth(DEPTH.overlay + 1);
     this.alarms = scene.add.graphics().setDepth(DEPTH.decal + 2);
-    this.flashes = scene.add.graphics().setDepth(DEPTH.roof + 5).setBlendMode(Phaser.BlendModes.ADD);
+    this.flashes = scene.add
+      .graphics()
+      .setDepth(DEPTH.roof + 5)
+      .setBlendMode(Phaser.BlendModes.ADD);
   }
 
   update(s: Snapshot, nowMs: number): void {
@@ -86,7 +92,7 @@ export class ActionHintLayer {
     const h = s.ended ? null : s.actionHint;
     const kit = s.toolboxes;
     const repairing = !s.ended && kit.started && kit.repairTarget !== null;
-    const target = repairing ? kit.repairTarget : h?.target ?? null;
+    const target = repairing ? kit.repairTarget : (h?.target ?? null);
     if (target === null || s.player.ko) {
       this.bubble.setVisible(false);
       return;
@@ -128,7 +134,10 @@ export class ActionHintLayer {
         const frac = Math.min(1, kit.progress / CONFIG.kit.repairSec);
         const start = -Math.PI / 2;
         g.lineStyle(3, INK, 0.8).strokeCircle(kx + KEY / 2, cy, KEY / 2 + 3);
-        g.lineStyle(2, 0xffb03a, 1).beginPath().arc(kx + KEY / 2, cy, KEY / 2 + 3, start, start + frac * Math.PI * 2).strokePath();
+        g.lineStyle(2, 0xffb03a, 1)
+          .beginPath()
+          .arc(kx + KEY / 2, cy, KEY / 2 + 3, start, start + frac * Math.PI * 2)
+          .strokePath();
       }
       x += KEY + GAP;
     } else if (need) {
@@ -175,7 +184,10 @@ export class ActionHintLayer {
         let w = this.wrenches.get(t.id);
         if (!w) {
           const a = hintAnchor(t.id);
-          w = this.scene.add.image(a.x, a.y - 8, 'wrench').setOrigin(0.5, 1).setDepth(DEPTH.popup - 3);
+          w = this.scene.add
+            .image(a.x, a.y - 8, 'wrench')
+            .setOrigin(0.5, 1)
+            .setDepth(DEPTH.popup - 3);
           this.wrenches.set(t.id, w);
         }
         const k = steppedPulse(nowMs, 700, this.reducedMotion);

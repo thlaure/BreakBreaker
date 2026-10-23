@@ -94,7 +94,9 @@ describe('louder alerts', () => {
   });
 
   test('new attacks are recognised', () => {
-    expect(isNewAttack({ type: 'CasseStarted', incidentId: 'a', kind: 'car', target: 'car1', pos: { x: 0, y: 0 }, round: 1, total: 4 })).toBe(true);
+    expect(
+      isNewAttack({ type: 'CasseStarted', incidentId: 'a', kind: 'car', target: 'car1', pos: { x: 0, y: 0 }, round: 1, total: 4 }),
+    ).toBe(true);
     expect(isNewAttack({ type: 'FireOut', target: 'car1' })).toBe(false);
   });
 });
@@ -116,7 +118,10 @@ describe('Hud: guidance, glow, help, Agir pulse', () => {
     hud.update(s, off);
     expect(guides().map((g) => g.querySelector('.lbl')!.textContent)).toEqual(['RÉPARER']);
     expect(guides()[0]!.querySelector('.dist')!.textContent).toMatch(/^\d+ m$/);
-    hud.update(snap((x) => (x.toolboxes.carried = true)), off);
+    hud.update(
+      snap((x) => (x.toolboxes.carried = true)),
+      off,
+    );
     expect(guides()).toHaveLength(0);
     hud.destroy();
   });
@@ -154,14 +159,23 @@ describe('Hud: guidance, glow, help, Agir pulse', () => {
     const help = hud.root.querySelector<HTMLElement>('.bb-help')!;
     hud.update(snap(), view);
     expect(help.hidden).toBe(true);
-    hud.update(snap((x) => ruin(x, 'busStop')), view);
+    hud.update(
+      snap((x) => ruin(x, 'busStop')),
+      view,
+    );
     expect(help.hidden).toBe(false);
     expect(help.textContent).toBe('Ramasse une caisse à outils, puis appuie sur F devant le bâtiment.');
     now.mockReturnValue(1000 + HELP_MS + 1);
-    hud.update(snap((x) => ruin(x, 'busStop')), view);
+    hud.update(
+      snap((x) => ruin(x, 'busStop')),
+      view,
+    );
     expect(help.hidden).toBe(true);
     // a later ruin: not again
-    hud.update(snap((x) => ruin(x, 'kiosk')), view);
+    hud.update(
+      snap((x) => ruin(x, 'kiosk')),
+      view,
+    );
     expect(help.hidden).toBe(true);
     hud.destroy();
     now.mockRestore();
@@ -174,12 +188,18 @@ describe('Hud: guidance, glow, help, Agir pulse', () => {
     const hud = new Hud(document.body, touch);
     hud.update(snap(), view);
     expect(btn.classList.contains('bb-act-ready')).toBe(false);
-    hud.update(snap((x) => (x.actionHint = { kind: 'callFire', target: 'boothRed', at: { x: 0, y: 0 }, toolbox: null })), view);
+    hud.update(
+      snap((x) => (x.actionHint = { kind: 'callFire', target: 'boothRed', at: { x: 0, y: 0 }, toolbox: null })),
+      view,
+    );
     expect(btn.classList.contains('bb-act-ready')).toBe(true);
     expect(btn.textContent).toBe('Appeler');
     // the bubble in the world is the cue: the line under Paul is for screen readers only
     expect(hud.root.querySelector('.bb-prompt')!.classList.contains('bb-sr')).toBe(true);
-    hud.update(snap((x) => (x.actionHint = { kind: 'needToolbox', target: 'busStop', at: { x: 0, y: 0 }, toolbox: null })), view);
+    hud.update(
+      snap((x) => (x.actionHint = { kind: 'needToolbox', target: 'busStop', at: { x: 0, y: 0 }, toolbox: null })),
+      view,
+    );
     expect(btn.classList.contains('bb-act-ready')).toBe(false);
     hud.destroy();
     expect(btn.classList.contains('bb-act-ready')).toBe(false);
