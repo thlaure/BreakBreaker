@@ -22,15 +22,21 @@ import { rioterSheet } from '../../src/game/render/roleLook';
 import { CONFIG } from '../../src/sim/config';
 import type { PrisonInmate } from '../../src/sim/prison';
 
-const inmate = (id: number, variant: PrisonInmate['variant'] = 'classic'): PrisonInmate => ({ id, variant, round: 4 });
+const inmate = (id: number, variant: PrisonInmate['variant'] = 'classic', lifeId = id + 100): PrisonInmate => ({
+  id,
+  variant,
+  round: 4,
+  lifeId,
+});
 
 describe('inmates: the skin hook', () => {
-  test('inmateTextureKey is the Caïd’s sheet of his variant (as on the map), a loaded sheet', () => {
+  test('inmateTextureKey is the Caïd’s look on the map (from his lifeId), one of the five caid_ sheets', () => {
     for (const v of ['classic', 'palestinian', 'antifa'] as const) {
       for (const id of [1, 2, 7]) {
-        const key = inmateTextureKey(inmate(id, v));
-        expect(key).toBe(rioterSheet(v, 'boss', id));
-        expect(CHAR_SHEETS as readonly string[]).toContain(key);
+        const key = inmateTextureKey(inmate(id, v, id * 3));
+        expect(key).toBe(rioterSheet(v, 'boss', id * 3));
+        expect(key).toMatch(/^caid_[0-4]$/);
+        expect(CHAR_SHEETS as readonly string[]).not.toContain(key);
       }
     }
   });

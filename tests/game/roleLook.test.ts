@@ -7,7 +7,7 @@ describe('role looks', () => {
     expect(rioterSheet('antifa', 'runner', 2)).toBe('rioter_runner_a');
     expect(rioterSheet('classic', 'runner', 3)).toBe('rioter_runner_b');
     expect(rioterSheet('palestinian', 'brute', 4)).toBe('rioter_palestinian_a');
-    expect(rioterSheet('classic', 'boss', 5)).toBe('rioter_classic_b');
+    expect(rioterSheet('classic', 'boss', 5)).toMatch(/^caid_[0-4]$/);
     for (const s of ['rioter_runner_a', 'rioter_runner_b']) expect(CHAR_SHEETS as readonly string[]).toContain(s);
   });
 

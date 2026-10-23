@@ -88,14 +88,12 @@ export function sweepAngle(nowMs: number): number {
 export const PICKUP_HOP_MS = VAN_PICKUP_DELAY_MS + VAN_IN_MS + HOP_START * VAN_STOP_MS;
 
 /**
- * THE SKIN HOOK. The texture (LPC character sheet) an inmate is drawn with in the prison yard: today the Caïd's own
- * sheet for the variant he had on the map (classic / palestinian / antifa, a / b by id parity, like rioterSheet for a
- * boss). This is the only place to change to give jailed Caïds their own skins later (e.g. a prison-uniform sheet per
- * variant, or one chosen from `inmate.round` / `inmate.id`): PrisonLayer draws every inmate with this key and plays its
- * walk-row frames, so a new sheet must follow layout.json and be listed in CHAR_SHEETS (src/game/assets.ts).
+ * THE SKIN HOOK. The texture (character sheet) an inmate is drawn with in the prison yard: the Caïd look he wore on the
+ * street (`caid_<caidSkinOf(lifeId)>`, the same as rioterSheet for a boss: the inmate keeps the lifeId he was jailed
+ * with). PrisonLayer draws every inmate with this key and plays its walk-row frames (LPC layout, see caidSheets.ts).
  */
-export function inmateTextureKey(inmate: Pick<PrisonInmate, 'id' | 'variant'>): string {
-  return rioterSheet(inmate.variant, 'boss', inmate.id);
+export function inmateTextureKey(inmate: Pick<PrisonInmate, 'id' | 'variant' | 'lifeId'>): string {
+  return rioterSheet(inmate.variant, 'boss', inmate.lifeId);
 }
 
 /**

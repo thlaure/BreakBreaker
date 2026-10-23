@@ -23,12 +23,13 @@ export function guardHp(round: number): number {
 
 /**
  * A Caïd in the cells: `id` a stable inmate id (never reused in a session), `variant` his look on the map (kept on
- * breakout), `round` the round he was jailed in.
+ * breakout), `round` the round he was jailed in, `lifeId` the hostile he was on the map (the render keeps his look).
  */
 export interface PrisonInmate {
   id: number;
   variant: Variant;
   round: number;
+  lifeId: number;
 }
 
 /** What the render and the HUD read (Snapshot.prison). */
@@ -96,7 +97,7 @@ export class Prison {
   /** A Caïd knocked out in `round` (the Sim calls this once per life): jailed while the prison stands. */
   jail(h: Hostile, targets: Targets, round: number): SimEvent[] {
     if (!targets.standing('prison')) return [];
-    this.cells.push({ id: this.nextInmate++, variant: h.variant, round });
+    this.cells.push({ id: this.nextInmate++, variant: h.variant, round, lifeId: h.lifeId });
     this.vans.push({ lifeId: h.lifeId, left: CONFIG.prison.pickupSec });
     return [{ type: 'CaidJailed', lifeId: h.lifeId }];
   }

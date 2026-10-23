@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Acceptance
 
 > **Purpose of this file:** validation and acceptance cases (RC), gap with the current prototype.  
-> Part of the BreakBreaker specifications (version 1.1.4), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.2.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 21. Validation and acceptance criteria
 
@@ -195,6 +195,10 @@ Rule tests; integration with a controlled clock; browser with rendering; real ph
 | RC-180 | Reduced motion on the square (v1.1.0) | With the reduced-motion preference: the President's mood is frozen on one frame (no hop, no frame swap) while the bubbles are still displayed; no sauna steam particles; lantern glow and silhouettes fixed (`steamSpec(true)` is null, `poseFrame` and `presidentBob` return 0). |
 | RC-181 | Château and sauna: decor (v1.1.0) | `DISTRICT.decor` holds « CHÂTEAU » on building 7 (R(27,14,6,4), door C(30,18)) and « SAUNA » on building 12 (R(31,29,4,3), door C(33,32)); neither is in `DISTRICT.targets`, all their tiles are solid, their door is reachable from Paul's start and each spawn; no attack targets them over ten bot rounds; the sauna has no interaction and Paul cannot enter; the three silhouettes carry accessories and no name; no real person, party or religious mockery anywhere (section 10.11). |
 | RC-182 | Balance pass, rounds 1–9 (v1.1.1) | Rosters `tableTotal` 10, 14, 18, 22, 25, 28, 31, 34, 37, then 40 (`round.growth` 3); pressure `min(12, 1 + ⌊round ÷ 2⌋ + ⌊KO ÷ 45⌋)` (`pressureKoStep`); brutes 1 / 2 / 3 from rounds 4 / 7 / 8 and shooters 1 / 2 / 3 from rounds 6 / 9 / 10, so from round 2 to 12 a round adds at most one brute or shooter; twist second emergency in round 3 only (rounds from 5 already open on two places, never a third casse); seeded bot sessions (seeds 1–3, every rioter KO'd 1 s after it enters): each round 5–9 roster ≤ 44, mean of rounds 5–9 ≤ 36 (≈ 41 in 1.1.0), pressure below 12 at the start of rounds 5–9; rounds 1–4 unchanged. |
+| RC-183 | Caïd look: deterministic pick (v1.2.0) | `caidSkinOf(id)` is an integer 0–4, the same on every call; all five appear over ids 0–4999 (each > 700 times), over ids 1–20 and over ids 10k + 3; `rioterSheet(variant, 'boss', lifeId)` is `caid_<caidSkinOf(lifeId)>` whatever the variant (`tests/game/caidSkin.test.ts`). |
+| RC-184 | Caïd look: same on the street, in the van and in the yard (v1.2.0) | A jailed Caïd's `PrisonInmate.lifeId` is his map `lifeId`; `inmateTextureKey(inmate)` equals his street sheet; the jail van carries the same key (`tests/game/caidSkin.test.ts`, `tests/game/prisonInmates.test.ts`). |
+| RC-185 | Caïd slogans: content (v1.2.0) | `CAID_SKINS` has 5 looks with 5 distinct props and 3–4 distinct slogans each, every slogan ≤ 40 characters; no name or slogan contains a forbidden real name or party (macron, sarkozy, hollande, chirac, royal, trump, poutine, putin, khamenei, lepen, le pen, mélenchon, melenchon, zemmour, hassan, bagayoko, boyard; lfi and rn as words) nor a religious word (`tests/content/caids.test.ts`). |
+| RC-186 | Caïd looks on screen (v1.2.0) | In a browser: the five looks are told apart at a glance (clothes and prop), each keeps the crown and the segmented HP bar, never a flag; a slogan bubble shows over a standing Caïd every 10–18 s, never off screen, never on a KO body, still with reduced motion, inside the screen at 375×812; the yard shows the same look as on the street. |
 
 ### 21.3 Visual acceptance
 
@@ -235,6 +239,8 @@ The items in the « To do » column remain requirements of the distribution targ
 **Main square (v1.1.0).** Delivered: church (150 HP, from round 3, section 10.10), central square layout, three peaceful groups (section 5.5), château with the balcony President and quote bubbles, sauna Easter egg (section 10.11), RC-170 to RC-181. The on-screen checks (RC-176 and the visual parts of RC-179 to RC-181) are to be run in a real browser at each release.
 
 **Balance pass (v1.1.1).** Delivered: rounds 5–9 less dense and a steadier difficulty curve (section 12.2), RC-182, checked by `tests/sim/balance.test.ts`.
+
+**Caïd looks (v1.2.0).** Delivered: five invented leader looks for the Caïd, kept from the street to the prison yard, with their prop and slogans (section 9.6 of Combat and Enemies), RC-183 to RC-186; RC-183 to RC-185 are unit-tested, RC-186 is to be run in a real browser.
 
 **Slice 2 « Fun » — items delivered / to do (v1.9.15).** Design: [slice 2 « Fun »](superpowers/specs/2026-10-20-slice-2-fun-design.md), which prevails over the older rules it contradicts.
 

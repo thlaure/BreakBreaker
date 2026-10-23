@@ -1,11 +1,14 @@
 import type { Role, Variant } from '../../sim/types';
+import { caidSheetKey, caidSkinOf } from './caidSkin';
 
 /**
  * How a rioter's role reads on screen (pure, no Phaser): runners wear the light hooded LPC sheets (`rioter_runner_a/b`,
- * the variant still shows through the flag prop), brutes and the Caïd keep their variant's sheet, drawn bigger with a
- * helmet / a crown badge and an HP bar (the Caïd always, a brute once damaged).
+ * the variant still shows through the flag prop), brutes keep their variant's sheet, drawn bigger with a helmet badge
+ * and an HP bar once damaged; the Caïd wears one of the five leader looks (`caid_<caidSkinOf(lifeId)>`, whatever his
+ * variant, no flag), drawn ×1.5 with a crown and his HP bar always.
  */
 export function rioterSheet(variant: Variant, role: Role, lifeId: number): string {
+  if (role === 'boss') return caidSheetKey(caidSkinOf(lifeId));
   const ab = lifeId % 2 === 0 ? 'a' : 'b';
   return role === 'runner' ? `rioter_runner_${ab}` : `rioter_${variant}_${ab}`;
 }
