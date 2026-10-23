@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Journey, Map and Paul
 
 > **Purpose of this file:** the player's journey, map and objectives, Paul (movement and camera), landing page and access to the game.  
-> Part of the BreakBreaker specifications (version 1.0.2), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.1.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 4. Player journey
 
@@ -33,11 +33,13 @@ Fictional Paris in orthogonal tiles: ground, squares, open streets, buildings, s
 
 The size must produce real route choices without long empty crossings. Two nearby objectives may be visible in different directions. The first destination remains quickly reachable from the start.
 
-**Decor facades (v1.9.25).** Two free buildings on the map receive a purely decorative shopfront, with no interaction at all: they are ordinary solid buildings (obstacles for Paul and the rioters, like the others), never places (`DISTRICT.decor`, outside `DISTRICT.targets`): no incident, no draw, no fire, no health bar, no ruin, no repair, and no rioter heads for them. They are at least 64 px from spawn points, healing, rescues, toolboxes, guard posts, other places and the monument, and their door opens onto the street below the facade.
+**Decor facades (v1.9.25; four since v1.1.0, see sections 5.5 and 10.11).** Two free buildings on the map receive a purely decorative shopfront, with no interaction at all: they are ordinary solid buildings (obstacles for Paul and the rioters, like the others), never places (`DISTRICT.decor`, outside `DISTRICT.targets`): no incident, no draw, no fire, no health bar, no ruin, no repair, and no rioter heads for them. They are at least 64 px from spawn points, healing, rescues, toolboxes, guard posts, other places and the monument, and their door opens onto the street below the facade.
 - **« CAF »** (building 2, to the north, R(26,4,7,5), door at C(29,9)): sober facade in light stone (courses, joints, cornice), two small frosted windows, a glazed counter window with an agent behind the speak-through grille and a stone ledge, an aluminium glass door, a notice board, and a small queue of five people waiting along the wall, facing the door (slight breathing sway, motionless with the reduced-motion preference); slate-blue « CAF » sign with a cardboard folder on the roof edge.
 - **« POULET CROUSTI »** (building 8, east of the monument, R(38,16,6,6), door at C(41,22)): colourful fast-food shopfront (tomato-red wall, mustard trim, checkerboard plinth, striped awning), menu board, lit counter with a cook at the fryer and a tray on the stainless steel, red glass door, dining room with table and stools, warm light on the pavement; lit « POULET CROUSTI » sign with a halo that pulses gently (fixed with the reduced-motion preference), a big pixel chicken drumstick on the roof and fryer smoke rising from a chimney (particles; none with the reduced-motion preference).
 
 The names are only the text of the signs, in our pixel style and our colours: no real logo. The sign, the drumstick and the chimney fade with the roof when Paul passes underneath. Rendering: `src/game/render/decor.ts` and its pure helpers `decorMath.ts`.
+
+**Main square (v1.1.0).** The centre of the map is now a real neighbourhood square (section 5.5): church, town hall, château, sauna, monument and three peaceful groups around an open plaza.
 
 ### 5.2 Free movement
 
@@ -56,6 +58,27 @@ Roofs or upper parts that hide Paul become transparent or disappear locally. A b
 School degraded/on fire, rebuilding, open, lost then possibly reconquered. Monument with the French flag, attacked, flag replaced, contested zone, flag retaken (v1.9.4). Retro games shop, cars and bus shelters: intact, attacked, on fire, in ruins, repaired (same states as the school). Healing charged/exhausted; weapons on the ground; peaceful groups always recognisable.
 
 Each new assault is announced and identified; bonuses are not replayed by a purely graphical change. A destroyed place stays in ruins until it has been repaired with a toolbox; a round transition does not repair it for free.
+
+### 5.5 Main square (v1.1.0)
+
+**Project-owner request:** the middle of the map was empty street; it becomes the heart of the neighbourhood. The layout below is the one built in `src/sim/map/district.ts`; it differs slightly from the first design (`docs/superpowers/specs/2026-10-23-main-square-design.md`), which the builder was allowed to adjust.
+
+| Element | Footprint (tiles) | Door / notes |
+| --- | --- | --- |
+| Church (building 6, place to defend, section 10.10) | R(25,25,4,5) | Door C(27,30), four attack points C(25..28,30) on the street row below the front |
+| Town hall (building 1, place, section 12.2) | R(14,27,6,4), **moved** from R(15,3,6,4) in the north | Door C(17,31), attack points C(15|16|18|19,31); the old northern block is open ground |
+| Château (building 7, decor, section 10.11) | R(27,14,6,4) | Door C(30,18); balcony facing the square; never attacked |
+| Sauna (building 12, decor, section 10.11) | R(31,29,4,3) | Door C(33,32); never attacked, Paul does not go in |
+| Equestrian monument | R(33,21,2,2) | Unchanged (section 11) |
+| Bus stop (prop) | R(23,11,2,1), **moved** to the north street | Attack points C(22,11), C(25,11), C(23,12), C(24,12) |
+| First toolbox site | C(23,28), **moved** next to the church | The other sites C(18,12), C(8,26), C(36,44) are unchanged |
+| Healing stations, Paul's start | C(23,25) and C(44,24); C(20,22) | On open ground |
+
+**Removed filler buildings.** The two plain solid buildings R(14,26,6,5) and R(30,28,7,5) of the former layout are deleted because they blocked the square. The other filler buildings (R(36,3,8,5), R(4,14,6,5)) stay as peripheral blocks. Building numbers keep their meaning (school 0, town hall 1, CAF 2, shop 5, « POULET CROUSTI » 8, nursery school 9, library 10, prison 11); the church takes slot 6, the château slot 7 and the sauna slot 12.
+
+**Three peaceful groups.** `DISTRICT.peacefulGroups` replaces the single group: three groups of six demonstrators, each standing in a solid 3 × 2-tile area (one member per tile centre), at group(22,16) north-west of the church, group(30,25) east of it and group(22,32) south-west of it; the plaza between the town hall, the church and the château stays open. Each group keeps the behaviour of the former single one (sections 8.5 and 9.5): neutral, protected from Paul, never targeted, with its discontent bubble; the snapshot, the grid, the flow field and the renderer handle the three areas.
+
+**Free-space rule.** No spawn, healing station, rescue site, toolbox site or attack point lies inside a building, and no spawn, station, rescue or toolbox site lies less than 64 px from a door of a place or of a decor front; every door and attack point of the church and the town hall is walkable and reachable from Paul's start and from every rioter spawn.
 
 ## 6. Paul, movement and camera
 

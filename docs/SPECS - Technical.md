@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Technical
 
 > **Purpose of this file:** technical choices, architecture and data, performance, storage, loading and distribution.  
-> Part of the BreakBreaker specifications (version 1.0.2), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.1.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 17. Technical choices
 
@@ -99,6 +99,7 @@ Only `LandedRecoverable` can enter the stock. `PlayerFlying` does not become rec
 - Field small heals (v1.9.18): `SmallHealDropped` (`id`, `pos`), `SmallHealPicked` (`id`, `amount` = HP actually gained). The snapshot adds `fieldHeals` (`id`, `pos`, `expiresAt`).
 - Emergency services (v1.9.19): `ServiceCalled` (`kind` 'fire' or 'police'), `ServiceRefused` (`kind`, `reason` among `noFire`, `fewRioters`, `noCalls`, `busy`, `ruined`), `TruckArrived` (`from`), `TruckSprayed` (`target`, once per place), `TruckDestroyed` (`pos`), `TruckLeft`, `PoliceArrived` (`from`, `count`), `PoliceDown` (`id`), `PoliceLeft`. The snapshot adds `services` (`calls` { fire, police } = remaining calls; `hint` { fire, police } = a call would be accepted right now) and `allies` (`truck`: `pos`, `hp`, `maxHp`, `state` 'arriving' / 'spraying' / 'leaving', `target`, or null; `police`: list of agents `id`, `role`, `pos`, `hp`, `maxHp`, `state` 'run' / 'strike' / 'down').
 - Prison (v1.9.20): `CaidJailed` (`lifeId`, once per life of a jailed Caïd), `PrisonBreakout` (`count` Caïds freed, `pos` = the door; never emitted if nobody is jailed), `GuardDown` (`id`, a guard KO; a police officer from the phone booth gives `PoliceDown`), `GuardsBack` (during the breather, guards come back). `Director.extend` emits `RoundTotalChanged` when T grows. The snapshot adds `prison` (`jailed` = jailed Caïds; `guards`: list of `id`, `pos`, `hp`, `maxHp`, `state`; `standing`). `allies.police` lists only the police, never the guards.
+- Main square (v1.1.0): no new event; the church reuses the place events above with the `church` kind. The snapshot's single `peacefulGroup` becomes `peacefulGroups` (three areas). The President, his bubbles and the sauna steam are render only: they read the camera and Paul's position, never write to the simulation, and use their own generator (`presidentRng`).
 - Toolboxes: `ToolboxSpawned`, `ToolboxPickedUp`, `FireOut`, `TargetRepaired`.
 - Rescue: `RescueStarted` (position and type, emitted once; it triggers the alert), `ItemStolen`, `ItemDropped`, `ItemPickedUp`, `ItemReturned`, `RescueSecured`, `RescueCompleted`, `RescueFailed`.
 - Monument: `MonumentAttacked`, `FlagSwapped`, `MonumentDefended`, `FlagCaptured`.
@@ -116,7 +117,7 @@ The rules system is the sole author of the score and of the « Casseurs neutrali
 ```json
 {
   "rulesVersion": "1.0.0",
-  "appVersion": "1.0.2",
+  "appVersion": "1.1.0",
   "sessionMode": "arcade",
   "view": "top-down-orthogonal",
   "artStyle": "pixel-art",
@@ -176,6 +177,7 @@ The rules system is the sole author of the score and of the « Casseurs neutrali
   "caidAttackIntervalMultiplier": 0.85,
   "caidWeaponDropShare": 0.5,
   "prison": { "hp": 400, "guards": 5, "postRadius": 160, "fromRound": 4, "repairShare": 0.6 },
+  "church": { "hp": 150, "fromRound": 3, "repairShare": 0.6 },
   "roundEnemyCounts": [10, 14, 18, 22],
   "roundEnemyIncrement": 4,
   "maxRoundEnemies": 40,
@@ -187,6 +189,8 @@ The rules system is the sole author of the score and of the « Casseurs neutrali
 ```
 
 **Changed (v1.9.11):** this block is a summary; the source of truth for the parameters is `CONFIG` in `src/sim/config.ts` (the former 30 s reserve replaced by place health, 8 s capture, 2 s repair; `repairBonus` is the school's value; `smallHealAmount` corresponds to the small heals delivered in v1.9.18, `CONFIG.fieldHeal`). The values are proposed. The simulation caps are shared by all graphics profiles; a separate difficulty setting can change the rosters, but not an automatic drop in quality.
+
+**Render and content modules of the main square (v1.1.0).** `src/content/quotes.ts` (the dictionary `QUOTES`); `src/game/render/squareMath.ts` (pure: `SAUNA_SIGN`, `BALCONY_HALF_W`, `chateauBalcony`, `steamSpec`, `lanternGlow`, `silhouetteDrift`); `src/game/render/presidentMath.ts` (pure: `MOODS`, `nextMood`, `moodHoldMs`, `quoteDelayMs`, `pickQuote`, `agitation`, `poseFrame`, `presidentBob`, `presidentRng`, `QUOTE_SHOW_MS`, `AGITATION_RADIUS`); `src/game/render/president.ts` (Phaser view of the figure and its bubble); fronts `churchFront.ts`, `chateauFront.ts` and `saunaFront.ts`. Simulation constants: `CONFIG.church` (`hp` 150, `fromRound` 3, `repairShare` 0.6), `CONFIG.casse.fromRound.church`, `CONFIG.casse.scores.church`, `DISTRICT.decor` (château and sauna added) and `DISTRICT.peacefulGroups`. Tests: `tests/sim/church.test.ts`, `tests/content/quotes.test.ts`.
 
 ### 18.5 Collisions and time
 
