@@ -25,6 +25,7 @@ All of typecheck, lint, format:check, test and bench must pass before a branch i
 - `src/game/` renders only from `Snapshot` and events; render-only features (decor, the President, bubbles) never touch the sim or its rng.
 - Keep files under 400 code lines; split by responsibility, keep public exports importable from the original path.
 - Pure logic lives in `*Math.ts` helpers with unit tests; Phaser views are verified in a real browser.
+- Design for performance: the simulation stays under 0.3 ms per step, the render path allocates little per frame (no per-frame object churn, cull what is off screen, cache what does not change), idle states cost nothing, and download weight stays low (compressed assets, cacheable chunks). Measure before and after (`npm run bench`, `npm run build` sizes), never guess.
 
 ## Language rules
 
@@ -42,6 +43,7 @@ All of typecheck, lint, format:check, test and bench must pass before a branch i
 - Bigger work: brainstorm with the owner, write a design record and a plan (`docs/superpowers/specs/`, `docs/superpowers/plans/`), then build task by task with isolated subagents and review the diff before merging.
 - Do not run Workflow-style multi-agent orchestration unless the owner asked for it.
 - **Browser checks: once, at the end.** Per task, run only unit tests, typecheck, lint and format. Do not launch the game in a browser for each feature; do one global browser check (all languages, mobile, the new features together) after everything is implemented. Subagent briefs must say so.
+- **End-of-development review (every feature or fix, before offering the branch):** check the tests (do they fail without the change? are they robust, deterministic, not tied to timing or machine load, covering edge cases?), code quality and good practices (naming, size, duplication, error handling, accessibility, i18n parity), performance (new per-frame or per-step cost, allocations, asset weight), and dead code (unused exports, files, keys, dependencies, stale comments and docs): remove it. Report what the review found and fixed.
 - Dependencies are upgraded by hand, never unprompted. Dependabot version-update PRs are off; check for new versions only when asked.
 
 ## Docs go with every change
