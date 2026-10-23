@@ -231,6 +231,10 @@ Keep historical totals, not all events, bodies or identifiers since launch. Repl
 
 Proposed budgets to be measured on a real 2D prototype. Pixel art is not an automatic guarantee of performance: transparencies, projectiles, paths and collisions can remain costly.
 
+### 19.1b Simulation cost (v1.4.0)
+
+`Grid.isSolidPx` (the hottest function of the step: line-of-sight sampling, collisions) answers from a per-tile cover table built once (tile empty, fully covered by one rectangle, or partial; only partial tiles run the exact scan), with results identical to the scan for any geometry (test against a brute-force reference). `npm run bench` stays under 0.3 ms per step (about 0.15 ms after this change). The bench follows one fixed Paul path, so a change of obstacles near that path can swing the figure by about ±30 % for reasons of game state, not of map cost: compare branches by alternating runs.
+
 ### 19.2 Starting budgets
 
 | Indicator | Proposed target |
