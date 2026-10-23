@@ -6,6 +6,10 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.1.3 - 2026-10-23
+
+- Mobile : les bulles de dialogue (manifestants, Président) ne sont plus coupées au bord de l'écran.
+
 ## 1.1.2 - 2026-10-23
 
 - Le sauna : les trois silhouettes dans la vapeur ont chacune leurs accessoires (casquette et longue cravate, ceinture de judo et crosse, lunettes et fanion).

@@ -3,6 +3,7 @@ import { DISTRICT } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
 import { CharView, FEET_ORIGIN_Y, idleFrame } from './actors';
 import { ITEM_SHOUTS, VictimMood } from './belongings';
+import { clampBubbleX } from './bubbleClamp';
 import { DEPTH } from './depth';
 
 const SIGN_COLORS = [0xf4ecd8, 0xe8f1f8, 0xf8efc8];
@@ -105,6 +106,8 @@ class Bubble {
   private readonly g: Phaser.GameObjects.Graphics;
   private readonly text: Phaser.GameObjects.Text;
   private kind: BubbleKind | null = null;
+  /** Half width of the drawn bubble (px, before scaling), for keeping it inside the screen. */
+  private halfW = 0;
 
   constructor(scene: Phaser.Scene) {
     this.g = scene.add.graphics();
@@ -126,6 +129,7 @@ class Bubble {
     const bh = th + 2 * BUBBLE_PAD;
     const left = -Math.floor(bw / 2);
     const top = -(bh + 4);
+    this.halfW = Math.ceil(bw / 2) + 1;
     const g = this.g.clear();
     const ink = b.border ?? BUBBLE_INK;
     g.fillStyle(ink, 1).fillRect(left - 1, top - 1, bw + 2, bh + 2);
@@ -142,8 +146,10 @@ class Bubble {
 
   /** Whole-number scale keeps the bubble about 16 screen px tall at camera zoom 1 and 2 (crisp, readable). */
   place(x: number, y: number, alpha = 1): void {
-    const scale = Math.max(1, Math.round(2 / (this.root.scene.cameras.main.zoom || 1)));
-    this.root.setPosition(Math.round(x), Math.round(y)).setAlpha(alpha).setScale(scale);
+    const cam = this.root.scene.cameras.main;
+    const scale = Math.max(1, Math.round(2 / (cam.zoom || 1)));
+    const cx = clampBubbleX(x, this.halfW * scale, cam.worldView.x, cam.worldView.right);
+    this.root.setPosition(Math.round(cx), Math.round(y)).setAlpha(alpha).setScale(scale);
   }
 }
 

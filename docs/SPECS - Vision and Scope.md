@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Vision and Scope
 
 > **Purpose of this file:** game vision, validated requirements, scope and priorities, production and deliverables, planned extensions, remaining decisions and sources.  
-> Part of the BreakBreaker specifications (version 1.1.2), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.1.3), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 1. Vision and positioning
 

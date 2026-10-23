@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { Vec } from '../../sim/types';
+import { clampBubbleX } from './bubbleClamp';
 import { BALCONY_DEPTH } from './chateauFront';
 import type { Paint, RoofPart } from './decor';
 import { DEPTH } from './depth';
@@ -147,6 +148,8 @@ class QuoteBubble {
   private readonly g: Phaser.GameObjects.Graphics;
   private readonly text: Phaser.GameObjects.Text;
   private quote: string | null = null;
+  /** Half width of the drawn bubble (px, before scaling), for keeping it inside the screen. */
+  private halfW = 0;
 
   constructor(scene: Phaser.Scene) {
     this.g = scene.add.graphics();
@@ -173,6 +176,7 @@ class QuoteBubble {
     const bh = Math.ceil(this.text.height) + 2 * BUBBLE_PAD;
     const left = -Math.floor(bw / 2);
     const top = -(bh + 4);
+    this.halfW = Math.ceil(bw / 2) + 1;
     const g = this.g.clear();
     g.fillStyle(LOOK.suitLo, 1).fillRect(left - 1, top - 1, bw + 2, bh + 2);
     g.fillStyle(0xffffff, 1).fillRect(left, top, bw, bh);
@@ -187,8 +191,10 @@ class QuoteBubble {
 
   /** Whole-number scale keeps the bubble crisp and readable at camera zoom 1 and 2 (as the crowd's). */
   place(x: number, y: number): void {
-    const scale = Math.max(1, Math.round(2 / (this.root.scene.cameras.main.zoom || 1)));
-    this.root.setPosition(Math.round(x), Math.round(y)).setScale(scale);
+    const cam = this.root.scene.cameras.main;
+    const scale = Math.max(1, Math.round(2 / (cam.zoom || 1)));
+    const cx = clampBubbleX(x, this.halfW * scale, cam.worldView.x, cam.worldView.right);
+    this.root.setPosition(Math.round(cx), Math.round(y)).setScale(scale);
   }
 }
 
