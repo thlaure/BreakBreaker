@@ -137,8 +137,6 @@
       0 calc(2 * var(--bb-px)) 0 0 #000, var(--bb-px) var(--bb-px) 0 0 #000;
   }
 }
-@media (max-width: 560px) { .bb-alert { gap: 8px; padding: 8px; } .bb-alert .title { font-size: 11px; } .bb-alert .sub { font-size: 8px; } }
-@media (max-width: 400px) { .bb-alert { gap: 6px; padding: 6px; } .bb-alert .txt { gap: 4px; } .bb-alert .title { font-size: 10px; } .bb-alert .sub, .bb-alert .meta { font-size: 7px; } .bb-alert .ico svg { width: 20px; height: auto; } .bb-alert .dir { padding-left: 6px; } }
 @keyframes bb-wave-pulse { 0%, 66% { color: var(--bb-accent); } 33% { color: #fff; } }
 
 .bb-edge {
@@ -183,7 +181,6 @@
 .bb-round .heals::before { content: '♥ '; color: var(--bb-bad); }
 .bb-round .count { color: var(--bb-accent); }
 @keyframes bb-bonus { 50% { background: #fff; } }
-@media (max-width: 400px) { .bb-round { gap: 5px; padding: 6px 8px; } .bb-round .title { font-size: 11px; } .bb-round .score { font-size: 8px; } .bb-round, .bb-round .obj { font-size: 7px; } }
 @media (prefers-reduced-motion: reduce) { .bb-alert, .bb-edge, .bb-stats .wave.pulse .val, .bb-stats .wave.pulse .lbl, .bb-stats .score .val.pop, .bb-round.in, .bb-round .bonus, .bb-stats .energy .etag, .bb-stats .energy .ebar.pop, #touch-ui [data-action="furie"].ready, #touch-ui [data-action="onde"].ready { animation: none; } .bb-stats .energy .efill { transition: none; } }
 
 /*
@@ -258,8 +255,6 @@
 @media (prefers-reduced-motion: reduce) { #touch-ui [data-action="act"].bb-act-ready { animation: none; } }
 .bb-alert.shake { animation: bb-alert-in 0.24s steps(3, end) both, bb-alert-shake 0.36s steps(6, end) 0.24s 1, bb-alert-flash 0.5s steps(1, end) 0.6s 6; }
 @keyframes bb-alert-shake { 0%, 100% { transform: none; } 17% { transform: translateX(-4px); } 33% { transform: translateX(4px); } 50% { transform: translateX(-3px); } 67% { transform: translateX(3px); } 83% { transform: translateX(-1px); } }
-@media (max-width: 560px) { .bb-alert .title { font-size: 13px; } .bb-alert .sub { font-size: 9px; } }
-@media (max-width: 400px) { .bb-alert .title { font-size: 11px; } .bb-alert .sub, .bb-alert .meta { font-size: 8px; } }
 .bb-edge .arrow { width: 20px; height: 20px; }
 /* repair guidance at the screen edge: the ruins to rebuild (wrench) or the toolboxes to fetch, steady gold */
 .bb-guide {
@@ -283,4 +278,25 @@
   .bb-alert.shake { animation: none; }
   .bb-edge, .bb-guide { animation: none; }
   .bb-glow.on { animation: none; opacity: 0.45; }
+}
+
+/* ---------- compact HUD: phones (portrait <= 560 px wide, landscape <= 520 px tall) ----------
+   Whole blocks are scaled instead of shrinking each font, so proportions and legibility hold. `zoom` is used for the
+   blocks placed by CSS alone; the edge indicators are placed by script in px, so they scale with `transform`. */
+@media (max-width: 560px), (max-height: 520px) {
+  .bb-top { zoom: 0.82; }
+  .bb-alert, .bb-round, .bb-banner { zoom: 0.72; }
+  .bb-help, .bb-prompt { zoom: 0.85; }
+  .bb-edge, .bb-guide { transform: translate(-50%, -50%) scale(0.75); }
+  .bb-glow { box-shadow: inset 0 0 0 3px rgba(255, 59, 48, 0.85), inset 0 0 28px 8px rgba(255, 59, 48, 0.5); }
+}
+@media (max-width: 400px), (max-height: 400px) { .bb-alert, .bb-round, .bb-banner { zoom: 0.66; } }
+@media (max-height: 400px) { .bb-top { zoom: 0.7; } }
+/* short landscape screens: the pause menu fits without scrolling (two columns of buttons) */
+@media (max-height: 520px) {
+  .bb-panel { padding-top: 10px; padding-bottom: 12px; }
+  .bb-panel h1 { font-size: 22px; margin-bottom: 6px; }
+  .bb-overlay[data-panel='pause'] .bb-panel { width: min(520px, 100%); }
+  .bb-overlay[data-panel='pause'] .bb-panel .col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .bb-overlay[data-panel='pause'] .bb-panel .col .primary { grid-column: 1 / -1; }
 }
