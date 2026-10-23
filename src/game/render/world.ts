@@ -4,10 +4,13 @@ import { DISTRICT, type Rect } from '../../sim/map/district';
 import type { Vec } from '../../sim/types';
 import { TILE } from '../assets';
 import { SHOP, buildLibraryFront, buildNurseryFront, buildShopFront, buildTownHallFront } from './buildingFronts';
+import { buildChateauFront } from './chateauFront';
+import { buildChurchFront } from './churchFront';
 import { buildCafFront, buildPouletFront, type DecorAnim, type Paint } from './decor';
 import { DEPTH, inRect } from './depth';
 import { FACADE_H, ROOF_OVERHANG } from './geometry';
 import { buildPrisonFront } from './prisonFront';
+import { buildSaunaFront } from './saunaFront';
 
 // Moved out of this file; re-exported so importers keep working.
 export { FACADE_H, ROOF_OVERHANG };
@@ -47,8 +50,10 @@ export class WorldView {
   private readonly roofs: Roof[] = [];
   /** Parts of each target building (school, shop, nursery, town hall, library) by building index, for its ruin look. */
   readonly buildingParts = new Map<number, BuildingPart[]>();
-  /** Animated bits of the decor fronts (CAF queue, POULET CROUSTI sign). */
+  /** Animated bits of the decor fronts (CAF queue, POULET CROUSTI sign, sauna lantern and silhouettes). */
   private readonly decor: DecorAnim[] = [];
+  /** Centre of the château balcony floor (world px), where the President stands; null until the château is built. */
+  chateauBalcony: Vec | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -141,14 +146,15 @@ export class WorldView {
     else if (kind === 'nursery') this.buildingParts.set(i, [facade, roof, base, ...buildNurseryFront(this, b, parts)]);
     else if (kind === 'townHall') this.buildingParts.set(i, [facade, roof, base, ...buildTownHallFront(this, b, parts)]);
     else if (kind === 'library') this.buildingParts.set(i, [facade, roof, base, ...buildLibraryFront(this, b, parts)]);
-    // the church: a plain stone shell for now (its own front comes with the square's render), ruin look included
-    else if (kind === 'church') this.buildingParts.set(i, [facade, roof, base]);
+    else if (kind === 'church') this.buildingParts.set(i, [facade, roof, base, ...buildChurchFront(this, s, b, parts)]);
     else if (kind === 'prison') this.buildingParts.set(i, [facade, roof, base, ...buildPrisonFront(this, s, b, parts)]);
     else {
       // decor fronts: never targets, so not in buildingParts (no ruin look)
       const decor = DISTRICT.decor.find((d) => buildingIndex(d.footprint) === i);
       if (decor?.id === 'caf') this.decor.push(buildCafFront(this, s, decor, parts, this.reducedMotion));
       else if (decor?.id === 'pouletCrousti') this.decor.push(buildPouletFront(this, s, decor, parts, this.reducedMotion));
+      else if (decor?.id === 'chateau') this.chateauBalcony = buildChateauFront(this, s, decor, parts).balcony;
+      else if (decor?.id === 'sauna') this.decor.push(buildSaunaFront(this, s, decor, parts, this.reducedMotion));
     }
     this.roofs.push({ rect, parts });
   }
