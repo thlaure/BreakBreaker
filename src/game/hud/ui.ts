@@ -17,6 +17,8 @@ export interface UiHost {
   releaseInputs(): void;
   cameraView(): CameraView;
   restart(): void;
+  /** The sim resumes: leave the low idle render rate at once. */
+  wake?(): void;
 }
 
 type Phase = 'start' | 'intro' | 'playing' | 'paused' | 'ending' | 'ended';
@@ -141,6 +143,7 @@ export class GameUi {
     this.audio.resume();
     this.host.releaseInputs();
     this.host.sim.resume();
+    this.host.wake?.();
   }
 
   private start(): void {
@@ -151,6 +154,7 @@ export class GameUi {
     this.menus.close();
     this.hud.show(true);
     this.host.sim.resume();
+    this.host.wake?.();
   }
 
   private resume(): void {
@@ -159,6 +163,7 @@ export class GameUi {
     this.menus.close();
     this.audio.resume();
     this.host.sim.resume();
+    this.host.wake?.();
   }
 
   private toggleSound(): boolean {

@@ -6,6 +6,10 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.4.4 - 2026-10-24
+
+- Le jeu consomme beaucoup moins quand il est en pause (menu pause, commandes, carte d'instructions, fin de partie) : l'écran figé n'est plus redessiné qu'à faible cadence, ce qui économise processeur, carte graphique et batterie.
+
 ## 1.4.3 - 2026-10-24
 
 - Le jeu se charge plus vite : les images pèsent six fois moins (1,8 Mo → 0,3 Mo), sans aucune différence visible.

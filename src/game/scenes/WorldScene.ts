@@ -5,6 +5,7 @@ import { CONFIG } from '../../sim/config';
 import { DISTRICT } from '../../sim/map/district';
 import { Sim, type Snapshot } from '../../sim/sim';
 import { stressTarget, stressTick } from '../debug';
+import { fpsLimitFor } from '../renderRateMath';
 import type { InputFrame, SimEvent } from '../../sim/types';
 import { GameUi } from '../hud/ui';
 import type { CameraView } from '../hud/hud';
@@ -123,6 +124,8 @@ export class WorldScene extends Phaser.Scene {
   /** Camera is showing the school door for the cinematic (follow suspended). */
   private cinematicCam = false;
   private prevAct = false;
+  /** Phaser fps limit currently applied (0 = unlimited); see syncRenderRate. */
+  private fpsLimit = 0;
 
   constructor() {
     super('world');
@@ -283,6 +286,20 @@ export class WorldScene extends Phaser.Scene {
     }
     this.events.emit('hud', snap);
     this.events.emit('sim-events', events);
+    this.syncRenderRate(snap.paused);
+  }
+
+  /** Called by the UI when it resumes the sim. */
+  wake(): void {
+    this.syncRenderRate(false);
+  }
+
+  /** A frozen scene behind an overlay is redrawn at a low rate only (the overlay is DOM): saves CPU, GPU and battery. */
+  private syncRenderRate(paused: boolean): void {
+    const limit = fpsLimitFor(paused);
+    if (limit === this.fpsLimit) return;
+    this.fpsLimit = limit;
+    this.game.loop.setFPSLimit(limit);
   }
 
   /** Only while the cinematic runs and no overlay pauses the sim. */

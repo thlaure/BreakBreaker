@@ -299,6 +299,8 @@ Engine, atlas of Paul and the enemies, weapons, map, collisions, stones, heals a
 
 Load weight: PNG assets are lossless indexed PNGs (at most 256 colors; `scripts/optimize-png.mjs`), and the engine is a separate `phaser` chunk so a game update does not invalidate it in the browser cache.
 
+While an overlay pauses the sim, the scene behind it is redrawn at 15 fps only (the overlays are DOM), and the page-hidden and window-blur events open the pause menu; the browser itself stops animation frames in a hidden tab.
+
 Sprites reuse shared textures but keep their animation state independent. No synchronous loading at the first strike or the first thrown-back stone.
 
 ### 20.3 Delivery
