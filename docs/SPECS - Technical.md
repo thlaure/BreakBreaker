@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Technical
 
 > **Purpose of this file:** technical choices, architecture and data, performance, storage, loading and distribution.  
-> Part of the BreakBreaker specifications (version 1.1.4), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.2.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 17. Technical choices
 

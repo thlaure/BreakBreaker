@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Combat and Enemies
 
 > **Purpose of this file:** combat, projectiles, weapons, energy, protected groups, characters, hordes and artificial intelligence.  
-> Part of the BreakBreaker specifications (version 1.1.4), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.2.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 8. Combat, projectiles and protected groups
 
@@ -209,3 +209,20 @@ A horde must not permanently block its own path. A stuck agent recomputes or joi
 Three groups proposed on the map, of six to eight sprites each, in non-mandatory locations. **Delivered (v1.1.0):** the map has three groups of six demonstrators on the main square, at group(22,16), group(30,25) and group(22,32) (section 5.5); the first slice had only one, at the centre. Slow group movements possible after validation, without abruptly cutting off the only dodge route.
 
 Their placards and their density distinguish them from the hordes. They remain neutral even when Paul passes close or is being chased. An event may make them call for help or fall back; they do not become hostile and are not exposed to free damage from Paul. They do not feed the loot, heal or KO score systems.
+
+### 9.6 The Caïd's looks (v1.2.0)
+
+« Le Caïd » (role `boss`) no longer wears his variant's rioter sheet: he wears one of five **invented** « leader / tribune » looks of an agitation movement, gently caricatured through clothes, a prop and pompous slogans, never through the body. Render only: same HP, AI, score and drops for all five.
+
+| Look | Base (existing LPC sheet) | Clothes and prop |
+| --- | --- | --- |
+| Le tribun | `protester_1` (medium skin) | dark jacket, red scarf, megaphone; raises the megaphone and a fist while he speaks |
+| La cheffe de cortège | `rioter_antifa_b` (lighter skin, woman) | dark hood, red armband, a generic banderole on a pole (cream cloth, red hems, no word, no emblem) |
+| Le camarade en costume | `protester_3` (darker skin) | navy suit, white collar, red tie, briefcase labelled « COMITÉ » |
+| Le vieux briscard | `elder_1` (lighter skin, grey hair) | faded olive coat with a patch, whistle on a cord |
+| Le jeune agitateur | `rioter_runner_b` (darker skin) | teal hoodie, roll of posters under the arm |
+
+- **Pick:** `caidSkinOf(lifeId)` (`src/game/render/caidSkin.ts`), a pure integer hash (no `Math.random`, no sim rng). The jailed inmate keeps the `lifeId` he had on the map (`PrisonInmate.lifeId`), so the yard (`inmateTextureKey`), the jail van and the street show the same look. A Caïd released by a breakout comes back with a new `lifeId`, hence possibly another look.
+- **Sheets:** `caid_0` … `caid_4` are painted at boot over the base sheets (`caidPaint.ts`: exact colour swaps of the clothes, plus scarf, collar and tie, armband, whistle and patch painted frame by frame on the walk and slash rows; outline and skin untouched), same 64-px LPC layout. Crown, ×1.5 scale and segmented HP bar unchanged. The Caïd never carries a flag.
+- **Slogans:** `CAID_SKINS` (`src/content/caids.ts`), 3–4 French lines per look, each ≤ 40 characters. While he stands on screen, a line shows in the usual pixel speech bubble (ink text, red border, wrapped to about 20 characters per line, kept inside the screen by `clampBubbleX`) for 2.8 s, every 10–18 s (render-side random), the first 1.5–4 s after he appears; never off screen nor on a KO body; still shown with reduced motion.
+- **Content rules:** invented types, no resemblance to a real person; no real name of a person or party; no religious clothing or symbol, no real flag, no historical hate symbol; only generic red props (scarf, tie, armband). Skin tones and builds vary across the five (two lighter, one medium, two darker) and are never the joke.

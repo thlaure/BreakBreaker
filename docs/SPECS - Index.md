@@ -1,6 +1,6 @@
 # BreakBreaker — Specifications (index)
 
-**Version:** 1.1.4 — 23 October 2026  
+**Version:** 1.2.0 — 23 October 2026  
 **Scope:** 2D pixel-art web game, non-isometric top-down view, arcade mode in rounds with no time limit, Paris, Paul (a fictional shopkeeper) as the only hero, computer and phone  
 **Status:** reference specification; decisions confirmed by the project owner and design recommendations are identified. A first playable slice exists (section 24); this document is neither a production sign-off nor a statement that all requirements are already implemented.  
 **Launch language:** French  
@@ -53,6 +53,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
   - [9.3 Hordes and pressure](SPECS%20-%20Combat%20and%20Enemies.md#93-hordes-and-pressure)
   - [9.4 Navigation](SPECS%20-%20Combat%20and%20Enemies.md#94-navigation)
   - [9.5 Peaceful groups](SPECS%20-%20Combat%20and%20Enemies.md#95-peaceful-groups)
+  - [9.6 The Caïd's looks](SPECS%20-%20Combat%20and%20Enemies.md#96-the-caïds-looks-v120)
 - [10. Threatened buildings, defence and repair](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#10-threatened-buildings-defence-and-repair) — *SPECS - Places, Monument and Services.md*
   - [10.1 Loop of an attacked place](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#101-loop-of-an-attacked-place)
   - [10.2 Alert, Molotov and health](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#102-alert-molotov-and-health)
@@ -181,6 +182,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
 
 ### 25.4 History
 
+- **1.2.0 — 23 October 2026 (medium):** each Caïd wears one of five invented leader looks (le tribun, la cheffe de cortège, le camarade en costume, le vieux briscard, le jeune agitateur), picked from his lifeId and kept from the street to the jail van and the prison yard, each with a prop and short pompous slogans in a speech bubble now and then; render only, no gameplay change (section 9.6, RC-183 to RC-186).
 - **1.1.4 — 23 October 2026 (patch):** the third sauna silhouette is drawn with a plain dark turban and a grey beard (no symbol, no exaggeration), treated like the other two.
 - **1.1.3 — 23 October 2026 (patch):** speech bubbles (peaceful groups, the President) are kept inside the visible screen area (`clampBubbleX`), so they are no longer cut at the edge on phones.
 - **1.1.2 — 23 October 2026 (patch):** sauna silhouettes get distinctive props (cap and long tie, judo belt and hockey stick, glasses and pennant); no faces, no names.

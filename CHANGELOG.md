@@ -6,6 +6,12 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.2.0 - 2026-10-23
+
+- Les Caïds ont du style : cinq looks de meneurs (le tribun, la cheffe de cortège, le camarade en costume, le vieux briscard, le jeune agitateur).
+- Chacun a son accessoire (mégaphone, banderole, mallette du « COMITÉ », sifflet, rouleau d'affiches) et ses slogans dans une bulle.
+- Un Caïd garde son look jusque dans la cour de la prison.
+
 ## 1.1.4 - 2026-10-23
 
 - Le sauna : la troisième silhouette porte un turban sombre et une barbe grise.

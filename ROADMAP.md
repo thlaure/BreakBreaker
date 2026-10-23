@@ -10,10 +10,10 @@ Ce qui est déjà sorti est dans le [changelog](CHANGELOG.md).
 ## Prochainement
 
 - **« La France d'abord »** *(majeure, 2.0.0)* : après la manche 10, le chaos fait basculer le pouvoir et deux nouveaux camps s'ajoutent aux casseurs : un camp rouge (sweats gris clair, bandeau et drapeau rouge uni, sans symbole) et une milice inventée au drapeau noir (blousons vert sombre ou bleu nuit, casque ou casquette), bien distincte des casseurs en noir. Ils cassent les bâtiments, se battent entre eux et s'en prennent aussi à Paul : de la difficulté en plus, et une occasion de les laisser s'user. Noms et symboles inventés, pas de partis ni de personnes réelles, pas d'uniformes ni de symboles historiques ; les puissants sont moqués de tous les côtés, jamais le physique, l'origine ou la religion.
-- **Skins de Caïds** : chaque Caïd enfermé en prison a son propre look, visible dans la cour. *(moyenne)*
 
 ## Idées
 
+- **Des Caïds pour les nouveaux camps** *(2.0.0)* : les autres camps auront eux aussi leurs propres looks de Caïds.
 - À compléter ensemble : nouveaux lieux, nouveaux ennemis, nouveaux modes de jeu.
 
 ## Fait
