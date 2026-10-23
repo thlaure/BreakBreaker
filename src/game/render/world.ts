@@ -9,6 +9,7 @@ import { buildChurchFront } from './churchFront';
 import { buildCafFront, buildPouletFront, type DecorAnim, type Paint } from './decor';
 import { DEPTH, inRect } from './depth';
 import { FACADE_H, ROOF_OVERHANG } from './geometry';
+import { PresidentView } from './president';
 import { buildPrisonFront } from './prisonFront';
 import { buildSaunaFront } from './saunaFront';
 
@@ -54,6 +55,8 @@ export class WorldView {
   private readonly decor: DecorAnim[] = [];
   /** Centre of the château balcony floor (world px), where the President stands; null until the château is built. */
   chateauBalcony: Vec | null = null;
+  /** The President on that balcony (render only, its own seeded rng). */
+  private president: PresidentView | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -64,9 +67,10 @@ export class WorldView {
     this.buildTrees();
   }
 
-  /** Fades the roof / tree canopy whose rect contains Paul's feet; steps the decor fronts' idle animation. */
+  /** Fades the roof / tree canopy whose rect contains Paul's feet; steps the decor fronts' idle animation and the President. */
   update(feet: Vec, timeMs = 0): void {
     for (const d of this.decor) d.update(timeMs);
+    this.president?.update(feet, timeMs);
     for (const r of this.roofs) {
       const a = inRect(feet, r.rect) ? ROOF_FADED : 1;
       for (const p of r.parts) p.setAlpha(a);
@@ -153,8 +157,10 @@ export class WorldView {
       const decor = DISTRICT.decor.find((d) => buildingIndex(d.footprint) === i);
       if (decor?.id === 'caf') this.decor.push(buildCafFront(this, s, decor, parts, this.reducedMotion));
       else if (decor?.id === 'pouletCrousti') this.decor.push(buildPouletFront(this, s, decor, parts, this.reducedMotion));
-      else if (decor?.id === 'chateau') this.chateauBalcony = buildChateauFront(this, s, decor, parts).balcony;
-      else if (decor?.id === 'sauna') this.decor.push(buildSaunaFront(this, s, decor, parts, this.reducedMotion));
+      else if (decor?.id === 'chateau') {
+        this.chateauBalcony = buildChateauFront(this, s, decor, parts).balcony;
+        this.president = new PresidentView(s, this.chateauBalcony, parts, this.reducedMotion, Date.now() >>> 0);
+      } else if (decor?.id === 'sauna') this.decor.push(buildSaunaFront(this, s, decor, parts, this.reducedMotion));
     }
     this.roofs.push({ rect, parts });
   }
