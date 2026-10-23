@@ -1,62 +1,32 @@
-import { CONFIG } from '../../sim/config';
 import type { Snapshot } from '../../sim/sim';
-import type { SimEvent, Vec } from '../../sim/types';
-import { CONTROLS, INTRO_ACTIONS, INTRO_GOAL } from '../../content/controls';
+import type { SimEvent } from '../../sim/types';
 import { BOOTH_TEXT_MS } from '../render/serviceMath';
 import {
   AlertBanner,
   activeIncidents,
   alertFromEvent,
-  bearingDeg,
-  edgePosition,
-  GUIDE_LOOK,
-  formatMeters,
   guideMarks,
   hintIds,
   isNewAttack,
-  incidentAlert,
-  incidentLook,
-  pixelSvg,
-  setArrow,
-  type AlertIcon,
   type Box,
   type GuideMark,
   type Incident,
 } from './alerts';
-import { alarmPeriodMs, firstRuinHelp } from '../render/actionHintMath';
-import {
-  DEFAULT_ACT_LABEL,
-  ENERGY_REFUSED_HINT,
-  contextPrompt,
-  energyView,
-  hpLabel,
-  incidentLines,
-  itemsLine,
-  roundPanel,
-  roundValue,
-  waveLine,
-  weaponValue,
-  type IncidentLine,
-  type RoundPanel,
-} from './format';
+import { firstRuinHelp } from '../render/actionHintMath';
+import { DEFAULT_ACT_LABEL, contextPrompt, hpLabel, incidentLines, roundPanel, type IncidentLine, type RoundPanel } from './format';
+import { makeCard, renderCard, type Card } from './hudCards';
+import { Cache, el } from './hudDom';
+import { EdgeMarkers, type CameraView } from './hudEdges';
+import { openIntro } from './hudIntro';
+import { makeRound, renderRound, type RoundEls } from './hudRound';
+import { StatsPanel } from './hudStats';
 
-export interface CameraView {
-  /** World coordinates of the top-left corner of the visible area. */
-  x: number;
-  y: number;
-  zoom: number;
-  /** Canvas size in CSS pixels. */
-  width: number;
-  height: number;
-}
+export type { CameraView } from './hudEdges';
 
-/** Half-size (px) of an edge indicator and its distance from the screen border. */
-const EDGE_HALF: Vec = { x: 84, y: 26 };
 /** How long the first-ruin help line stays (once per game). */
 export const HELP_MS = 7000;
 /** How long the red screen-edge glow of a new attack lasts (matches bb-glow in hud.css). */
 const GLOW_MS = 700;
-const EDGE_PAD = 8;
 /** Touch buttons in the bottom-right corner (see play/index.html), kept clear of the edge indicators. */
 const TOUCH_PAD_W = 200;
 const TOUCH_PAD_H = 250;
@@ -64,87 +34,6 @@ const TOUCH_PAD_H = 250;
 export const ENERGY_HINT_MS = 1200;
 /** How far the score list's stepped border and drop shadow (box-shadow, see hud.css) reach past its box. */
 const PANEL_SHADOW = { right: 8, bottom: 8 };
-const SLOTS = CONFIG.rock.maxCarried;
-const TILE = CONFIG.tile;
-
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text = ''): HTMLElementTagNameMap[K] {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text) e.textContent = text;
-  return e;
-}
-
-interface StatRow {
-  li: HTMLElement;
-  val: HTMLElement;
-}
-
-/** One row of the score list: small muted label, big bright value. */
-function statRow(cls: string, label: string): StatRow {
-  const li = el('li', `row ${cls}`);
-  const val = el('span', 'val');
-  li.append(el('span', 'lbl', label), val);
-  return { li, val };
-}
-
-function aria(node: HTMLElement, label: string): void {
-  if (node.getAttribute('aria-label') !== label) node.setAttribute('aria-label', label);
-}
-
-/** Writes to the DOM only when the value changed. */
-class Cache {
-  private readonly texts = new WeakMap<HTMLElement, string>();
-  private readonly classes = new WeakMap<HTMLElement, string>();
-  private readonly styles = new WeakMap<HTMLElement, string>();
-  text(node: HTMLElement, value: string): void {
-    if (this.texts.get(node) === value) return;
-    this.texts.set(node, value);
-    node.textContent = value;
-  }
-  cls(node: HTMLElement, value: string): void {
-    if (this.classes.get(node) === value) return;
-    this.classes.set(node, value);
-    node.className = value;
-  }
-  style(node: HTMLElement, css: string): void {
-    if (this.styles.get(node) === css) return;
-    this.styles.set(node, css);
-    node.style.cssText = css;
-  }
-}
-
-interface Edge {
-  root: HTMLElement;
-  arrow: HTMLElement;
-  dist: HTMLElement;
-}
-
-interface Card {
-  root: HTMLElement;
-  ico: HTMLElement;
-  name: HTMLElement;
-  time: HTMLElement;
-  /** Mini health bar of an attacked target (hidden for the rescue). */
-  bar: HTMLElement;
-  fill: HTMLElement;
-  status: HTMLElement;
-  /** Rescue belongings progress (« Objets 1/3 rendus »), hidden otherwise. */
-  items: HTMLElement;
-  dist: HTMLElement;
-}
-
-/** The round panel's nodes; `objKey` is the objectives list last written (rebuilt only when it changes). */
-interface RoundEls {
-  root: HTMLElement;
-  title: HTMLElement;
-  kos: HTMLElement;
-  obj: HTMLElement;
-  points: HTMLElement;
-  bonus: HTMLElement;
-  heals: HTMLElement;
-  count: HTMLElement;
-  objKey: string;
-}
 
 /**
  * HTML overlay `#hud`: score list (pixel font) and incident cards (top-left), contextual prompt under Paul, an alert banner when an
@@ -156,35 +45,19 @@ export class Hud {
   private readonly c = new Cache();
   /** Screen-reader copy of Paul's health (the visible bar is drawn over his head in the world). */
   private readonly hp = el('div', 'bb-sr');
-  /** Score list (top-left, pixel font): one row per stat, in order. */
-  private readonly stats = el('ul', 'bb-stats');
-  private readonly score = statRow('score', 'SCORE');
-  private readonly kos = statRow('kos', 'NEUTRALISÉS');
-  private readonly wave = statRow('wave', 'MANCHE');
-  private readonly rocks = statRow('rocks minor', 'PIERRES');
-  private readonly weapon = statRow('weapon minor', 'ARME');
-  /** The energy gauge: a segmented pixel bar (a tick at 50 %; the bar's end is 100 %) and what it allows (« C · Onde », « R · Furie »). */
-  private readonly energy = statRow('energy minor', 'ÉNERGIE');
-  private readonly energyBar = el('span', 'ebar');
-  private readonly energyFill = el('span', 'efill');
-  private readonly energyTag = el('span', 'etag');
-  /** Gauge value last shown (the bar pops when it goes up). */
-  private lastEnergy = Number.NaN;
+  private readonly statsPanel = new StatsPanel(this.c);
   /** « Énergie insuffisante » is showing (a refused Furie / Onde), until its timer clears it. */
   private refused = false;
   /** Until when (performance.now) a booth's call / refusal line shows under it: the prompt text steps aside. */
   private boothLineUntil = 0;
   private refusedTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Belongings Paul carries back to the rescue victim (hidden when none). */
-  private readonly items = statRow('items minor', 'OBJETS');
-  private readonly slots: HTMLElement[] = [];
   private readonly top = el('div', 'bb-top');
   private readonly cardsEl = el('div', 'bb-cards');
   private readonly cards = new Map<string, Card>();
   private readonly round: RoundEls;
   private readonly prompt = el('div', 'bb-prompt');
   private readonly edges = el('div', 'bb-edges');
-  private readonly edgeEls = new Map<string, Edge>();
+  private readonly markers = new EdgeMarkers(this.edges, this.c);
   private readonly alert: AlertBanner;
   private readonly banner = el('div', 'bb-banner');
   private readonly bannerHint = el('span', 'hint');
@@ -201,10 +74,6 @@ export class Hud {
     this.toolsBox = null;
   };
   private lastNow = -1;
-  /** Round number last shown (the row pulses once when it changes). */
-  private lastWave = -1;
-  /** Score last shown (its value pops when it goes up). */
-  private lastScore = Number.NaN;
   private lastRescue = Number.POSITIVE_INFINITY;
   private rescueDrain: 'en cours' | 'interrompu' = 'en cours';
 
@@ -215,7 +84,6 @@ export class Hud {
   private readonly help = el('div', 'bb-help');
   private helpShown = false;
   private helpUntil = 0;
-  private readonly guideEls = new Map<string, Edge>();
 
   private readonly tools = el('div', 'bb-tools');
   private intro: HTMLElement | null = null;
@@ -232,21 +100,8 @@ export class Hud {
     const hp = this.hp;
     hp.setAttribute('role', 'progressbar');
     hp.setAttribute('aria-valuemin', '0');
-    for (let i = 0; i < SLOTS; i++) {
-      const slot = el('span', 'slot', '○');
-      this.slots.push(slot);
-      this.rocks.val.append(slot);
-    }
-    this.items.li.hidden = true;
-    this.score.val.addEventListener('animationend', () => this.score.val.classList.remove('pop'));
-    this.energyBar.setAttribute('aria-hidden', 'true');
-    this.energyBar.append(this.energyFill, el('i', 'tick t50'));
-    this.energyBar.addEventListener('animationend', () => this.energyBar.classList.remove('pop'));
-    this.energy.val.append(this.energyBar, this.energyTag);
-    this.stats.setAttribute('aria-label', 'Score');
-    this.stats.append(...[this.score, this.kos, this.wave, this.rocks, this.weapon, this.energy, this.items].map((r) => r.li));
-    top.append(hp, this.stats, this.cardsEl);
-    this.round = this.makeRound();
+    top.append(hp, this.statsPanel.list, this.cardsEl);
+    this.round = makeRound();
     this.prompt.hidden = true;
     this.prompt.setAttribute('aria-live', 'polite');
     this.banner.append(el('b', 'title', 'Renforts en approche !'), this.bannerHint);
@@ -330,39 +185,8 @@ export class Hud {
    */
   showIntro(touch: boolean, onDismiss: () => void = () => undefined): void {
     this.hideIntro();
-    const card = el('div', 'bb-intro');
-    card.setAttribute('role', 'dialog');
-    card.setAttribute('aria-label', 'Comment jouer');
-    card.append(el('b', 'title', 'Comment jouer'), el('p', 'goal', INTRO_GOAL));
-    const list = el('dl', 'keys');
-    for (const name of INTRO_ACTIONS) {
-      const row = CONTROLS.find((c) => c.action === name);
-      if (!row) continue;
-      list.append(el('dt', '', name), el('dd', '', touch ? row.touch : row.keyboard));
-    }
-    const go = el('p', 'go', touch ? 'Touche l’écran pour commencer' : 'Appuie sur une touche pour commencer');
-    card.append(list, go);
-    const veil = el('div', 'bb-intro-veil');
-    veil.append(card);
-    let done = false;
-    const dismiss = (e: Event): void => {
-      if (done) return;
-      // a lone modifier (Maj, Ctrl…) is not "a key": wait for a real one
-      if (e instanceof KeyboardEvent && ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(e.key)) return;
-      done = true;
-      // the key that starts the game must not also act in it
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      this.hideIntro();
-      onDismiss();
-    };
-    // capture on window: the key or tap never reaches the game controls underneath
-    window.addEventListener('keydown', dismiss, true);
-    window.addEventListener('pointerdown', dismiss, true);
-    this.introCleanup = () => {
-      window.removeEventListener('keydown', dismiss, true);
-      window.removeEventListener('pointerdown', dismiss, true);
-    };
+    const { veil, cleanup } = openIntro(touch, onDismiss, () => this.hideIntro());
+    this.introCleanup = cleanup;
     this.intro = veil;
     this.root.append(veil);
   }
@@ -393,7 +217,7 @@ export class Hud {
     const c = this.c;
     const touch = this.touchRoot?.classList.contains('visible') ?? false;
     this.updateHp(s);
-    this.updateStats(s);
+    this.statsPanel.update(s);
     this.updateEnergy(s, touch);
 
     this.trackRescue(s);
@@ -428,62 +252,12 @@ export class Hud {
     this.updateHelp(s, touch);
   }
 
-  /** The score list: values, the score pop (only when it goes up) and the round pulse (when the round changes). */
-  private updateStats(s: Snapshot): void {
-    const c = this.c;
-    c.text(this.score.val, String(s.score));
-    if (s.score !== this.lastScore) {
-      const up = s.score > this.lastScore; // false on the first frame (NaN)
-      this.lastScore = s.score;
-      // restart the stepped pop (CSS, off under prefers-reduced-motion); a drop clears it
-      this.score.val.classList.remove('pop');
-      if (up) {
-        void this.score.val.offsetWidth;
-        this.score.val.classList.add('pop');
-      }
-    }
-    c.text(this.kos.val, String(s.kos));
-    aria(this.kos.li, `Casseurs neutralisés : ${s.kos}`);
-    c.text(this.wave.val, roundValue(s));
-    aria(this.wave.li, waveLine(s));
-    if (s.round !== this.lastWave) {
-      if (this.lastWave >= 0) {
-        // restart the stepped pulse (CSS, off under prefers-reduced-motion)
-        this.wave.li.classList.remove('pulse');
-        void this.wave.li.offsetWidth;
-        this.wave.li.classList.add('pulse');
-      }
-      this.lastWave = s.round;
-    }
-    this.slots.forEach((slot, i) => c.text(slot, i < s.carried ? '●' : '○'));
-    aria(this.rocks.li, `Pierres : ${s.carried} sur ${SLOTS}`);
-    c.text(this.weapon.val, weaponValue(s));
-    this.weapon.li.classList.toggle('furie', s.furie !== null);
-    const items = itemsLine(s);
-    this.items.li.hidden = items === null;
-    c.text(this.items.val, String(s.carriedItems));
-  }
-
   /**
    * The ÉNERGIE row (bar width, a pop when it fills, the state class: soft blink at the onde, gold blink when full, the
    * drain in mode furie; the refusal hint) and the touch Furie / Onde buttons (dim until available, `ready` glow).
    */
   private updateEnergy(s: Snapshot, touch: boolean): void {
-    const c = this.c;
-    const v = energyView(s, touch);
-    c.style(this.energyFill, `width:${v.pct.toFixed(1)}%`);
-    c.cls(this.energy.li, `row energy minor st-${v.state}${this.refused ? ' refused' : ''}`);
-    c.text(this.energyTag, this.refused ? ENERGY_REFUSED_HINT : v.tag);
-    aria(this.energy.li, v.aria);
-    if (s.energy.value !== this.lastEnergy) {
-      const up = s.energy.value > this.lastEnergy; // false on the first frame (NaN)
-      this.lastEnergy = s.energy.value;
-      if (up) {
-        this.energyBar.classList.remove('pop');
-        void this.energyBar.offsetWidth;
-        this.energyBar.classList.add('pop');
-      }
-    }
+    this.statsPanel.updateEnergy(s, touch, this.refused);
     const btn = (b: HTMLElement | null, ready: boolean, label: string): void => {
       if (!b) return;
       b.classList.toggle('ready', ready);
@@ -527,12 +301,12 @@ export class Hud {
       keep.add(line.key);
       let card = this.cards.get(line.key);
       if (!card) {
-        card = this.makeCard();
+        card = makeCard();
         this.cards.set(line.key, card);
         this.topBox = null;
       }
       if (this.cardsEl.children[i] !== card.root) this.cardsEl.insertBefore(card.root, this.cardsEl.children[i] ?? null);
-      this.card(card, line, s);
+      renderCard(this.c, card, line, s);
     });
     for (const [key, card] of this.cards) {
       if (keep.has(key)) continue;
@@ -542,108 +316,9 @@ export class Hud {
     }
   }
 
-  private makeCard(): Card {
-    const root = el('div', 'bb-card');
-    const bar = el('span', 'hpbar');
-    const fill = el('span', 'fill');
-    bar.append(fill);
-    bar.setAttribute('aria-hidden', 'true');
-    const c: Card = {
-      root,
-      ico: el('span', 'ico'),
-      name: el('b', 'name'),
-      time: el('span', 'time'),
-      bar,
-      fill,
-      status: el('span', 'status'),
-      items: el('span', 'items'),
-      dist: el('span', 'dist'),
-    };
-    c.items.hidden = true;
-    root.append(c.ico, c.name, bar, c.time, c.status, c.items, c.dist);
-    return c;
-  }
-
-  private card(card: Card, line: IncidentLine, s: Snapshot): void {
-    const c = this.c;
-    const slug = line.status.replace(/\s/g, '-');
-    c.cls(card.root, `bb-card k-${line.kind} st-${slug}`);
-    const target = line.hp !== null && line.kind !== 'flag';
-    const icon: AlertIcon = incidentLook(line.kind, target ? line.status === 'en feu' : undefined).icon;
-    if (card.ico.dataset.icon !== icon) {
-      card.ico.dataset.icon = icon;
-      card.ico.innerHTML = pixelSvg(icon, 1);
-    }
-    c.text(card.name, line.name);
-    c.text(card.time, line.time);
-    card.bar.hidden = line.hp === null;
-    if (line.hp !== null) {
-      c.style(card.fill, `width:${line.hp.toFixed(0)}%`);
-      // a target's health turns red when low; the flag's capture bar fills up (no alarm colour)
-      c.cls(card.fill, line.kind === 'flag' ? 'fill capture' : line.hp <= 30 ? 'fill low' : 'fill');
-    }
-    c.text(card.status, line.status);
-    card.items.hidden = line.items === null;
-    c.text(card.items, line.items ?? '');
-    const tiles = Math.round(Math.hypot(line.target.x - s.player.pos.x, line.target.y - s.player.pos.y) / TILE);
-    c.text(card.dist, `${tiles} m`);
-  }
-
-  private makeRound(): RoundEls {
-    const root = el('div', 'bb-round');
-    root.setAttribute('role', 'status');
-    root.hidden = true;
-    const r: RoundEls = {
-      root,
-      title: el('b', 'title'),
-      kos: el('span', 'kos'),
-      obj: el('ul', 'obj'),
-      points: el('span', 'points'),
-      bonus: el('span', 'bonus'),
-      heals: el('span', 'heals'),
-      count: el('span', 'count'),
-      objKey: '',
-    };
-    const score = el('div', 'score');
-    score.append(r.points, r.bonus);
-    root.append(r.title, r.kos, r.obj, score, r.heals, r.count);
-    return r;
-  }
-
   /** The breather's round panel: shown while `p` is non-null, never interactive (pointer-events: none). */
   private updateRound(p: RoundPanel | null): void {
-    const r = this.round;
-    const c = this.c;
-    if (!p) {
-      r.root.hidden = true;
-      return;
-    }
-    if (r.root.hidden) {
-      r.root.hidden = false;
-      // restart the stepped entry animation
-      r.root.classList.remove('in');
-      void r.root.offsetWidth;
-      r.root.classList.add('in');
-    }
-    c.text(r.title, p.title);
-    c.text(r.kos, p.kos);
-    const key = p.objectives.map((o) => `${o.name}:${o.result}`).join('|');
-    if (key !== r.objKey) {
-      r.objKey = key;
-      r.obj.replaceChildren(
-        ...p.objectives.map((o) => {
-          const li = el('li', o.result === 'réussi' ? 'ok' : 'bad');
-          li.append(`${o.name} : `, el('b', '', o.result));
-          return li;
-        }),
-      );
-    }
-    c.text(r.points, p.points);
-    r.bonus.hidden = !p.bonus;
-    c.text(r.bonus, p.bonus ?? '');
-    c.text(r.heals, p.heals);
-    c.text(r.count, p.countdown);
-    this.placeRound();
+    if (renderRound(this.c, this.round, p)) this.placeRound();
   }
 
   private boxes(): { top: Box; tools: Box } {
@@ -700,85 +375,11 @@ export class Hud {
    * attack pulses faster as its health falls (--pulse).
    */
   private updateEdges(list: Incident[], s: Snapshot, view: CameraView, touch: boolean): void {
-    const seen = new Set<string>();
-    const avoid = this.edgeAvoid(view, touch);
-    for (const inc of list) {
-      const screen = { x: (inc.pos.x - view.x) * view.zoom, y: (inc.pos.y - view.y) * view.zoom };
-      const at = edgePosition(screen, view, EDGE_HALF, EDGE_PAD, avoid);
-      if (!at) continue;
-      seen.add(inc.id);
-      const e = this.edge(inc);
-      const t = s.targets.find((x) => x.id === inc.id);
-      const pulse = t ? `;--pulse:${alarmPeriodMs(t.hp / t.maxHp)}ms` : '';
-      this.c.style(e.root, `left:${at.x}px;top:${at.y}px${pulse}`);
-      setArrow(e.arrow, bearingDeg(at, screen));
-      this.c.text(e.dist, formatMeters(s.player.pos, inc.pos));
-    }
-    for (const [id, e] of this.edgeEls) {
-      if (seen.has(id)) continue;
-      e.root.remove();
-      this.edgeEls.delete(id);
-    }
+    this.markers.updateEdges(list, s, view, this.edgeAvoid(view, touch));
   }
 
   /** Repair guidance (guideMarks): the ruins to rebuild or the toolboxes to fetch, at the screen edge while off-screen. */
   private updateGuides(list: GuideMark[], s: Snapshot, view: CameraView, touch: boolean): void {
-    const seen = new Set<string>();
-    const avoid = this.edgeAvoid(view, touch);
-    for (const g of list) {
-      const screen = { x: (g.pos.x - view.x) * view.zoom, y: (g.pos.y - view.y) * view.zoom };
-      const at = edgePosition(screen, view, EDGE_HALF, EDGE_PAD, avoid);
-      if (!at) continue;
-      seen.add(g.id);
-      let e = this.guideEls.get(g.id);
-      if (!e) {
-        const look = GUIDE_LOOK[g.kind];
-        const root = el('div', `bb-guide k-${g.kind}`);
-        const arrow = el('span', 'arrow');
-        const ico = el('span', 'ico');
-        ico.innerHTML = pixelSvg(look.icon, 2);
-        const txt = el('span', 'txt');
-        const dist = el('span', 'dist');
-        txt.append(el('b', 'lbl', look.label), dist);
-        root.append(arrow, ico, txt);
-        this.edges.append(root);
-        e = { root, arrow, dist };
-        this.guideEls.set(g.id, e);
-      }
-      this.c.style(e.root, `left:${at.x}px;top:${at.y}px`);
-      setArrow(e.arrow, bearingDeg(at, screen));
-      this.c.text(e.dist, formatMeters(s.player.pos, g.pos));
-    }
-    for (const [id, e] of this.guideEls) {
-      if (seen.has(id)) continue;
-      e.root.remove();
-      this.guideEls.delete(id);
-    }
-  }
-
-  private edge(inc: Incident): Edge {
-    const key = inc.id;
-    const spec = incidentAlert(inc.kind);
-    const look = incidentLook(inc.kind, inc.burning);
-    let e = this.edgeEls.get(key);
-    if (e && (e.root.dataset.kind !== inc.kind || e.root.dataset.tone !== look.tone)) {
-      e.root.remove();
-      e = undefined;
-    }
-    if (e) return e;
-    const root = el('div', `bb-edge tone-${look.tone}`);
-    root.dataset.kind = inc.kind;
-    root.dataset.tone = look.tone;
-    const arrow = el('span', 'arrow');
-    const ico = el('span', 'ico');
-    ico.innerHTML = pixelSvg(look.icon, 2);
-    const txt = el('span', 'txt');
-    const dist = el('span', 'dist');
-    txt.append(el('b', 'lbl', spec.label), dist);
-    root.append(arrow, ico, txt);
-    this.edges.append(root);
-    e = { root, arrow, dist };
-    this.edgeEls.set(key, e);
-    return e;
+    this.markers.updateGuides(list, s, view, this.edgeAvoid(view, touch));
   }
 }
