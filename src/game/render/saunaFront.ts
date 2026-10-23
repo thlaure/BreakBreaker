@@ -37,7 +37,7 @@ function layer(s: Phaser.Scene, depth: number): { gr: Phaser.GameObjects.Graphic
 
 /**
  * One blurry silhouette behind the steamed glass (local px, feet of the bust at 0,0): a soft head and shoulders, no
- * face, a towel over the shoulders, and props only (no physique, no dress): 0 a red cap and a long red tie, 1 a judo belt and a hockey stick, 2 dark glasses and a small tricolour pennant.
+ * face, a towel over the shoulders, and props and plain outfit only (no exaggerated features): 0 a red cap and a long red tie, 1 a judo belt and a hockey stick, 2 a plain dark turban and a grey beard.
  */
 function silhouette(p: Paint, k: number): void {
   const f = SAUNA.figure;
@@ -60,12 +60,10 @@ function silhouette(p: Paint, k: number): void {
     p(0x8a6a3a, 7, -12, 1, 12, 0.9);
     p(0x8a6a3a, 7, 0, 4, 1, 0.9);
   } else {
-    // dark glasses and a small green-white-red pennant on a stick (a country wink, no dress, no face)
-    p(OUTLINE, -4, -11, 8, 2, 0.9);
-    p(0x8a6a3a, 7, -12, 1, 12, 0.9);
-    p(0x2e8b3a, 8, -12, 5, 1, 0.95);
-    p(0xf4f4f0, 8, -11, 5, 1, 0.95);
-    p(0xc0392b, 8, -10, 5, 1, 0.95);
+    // a plain dark turban and a grey beard, drawn without exaggeration (no symbol, no extra gag)
+    p(0x2b2b33, -5, -18, 10, 5, 0.95);
+    p(0x3b3b46, -4, -17, 8, 1, 0.8);
+    p(0xb8b8b8, -3, -9, 6, 3, 0.9);
   }
 }
 

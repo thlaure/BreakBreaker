@@ -1,6 +1,6 @@
 # BreakBreaker — Specifications (index)
 
-**Version:** 1.1.3 — 23 October 2026  
+**Version:** 1.1.4 — 23 October 2026  
 **Scope:** 2D pixel-art web game, non-isometric top-down view, arcade mode in rounds with no time limit, Paris, Paul (a fictional shopkeeper) as the only hero, computer and phone  
 **Status:** reference specification; decisions confirmed by the project owner and design recommendations are identified. A first playable slice exists (section 24); this document is neither a production sign-off nor a statement that all requirements are already implemented.  
 **Launch language:** French  
@@ -181,6 +181,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
 
 ### 25.4 History
 
+- **1.1.4 — 23 October 2026 (patch):** the third sauna silhouette is drawn with a plain dark turban and a grey beard (no symbol, no exaggeration), treated like the other two.
 - **1.1.3 — 23 October 2026 (patch):** speech bubbles (peaceful groups, the President) are kept inside the visible screen area (`clampBubbleX`), so they are no longer cut at the edge on phones.
 - **1.1.2 — 23 October 2026 (patch):** sauna silhouettes get distinctive props (cap and long tie, judo belt and hockey stick, glasses and pennant); no faces, no names.
 - **1.1.1 — 23 October 2026 (patch):** balance pass of rounds 1 to 9 (sections 8.9, 12.2, 12.3, 12.14, 13.1, 18.3, 19.2; RC-117, RC-120, RC-123, RC-137, RC-165 changed; RC-182), project-owner request (« difficulté plus régulière, manches 5 à 9 moins denses »): measured with the test bot over 30 seeds before any change, rounds 5–9 were denser than their neighbours (final rosters up to about fifty, a third place attacked at the odd-round twist on top of the two opening ones, pressure at its cap from round 8, two new threats in rounds 6 and 8). **Changed:** `round.growth` 3 instead of 4 (rosters 25, 28, 31, 34, 37, then 40); pressure one step per **45** session KOs instead of 30 (`CONFIG.pressureKoStep`); the second brute comes in round 7 (was 6) and the second shooter in round 9 (was 8), so each round from 6 to 10 adds a single brute or shooter; **no second-emergency twist from round 5** (the round already opens on two places; round 3 keeps it). Rounds 1–4 unchanged. No new content, no change to the score or to the random draw order, but seeds from before 1.1.1 may no longer replay identically from round 4; `rulesVersion` stays `1.0.0`, `appVersion` becomes `1.1.1`.
