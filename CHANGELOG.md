@@ -6,6 +6,12 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.1.1 - 2026-10-23
+
+- Équilibrage des manches 1 à 9 : une difficulté qui monte plus régulièrement, des manches 5 à 9 moins chargées.
+- À partir de la manche 5, plus de troisième lieu attaqué en milieu de manche : les deux attaques du début suffisent.
+- Les brutes et les tireurs arrivent un par un : la deuxième brute en manche 7, le deuxième tireur en manche 9.
+
 ## 1.1.0 - 2026-10-23
 
 - Une grande place au cœur du quartier : l'église, la mairie et le château l'entourent.

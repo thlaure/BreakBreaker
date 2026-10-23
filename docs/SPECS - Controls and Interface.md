@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Controls and Interface
 
 > **Purpose of this file:** controls, interface (HUD, alerts, menus) and accessibility.  
-> Part of the BreakBreaker specifications (version 1.1.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.1.1), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 7. Controls
 
