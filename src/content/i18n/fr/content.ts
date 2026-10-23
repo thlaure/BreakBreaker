@@ -20,4 +20,11 @@ export const frContent = {
   'content.shout.backpack': 'MON SAC À DOS !',
   'content.shout.scarf': 'MON ÉCHARPE !',
   'content.shout.cap': 'MA CASQUETTE !',
+  // the skeleton singer on the stage (render/skeletonBand.ts): original lines about being fed up, ≤ 30 characters
+  'content.stage.lyric1': 'On efface tout !',
+  'content.stage.lyric2': 'Ras le bol, ras le bol !',
+  'content.stage.lyric3': 'Plus un pavé debout !',
+  'content.stage.lyric4': 'Moins fort, les voisins !',
+  'content.stage.lyric5': 'Une dernière chanson !',
+  'content.stage.lyric6': 'Tout le monde dehors !',
 } as const;

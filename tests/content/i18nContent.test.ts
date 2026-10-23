@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'vitest';
 import { CAID_LINES, CAID_SKINS, caidLinesFor } from '../../src/content/caids';
 import { catalog, setLocale, type Locale } from '../../src/content/i18n';
 import { QUOTES, QUOTES_BY_LOCALE, quotesFor } from '../../src/content/quotes';
+import { stageLyricsFor } from '../../src/content/stage';
 import { RESCUE_ITEMS } from '../../src/sim/incidents/rescue';
 import { itemShout } from '../../src/game/render/belongings';
 import { caidSlogan } from '../../src/game/render/caidSkin';
@@ -67,6 +68,28 @@ describe('content lists exist in both languages, same counts', () => {
           expect(len(s ?? ''), s ?? '').toBeLessThanOrEqual(20);
         }
     }
+  });
+
+  test('stage lyrics: six per language, ≤ 30 characters, distinct, clean, English written for English', () => {
+    for (const l of LOCALES) {
+      const list = stageLyricsFor(l);
+      expect(list, l).toHaveLength(6);
+      for (const line of list) {
+        expect(line.trim(), l).not.toBe('');
+        expect(len(line), line).toBeLessThanOrEqual(30);
+        expect(contentViolation(line), line).toBeNull();
+      }
+      expect(new Set(list).size).toBe(list.length);
+    }
+    const fr = new Set(stageLyricsFor('fr'));
+    for (const line of stageLyricsFor('en')) expect(fr.has(line), line).toBe(false);
+  });
+
+  test('stage lyrics follow the current locale by default', () => {
+    setLocale('en');
+    expect(stageLyricsFor()).toEqual(stageLyricsFor('en'));
+    setLocale('fr');
+    expect(stageLyricsFor()).toEqual(stageLyricsFor('fr'));
   });
 
   test('onomatopoeias: same kinds and counts in both languages', () => {

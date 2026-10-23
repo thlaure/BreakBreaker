@@ -14,6 +14,8 @@ import { localeBound } from './localeText';
 import { PresidentView } from './president';
 import { buildPrisonFront } from './prisonFront';
 import { buildSaunaFront } from './saunaFront';
+import { SkeletonBand } from './skeletonBand';
+import { buildStageFront } from './stageFront';
 
 // Moved out of this file; re-exported so importers keep working.
 export { FACADE_H, ROOF_OVERHANG };
@@ -53,7 +55,7 @@ export class WorldView {
   private readonly roofs: Roof[] = [];
   /** Parts of each target building (school, shop, nursery, town hall, library) by building index, for its ruin look. */
   readonly buildingParts = new Map<number, BuildingPart[]>();
-  /** Animated bits of the decor fronts (CAF queue, POULET CROUSTI sign, sauna lantern and silhouettes). */
+  /** Animated bits of the decor fronts (CAF queue, POULET CROUSTI sign, sauna lantern and silhouettes, the skeleton band). */
   private readonly decor: DecorAnim[] = [];
   /** Centre of the château balcony floor (world px), where the President stands; null until the château is built. */
   chateauBalcony: Vec | null = null;
@@ -166,7 +168,10 @@ export class WorldView {
         this.chateauBalcony = buildChateauFront(this, s, decor, parts).balcony;
         this.president = new PresidentView(s, this.chateauBalcony, parts, this.reducedMotion, Date.now() >>> 0);
       } else if (decor?.id === 'sauna') this.decor.push(buildSaunaFront(this, s, decor, parts, this.reducedMotion));
-      // any other decor ('stage' until its front is drawn): the plain building shell above, nothing more
+      else if (decor?.id === 'stage') {
+        const stage = buildStageFront(this, s, decor, parts);
+        this.decor.push(new SkeletonBand(s, stage, parts, this.reducedMotion, Date.now() >>> 0));
+      }
     }
     this.roofs.push({ rect, parts });
   }
