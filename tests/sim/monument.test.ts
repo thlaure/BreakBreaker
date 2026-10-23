@@ -282,7 +282,7 @@ describe('the monument in the sim', () => {
     expect(of(ev, 'MonumentDefended')).toEqual([{ type: 'MonumentDefended', incidentId: 'monument#1' }]);
     expect(of(ev, 'FlagSwapped')).toEqual([]);
     expect(kt).toBe(true);
-    expect(sim.director.lastSummary!.objectives.find((o) => o.kind === 'monument')).toEqual({ kind: 'monument', result: 'réussi' });
+    expect(sim.director.lastSummary!.objectives.find((o) => o.kind === 'monument')).toEqual({ kind: 'monument', result: 'won' });
     expect(sim.snapshot().monument.flag).toBe('french');
   });
 
@@ -298,7 +298,7 @@ describe('the monument in the sim', () => {
     }
     expect(of(ev, 'FlagSwapped')).toEqual([{ type: 'FlagSwapped', incidentId: 'monument#1', pos: M.mast }]);
     expect(kt).toBe(true);
-    expect(sim.director.lastSummary!.objectives.find((o) => o.kind === 'monument')).toEqual({ kind: 'monument', result: 'perdu' });
+    expect(sim.director.lastSummary!.objectives.find((o) => o.kind === 'monument')).toEqual({ kind: 'monument', result: 'lost' });
     expect(sim.rules.stats.flagsLost).toBe(1);
     // rounds 5–7: still Palestinian, never a second occupation
     const later: SimEvent[] = [];

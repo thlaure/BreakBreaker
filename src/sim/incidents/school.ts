@@ -4,6 +4,8 @@ import type { SimEvent } from '../types';
 import { TargetAttack, lineup, type AttackComposition, type AttackStage } from './targetAttack';
 
 export type SchoolStage = AttackStage;
+/** The school card's status (an id: src/content/i18n `school.*` reads it). */
+export type SchoolStatus = 'burning' | 'attacked' | 'reinforcements' | 'lost' | 'saved';
 
 /**
  * The school attack: a TargetAttack on 'school' whose round-1 lineup opens a reinforcement cinematic once the first
@@ -21,11 +23,12 @@ export class SchoolIncident extends TargetAttack {
     return (100 * s.hp) / s.maxHp;
   }
 
-  status(): 'en feu' | 'attaquée' | 'renforts' | 'perdue' | 'sauvée' {
-    if (this.stage === 'destroyed') return 'perdue';
-    if (this.stage === 'saved') return 'sauvée';
-    if (this.stage === 'cinematic') return 'renforts';
-    return this.targets.get('school').burning ? 'en feu' : 'attaquée';
+  /** The school's status id (src/content/i18n `school.*` reads it). */
+  status(): SchoolStatus {
+    if (this.stage === 'destroyed') return 'lost';
+    if (this.stage === 'saved') return 'saved';
+    if (this.stage === 'cinematic') return 'reinforcements';
+    return this.targets.get('school').burning ? 'burning' : 'attacked';
   }
 
   suspended(): boolean {

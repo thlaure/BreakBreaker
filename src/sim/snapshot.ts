@@ -4,8 +4,8 @@ import { CONFIG } from './config';
 import type { RoundPhase, RoundSummary } from './director';
 import type { StationMessage } from './healing';
 import type { Hostile } from './hostiles';
-import type { ItemState, RescueKind, RescueStage } from './incidents/rescue';
-import type { SchoolIncident, SchoolStage } from './incidents/school';
+import type { ItemState, RescueItemId, RescueKind, RescueStage } from './incidents/rescue';
+import type { SchoolStage, SchoolStatus } from './incidents/school';
 import { DISTRICT, type Rect } from './map/district';
 import { v } from './math';
 import type { MonumentIncident, MonumentStage } from './monument';
@@ -107,7 +107,7 @@ export interface Snapshot {
   /** Ground fire left by firebombs (Paul only); `secondsLeft` until it goes out. */
   firePatches: { id: number; pos: Vec; r: number; secondsLeft: number }[];
   /** The latest school attack; `integrity` = school hp in percent. */
-  school: { stage: SchoolStage; integrity: number; status: ReturnType<SchoolIncident['status']> };
+  school: { stage: SchoolStage; integrity: number; status: SchoolStatus };
   /**
    * The latest rescue. `items`: the victim's belongings (`pos` = the victim, its thief, the ground or Paul);
    * `returnLeft`: seconds left of the wait for them while secured (null when not waiting).
@@ -118,7 +118,7 @@ export interface Snapshot {
     remaining: number;
     victimPos: Vec;
     kind: RescueKind;
-    items: { id: string; name: string; state: ItemState; pos: Vec }[];
+    items: { id: RescueItemId; state: ItemState; pos: Vec }[];
     returnLeft: number | null;
   } | null;
   /** Belongings of the rescue victim Paul carries. */
@@ -275,7 +275,7 @@ export function buildSnapshot(sim: Sim, x: SnapshotExtras): Snapshot {
           remaining: r.remaining,
           victimPos: v(r.victimPos),
           kind: r.kind,
-          items: r.items.map((it) => ({ id: it.id, name: it.name, state: it.state, pos: v(it.pos) })),
+          items: r.items.map((it) => ({ id: it.id, state: it.state, pos: v(it.pos) })),
           returnLeft: r.returnLeft,
         }
       : null,

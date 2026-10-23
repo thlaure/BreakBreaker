@@ -831,12 +831,12 @@ describe('Hud alerts and edge indicators', () => {
           kos: 14,
           objectives: bonus
             ? [
-                { kind: 'car', result: 'réussi' },
-                { kind: 'rescue', result: 'réussi' },
+                { kind: 'car', result: 'won' },
+                { kind: 'rescue', result: 'won' },
               ]
             : [
-                { kind: 'car', result: 'perdu' },
-                { kind: 'rescue', result: 'réussi' },
+                { kind: 'car', result: 'lost' },
+                { kind: 'rescue', result: 'won' },
               ],
           points: bonus ? 23 : 12,
           bonus,
@@ -1005,7 +1005,7 @@ describe('Hud alerts and edge indicators', () => {
     const prompt = () => hud.root.querySelector<HTMLElement>('.bb-prompt')!;
     hud.update(
       snap((x) => {
-        x.toolboxes.message = 'Caisse à outils requise';
+        x.toolboxes.message = 'toolboxRequired';
       }),
       view,
     );
@@ -1015,7 +1015,7 @@ describe('Hud alerts and edge indicators', () => {
     hud.update(
       snap((x) => {
         x.toolboxes.carried = true;
-        x.toolboxes.message = 'Abords non sécurisés';
+        x.toolboxes.message = 'areaUnsafe';
       }),
       view,
     );
@@ -1058,7 +1058,7 @@ describe('Hud alerts and edge indicators', () => {
     expect(btn.style.display).toBe('none');
     hud.update(
       snap((x) => {
-        x.stationMessage = 'Santé au maximum';
+        x.stationMessage = 'fullHealth';
       }),
       view,
     );

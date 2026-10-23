@@ -14,14 +14,13 @@ export type StrikeMode = 'swing' | 'punch' | 'shot';
  * Caïd); reach, strikes and how they strike differ. `range`: the swing's reach, the punch's length, the shot's assist
  * range. `fromRound`: first round of the street pool it joins.
  */
-export const WEAPONS: Readonly<Record<WeaponKind, { label: string; range: number; uses: number; strike: StrikeMode; fromRound: number }>> =
-  {
-    baton: { label: 'Bâton', range: 72, uses: 15, strike: 'swing', fromRound: 1 },
-    marteau: { label: 'Marteau', range: 64, uses: 8, strike: 'swing', fromRound: 1 },
-    panneau: { label: 'Panneau', range: 96, uses: 10, strike: 'swing', fromRound: 1 },
-    gant: { label: 'Gant de boxe', range: CONFIG.gant.reach, uses: 6, strike: 'punch', fromRound: CONFIG.gant.fromRound },
-    flashball: { label: 'Flashball', range: CONFIG.flashball.assistRange, uses: 6, strike: 'shot', fromRound: CONFIG.flashball.fromRound },
-  };
+export const WEAPONS: Readonly<Record<WeaponKind, { range: number; uses: number; strike: StrikeMode; fromRound: number }>> = {
+  baton: { range: 72, uses: 15, strike: 'swing', fromRound: 1 },
+  marteau: { range: 64, uses: 8, strike: 'swing', fromRound: 1 },
+  panneau: { range: 96, uses: 10, strike: 'swing', fromRound: 1 },
+  gant: { range: CONFIG.gant.reach, uses: 6, strike: 'punch', fromRound: CONFIG.gant.fromRound },
+  flashball: { range: CONFIG.flashball.assistRange, uses: 6, strike: 'shot', fromRound: CONFIG.flashball.fromRound },
+};
 const ALL_KINDS = Object.keys(WEAPONS) as WeaponKind[];
 /** The swung weapons of the start (the drops: twist, round end, the Caïd's). */
 const KINDS = ALL_KINDS.filter((k) => WEAPONS[k].fromRound <= 1);
@@ -30,16 +29,6 @@ const KINDS = ALL_KINDS.filter((k) => WEAPONS[k].fromRound <= 1);
 export function streetKinds(round: number): WeaponKind[] {
   return ALL_KINDS.filter((k) => round >= WEAPONS[k].fromRound);
 }
-
-/** Player-facing names of everything Paul can pick up (the regular weapons he holds, the bouclier). */
-export const HELD_LABELS: Readonly<Record<PickupKind, string>> = {
-  baton: WEAPONS.baton.label,
-  marteau: WEAPONS.marteau.label,
-  panneau: WEAPONS.panneau.label,
-  gant: WEAPONS.gant.label,
-  flashball: WEAPONS.flashball.label,
-  bouclier: 'Bouclier',
-};
 
 /** The special pickups (only the bouclier: the mode furie and the onde d’énergie come from the energy gauge). */
 export const SPECIALS: readonly SpecialKind[] = ['bouclier'];

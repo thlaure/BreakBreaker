@@ -1,9 +1,9 @@
+import { t } from '../../content/i18n';
 import { CONFIG } from '../../sim/config';
 import { DISTRICT } from '../../sim/map/district';
 import { BOOTH_OF } from '../../sim/services';
 import type { Snapshot } from '../../sim/sim';
 import type { CasseKind, ServiceKind, TargetId, Vec } from '../../sim/types';
-import { HELD_LABELS } from '../../sim/weapons';
 import { casseurs, type IncidentKind, type RoundHeadline } from './alerts';
 import { jailedText } from '../render/prisonMath';
 import { ACTION_WORDS, REPAIRING_VERB } from '../render/actionHintMath';
@@ -108,8 +108,8 @@ export function contextPrompt(s: Snapshot, touch = false): Prompt | null {
     return { text: touch ? w.line : `F — ${w.line}`, label: w.button, inWorld: true };
   }
   if (nearestBooth(s)?.ruined) return { text: 'Cabine hors service', label: null };
-  if (kit.message) return { text: kit.message, label: null };
-  if (s.stationMessage) return { text: s.stationMessage, label: null };
+  if (kit.message) return { text: t(`toolbox.${kit.message}`), label: null };
+  if (s.stationMessage) return { text: t(`station.${s.stationMessage}`), label: null };
   return null;
 }
 
@@ -230,7 +230,8 @@ export function itemsLine(s: Snapshot): string | null {
 export interface RoundPanel {
   title: string;
   kos: string;
-  objectives: { name: string; result: 'réussi' | 'perdu' }[];
+  /** `result`: the translated outcome (« réussi » / « perdu »); `ok`: whether it was won. */
+  objectives: { name: string; result: string; ok: boolean }[];
   points: string;
   /** « Bonus +5 », or null when not earned. */
   bonus: string | null;
@@ -246,7 +247,7 @@ export function roundPanel(s: Snapshot): RoundPanel | null {
   return {
     title: `Manche ${sum.index} terminée`,
     kos: `Casseurs neutralisés : ${sum.kos}`,
-    objectives: sum.objectives.map((o) => ({ name: OBJECTIVE_NAMES[o.kind], result: o.result })),
+    objectives: sum.objectives.map((o) => ({ name: OBJECTIVE_NAMES[o.kind], result: t(`objective.${o.result}`), ok: o.result === 'won' })),
     points: pts,
     bonus: sum.bonus ? `Bonus +${CONFIG.round.bonus}` : null,
     heals: 'Soins rechargés',
@@ -291,8 +292,8 @@ export function weaponValue(s: Snapshot): string {
 const secs = (t: number): number => Math.max(1, Math.ceil(t - 1e-9));
 
 function weaponText(s: Snapshot, bare: string): string {
-  let out = s.weapon ? `${HELD_LABELS[s.weapon.kind]} (${s.weapon.uses})` : bare;
-  if (s.shield) out += ` · ${HELD_LABELS.bouclier} ${secs(s.shield.secondsLeft)} s`;
+  let out = s.weapon ? `${t(`held.${s.weapon.kind}`)} (${s.weapon.uses})` : bare;
+  if (s.shield) out += ` · ${t('held.bouclier')} ${secs(s.shield.secondsLeft)} s`;
   if (s.furie) out += ` · Mode furie ${secs(s.furie.secondsLeft)} s`;
   return out;
 }

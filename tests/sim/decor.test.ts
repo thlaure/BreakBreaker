@@ -1,3 +1,4 @@
+import { t, type Key } from '../../src/content/i18n';
 import { describe, expect, test } from 'vitest';
 import { DISTRICT, type Rect } from '../../src/sim/map/district';
 import { FlowField } from '../../src/sim/map/flowfield';
@@ -23,7 +24,8 @@ const CLEAR = 64;
 
 describe('decor buildings (CAF, POULET CROUSTI, CHÂTEAU, SAUNA)', () => {
   test('four decor fronts on existing free buildings, their door on the street below the front', () => {
-    expect(DISTRICT.decor.map((d) => [d.id, d.sign])).toEqual([
+    // the sim keeps ids only; the sign text is the catalog's (French shown)
+    expect(DISTRICT.decor.map((d) => [d.id, t(`sign.${d.id}` as Key)])).toEqual([
       ['caf', 'CAF'],
       ['pouletCrousti', 'POULET CROUSTI'],
       ['chateau', 'CHÂTEAU'],

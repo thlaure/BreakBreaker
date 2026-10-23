@@ -12,26 +12,18 @@ export type RescueStage = 'threat' | 'secured' | 'completed' | 'failed';
 export type ItemState = 'held' | 'carried-by-thief' | 'dropped' | 'carried' | 'returned' | 'lost';
 
 /**
- * The victim's belongings, by kind (ordinary things only; stolen in this order). `id` keys the bonus and the render
- * icon; `name` is what the HUD and the bubbles say.
+ * The victim's belongings, by kind (ordinary things only; stolen in this order). `id` keys the bonus, the render icon
+ * and the name the HUD and the bubbles say (src/content/i18n `item.<id>`).
  */
-export const RESCUE_ITEMS: Readonly<Record<RescueKind, readonly { id: string; name: string }[]>> = {
-  elderlyRobbed: [
-    { id: 'handbag', name: 'sac à main' },
-    { id: 'hat', name: 'chapeau' },
-    { id: 'cane', name: 'canne' },
-  ],
-  groupHarassed: [
-    { id: 'backpack', name: 'sac à dos' },
-    { id: 'scarf', name: 'écharpe' },
-    { id: 'cap', name: 'casquette' },
-  ],
+export type RescueItemId = 'handbag' | 'hat' | 'cane' | 'backpack' | 'scarf' | 'cap';
+export const RESCUE_ITEMS: Readonly<Record<RescueKind, readonly { id: RescueItemId }[]>> = {
+  elderlyRobbed: [{ id: 'handbag' }, { id: 'hat' }, { id: 'cane' }],
+  groupHarassed: [{ id: 'backpack' }, { id: 'scarf' }, { id: 'cap' }],
 };
 
 /** One belonging of the victim. `pos`: where it is (the victim, its thief, the ground, Paul). */
 export interface RescueItem {
-  id: string;
-  name: string;
+  id: RescueItemId;
   state: ItemState;
   pos: Vec;
   /** lifeId of the rioter carrying it ('carried-by-thief'), else null. */
@@ -124,7 +116,6 @@ export class RescueIncident {
     this.kind = this.preset ?? drawRescueKind(rand);
     this.items = RESCUE_ITEMS[this.kind].slice(0, CONFIG.rescue.itemCount).map((it) => ({
       id: it.id,
-      name: it.name,
       state: 'held' as ItemState,
       pos: { ...site },
       thief: null,
