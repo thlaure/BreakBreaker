@@ -3,6 +3,7 @@ import { SFX } from './assets';
 import { boingVoice, clankVoice, popVoice, thumpVoice, tockVoice, whooshVoice } from './audioImpacts';
 import { chimeVoice, energyReadyVoice, powerDownVoice, powerUpVoice, sirenVoice, zapVoice } from './audioCues';
 import { chargeHumNodes, furieHumNodes } from './audioHums';
+import { StageRiff } from './audioStage';
 import { HEAVY_RATE, isImpactSfx, pitchJitter, type Sfx } from './audioMath';
 
 export { HEAVY_RATE, PITCH_JITTER, isImpactSfx, pitchJitter, threatLevel } from './audioMath';
@@ -40,6 +41,8 @@ export class GameAudio {
   private hum: { osc: OscillatorNode; lfo: OscillatorNode; gain: GainNode } | null = null;
   /** Onde d’énergie charge hum (rising, one voice of the cap); null when not charging. */
   private chargeHum: { osc: OscillatorNode; gain: GainNode } | null = null;
+  /** The stage band's loop, built on first use once unlocked. */
+  private stage: StageRiff | null = null;
 
   constructor(muted = false) {
     this.muted = muted;
@@ -117,10 +120,12 @@ export class GameAudio {
     this.setThreat(0);
     this.stopHum();
     this.stopCharge();
+    this.stage?.stop();
   }
 
   setMuted(muted: boolean): void {
     this.muted = muted;
+    this.stage?.setMuted(muted);
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(muted ? 0 : 1, this.ctx.currentTime, 0.02);
   }
 
@@ -128,6 +133,16 @@ export class GameAudio {
   setThreat(level: number): void {
     this.threat = Math.max(0, Math.min(1, level));
     if (this.fireGain && this.ctx) this.fireGain.gain.setTargetAtTime(this.threat * FIRE_MAX, this.ctx.currentTime, 0.15);
+  }
+
+  /** Stage music: distance in px from Paul to the stage every frame, null when the game is over or paused (silent). */
+  setStageProximity(dist: number | null): void {
+    if (!this.ctx || !this.master) return;
+    if (!this.stage) {
+      if (dist === null) return;
+      this.stage = new StageRiff(this.ctx, this.master, this.muted);
+    }
+    this.stage.setProximity(dist);
   }
 
   /** Called on Commencer / Reprendre / Rejouer only (never automatically on visibilitychange). */
