@@ -6,6 +6,12 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.0.1 - 2026-10-23
+
+- Affichage mobile : stats, alertes, bandeaux et indicateurs de bord plus petits ; menu pause sur deux colonnes en paysage.
+- La devanture « Tasty Crousty » devient « Poulet Crousti ».
+- Nouveau : ce changelog, visible sur la page d'accueil.
+
 ## 1.0.0 - 2026-10-22
 
 - Première version publique : défends le quartier avec Paul, aide les passants et renvoie les projectiles.

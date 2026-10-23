@@ -53,7 +53,7 @@ function landingContent(): Plugin {
         `<tr><th scope="row">${esc(c.action)}</th><td>${esc(c.keyboard)}</td><td>${esc(c.touch)}</td></tr>`,
     ).join('\n            '),
     '<!--notice-->': esc(SATIRE_NOTICE),
-    '<!--version-->': esc(CONFIG.rulesVersion),
+    '<!--version-->': esc(CONFIG.appVersion),
     ...changelogFills(),
   };
   return {

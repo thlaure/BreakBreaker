@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Combat and Enemies
 
 > **Purpose of this file:** combat, projectiles, weapons, energy, protected groups, characters, hordes and artificial intelligence.  
-> Part of the BreakBreaker specifications (version 1.0.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.0.1), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 8. Combat, projectiles and protected groups
 

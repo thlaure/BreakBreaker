@@ -340,5 +340,8 @@ export const CONFIG = {
    */
   prison: { hp: 400, guards: 5, postRadius: 160, fromRound: 4, repairShare: 0.6, pickupSec: 1.6 },
   pressureMax: 12,
+  /** Keys the browser records: bump only when the rules change enough to reset them. Not the displayed game version. */
   rulesVersion: '1.0.0',
+  /** Displayed game version (landing footer); matches package.json and CHANGELOG.md. */
+  appVersion: '1.0.1',
 } as const;

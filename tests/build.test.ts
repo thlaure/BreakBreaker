@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { CONTROLS, RULES, SATIRE_NOTICE } from '../src/content/controls';
+import { CONFIG } from '../src/sim/config';
 
 // Production build into a temp dir: vitest sets NODE_ENV=test, which would make Vite emit a dev bundle
 // (import.meta.env.DEV = true). The repo's own dist/ is never touched.
@@ -86,7 +87,7 @@ test('landing shows the controls (modal) from the shared module but not the game
     expect(text).toContain(c.touch);
   }
   for (const r of RULES) expect(text).not.toContain(r); // the instructions are shown in the game at launch
-  expect(text).toContain('1.0.0');
+  expect(text).toContain(CONFIG.appVersion);
 });
 
 test('landing never says OQTF or gratuit', () => {
