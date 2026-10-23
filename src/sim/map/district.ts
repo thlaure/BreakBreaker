@@ -148,7 +148,7 @@ export const DISTRICT: District = {
     prop('car2', 'car', R(26, 34, 2, 1), [C(25, 34), C(28, 34), C(26, 35), C(27, 35)]),
     prop('busStop', 'busStop', R(28, 13, 2, 1), [C(27, 13), C(30, 13), C(28, 14), C(29, 14)]),
     {
-      // the retro video-game shop (« JEUX RÉTRO ») on building 5
+      // the retro video-game shop (« MICRO RÉTRO ») on building 5
       id: 'shop',
       kind: 'shop',
       footprint: R(12, 15, 4, 4),

@@ -101,7 +101,7 @@ Landing and navigation are P0. The final dressing and a representative preview a
 | Footer | Version and prototype/playable version status, credits, link to the source code, satirical fiction notice | Credits, source code |
 | Site icon | Pixel art favicon taken from Paul's head (`npm run favicon`: `favicon.png` 32 × 32 and `apple-touch-icon.png` 180 × 180), theme colour `#14121c`, linked from `/` and `/jouer/`, credited as an LPC derivative | None |
 
-Chosen presentation text: **« Défends le quartier. Tiens aussi longtemps que possible. »** (Defend the neighbourhood. Hold out as long as you can.)
+Chosen presentation text: **« Défends le quartier aussi longtemps que possible. »** (Defend the neighbourhood for as long as you can.)
 
 **Confirmed (1.6):** no line of notices (solo, platforms, no account) under the Play button. If such a notice returns, it will only display the compatibilities actually verified. The « free » mention will only be added if that distribution model is confirmed.
 
