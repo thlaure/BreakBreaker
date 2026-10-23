@@ -14,10 +14,11 @@ export interface ControlRow {
 
 const CONTROL_IDS = ['move', 'strike', 'throw', 'run', 'onde', 'furie', 'repair', 'pause'] as const;
 type ControlId = (typeof CONTROL_IDS)[number];
-/** Keys written the same in every language (no catalog entry). */
+/** Keys and action names written the same in every language (no catalog entry). */
 const SAME_KEYS: Readonly<Partial<Record<ControlId, string>>> = { repair: 'F' };
+const SAME_ACTIONS: Readonly<Partial<Record<ControlId, string>>> = { pause: 'Pause' };
 /** The actions listed on the card shown when the game launches. */
-const INTRO_IDS: readonly ControlId[] = ['move', 'strike', 'throw', 'run'];
+const INTRO_IDS: readonly Exclude<ControlId, 'pause'>[] = ['move', 'strike', 'throw', 'run'];
 const RULE_KEYS = ['hud.rule.1', 'hud.rule.2', 'hud.rule.3', 'hud.rule.4', 'hud.rule.5', 'hud.rule.6', 'hud.rule.7'] as const;
 
 function text(l: Locale, key: Key): string {
@@ -26,7 +27,7 @@ function text(l: Locale, key: Key): string {
 
 export function controlsFor(l: Locale = getLocale()): readonly ControlRow[] {
   return CONTROL_IDS.map((id) => ({
-    action: text(l, `hud.control.${id}.action`),
+    action: SAME_ACTIONS[id] ?? text(l, `hud.control.${id as Exclude<ControlId, 'pause'>}.action`),
     keyboard: SAME_KEYS[id] ?? text(l, `hud.control.${id as Exclude<ControlId, 'repair'>}.keyboard`),
     touch: text(l, `hud.control.${id}.touch`),
   }));

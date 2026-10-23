@@ -3,6 +3,7 @@ import { onLocaleChange, t } from '../../content/i18n';
 import type { SummaryData } from './format';
 import { SITE_BASE } from '../assets';
 import { renderMarkdown } from './markdown';
+import { createLangSwitch } from './langSwitch';
 
 export interface MenuActions {
   start(): void;
@@ -126,6 +127,7 @@ export class Menus {
       this.btn(t('hud.menu.credits'), () => this.showCredits()),
       this.btn(t('hud.menu.backToSite'), () => this.showConfirm()),
       this.btn(t('hud.menu.stop'), () => this.act.stopGame()),
+      createLangSwitch(),
     );
     p.append(col);
     const back =

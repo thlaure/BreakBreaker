@@ -1,17 +1,16 @@
 <!doctype html>
-<html lang="fr">
+<!-- Shared template of the landing pages: the build fills the slots once per language (src/site/landingContent.ts): / in French, /en/ in English. -->
+<html lang="<!--lang-->">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
-    <title>BreakBreaker - Défends le quartier</title>
-    <meta
-      name="description"
-      content="Jeu d'action arcade en pixel art, vu du dessus. Incarne Paul, défends le quartier, aide les passants et renvoie les projectiles."
-    />
+    <title><!--t:landing.pageTitle--></title>
+    <meta name="description" content="<!--t:landing.description-->" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#14121c" />
+    <!--alternates-->
     <link rel="stylesheet" href="/src/site/landing.css" />
   </head>
   <body>
@@ -27,45 +26,46 @@
     </div>
 
     <main class="stage">
+      <!--flags-->
       <h1 class="title">BreakBreaker</h1>
-      <p class="tagline">Défends le quartier aussi longtemps que possible.</p>
+      <p class="tagline"><!--t:landing.tagline--></p>
       <p class="cta">
-        <a class="btn btn-primary" href="play/?go">Jouer</a>
-        <button class="btn btn-secondary btn-commandes" type="button" popovertarget="commandes">Commandes</button>
+        <a class="btn btn-primary" href="<!--root-->play/?go&amp;lang=<!--lang-->"><!--t:landing.play--></a>
+        <button class="btn btn-secondary btn-commandes" type="button" popovertarget="commandes"><!--t:landing.controls--></button>
       </p>
-      <aside class="news" aria-label="Nouveautés"><!--teaser--></aside>
+      <aside class="news" aria-label="<!--t:landing.news-->"><!--teaser--></aside>
     </main>
 
     <div id="commandes" popover role="dialog" aria-labelledby="commandes-titre">
-      <h2 id="commandes-titre">Commandes</h2>
-      <div class="table-wrap" tabindex="0" role="region" aria-label="Tableau des commandes">
+      <h2 id="commandes-titre"><!--t:landing.controls--></h2>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="<!--t:landing.controlsTable-->">
         <table>
-          <caption class="sr-only">Commandes au clavier et sur écran tactile</caption>
+          <caption class="sr-only"><!--t:landing.controlsCaption--></caption>
           <thead>
-            <tr><th scope="col">Action</th><th scope="col">Clavier et souris</th><th scope="col">Tactile</th></tr>
+            <tr><th scope="col">Action</th><th scope="col"><!--t:landing.colKeyboard--></th><th scope="col"><!--t:landing.colTouch--></th></tr>
           </thead>
           <tbody>
             <!--controls-->
           </tbody>
         </table>
       </div>
-      <button class="btn btn-primary" type="button" popovertarget="commandes" popovertargetaction="hide">Fermer</button>
+      <button class="btn btn-primary" type="button" popovertarget="commandes" popovertargetaction="hide"><!--t:landing.close--></button>
     </div>
 
     <div id="changelog" popover role="dialog" aria-labelledby="changelog-titre">
-      <h2 id="changelog-titre">Changelog</h2>
-      <div class="release-list">
+      <h2 id="changelog-titre">Changelog<!--note--></h2>
+      <div class="release-list"<!--frlang-->>
         <!--changelog-->
       </div>
-      <button class="btn btn-primary" type="button" popovertarget="changelog" popovertargetaction="hide">Fermer</button>
+      <button class="btn btn-primary" type="button" popovertarget="changelog" popovertargetaction="hide"><!--t:landing.close--></button>
     </div>
 
     <footer class="site-footer">
       <p>
         <span>Version <!--version--></span>
-        <button class="link-btn" type="button" popovertarget="changelog">Changelog</button>
-        <a href="CREDITS.md">Crédits</a>
-        <a href="https://github.com/thlaure/BreakBreaker">Code source</a>
+        <button class="link-btn" type="button" popovertarget="changelog">Changelog<!--note--></button>
+        <a href="<!--root-->CREDITS.md"><!--t:landing.credits--></a>
+        <a href="https://github.com/thlaure/BreakBreaker"><!--t:landing.source--></a>
       </p>
       <p class="notice"><!--notice--></p>
     </footer>

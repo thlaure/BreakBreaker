@@ -238,7 +238,6 @@ export const enHud: Record<keyof typeof frHud, string> = {
   'hud.control.furie.touch': 'Fury button',
   'hud.control.repair.action': 'Repair / put out (toolbox)',
   'hud.control.repair.touch': 'Act button (near a place to repair)',
-  'hud.control.pause.action': 'Pause game',
   'hud.control.pause.keyboard': 'Esc',
   'hud.control.pause.touch': 'Pause button',
   'hud.rule.1': 'No time limit: the game ends when Paul is knocked out or when you choose to stop.',

@@ -255,7 +255,6 @@ export const frHud = {
   'hud.control.furie.touch': 'Bouton Furie',
   'hud.control.repair.action': 'Réparer / éteindre (caisse à outils)',
   'hud.control.repair.touch': 'Bouton Agir (près d’un lieu à réparer)',
-  'hud.control.pause.action': 'Pause',
   'hud.control.pause.keyboard': 'Échap',
   'hud.control.pause.touch': 'Bouton Pause',
   'hud.rule.1': 'Pas de limite de temps : la partie se termine quand Paul est mis KO ou quand tu l’arrêtes volontairement.',

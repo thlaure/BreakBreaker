@@ -35,7 +35,7 @@ const snap = (patch: (s: Snapshot) => void = () => {}): Snapshot => {
 };
 
 const labels = (hud: Hud): string[] => [...hud.root.querySelectorAll('.bb-stats .lbl')].map((e) => e.textContent ?? '');
-const buttons = (menus: Menus): string[] => [...menus.root.querySelectorAll('button')].map((b) => b.textContent ?? '');
+const buttons = (menus: Menus): string[] => [...menus.root.querySelectorAll('button:not([data-lang])')].map((b) => b.textContent ?? '');
 
 const huds: Hud[] = [];
 const mkHud = (): Hud => {
@@ -207,6 +207,18 @@ describe('switching locale re-renders open elements', () => {
     // the intro still waits for its key, once
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', bubbles: true, cancelable: true }));
     expect(onDismiss).toHaveBeenCalledTimes(1);
+    menus.destroy();
+  });
+
+  test('the pause menu flag switches the language in place, focus kept on the flag', () => {
+    const menus = new Menus(document.body, actions(), false);
+    menus.showPause();
+    const flag = menus.root.querySelector<HTMLButtonElement>('button[data-lang=en]')!;
+    flag.focus();
+    flag.click();
+    expect(menus.open).toBe('pause');
+    expect(buttons(menus)[0]).toBe('Resume');
+    expect((document.activeElement as HTMLElement | null)?.dataset.lang).toBe('en');
     menus.destroy();
   });
 
