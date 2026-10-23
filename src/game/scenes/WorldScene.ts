@@ -7,9 +7,7 @@ import { stressTarget, stressTick } from '../debug';
 import type { InputFrame, SimEvent } from '../../sim/types';
 import { GameUi } from '../hud/ui';
 import type { CameraView } from '../hud/hud';
-import { createKeyboard } from '../input/keyboard';
-import { guardLifecycle, merge, type InputSource } from '../input/merge';
-import { createTouch } from '../input/touch';
+import type { InputSource } from '../input/merge';
 import { Grid } from '../../sim/map/grid';
 import { HostileLayer, PaulView, makeRoleTextures } from '../render/actors';
 import { PaulHealthBar } from '../render/healthBar';
@@ -30,33 +28,22 @@ import { ScorePopups } from '../render/scorePopups';
 import { POPUP_GAIN } from '../render/scorePopupMath';
 import { BulletLayer, GloveFx } from '../render/guns';
 import { SHAKE_BIG, dominoWord, hitShake, hitStopMs, hitWordKind, koShake, koWordKind, pickWord, type Shake } from '../render/fallMath';
+import { createWorldInput } from './worldInput';
+import {
+  ALERT_SHAKE,
+  BEAM_SHAKE_MS,
+  BEAM_SHAKE_PX,
+  FURIE_SHAKE,
+  HIT_STOP_MS,
+  NEW_DANGER,
+  PAN_IN_MS,
+  PAN_OUT_MS,
+  SHAKE_MS,
+  SHAKE_PX,
+  integerZoom,
+} from './worldSceneMath';
 
-const HIT_STOP_MS = 60;
-const SHAKE_MS = 120;
-const SHAKE_PX = 2;
-/** Tiny shake on a strike that hits in mode furie (none under prefers-reduced-motion). */
-const FURIE_SHAKE: Shake = { ms: 90, px: 1.5 };
-/** Small shake when the onde d’énergie fires (none under prefers-reduced-motion). */
-const BEAM_SHAKE_MS = 160;
-const BEAM_SHAKE_PX = 2;
-/** Light shake with a new danger's banner. */
-const ALERT_SHAKE: Shake = { ms: 220, px: 1.5 };
-const NEW_DANGER: ReadonlySet<SimEvent['type']> = new Set([
-  'TargetIgnited',
-  'CasseStarted',
-  'RescueStarted',
-  'MonumentAttacked',
-  'CaidArrived',
-]);
-const BASE_W = 640;
-const BASE_H = 360;
-const PAN_IN_MS = 700;
-const PAN_OUT_MS = 500;
-
-export function integerZoom(width: number, height: number): number {
-  const [bw, bh] = height > width ? [BASE_H, BASE_W] : [BASE_W, BASE_H];
-  return Math.max(1, Math.floor(Math.min(width / bw, height / bh)));
-}
+export { integerZoom };
 
 /**
  * Drives the fixed-step Sim and draws it from `sim.snapshot()` each frame.
@@ -163,39 +150,15 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private setupInput(): void {
-    const cam = this.cameras.main;
-    const sources: InputSource[] = [
-      createKeyboard(
-        window,
-        this.game.canvas,
-        (x, y) => {
-          const p = cam.getWorldPoint(x, y);
-          return { x: p.x, y: p.y };
-        },
-        () => this.playerPos,
-        { onPause: () => this.ui?.togglePause() },
-      ),
-    ];
-    const touchRoot = document.getElementById('touch-ui');
-    if (touchRoot) sources.push(createTouch(touchRoot, { onPause: () => this.ui?.togglePause() }));
-    const offGuard = guardLifecycle(window, sources, () => this.ui?.openPause());
-    // touch: a tap anywhere skips the school cinematic (keyboard/mouse go through the input frame)
-    const onTap = (e: PointerEvent): void => {
-      if (e.pointerType === 'mouse') return;
-      if (e.target instanceof Element && e.target.closest('[data-action=pause]')) return;
-      this.trySkipCinematic();
-    };
-    window.addEventListener('pointerdown', onTap, true);
-    this.sources = sources;
-    this.input$ = merge(...sources);
-    this.disposeInput = () => {
-      window.removeEventListener('pointerdown', onTap, true);
-      offGuard();
-      for (const s of sources) {
-        s.releaseAll();
-        s.dispose?.();
-      }
-    };
+    const input = createWorldInput(this.game.canvas, this.cameras.main, {
+      playerPos: () => this.playerPos,
+      togglePause: () => this.ui?.togglePause(),
+      openPause: () => this.ui?.openPause(),
+      skipCinematic: () => this.trySkipCinematic(),
+    });
+    this.sources = input.sources;
+    this.input$ = input.input;
+    this.disposeInput = input.dispose;
   }
 
   create(data?: { seed?: number; autostart?: boolean }): void {
