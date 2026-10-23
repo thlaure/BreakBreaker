@@ -54,3 +54,25 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  release:
+    # Tags and publishes a GitHub release when package.json carries a version that has none yet.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create the release if the version is new
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(node -p "require('./package.json').version")
+          if gh release view "v$v" >/dev/null 2>&1; then
+            echo "v$v already released"
+            exit 0
+          fi
+          section() { awk -v v="$2" '/^## /{p=($2==v)} p&&!/^## /' "$1" | sed '/./,$!d'; }
+          { echo "## Français"; echo; section CHANGELOG.md "$v"; echo; echo "## English"; echo; section CHANGELOG.en.md "$v"; } > notes.md
+          gh release create "v$v" --target "$GITHUB_SHA" --title "BreakBreaker $v" --notes-file notes.md --latest

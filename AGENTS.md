@@ -50,7 +50,7 @@ In the same branch as the code, update as needed: `docs/SPECS - *.md` (rule text
 
 ## Versioning
 
-MAJOR.MEDIUM.MINOR: major = a big update that changes the game a lot (records reset), medium = new content, minor = fixes and polish. A release bumps `package.json`, `package-lock.json`, `CONFIG.appVersion`, `CHANGELOG.md`, `CHANGELOG.en.md` and the specs version line. `CONFIG.rulesVersion` keys the browser records: change it only for a deliberate records reset.
+MAJOR.MEDIUM.MINOR: major = a big update that changes the game a lot (records reset), medium = new content, minor = fixes and polish. A release bumps `package.json`, `package-lock.json`, `CONFIG.appVersion`, `CHANGELOG.md`, `CHANGELOG.en.md` and the specs version line. `CONFIG.rulesVersion` keys the browser records: change it only for a deliberate records reset. CI tags and publishes the GitHub release (`vX.Y.Z`, notes from both changelogs) when `package.json` has a version without a release, so never create tags by hand.
 
 ## Content rules (satire and safety)
 
