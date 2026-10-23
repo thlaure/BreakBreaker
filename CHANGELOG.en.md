@@ -1,0 +1,86 @@
+# Changelog
+
+BreakBreaker release notes, newest first. This is the English edition of `CHANGELOG.md` (the French one is the reference): same versions, same dates, same number of points.
+It is read at build time and feeds the "What’s new" block and the "Changelog" window of the English landing page (`/en/`).
+
+Format: one `## <version> - <date YYYY-MM-DD>` heading per version, then short `- ` bullets, most important first.
+The first three bullets of the latest version are shown on the landing page.
+
+## 1.4.1 - 2026-10-24
+
+- The changelog on the landing page now follows the language: `/en/` shows the English notes.
+
+## 1.4.0 - 2026-10-24
+
+- A rock stage in the north-east of the map: a band of five skeletons in rock gear, colored spotlights and a singer who shouts fed-up one-liners, in both languages.
+- Original music that swells as you walk up to the stage and fades as you leave; it follows the Sound button, the pause and the end of the game.
+- The emergency booths (fire and police) move to the edge of the main square, next to the town hall: you call them as before, but right in the middle of the action.
+- With reduced motion, the skeletons stand still and the spotlights stop flashing.
+
+## 1.3.0 - 2026-10-23
+
+- The game is available in American English: two small flags (French, American) at the top left of the landing page, lined up with the first "B", and in the pause menu.
+- The one-liners are adapted for English (the President, the ringleaders, the crowd), not translated word for word.
+- Your language is remembered, and you can switch in the middle of a game without losing anything.
+- Two landing pages: `/` in French and `/en/` in English.
+
+## 1.2.1 - 2026-10-23
+
+- When Paul is hit while repairing (blow, stone, shot, fire), the repair stops, but he keeps his toolbox.
+
+## 1.2.0 - 2026-10-23
+
+- The ringleaders have style: five leader looks (the tribune, the march leader, the comrade in a suit, the old hand, the young agitator).
+- Each has a prop (megaphone, banner, "COMMITTEE" briefcase, whistle, poster roll) and slogans in a speech bubble.
+- A ringleader keeps his look all the way into the prison yard.
+
+## 1.1.4 - 2026-10-23
+
+- The sauna: the third silhouette wears a dark turban and a grey beard.
+
+## 1.1.3 - 2026-10-23
+
+- Mobile: speech bubbles (protesters, the President) are no longer cut off at the screen edge.
+
+## 1.1.2 - 2026-10-23
+
+- The sauna: the three silhouettes in the steam each have their own props (cap and long tie, judo belt and cane, glasses and pennant).
+
+## 1.1.1 - 2026-10-23
+
+- Rounds 1 to 9 rebalanced: difficulty climbs more steadily, rounds 5 to 9 are less crowded.
+- From round 5 on, no third place is attacked mid-round: the two attacks at the start are enough.
+- Brutes and shooters arrive one at a time: the second brute in round 7, the second shooter in round 9.
+
+## 1.1.0 - 2026-10-23
+
+- A big square in the heart of the neighborhood: the church, the town hall and the castle surround it.
+- The church is a new place to defend (fire, ruin, repair), from round 3.
+- The President's castle: an invented President fidgets on the balcony and throws out offbeat one-liners.
+- Three groups of peaceful protesters on the square.
+- A mysterious sauna with three silhouettes in the steam.
+- The town hall moves; so do the bus stop and a few buildings.
+
+## 1.0.2 - 2026-10-23
+
+- The game's address becomes /play/ (the old /jouer/ address redirects).
+- The "Retro Games" shop becomes "Micro Retro".
+- Shorter welcome line: "Defend the neighborhood as long as you can."
+
+## 1.0.1 - 2026-10-23
+
+- Mobile display: smaller stats, alerts, banners and edge indicators; pause menu on two columns in landscape.
+- The "Tasty Crousty" storefront becomes "Poulet Crousti".
+- New: this changelog, visible on the landing page.
+
+## 1.0.0 - 2026-10-22
+
+- First public version: defend the neighborhood with Paul, help passers-by and send projectiles back.
+- Prison: knocked-out ringleaders are locked up there; if it falls, they escape. Five guards defend it and it rebuilds itself.
+- Emergency services: red and blue booths to call a fire truck or the police (3 calls of each).
+- New places to defend: nursery, kiosk, town hall and library; healing in the field.
+- Energy wave on a single press and a longer fury mode (18 s).
+- KO drops depending on the weapon, with rare WTF drops, onomatopoeia, screen shakes and freeze frames.
+- More visible alerts, an "F" action prompt and repair guidance.
+- Decor fronts: CAF and Poulet Crousti.
+- Records start over with version 1.0.0.

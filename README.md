@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://thlaure.github.io/BreakBreaker/"><b>▶ Play now</b></a> ·
-  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="CHANGELOG.en.md">Changelog</a> ·
   <a href="ROADMAP.md">Roadmap</a> ·
   <a href="docs/SPECS%20-%20Index.md">Specs</a>
 </p>

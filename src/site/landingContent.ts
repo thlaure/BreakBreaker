@@ -4,7 +4,7 @@
  *
  * Template slots: `<!--t:landing.key-->` (catalog text, escaped), `<!--lang-->`, `<!--root-->` (relative path to the
  * site root: '' or '../'), `<!--alternates-->` (hreflang links), `<!--flags-->` (language selector), `<!--controls-->`,
- * `<!--notice-->`, `<!--version-->`, `<!--teaser-->`, `<!--changelog-->`, `<!--note-->` (« (in French) » outside fr).
+ * `<!--notice-->`, `<!--version-->`, `<!--teaser-->`, `<!--changelog-->`.
  */
 import { controlsFor as controlRowsFor, satireNoticeFor, type ControlRow } from '../content/controls';
 import { catalog, translate, type Locale } from '../content/i18n';
@@ -34,8 +34,9 @@ export function parseChangelog(md: string): Release[] {
   return releases;
 }
 
-const frDate = (iso: string): string =>
-  new Date(`${iso}T12:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+const DATE_LOCALE: Readonly<Record<Locale, string>> = { fr: 'fr-FR', en: 'en-US' };
+const longDate = (iso: string, l: Locale): string =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString(DATE_LOCALE[l], { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 const TEASER_NOTES = 3;
 
@@ -51,8 +52,8 @@ export function controlsFor(l: Locale): LandingControls {
 
 export interface LandingContext {
   version: string;
-  /** CHANGELOG.md source (French; shown as is on every page). */
-  changelog: string;
+  /** Changelog sources: CHANGELOG.md (French) and CHANGELOG.en.md (English); each page shows its own language. */
+  changelog: Readonly<Record<Locale, string>>;
 }
 
 function flags(l: Locale, root: string, tr: (k: string) => string): string {
@@ -76,21 +77,17 @@ function alternates(l: Locale, root: string): string {
 function changelogFills(l: Locale, md: string, tr: (k: string) => string): Record<string, string> {
   const releases = parseChangelog(md);
   const latest = releases[0];
-  const frLang = l === 'fr' ? '' : ' lang="fr"';
-  const note = l === 'fr' ? '' : ` ${esc(tr('landing.inFrench'))}`;
-  const list = (notes: string[], attr = ''): string => `<ul${attr}>${notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>`;
+  const list = (notes: string[]): string => `<ul>${notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>`;
   return {
-    '<!--note-->': note,
     '<!--teaser-->': latest
-      ? `<h2 class="news-title">${esc(tr('landing.news'))} <span>${esc(latest.version)}</span>${note}</h2>${list(latest.notes.slice(0, TEASER_NOTES), frLang)}`
+      ? `<h2 class="news-title">${esc(tr('landing.news'))} <span>${esc(latest.version)}</span></h2>${list(latest.notes.slice(0, TEASER_NOTES))}`
       : '',
     '<!--changelog-->': releases
       .map(
         (r) =>
-          `<section class="release"><h3>${esc(r.version)} <time datetime="${r.date}">${esc(frDate(r.date))}</time></h3>${list(r.notes)}</section>`,
+          `<section class="release"><h3>${esc(r.version)} <time datetime="${r.date}">${esc(longDate(r.date, l))}</time></h3>${list(r.notes)}</section>`,
       )
       .join('\n        '),
-    '<!--frlang-->': frLang,
   };
 }
 
@@ -113,7 +110,7 @@ export function renderLanding(template: string, l: Locale, ctx: LandingContext):
       .join('\n            '),
     '<!--notice-->': esc(notice),
     '<!--version-->': esc(ctx.version),
-    ...changelogFills(l, ctx.changelog, tr),
+    ...changelogFills(l, ctx.changelog[l], tr),
   };
   const html = template
     .replace(/<!--t:([\w.]+)-->/g, (_, k: string) => esc(tr(k)))

@@ -14,7 +14,6 @@ export const enLanding: Record<keyof typeof frLanding, string> = {
   'landing.colTouch': 'Touch screen',
   'landing.close': 'Close',
   'landing.news': 'What’s new',
-  'landing.inFrench': '(in French)',
   'landing.credits': 'Credits',
   'landing.source': 'Source code',
   'landing.langNav': 'Language',

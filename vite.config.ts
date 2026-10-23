@@ -15,7 +15,7 @@ function landingContent(): Plugin {
   const render = (html: string, path: string): string =>
     renderLanding(html, path === '/en/index.html' ? 'en' : 'fr', {
       version: CONFIG.appVersion,
-      changelog: readFileSync('CHANGELOG.md', 'utf8'),
+      changelog: { fr: readFileSync('CHANGELOG.md', 'utf8'), en: readFileSync('CHANGELOG.en.md', 'utf8') },
     });
   return {
     name: 'landing-content',

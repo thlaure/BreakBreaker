@@ -1,6 +1,6 @@
 # BreakBreaker — Specifications (index)
 
-**Version:** 1.4.0 — 24 October 2026  
+**Version:** 1.4.1 — 24 October 2026  
 **Scope:** 2D pixel-art web game, non-isometric top-down view, arcade mode in rounds with no time limit, Paris, Paul (a fictional shopkeeper) as the only hero, computer and phone  
 **Status:** reference specification; decisions confirmed by the project owner and design recommendations are identified. A first playable slice exists (section 24); this document is neither a production sign-off nor a statement that all requirements are already implemented.  
 **Languages:** French (default) and American English  
@@ -185,6 +185,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
 
 ### 25.4 History
 
+- **1.4.1 — 24 October 2026 (patch):** bug fix: the landing changelog was not translated. New `CHANGELOG.en.md` (American English, same versions and points as `CHANGELOG.md`); `/en/` shows it, with English dates; the « (in French) » marks are gone. Build/landing only; `rulesVersion` stays `1.0.0`, `appVersion` becomes `1.4.1`. Tests: `tests/build.test.ts`, `tests/content/landing.test.ts`.
 - **1.4.0 — 24 October 2026 (medium):** the stage and the booths (sections 5.1, 5.5, 10.12, 12.16, 15.3, 16, 18.4; RC-196 to RC-202; RC-140 changed), project-owner request: the **two phone booths move to the edge of the main square** (red R(21,30,1,1), blue R(22,30,1,1), calls from C(21,31) and C(22,31)); a **rock stage** (decor front on building 3, R(36,3,8,5), door C(40,8)) with a band of **five invented skeletons** in generic rock outfits (no real musician, no text), coloured lights, and a singer who throws **six original bubble lines per language**; an **original riff** synthesised with WebAudio (E minor, 150 bpm) whose volume rises when Paul approaches (full within 128 px, silent beyond 384 px, bus gain at most 0.16), cut by mute, pause and game over; reduced motion respected. Render only apart from the booths' and the stage's footprints; `rulesVersion` stays `1.0.0`, `appVersion` becomes `1.4.0`. **Changed:** the booth positions differ, so seeds may replay differently from 1.3.x.
 - **1.3.0 — 23 October 2026 (medium):** the game is available in **American English** next to French (default): two pixel flags (French, American) top-left of the landing page, aligned with the first « B », and in the pause menu; the choice is saved, `?lang=` overrides it, and switching language in the pause menu re-reads every text without losing the game. Catalogs per domain in `src/content/i18n/{fr,en}/` with `t()` and plurals; the simulation emits ids, never phrases; two static landing pages, `/` and `/en/`; jokes (President, Caïds, crowd) adapted for English, not translated word for word (sections 14.4, 15.3, 18.1, 18.4, 18.7, 20.1, 20.2, 1.4, 23.5; RC-188 to RC-195). `rulesVersion` stays `1.0.0`, `appVersion` becomes `1.3.0`.
 - **1.2.1 — 23 October 2026 (patch):** a hit on Paul interrupts the repair in progress (toolbox kept; RC-187); `AGENTS.md` added with the project rules.

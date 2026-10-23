@@ -28,6 +28,6 @@ The simulation in `src/sim/` is deterministic and must stay free of Phaser and `
 
 ## Pull requests
 
-Keep them small and focused, describe what changes for the player, and make sure CI is green. Add a line to [`CHANGELOG.md`](CHANGELOG.md) when the change is visible in the game.
+Keep them small and focused, describe what changes for the player, and make sure CI is green. Add a line to [`CHANGELOG.md`](CHANGELOG.md) (French) and [`CHANGELOG.en.md`](CHANGELOG.en.md) (English) when the change is visible in the game.
 
 By contributing you agree that your code is released under the [MIT license](LICENSE).

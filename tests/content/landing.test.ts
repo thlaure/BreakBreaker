@@ -3,7 +3,10 @@ import { CONTROLS, SATIRE_NOTICE } from '../../src/content/controls';
 import { controlsFor, renderLanding } from '../../src/site/landingContent';
 
 const TEMPLATE = `<html lang="<!--lang-->"><a href="<!--root-->play/?go&amp;lang=<!--lang-->"><!--t:landing.play--></a><!--flags--><!--alternates--><!--notice--></html>`;
-const CTX = { version: '9.9.9', changelog: '## 9.9.9 - 2026-10-23\n- Une note\n' };
+const CTX = {
+  version: '9.9.9',
+  changelog: { fr: '## 9.9.9 - 2026-10-23\n- Une note\n', en: '## 9.9.9 - 2026-10-23\n- A note\n' },
+};
 
 describe('controlsFor (landing adapter)', () => {
   test('fr is the shared French table and notice', () => {
@@ -23,6 +26,17 @@ describe('controlsFor (landing adapter)', () => {
 });
 
 describe('renderLanding', () => {
+  test('the changelog slots follow the page language', () => {
+    const tpl = '<!--teaser--><!--changelog-->';
+    const fr = renderLanding(tpl, 'fr', CTX);
+    const en = renderLanding(tpl, 'en', CTX);
+    expect(fr).toContain('Une note');
+    expect(fr).toContain('23 octobre 2026');
+    expect(en).toContain('A note');
+    expect(en).toContain('October 23, 2026');
+    expect(en).not.toMatch(/Une note|lang="fr"|in French/);
+  });
+
   test('fr page: root-relative links, lang fr, French Play', () => {
     const html = renderLanding(TEMPLATE, 'fr', CTX);
     expect(html).toContain('<html lang="fr">');

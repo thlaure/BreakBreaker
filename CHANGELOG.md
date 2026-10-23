@@ -6,6 +6,10 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.4.1 - 2026-10-24
+
+- Le changelog de la page d'accueil suit la langue : `/en/` affiche les notes en anglais.
+
 ## 1.4.0 - 2026-10-24
 
 - Une scène de rock au nord-est de la carte : un groupe de cinq squelettes en tenue de rock, des projecteurs de couleur et un chanteur qui lance des répliques de ras-le-bol, dans les deux langues.

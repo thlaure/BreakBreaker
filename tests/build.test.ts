@@ -129,7 +129,7 @@ test('no text of the other language leaks into a landing (scan against the catal
       expect(text, `${page}: "${s}"`).not.toContain(s);
     }
   }
-  // outside its lang="fr" parts (changelog notes, the French flag's name), the English page has no French letter
+  // outside its lang="fr" parts (the French flag's name), the English page has no French letter
   expect(pageText(readFileSync(out('en/index.html'), 'utf8'))).not.toMatch(/[àâçéèêëîïôûùœ]/i);
 });
 
@@ -140,11 +140,25 @@ test('the English landing shares the built stylesheet of the French one', () => 
   for (const h of sheets('en/index.html')) expect(existsSync(out(h ?? ''))).toBe(true);
 });
 
-test('the English page says the changelog is in French and marks it lang="fr"', () => {
+test('the English page shows the English changelog, with no French marking', () => {
   const html = readFileSync(out('en/index.html'), 'utf8');
-  expect(html).toMatch(/popovertarget="changelog"[^>]*>Changelog \(in French\)</);
-  expect(html).toContain('<div class="release-list" lang="fr">');
-  expect(html).toMatch(/<aside class="news"[^>]*>[\s\S]*?<ul lang="fr">/);
+  const md = readFileSync('CHANGELOG.en.md', 'utf8');
+  const latest = /^## (\S+) - /m.exec(md)?.[1];
+  expect(html).toContain(`What’s new <span>${latest}</span>`);
+  expect(html).toMatch(/popovertarget="changelog"[^>]*>Changelog</);
+  expect(html).not.toContain('lang="fr"><li>');
+  expect(html).not.toContain('(in French)');
+  expect(html.match(/class="release"/g)?.length).toBe(md.match(/^## \S+ - /gm)?.length);
+  expect(html).toContain('October 24, 2026');
+});
+
+test('CHANGELOG.en.md mirrors CHANGELOG.md: same versions, dates and number of points', () => {
+  const shape = (f: string) =>
+    readFileSync(f, 'utf8')
+      .split(/^## /m)
+      .slice(1)
+      .map((b) => [b.split('\n')[0], b.split('\n').filter((l) => l.startsWith('- ')).length]);
+  expect(shape('CHANGELOG.en.md')).toEqual(shape('CHANGELOG.md'));
 });
 
 test('landing own HTML + CSS <= 300 KB gzipped', () => {

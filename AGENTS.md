@@ -4,7 +4,7 @@ Rules for AI agents (and humans) working on BreakBreaker. Written in English; th
 
 ## The project
 
-A free 2D top-down pixel-art arcade web game (Phaser 4 + TypeScript + Vite). The hero is Paul (fictional). Live at https://thlaure.github.io/BreakBreaker/ (CI/CD on GitHub Pages). Landing page at `/`, game at `/play/` (`/play/?go` starts at once; the old `/jouer/` only redirects). Full specification: `docs/SPECS - Index.md`. Player-facing history: `CHANGELOG.md` (French). Plans: `ROADMAP.md`.
+A free 2D top-down pixel-art arcade web game (Phaser 4 + TypeScript + Vite). The hero is Paul (fictional). Live at https://thlaure.github.io/BreakBreaker/ (CI/CD on GitHub Pages). Landing page at `/`, game at `/play/` (`/play/?go` starts at once; the old `/jouer/` only redirects). Full specification: `docs/SPECS - Index.md`. Player-facing history: `CHANGELOG.md` (French) and `CHANGELOG.en.md` (American English, same versions and points; update both). Plans: `ROADMAP.md`.
 
 ## Commands
 
@@ -50,7 +50,7 @@ In the same branch as the code, update as needed: `docs/SPECS - *.md` (rule text
 
 ## Versioning
 
-MAJOR.MEDIUM.MINOR: major = a big update that changes the game a lot (records reset), medium = new content, minor = fixes and polish. A release bumps `package.json`, `package-lock.json`, `CONFIG.appVersion`, `CHANGELOG.md` and the specs version line. `CONFIG.rulesVersion` keys the browser records: change it only for a deliberate records reset.
+MAJOR.MEDIUM.MINOR: major = a big update that changes the game a lot (records reset), medium = new content, minor = fixes and polish. A release bumps `package.json`, `package-lock.json`, `CONFIG.appVersion`, `CHANGELOG.md`, `CHANGELOG.en.md` and the specs version line. `CONFIG.rulesVersion` keys the browser records: change it only for a deliberate records reset.
 
 ## Content rules (satire and safety)
 

@@ -12,8 +12,6 @@ export const frLanding = {
   'landing.colTouch': 'Tactile',
   'landing.close': 'Fermer',
   'landing.news': 'Nouveautés',
-  /** Shown only on the pages of other languages, next to the changelog (which stays French). */
-  'landing.inFrench': '(en français)',
   'landing.credits': 'Crédits',
   'landing.source': 'Code source',
   /** Language selector: the nav label, then each flag link (the language's own name comes first). */
