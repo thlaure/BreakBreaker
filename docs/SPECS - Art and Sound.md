@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Art Direction and Sound
 
 > **Purpose of this file:** art direction, pixel art assets, animations and sound.  
-> Part of the BreakBreaker specifications (version 1.0.1), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.0.2), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 15. Art direction and pixel art assets
 

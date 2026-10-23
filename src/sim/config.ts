@@ -356,5 +356,5 @@ export const CONFIG = {
   /** Keys the browser records: bump only when the rules change enough to reset them. Not the displayed game version. */
   rulesVersion: '1.0.0',
   /** Displayed game version (landing footer); matches package.json and CHANGELOG.md. */
-  appVersion: '1.0.1',
+  appVersion: '1.0.2',
 } as const;

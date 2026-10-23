@@ -1,6 +1,6 @@
 # BreakBreaker — Specifications (index)
 
-**Version:** 1.0.1 — 23 October 2026  
+**Version:** 1.0.2 — 23 October 2026  
 **Scope:** 2D pixel-art web game, non-isometric top-down view, arcade mode in rounds with no time limit, Paris, Paul (a fictional shopkeeper) as the only hero, computer and phone  
 **Status:** reference specification; decisions confirmed by the project owner and design recommendations are identified. A first playable slice exists (section 24); this document is neither a production sign-off nor a statement that all requirements are already implemented.  
 **Launch language:** French  
@@ -178,6 +178,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
 
 ### 25.4 History
 
+- **1.0.2 — 23 October 2026 (patch):** the game route is `/play/` (the old `/jouer/` forwards to it), « MICRO RÉTRO » shop sign, shorter landing tagline; ESLint and Prettier added, `Sim`, `WorldView` and the actor views split into focused modules (no behaviour change).
 - **1.0.1 — 23 October 2026 (patch):** compact HUD on phones, « POULET CROUSTI » front, `CHANGELOG.md` shown on the landing page; `CONFIG.appVersion` is the displayed version, `rulesVersion` stays `1.0.0` so browser records are kept.
 - **1.0.0 — 22 October 2026 (game release):** first public release. The game and the specifications are renumbered to 1.0.0 and share one version number. The entries below are the earlier revisions of the specification document (1.0 to 1.9.25) and are kept as history; the browser records restart under the rules version `1.0.0`.
 - **1.0 — 19 October 2026:** timed 3D Paris mission and customisable character.

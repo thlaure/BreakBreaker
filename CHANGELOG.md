@@ -6,6 +6,12 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.0.2 - 2026-10-23
+
+- L'adresse du jeu devient /play/ (l'ancienne adresse /jouer/ redirige).
+- La boutique « Jeux Rétro » devient « Micro Rétro ».
+- Phrase d'accueil raccourcie : « Défends le quartier aussi longtemps que possible. »
+
 ## 1.0.1 - 2026-10-23
 
 - Affichage mobile : stats, alertes, bandeaux et indicateurs de bord plus petits ; menu pause sur deux colonnes en paysage.
