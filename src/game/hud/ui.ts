@@ -1,3 +1,4 @@
+import { onLocaleChange, t } from '../../content/i18n';
 import type { Sim, Snapshot } from '../../sim/sim';
 import type { SimEvent } from '../../sim/types';
 import { GameAudio, threatLevel } from '../audio';
@@ -44,6 +45,8 @@ export class GameUi {
     this.audio.onEvents(ev);
     this.hud.onEvents(ev);
   };
+  /** The page title follows the language (the HUD and the menus re-render themselves). */
+  private readonly offLocale = onLocaleChange(() => this.retitle());
   private readonly onVisibility = (): void => {
     if (document.visibilityState === 'hidden') this.audio.suspend();
   };
@@ -67,6 +70,7 @@ export class GameUi {
       this.prefs.muted,
     );
     this.audio.reset();
+    this.retitle();
     this.host.events.on('hud', this.onHud as never);
     this.host.events.on('sim-events', this.onEvents as never);
     document.addEventListener('visibilitychange', this.onVisibility);
@@ -85,7 +89,12 @@ export class GameUi {
     }
   }
 
+  private retitle(): void {
+    document.title = t('hud.pageTitle');
+  }
+
   destroy(): void {
+    this.offLocale();
     if (this.timer) clearTimeout(this.timer);
     this.host.events.off('hud', this.onHud as never);
     this.host.events.off('sim-events', this.onEvents as never);
@@ -183,6 +192,6 @@ export class GameUi {
     const record = loadRecord(cause);
     saveRecord(s.score, cause);
     this.audio.setThreat(0);
-    this.menus.showSummary(formatSummary(s, record));
+    this.menus.showSummary(() => formatSummary(s, record));
   }
 }

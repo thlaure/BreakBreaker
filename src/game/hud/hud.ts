@@ -1,3 +1,4 @@
+import { onLocaleChange, t } from '../../content/i18n';
 import type { Snapshot } from '../../sim/sim';
 import type { SimEvent } from '../../sim/types';
 import { BOOTH_TEXT_MS } from '../render/serviceMath';
@@ -13,7 +14,7 @@ import {
   type Incident,
 } from './alerts';
 import { firstRuinHelp } from '../render/actionHintMath';
-import { DEFAULT_ACT_LABEL, contextPrompt, hpLabel, incidentLines, roundPanel, type IncidentLine, type RoundPanel } from './format';
+import { contextPrompt, defaultActLabel, hpLabel, incidentLines, roundPanel, type IncidentLine, type RoundPanel } from './format';
 import { makeCard, renderCard, type Card } from './hudCards';
 import { Cache, el } from './hudDom';
 import { EdgeMarkers, type CameraView } from './hudEdges';
@@ -60,7 +61,9 @@ export class Hud {
   private readonly markers = new EdgeMarkers(this.edges, this.c);
   private readonly alert: AlertBanner;
   private readonly banner = el('div', 'bb-banner');
+  private readonly bannerTitle = el('b', 'title');
   private readonly bannerHint = el('span', 'hint');
+  private readonly controlsBtn = el('button', 'bb-controls-btn');
   private readonly actBtn: HTMLElement | null;
   /** Touch Furie / Onde buttons: dim until available, glowing when ready. */
   private readonly furieBtn: HTMLElement | null;
@@ -88,6 +91,11 @@ export class Hud {
   private readonly tools = el('div', 'bb-tools');
   private intro: HTMLElement | null = null;
   private introCleanup: (() => void) | null = null;
+  private introRefresh: (() => void) | null = null;
+  /** Whether the help line was written for touch (to rewrite it when the language changes). */
+  private helpTouch = false;
+  /** Rewrites the texts set once (labels, buttons, open intro, help line); the rest follows on the next update. */
+  private readonly offLocale = onLocaleChange(() => this.relabel());
 
   constructor(
     parent: HTMLElement,
@@ -104,13 +112,12 @@ export class Hud {
     this.round = makeRound();
     this.prompt.hidden = true;
     this.prompt.setAttribute('aria-live', 'polite');
-    this.banner.append(el('b', 'title', 'Renforts en approche !'), this.bannerHint);
+    this.banner.append(this.bannerTitle, this.bannerHint);
     this.banner.hidden = true;
     this.banner.setAttribute('role', 'status');
-    const cmd = el('button', 'bb-controls-btn', 'Commandes');
+    const cmd = this.controlsBtn;
     cmd.type = 'button';
     cmd.setAttribute('aria-haspopup', 'dialog');
-    cmd.setAttribute('aria-label', 'Commandes'); // keeps its name when it shrinks to a "?" on touch
     cmd.addEventListener('click', () => this.opts.onControls?.());
     this.tools.append(cmd);
     this.glow.hidden = true;
@@ -126,6 +133,22 @@ export class Hud {
     this.furieBtn = touchRoot?.querySelector<HTMLElement>('[data-action=furie]') ?? null;
     this.ondeBtn = touchRoot?.querySelector<HTMLElement>('[data-action=onde]') ?? null;
     window.addEventListener('resize', this.onResize);
+    this.relabel();
+  }
+
+  /** The texts written once, in the current locale (also the touch buttons of play/index.html). */
+  private relabel(): void {
+    this.bannerTitle.textContent = t('hud.banner.reinforcements');
+    this.controlsBtn.textContent = t('hud.controlsBtn');
+    this.controlsBtn.setAttribute('aria-label', t('hud.controlsBtn')); // keeps its name when it shrinks to a "?" on touch
+    this.statsPanel.relabel();
+    this.markers.clear();
+    for (const a of ['strike', 'throw', 'onde', 'furie'] as const) {
+      const b = this.touchRoot?.querySelector<HTMLElement>(`[data-action=${a}]`);
+      if (b) b.textContent = t(`hud.touch.${a}`);
+    }
+    this.introRefresh?.();
+    if (this.helpShown) this.c.text(this.help, firstRuinHelp(this.helpTouch));
   }
 
   show(on: boolean): void {
@@ -164,6 +187,7 @@ export class Hud {
     if (!this.helpShown && !s.ended && s.targets.some((t) => t.state === 'ruined')) {
       this.helpShown = true;
       this.helpUntil = now + HELP_MS;
+      this.helpTouch = touch;
       this.c.text(this.help, firstRuinHelp(touch));
     }
     this.help.hidden = s.ended || now >= this.helpUntil;
@@ -185,8 +209,9 @@ export class Hud {
    */
   showIntro(touch: boolean, onDismiss: () => void = () => undefined): void {
     this.hideIntro();
-    const { veil, cleanup } = openIntro(touch, onDismiss, () => this.hideIntro());
+    const { veil, cleanup, refresh } = openIntro(touch, onDismiss, () => this.hideIntro());
     this.introCleanup = cleanup;
+    this.introRefresh = refresh;
     this.intro = veil;
     this.root.append(veil);
   }
@@ -194,11 +219,13 @@ export class Hud {
   hideIntro(): void {
     this.introCleanup?.();
     this.introCleanup = null;
+    this.introRefresh = null;
     this.intro?.remove();
     this.intro = null;
   }
 
   destroy(): void {
+    this.offLocale();
     this.hideIntro();
     this.alert.destroy();
     if (this.refusedTimer !== null) clearTimeout(this.refusedTimer);
@@ -207,7 +234,7 @@ export class Hud {
     window.removeEventListener('resize', this.onResize);
     this.root.remove();
     if (this.actBtn) {
-      this.actBtn.textContent = DEFAULT_ACT_LABEL;
+      this.actBtn.textContent = defaultActLabel();
       this.actBtn.style.display = 'none';
       this.actBtn.classList.remove('bb-act-ready');
     }
@@ -225,7 +252,7 @@ export class Hud {
 
     const cinematic = s.school.stage === 'cinematic' && !s.ended;
     this.banner.hidden = !cinematic;
-    if (cinematic) c.text(this.bannerHint, touch ? 'Touchez l’écran pour passer' : 'Espace ou F pour passer');
+    if (cinematic) c.text(this.bannerHint, t(touch ? 'hud.banner.skip.touch' : 'hud.banner.skip.keys'));
 
     const p = cinematic ? null : contextPrompt(s, touch);
     // the booth's own line (under the booth, in the world) replaces the prompt text for a moment; Agir stays
@@ -237,7 +264,7 @@ export class Hud {
       // Only an actionable prompt (repair, put out a fire, a booth call) shows the touch Agir button, labelled with
       // the action and pulsing.
       c.style(this.actBtn, p?.label ? '' : 'display:none');
-      c.text(this.actBtn, p?.label ?? DEFAULT_ACT_LABEL);
+      c.text(this.actBtn, p?.label ?? defaultActLabel());
       this.actBtn.classList.toggle('bb-act-ready', !!p?.label);
     }
 
@@ -262,11 +289,11 @@ export class Hud {
       if (!b) return;
       b.classList.toggle('ready', ready);
       b.classList.toggle('dim', !ready);
-      const a = ready ? `${label} : disponible` : `${label} : énergie insuffisante`;
+      const a = t(ready ? 'hud.touch.ready' : 'hud.touch.lowEnergy', { label });
       if (b.getAttribute('aria-label') !== a) b.setAttribute('aria-label', a);
     };
-    btn(this.furieBtn, s.energy.ready.furie && !s.furie && !s.player.ko, 'Furie');
-    btn(this.ondeBtn, s.energy.ready.onde && !s.player.ko, 'Onde');
+    btn(this.furieBtn, s.energy.ready.furie && !s.furie && !s.player.ko, t('hud.touch.furie'));
+    btn(this.ondeBtn, s.energy.ready.onde && !s.player.ko, t('hud.touch.onde'));
   }
 
   /** « Santé 85 sur 100 » for screen readers (progressbar, visually hidden). */

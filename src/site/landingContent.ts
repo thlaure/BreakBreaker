@@ -6,7 +6,7 @@
  * site root: '' or '../'), `<!--alternates-->` (hreflang links), `<!--flags-->` (language selector), `<!--controls-->`,
  * `<!--notice-->`, `<!--version-->`, `<!--teaser-->`, `<!--changelog-->`, `<!--note-->` (« (in French) » outside fr).
  */
-import { CONTROLS, SATIRE_NOTICE, type ControlRow } from '../content/controls';
+import { controlsFor as controlRowsFor, satireNoticeFor, type ControlRow } from '../content/controls';
 import { catalog, translate, type Locale } from '../content/i18n';
 import { flagSvg, type FlagId } from './flags';
 
@@ -44,27 +44,9 @@ export interface LandingControls {
   notice: string;
 }
 
-// TODO(i18n task 2): replace this temporary English table by the per-locale controls of src/content/controls.ts.
-const EN_CONTROLS: LandingControls = {
-  rows: [
-    { action: 'Move', keyboard: 'WASD, ZQSD or arrow keys', touch: 'Joystick (left half of the screen)' },
-    { action: 'Strike', keyboard: 'Space or left click', touch: 'Strike button' },
-    { action: 'Throw back a stone', keyboard: 'E or right click', touch: 'Throw button: tap = last aim, drag = aim' },
-    { action: 'Run', keyboard: 'Shift', touch: 'Push the joystick all the way' },
-    { action: 'Energy wave', keyboard: 'C (gauge half full)', touch: 'Wave button' },
-    { action: 'Fury mode', keyboard: 'R (gauge full)', touch: 'Fury button' },
-    { action: 'Repair / put out (toolbox)', keyboard: 'F', touch: 'Act button (near a place to repair)' },
-    { action: 'Pause', keyboard: 'Esc', touch: 'Pause button' },
-  ],
-  notice: 'BreakBreaker is a work of satirical fiction.',
-};
-
-/**
- * The controls table and satire notice of a landing page. Adapter so the landing does not depend on how
- * src/content/controls.ts stores its languages. TODO(i18n task 2): call the per-locale controls once they exist.
- */
+/** The controls table and satire notice of a landing page: the same per-locale texts as the game. */
 export function controlsFor(l: Locale): LandingControls {
-  return l === 'fr' ? { rows: CONTROLS, notice: SATIRE_NOTICE } : EN_CONTROLS;
+  return { rows: controlRowsFor(l), notice: satireNoticeFor(l) };
 }
 
 export interface LandingContext {

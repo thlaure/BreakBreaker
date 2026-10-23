@@ -1,3 +1,4 @@
+import { onLocaleChange } from '../../content/i18n';
 import type { Vec } from '../../sim/types';
 import { bearingDeg, formatMeters } from './edgeMath';
 import { incidentAlert, type Alert } from './incidents';
@@ -34,6 +35,10 @@ export class AlertBanner {
   private readonly fresh = new Set<Alert>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private lastDist = '';
+  /** Repaints the alert on screen in the new language (its timer and queue are kept). */
+  private readonly offLocale = onLocaleChange(() => {
+    if (this.current) this.paint(this.current);
+  });
 
   constructor(parent: HTMLElement) {
     const mk = (tag: string, cls: string): HTMLElement => {
@@ -112,6 +117,7 @@ export class AlertBanner {
   }
 
   destroy(): void {
+    this.offLocale();
     this.clear();
     this.el.remove();
   }
@@ -123,16 +129,22 @@ export class AlertBanner {
     const danger = spec.tone === 'fire' || spec.tone === 'warn';
     this.el.className = `bb-alert tone-${spec.tone}${danger ? ' shake' : ''}`;
     this.ico.innerHTML = pixelSvg(spec.icon, 3);
-    this.title.textContent = spec.title;
-    this.sub.textContent = spec.sub;
-    this.sub.hidden = !spec.sub;
-    this.meta.textContent = spec.meta;
-    this.meta.hidden = !spec.meta;
+    this.paint(incident);
     this.dir.hidden = !spec.positioned;
     this.lastDist = '';
     this.dist.textContent = '';
     this.el.hidden = false;
     this.timer = setTimeout(() => this.next(), spec.ms ?? ALERT_MS);
+  }
+
+  /** The banner's texts, in the current locale. */
+  private paint(incident: Alert): void {
+    const spec = incidentAlert(incident.kind, incident.wave, incident.total, incident.headline);
+    this.title.textContent = spec.title;
+    this.sub.textContent = spec.sub;
+    this.sub.hidden = !spec.sub;
+    this.meta.textContent = spec.meta;
+    this.meta.hidden = !spec.meta;
   }
 
   private next(): void {

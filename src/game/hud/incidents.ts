@@ -1,6 +1,8 @@
 import type { Snapshot } from '../../sim/sim';
 import type { CasseKind, PickupKind, SimEvent, SpecialKind, Vec } from '../../sim/types';
+import { t } from '../../content/i18n';
 import { releasedText } from '../render/prisonMath';
+import { liveFields, liveRecord } from './liveText';
 
 /**
  * Incident alerts: a pixel banner when a target is set on fire, a rescue, a round or a special drop starts, and one
@@ -40,28 +42,60 @@ export interface AlertSpec {
   icon: AlertIcon;
 }
 
-export const INCIDENT_ALERTS: Readonly<Record<IncidentKind, AlertSpec>> = {
-  school: { title: 'ÉCOLE EN FEU !', sub: 'Rejoins l’école', label: 'ÉCOLE', tone: 'fire', icon: 'flame' },
-  car: { title: 'VOITURE EN FEU !', sub: 'Chasse les casseurs', label: 'VOITURE', tone: 'fire', icon: 'flame' },
-  busStop: { title: 'ABRIBUS SACCAGÉ !', sub: 'Arrête la casse', label: 'ABRIBUS', tone: 'warn', icon: 'glass' },
-  shop: { title: 'BOUTIQUE EN FEU !', sub: 'Défends la boutique', label: 'BOUTIQUE', tone: 'fire', icon: 'flame' },
-  nursery: { title: 'ÉCOLE MATERNELLE EN DANGER !', sub: 'Protège les petits', label: 'MATERNELLE', tone: 'fire', icon: 'flame' },
-  kiosk: { title: 'KIOSQUE SACCAGÉ !', sub: 'Protège le kiosque', label: 'KIOSQUE', tone: 'warn', icon: 'glass' },
-  townHall: { title: 'MAIRIE ATTAQUÉE !', sub: 'Défends la mairie', label: 'MAIRIE', tone: 'fire', icon: 'flame' },
-  library: { title: 'BIBLIOTHÈQUE EN FEU !', sub: 'Sauve les livres', label: 'BIBLIOTHÈQUE', tone: 'fire', icon: 'flame' },
-  booth: { title: 'CABINE SACCAGÉE !', sub: 'Protège la cabine', label: 'CABINE', tone: 'warn', icon: 'glass' },
-  prison: { title: 'PRISON ATTAQUÉE !', sub: 'Défends la prison', label: 'PRISON', tone: 'fire', icon: 'flame' },
-  church: { title: 'ÉGLISE ATTAQUÉE !', sub: 'Défends l’église', label: 'ÉGLISE', tone: 'fire', icon: 'flame' },
-  groupHarassed: { title: 'AGRESSION EN COURS !', sub: 'Une personne est menacée', label: 'AGRESSION', tone: 'warn', icon: 'alert' },
-  elderlyRobbed: { title: 'VOL EN COURS !', sub: 'Une personne âgée est menacée', label: 'VOL', tone: 'warn', icon: 'alert' },
-  monument: { title: 'MONUMENT ATTAQUÉ !', sub: 'Défends le drapeau', label: 'MONUMENT', tone: 'warn', icon: 'flag' },
-  flag: { title: 'DRAPEAU REMPLACÉ !', sub: 'Reprends le monument', label: 'DRAPEAU', tone: 'warn', icon: 'flag' },
-  caid: { title: 'LE CAÏD ARRIVE !', sub: 'Mets-le KO', label: 'CAÏD', tone: 'warn', icon: 'crown' },
+/** Tone and icon of each incident kind and drop (the texts come from the catalog: `hud.alert.<kind>.title|sub|label`). */
+const LOOKS: Readonly<Record<IncidentKind | DropKind, Pick<AlertSpec, 'tone' | 'icon'>>> = {
+  school: { tone: 'fire', icon: 'flame' },
+  car: { tone: 'fire', icon: 'flame' },
+  busStop: { tone: 'warn', icon: 'glass' },
+  shop: { tone: 'fire', icon: 'flame' },
+  nursery: { tone: 'fire', icon: 'flame' },
+  kiosk: { tone: 'warn', icon: 'glass' },
+  townHall: { tone: 'fire', icon: 'flame' },
+  library: { tone: 'fire', icon: 'flame' },
+  booth: { tone: 'warn', icon: 'glass' },
+  prison: { tone: 'fire', icon: 'flame' },
+  church: { tone: 'fire', icon: 'flame' },
+  groupHarassed: { tone: 'warn', icon: 'alert' },
+  elderlyRobbed: { tone: 'warn', icon: 'alert' },
+  monument: { tone: 'warn', icon: 'flag' },
+  flag: { tone: 'warn', icon: 'flag' },
+  caid: { tone: 'warn', icon: 'crown' },
+  bouclierDrop: { tone: 'drop', icon: 'shield' },
 };
 
-export const DROPS: Readonly<Record<DropKind, AlertSpec>> = {
-  bouclierDrop: { title: 'BOUCLIER DISPONIBLE !', sub: 'Fonce le ramasser', label: 'BOUCLIER', tone: 'drop', icon: 'shield' },
-};
+/** The spec of `id`, its texts read in the current locale at each access. */
+function liveSpec(id: IncidentKind | DropKind): AlertSpec {
+  return liveFields(
+    { ...LOOKS[id] },
+    {
+      title: () => t(`hud.alert.${id}.title`),
+      sub: () => t(`hud.alert.${id}.sub`),
+      label: () => t(`hud.alert.${id}.label`),
+    },
+  );
+}
+
+/** Every kind of "casse" target, in the order of CasseKind. */
+export const CASSE_KINDS: readonly CasseKind[] = [
+  'school',
+  'car',
+  'busStop',
+  'shop',
+  'nursery',
+  'kiosk',
+  'townHall',
+  'library',
+  'booth',
+  'prison',
+  'church',
+];
+const INCIDENT_KINDS: readonly IncidentKind[] = [...CASSE_KINDS, 'groupHarassed', 'elderlyRobbed', 'monument', 'flag', 'caid'];
+
+export const INCIDENT_ALERTS: Readonly<Record<IncidentKind, AlertSpec>> = Object.fromEntries(
+  INCIDENT_KINDS.map((k) => [k, liveSpec(k)]),
+) as Record<IncidentKind, AlertSpec>;
+
+export const DROPS: Readonly<Record<DropKind, AlertSpec>> = { bouclierDrop: liveSpec('bouclierDrop') };
 const DROP_OF: Readonly<Record<SpecialKind, DropKind>> = { bouclier: 'bouclierDrop' };
 
 /** The indicator kind of a ground pickup: only the bouclier has one (regular weapons: null). */
@@ -106,23 +140,10 @@ export function caidId(lifeId: number): string {
 }
 
 /** Non-committal: the round start does not know whether the bottle will be thrown. */
-export const ROUND_HEADLINES: Readonly<Record<BannerHeadline, string>> = {
-  school: 'École menacée',
-  car: 'Voiture menacée',
-  busStop: 'Abribus menacé',
-  shop: 'Boutique menacée',
-  nursery: 'École maternelle menacée',
-  kiosk: 'Kiosque menacé',
-  townHall: 'Mairie menacée',
-  library: 'Bibliothèque menacée',
-  booth: 'Cabine menacée',
-  prison: 'Prison menacée',
-  church: 'Église menacée',
-  rescue: 'Agression en cours',
-  groupHarassed: 'Agression en cours',
-  elderlyRobbed: 'Vol en cours',
-  monument: 'Monument menacé',
-};
+export const ROUND_HEADLINES: Readonly<Record<BannerHeadline, string>> = liveRecord(
+  [...CASSE_KINDS, 'rescue', 'groupHarassed', 'elderlyRobbed', 'monument'],
+  (h) => `hud.headline.${h}`,
+);
 
 /** What the banner shows for an alert: the spec plus the round line and whether it points somewhere. */
 export interface ShownAlert extends AlertSpec {
@@ -137,9 +158,9 @@ export interface ShownAlert extends AlertSpec {
   ms?: number;
 }
 
-/** "1 casseur", "9 casseurs". */
+/** "1 casseur", "9 casseurs" (French: « 0 casseur »); "0 rioters", "1 rioter". */
 export function casseurs(n: number): string {
-  return `${n} ${n === 1 ? 'casseur' : 'casseurs'}`;
+  return t('hud.rioters', { n });
 }
 
 /**
@@ -149,9 +170,9 @@ export function casseurs(n: number): string {
 export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: BannerHeadline): ShownAlert {
   if (kind === 'round')
     return {
-      title: `MANCHE ${round} !`,
+      title: t('hud.alert.round.title', { n: round }),
       sub: headline ? `${ROUND_HEADLINES[headline]} · ${casseurs(total)}` : casseurs(total),
-      label: 'MANCHE',
+      label: t('hud.alert.round.label'),
       tone: 'round',
       icon: 'horde',
       meta: '',
@@ -160,9 +181,9 @@ export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: 
   if (isDrop(kind)) return { ...DROPS[kind], meta: '', positioned: true };
   if (kind === 'furie')
     return {
-      title: 'MODE FURIE !',
-      sub: 'Frappe, ils volent !',
-      label: 'FURIE',
+      title: t('hud.alert.furie.title'),
+      sub: t('hud.alert.furie.sub'),
+      label: t('hud.alert.furie.label'),
       tone: 'furie',
       icon: 'bolt',
       meta: '',
@@ -171,9 +192,9 @@ export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: 
     };
   if (kind === 'flagCaptured')
     return {
-      title: 'DRAPEAU RÉCUPÉRÉ !',
-      sub: 'Le drapeau français flotte à nouveau',
-      label: 'DRAPEAU',
+      title: t('hud.alert.flagCaptured.title'),
+      sub: t('hud.alert.flagCaptured.sub'),
+      label: t('hud.alert.flag.label'),
       tone: 'win',
       icon: 'flag',
       meta: '',
@@ -184,9 +205,9 @@ export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: 
   // the prison fell: `total` = the Caïds released, the arrow points at its gate
   if (kind === 'breakout')
     return {
-      title: 'ÉVASION !',
+      title: t('world.prison.breakout'),
       sub: releasedText(total),
-      label: 'ÉVASION',
+      label: t('hud.alert.breakout.label'),
       tone: 'round',
       icon: 'bars',
       meta: '',
@@ -196,16 +217,16 @@ export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: 
   // the flashball guaranteed with the first shooter: one line, with the arrow and distance to it (no edge indicator)
   if (kind === 'flashball')
     return {
-      title: 'FLASHBALL AU SOL',
+      title: t('hud.alert.flashball.title'),
       sub: '',
-      label: 'FLASHBALL',
+      label: t('held.flashball').toUpperCase(),
       tone: 'drop',
       icon: 'flashball',
       meta: '',
       positioned: true,
       ms: FLASHBALL_ALERT_MS,
     };
-  const meta = round <= 0 ? '' : total > 0 ? `Manche ${round} · ${casseurs(total)}` : `Manche ${round}`;
+  const meta = round <= 0 ? '' : total > 0 ? t('hud.round.meta', { n: round, rioters: casseurs(total) }) : t('hud.round.n', { n: round });
   return { ...INCIDENT_ALERTS[kind], meta, positioned: true };
 }
 
@@ -337,8 +358,8 @@ export interface GuideMark {
   pos: Vec;
 }
 export const GUIDE_LOOK: Readonly<Record<GuideKind, { label: string; icon: GuideIcon }>> = {
-  ruin: { label: 'RÉPARER', icon: 'wrench' },
-  toolbox: { label: 'OUTILS', icon: 'toolbox' },
+  ruin: liveFields({ icon: 'wrench' as const }, { label: () => t('hud.guide.ruin') }),
+  toolbox: liveFields({ icon: 'toolbox' as const }, { label: () => t('hud.guide.toolbox') }),
 };
 
 /**

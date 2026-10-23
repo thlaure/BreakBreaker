@@ -105,6 +105,13 @@ export class EdgeMarkers {
     }
   }
 
+  /** Removes every indicator (they are rebuilt, in the current locale, on the next update). */
+  clear(): void {
+    for (const e of [...this.edgeEls.values(), ...this.guideEls.values()]) e.root.remove();
+    this.edgeEls.clear();
+    this.guideEls.clear();
+  }
+
   private edge(inc: Incident): Edge {
     const key = inc.id;
     const spec = incidentAlert(inc.kind);
