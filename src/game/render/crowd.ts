@@ -3,8 +3,8 @@ import { DISTRICT } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
 import { CharView, FEET_ORIGIN_Y, idleFrame } from './actors';
 import { ITEM_SHOUTS, VictimMood } from './belongings';
-import { clampBubbleX } from './bubbleClamp';
 import { DEPTH } from './depth';
+import { SpeechBubble as Bubble, type BubbleSpec } from './speechBubble';
 
 const SIGN_COLORS = [0xf4ecd8, 0xe8f1f8, 0xf8efc8];
 
@@ -61,19 +61,15 @@ export class GroupView {
     this.bubbles.forEach((b, gi) => {
       const t = timeMs + (gi * GRUMBLE_PERIOD_MS) / this.bubbles.length;
       if (t % GRUMBLE_PERIOD_MS >= GRUMBLE_SHOW_MS) {
-        b.bubble.set(null);
+        b.bubble.say(null);
         return;
       }
-      b.bubble.set(`grumble${(Math.floor(t / GRUMBLE_PERIOD_MS) + gi) % GRUMBLES.length}` as BubbleKind);
+      b.bubble.say(bubbleSpec(`grumble${(Math.floor(t / GRUMBLE_PERIOD_MS) + gi) % GRUMBLES.length}` as BubbleKind));
       b.bubble.place(b.x + (shake ? 1 : 0), b.y + shake);
     });
   }
 }
 
-/** Pixel font of the bubbles (loaded by BootScene before the world starts), with a monospace fallback. */
-const BUBBLE_FONT = '"Press Start 2P", ui-monospace, monospace';
-const BUBBLE_INK = 0x14121c;
-const BUBBLE_PAD = 3;
 /** Tail tip of the bubble, above the victim's feet. */
 const BUBBLE_Y = -46;
 const BOB_MS = 250;
@@ -81,7 +77,7 @@ const BOB_MS = 250;
 /** `shout:<item id>`: the victim cries for a stolen belonging (« MON SAC ! »), red like the call for help. */
 type BubbleKind = 'help' | 'thanks' | `grumble${0 | 1 | 2 | 3 | 4}` | `shout:${string}`;
 type FixedBubble = Exclude<BubbleKind, `shout:${string}`>;
-const BUBBLES: Record<FixedBubble, { text: string; color: string; border?: number }> = {
+const BUBBLES: Record<FixedBubble, BubbleSpec> = {
   help: { text: 'À L’AIDE !', color: '#c4372b' },
   thanks: { text: 'MERCI !', color: '#1b7a35' }, // >= 5:1 on the white bubble
   // the group is unhappy: dark red text and a red border (>= 5:1 on the white bubble)
@@ -92,65 +88,9 @@ const BUBBLES: Record<FixedBubble, { text: string; color: string; border?: numbe
   grumble4: { text: GRUMBLES[4], color: '#a3231a', border: 0xc4372b },
 };
 
-function bubbleSpec(kind: BubbleKind): { text: string; color: string; border?: number } {
+function bubbleSpec(kind: BubbleKind): BubbleSpec {
   if (kind.startsWith('shout:')) return { text: ITEM_SHOUTS[kind.slice(6)] ?? BUBBLES.help.text, color: BUBBLES.help.color };
   return BUBBLES[kind as FixedBubble];
-}
-
-/**
- * Pixel speech bubble (white, 1 px dark border, stepped tail pointing down) whose origin is the tail tip.
- * Every coordinate is a whole pixel so it stays crisp under the integer camera zoom.
- */
-class Bubble {
-  readonly root: Phaser.GameObjects.Container;
-  private readonly g: Phaser.GameObjects.Graphics;
-  private readonly text: Phaser.GameObjects.Text;
-  private kind: BubbleKind | null = null;
-  /** Half width of the drawn bubble (px, before scaling), for keeping it inside the screen. */
-  private halfW = 0;
-
-  constructor(scene: Phaser.Scene) {
-    this.g = scene.add.graphics();
-    this.text = scene.add.text(0, 0, '', { fontFamily: BUBBLE_FONT, fontSize: '8px', color: '#000' });
-    this.root = scene.add.container(0, 0, [this.g, this.text]).setDepth(DEPTH.overlay).setVisible(false);
-  }
-
-  set(kind: BubbleKind | null): void {
-    if (kind === this.kind) return;
-    this.kind = kind;
-    this.root.setVisible(kind !== null);
-    if (!kind) return;
-    const b = bubbleSpec(kind);
-    this.text.setText(b.text).setColor(b.color);
-    this.text.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
-    const tw = Math.ceil(this.text.width);
-    const th = Math.ceil(this.text.height);
-    const bw = tw + 2 * BUBBLE_PAD;
-    const bh = th + 2 * BUBBLE_PAD;
-    const left = -Math.floor(bw / 2);
-    const top = -(bh + 4);
-    this.halfW = Math.ceil(bw / 2) + 1;
-    const g = this.g.clear();
-    const ink = b.border ?? BUBBLE_INK;
-    g.fillStyle(ink, 1).fillRect(left - 1, top - 1, bw + 2, bh + 2);
-    g.fillStyle(0xffffff, 1).fillRect(left, top, bw, bh);
-    // stepped tail: rows of 7/5/3/1 dark px with 5/3/1 white px inside
-    for (let i = 0; i < 4; i++) {
-      const dark = 7 - 2 * i;
-      g.fillStyle(ink, 1).fillRect(-Math.floor(dark / 2), -4 + i, dark, 1);
-      const white = dark - 2;
-      if (white > 0) g.fillStyle(0xffffff, 1).fillRect(-Math.floor(white / 2), -4 + i, white, 1);
-    }
-    this.text.setPosition(left + BUBBLE_PAD, top + BUBBLE_PAD);
-  }
-
-  /** Whole-number scale keeps the bubble about 16 screen px tall at camera zoom 1 and 2 (crisp, readable). */
-  place(x: number, y: number, alpha = 1): void {
-    const cam = this.root.scene.cameras.main;
-    const scale = Math.max(1, Math.round(2 / (cam.zoom || 1)));
-    const cx = clampBubbleX(x, this.halfW * scale, cam.worldView.x, cam.worldView.right);
-    this.root.setPosition(Math.round(cx), Math.round(y)).setAlpha(alpha).setScale(scale);
-  }
 }
 
 /**
@@ -203,17 +143,17 @@ export class VictimView {
     }
     const kind = this.mood.update(rescue, timeMs);
     if (rescue.stage === 'threat' && kind) {
-      this.bubble.set(kind);
+      this.bubble.say(bubbleSpec(kind));
       const bob = Math.floor(timeMs / BOB_MS) % 2 === 0 ? 0 : -2;
       this.bubble.place(rescue.victimPos.x, rescue.victimPos.y + BUBBLE_Y + bob);
     } else if (rescue.stage === 'secured' && kind) {
-      this.bubble.set(kind);
+      this.bubble.say(bubbleSpec(kind));
       this.bubble.place(v.sprite.x, rescue.victimPos.y + BUBBLE_Y);
     } else if (rescue.stage === 'completed' && v.sprite.visible && v.sprite.alpha > 0.05) {
-      this.bubble.set('thanks');
+      this.bubble.say(bubbleSpec('thanks'));
       this.bubble.place(v.sprite.x, rescue.victimPos.y + BUBBLE_Y, v.sprite.alpha);
     } else {
-      this.bubble.set(null);
+      this.bubble.say(null);
     }
   }
 
@@ -221,6 +161,6 @@ export class VictimView {
     if (this.view) this.scene.tweens.killTweensOf(this.view.sprite);
     this.view?.destroy();
     this.view = null;
-    this.bubble.set(null);
+    this.bubble.say(null);
   }
 }

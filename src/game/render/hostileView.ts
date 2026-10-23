@@ -21,6 +21,8 @@ import {
 import { FALL_SPECS, fallPose, fallTravel, pickWord } from './fallMath';
 import { edgeExit, landingDistance, launchPose, satelliteDelay, satellitePose } from './furieMath';
 import { RifleProp } from './guns';
+import { CaidLookView } from './caidProps';
+import { caidSkinOf } from './caidSkin';
 import { BottleProp, RoleBadge } from './rioterProps';
 import { DUST_MS, badgeOf, rioterSheet, roleScale } from './roleLook';
 import { MAX_SATELLITES } from './satellite';
@@ -28,7 +30,8 @@ import { MAX_SATELLITES } from './satellite';
 type HostileSnap = Snapshot['hostiles'][number];
 
 /**
- * Rioter: sheet by variant (_a/_b by lifeId parity), optional flag prop above the shoulder, Molotov bottle. A body
+ * Rioter: sheet by variant (_a/_b by lifeId parity), optional flag prop above the shoulder, Molotov bottle; a Caïd wears
+ * one of the five leader looks (caidSkin.ts) with its prop and slogans (CaidLookView), never a flag. A body
  * launched in mode furie flies off spinning (ease-out travel, arc, squash, star/dust trail) above everything, then
  * lies where it landed (inside the world, never in a wall) like any KO body. A body « satellisé » by the onde d’énergie
  * is shot into the sky along the beam (ease-in, spinning, shrinking, star trail, never clamped to the map), twinkles
@@ -56,6 +59,8 @@ export class HostileView {
   /** Sprite scale of the role (brute ×1.25, Caïd ×1.5). */
   private readonly size: number;
   private readonly role: RoleBadge | null;
+  /** The Caïd's look: his prop and his slogans (null for every other role). */
+  private readonly caid: CaidLookView | null;
   private lastDust = 0;
 
   constructor(scene: Phaser.Scene, h: HostileSnap) {
@@ -63,11 +68,13 @@ export class HostileView {
     this.size = roleScale(h.role);
     this.view.sprite.setScale(this.size);
     this.role = badgeOf(h.role) ? new RoleBadge(scene, h.role, this.size) : null;
-    const flagFrame = h.variant === 'palestinian' ? 1 : h.variant === 'antifa' ? 2 : -1;
+    // the Caïd carries his look's prop, never a flag
+    const flagFrame = h.role === 'boss' ? -1 : h.variant === 'palestinian' ? 1 : h.variant === 'antifa' ? 2 : -1;
     this.flag = flagFrame >= 0 ? scene.add.image(0, 0, 'flags', flagFrame).setOrigin(0, 1) : null;
     this.pole = flagFrame >= 0 ? scene.add.rectangle(0, 0, 1, 22, 0x5a4632).setOrigin(0.5, 1) : null;
     this.bottle = h.role === 'molotov' || h.role === 'firebomber' ? new BottleProp(scene) : null;
     this.rifle = h.role === 'shooter' ? new RifleProp(scene) : null;
+    this.caid = h.role === 'boss' ? new CaidLookView(scene, caidSkinOf(h.lifeId), this.size) : null;
   }
 
   /** `index` = rank of this body among the satellites of one beam (take-off stagger, see satelliteDelay). */
@@ -130,6 +137,7 @@ export class HostileView {
       this.bottle?.update(h, this.view.sprite.depth, nowMs);
       this.rifle?.update(h, this.view.sprite.depth, nowMs);
       this.role?.update(h, this.view.sprite);
+      this.caid?.update(h, this.view.sprite, nowMs);
       this.satellite(this.flight, nowMs, ctx);
       return;
     }
@@ -181,6 +189,7 @@ export class HostileView {
     this.bottle?.update(h, s.depth, nowMs);
     this.rifle?.update(h, s.depth, nowMs);
     this.role?.update(h, s);
+    this.caid?.update(h, s, nowMs);
   }
 
   private playFall(f: Falling, dir: Dir, nowMs: number, ctx: LaunchCtx): void {
@@ -320,5 +329,6 @@ export class HostileView {
     this.bottle?.destroy();
     this.rifle?.destroy();
     this.role?.destroy();
+    this.caid?.destroy();
   }
 }
