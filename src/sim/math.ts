@@ -9,6 +9,8 @@ export const sub = (a: Vec, b: Vec): Vec => ({ x: a.x - b.x, y: a.y - b.y });
 export const add = (a: Vec, b: Vec): Vec => ({ x: a.x + b.x, y: a.y + b.y });
 export const scale = (v: Vec, k: number): Vec => ({ x: v.x * k, y: v.y * k });
 export const dist = (a: Vec, b: Vec): number => len(sub(a, b));
+/** A fresh copy of `p` (events and snapshots never share the sim's own vectors). */
+export const v = (p: Vec): Vec => ({ x: p.x, y: p.y });
 
 /** True if target is within range of origin and within ±arcDeg/2 of facing. */
 export function inArc(origin: Vec, facing: Vec, target: Vec, range: number, arcDeg: number): boolean {
