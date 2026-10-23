@@ -1,6 +1,6 @@
 # BreakBreaker — Specifications (index)
 
-**Version:** 1.3.0 — 23 October 2026  
+**Version:** 1.4.0 — 24 October 2026  
 **Scope:** 2D pixel-art web game, non-isometric top-down view, arcade mode in rounds with no time limit, Paris, Paul (a fictional shopkeeper) as the only hero, computer and phone  
 **Status:** reference specification; decisions confirmed by the project owner and design recommendations are identified. A first playable slice exists (section 24); this document is neither a production sign-off nor a statement that all requirements are already implemented.  
 **Languages:** French (default) and American English  
@@ -66,6 +66,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
   - [10.9 Throwers aimed at Paul](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#109-throwers-aimed-at-paul)
   - [10.10 The church](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#1010-the-church-v110)
   - [10.11 The château, the President and the sauna](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#1011-the-château-the-president-and-the-sauna-v110)
+  - [10.12 The stage and the skeleton band (v1.4.0)](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#1012-the-stage-and-the-skeleton-band-v140)
 - [11. Monument objective](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#11-monument-objective) — *SPECS - Places, Monument and Services.md*
   - [11.1 Presentation](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#111-presentation)
   - [11.2 Occupation (« MONUMENT ATTAQUÉ ! »)](SPECS%20-%20Places%2C%20Monument%20and%20Services.md#112-occupation--monument-attaqué--)
@@ -184,6 +185,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
 
 ### 25.4 History
 
+- **1.4.0 — 24 October 2026 (medium):** the stage and the booths (sections 5.1, 5.5, 10.12, 12.16, 15.3, 16, 18.4; RC-196 to RC-202; RC-140 changed), project-owner request: the **two phone booths move to the edge of the main square** (red R(21,30,1,1), blue R(22,30,1,1), calls from C(21,31) and C(22,31)); a **rock stage** (decor front on building 3, R(36,3,8,5), door C(40,8)) with a band of **five invented skeletons** in generic rock outfits (no real musician, no text), coloured lights, and a singer who throws **six original bubble lines per language**; an **original riff** synthesised with WebAudio (E minor, 150 bpm) whose volume rises when Paul approaches (full within 128 px, silent beyond 384 px, bus gain at most 0.16), cut by mute, pause and game over; reduced motion respected. Render only apart from the booths' and the stage's footprints; `rulesVersion` stays `1.0.0`, `appVersion` becomes `1.4.0`. **Changed:** the booth positions differ, so seeds may replay differently from 1.3.x.
 - **1.3.0 — 23 October 2026 (medium):** the game is available in **American English** next to French (default): two pixel flags (French, American) top-left of the landing page, aligned with the first « B », and in the pause menu; the choice is saved, `?lang=` overrides it, and switching language in the pause menu re-reads every text without losing the game. Catalogs per domain in `src/content/i18n/{fr,en}/` with `t()` and plurals; the simulation emits ids, never phrases; two static landing pages, `/` and `/en/`; jokes (President, Caïds, crowd) adapted for English, not translated word for word (sections 14.4, 15.3, 18.1, 18.4, 18.7, 20.1, 20.2, 1.4, 23.5; RC-188 to RC-195). `rulesVersion` stays `1.0.0`, `appVersion` becomes `1.3.0`.
 - **1.2.1 — 23 October 2026 (patch):** a hit on Paul interrupts the repair in progress (toolbox kept; RC-187); `AGENTS.md` added with the project rules.
 - **1.2.0 — 23 October 2026 (medium):** each Caïd wears one of five invented leader looks (le tribun, la cheffe de cortège, le camarade en costume, le vieux briscard, le jeune agitateur), picked from his lifeId and kept from the street to the jail van and the prison yard, each with a prop and short pompous slogans in a speech bubble now and then; render only, no gameplay change (section 9.6, RC-183 to RC-186).

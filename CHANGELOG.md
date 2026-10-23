@@ -6,6 +6,13 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.4.0 - 2026-10-24
+
+- Une scène de rock au nord-est de la carte : un groupe de cinq squelettes en tenue de rock, des projecteurs de couleur et un chanteur qui lance des répliques de ras-le-bol, dans les deux langues.
+- Une musique originale qui monte quand on s'approche de la scène et s'éteint quand on s'éloigne ; elle respecte le bouton Son, la pause et la fin de partie.
+- Les cabines d'urgence (pompiers et police) passent au bord de la grande place, à côté de la mairie  : on les appelle comme avant, mais en pleine action.
+- Avec le mouvement réduit, les squelettes restent immobiles et les projecteurs ne clignotent plus.
+
 ## 1.3.0 - 2026-10-23
 
 - Le jeu est disponible en anglais américain : deux petits drapeaux (français, américain) en haut à gauche de la page d'accueil, alignés sur le premier « B », et dans le menu pause.

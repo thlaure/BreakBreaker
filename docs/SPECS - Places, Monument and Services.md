@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Places, Monument and Services
 
 > **Purpose of this file:** threatened buildings, defence, repair and the monument objective.  
-> Part of the BreakBreaker specifications (version 1.3.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.4.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 10. Threatened buildings, defence and repair
 
@@ -122,6 +122,22 @@ Two **decor fronts** (section 5.1: ordinary solid buildings in `DISTRICT.decor`,
 **The sauna** (building 12, R(31,29,4,3), door C(33,32)): an Easter egg with no effect on the game (not a place, Paul cannot enter, no interaction). Pine-plank front with a shingle roof, a lantern with a gently pulsing glow, a hanging board « Sauna – Ne pas déranger » (Sauna – Do not disturb), steam rising from the stove pipe (particles) and **three blurry silhouettes behind a steamed window**, each told apart by props only (a red cap and a long red tie; a judo belt and a hockey stick; a plain dark turban and a grey beard) and slowly drifting; they have no face, nothing is exaggerated or mocked (the only physical traits are a plain beard on the third), no real name is written, and they are all treated alike (towel, steam, silhouette). **Reduced motion:** no steam particles, silhouettes and lantern fixed. Rendering: `src/game/render/saunaFront.ts`; pure helpers `steamSpec`, `lanternGlow`, `silhouetteDrift` and `SAUNA_SIGN` in `squareMath.ts`.
 
 **Satire boundaries.** Nothing identifies a real person, party or religion: no name, no attribution of the phrases, no caricature of the physique, origin or religion, no sexualised or degrading depiction; accessories and attitudes only.
+
+### 10.12 The stage and the skeleton band (v1.4.0)
+
+**Project-owner request:** the main square is where people meet; a small rock stage with a band of skeletons adds a fun, fed-up atmosphere, with no effect on the game. Design record: `docs/superpowers/specs/2026-10-24-stage-and-booths-design.md`.
+
+**The stage** (building 3, R(36,3,8,5), door C(40,8), north-east, replacing a plain filler block). A **decor front** like the sauna (section 5.1): a solid building in `DISTRICT.decor` with id `stage`, never a place, never a target, with no health bar, draw, fire, ruin or repair, and no advantage for anyone. Its front faces south, towards the street. The simulation only knows its footprint (and the moved booths, section 12.16); everything below is render only (`src/game/render/stageFront.ts`, `skeletonBand.ts`, pure helpers `stageMath.ts`) and never touches the simulation or its random stream.
+
+**The band.** Five **invented skeletons** in generic rock outfits: a singer at the front, two guitarists, a bassist and a drummer behind a kit, wearing black studded jackets, dark ripped jeans, boots, and bandanas or sunglasses on some. Pixel art, original, our style and colours; no real musician or band is depicted or hinted at, no band name, logo or text on clothes, instruments or drums. The only text on the stage is the sign « SCÈNE » / « STAGE » (`sign.stage`) and the singer's bubbles. Amplifiers, a drum kit and **coloured stage lights** whose glow pulses softly complete the set.
+
+**The singer's bubbles.** The singer shows a speech bubble now and then: the first 1.2 s after the stage comes into view, then one every 6 to 11 s, each shown for 3.5 s, never the same line twice in a row. **Six original lines per language** (`content.stage.lyric1` to `lyric6` in the `fr` and `en` catalogs), short (at most 30 characters), invented for the game about being fed up (« Ras le bol, ras le bol ! », « Fed up, fed up! »), never taken from a song, with no real person's name and no religious word, under the same content rules as the other jokes (adapted per language, not translated word for word). The line is stored as an index and redrawn in the current language after a language switch; the bubble is clamped to the screen; the random choices use a render-side stream (not the simulation's `rng`).
+
+**Reduced motion.** With `prefers-reduced-motion`: the skeletons stand still (no sway, no head-bang), the lights are steady (alpha 0.26) and nothing else moves; the bubbles are still shown. Without it: a sway of at most 1 px, a head-bang of at most 2 px on the beat, lights pulsing between 0.12 and 0.4.
+
+**Culling.** Nothing of the stage is redrawn, animated or stepped while its area (with a small margin) is outside the camera view, so the singer's timers do not advance meanwhile and a long absence replays nothing.
+
+**The stage music** is described in section 16 (an original riff whose volume follows Paul's distance to the stage). Tests: `tests/game/stageMath.test.ts`, `tests/game/stageMusicMath.test.ts`, `tests/content/i18nContent.test.ts`. The rendering is verified in a real browser (RC-198, RC-202).
 
 ## 11. Monument objective
 
