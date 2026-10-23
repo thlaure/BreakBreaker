@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { CONFIG } from '../../sim/config';
 import type { Snapshot } from '../../sim/sim';
 import type { TargetId } from '../../sim/types';
-import { ACTION_WORDS, REPAIRING_VERB, alarmPeriodMs, arrowToward, hintAnchor, steppedPulse } from './actionHintMath';
+import { ACTION_WORDS, alarmPeriodMs, arrowToward, hintAnchor, repairingVerb, steppedPulse } from './actionHintMath';
 import { DEPTH } from './depth';
 
 const FONT = '"Press Start 2P", ui-monospace, monospace';
@@ -100,7 +100,7 @@ export class ActionHintLayer {
     const need = !repairing && h?.kind === 'needToolbox';
     const touch = touchMode();
     const showKey = !need && !touch;
-    const text = repairing ? REPAIRING_VERB : ACTION_WORDS[h!.kind].verb;
+    const text = repairing ? repairingVerb() : ACTION_WORDS[h!.kind].verb;
     const layoutKey = `${text}|${showKey}|${need}`;
     if (layoutKey !== this.shownKey) {
       this.shownKey = layoutKey;

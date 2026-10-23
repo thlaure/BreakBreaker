@@ -4,7 +4,7 @@ import { BOOTH_OF } from '../../sim/services';
 import type { Snapshot } from '../../sim/sim';
 import type { ServiceKind, SimEvent } from '../../sim/types';
 import { DEPTH } from './depth';
-import { CALLED_TEXT, REFUSAL_TEXT, blinkOn, boothTextAlpha } from './serviceMath';
+import { blinkOn, boothTextAlpha, calledText, refusalText } from './serviceMath';
 import { BOOTH_SPENT, PROP_RISE, TargetsLayer } from './targets';
 
 const FONT = '"Press Start 2P", ui-monospace, monospace';
@@ -133,8 +133,8 @@ export class BoothsLayer {
 
   onEvents(events: readonly SimEvent[], nowMs: number): void {
     for (const e of events) {
-      if (e.type === 'ServiceCalled') this.views.get(e.kind)?.say(CALLED_TEXT[e.kind], true, nowMs);
-      else if (e.type === 'ServiceRefused') this.views.get(e.kind)?.say(REFUSAL_TEXT[e.reason], false, nowMs);
+      if (e.type === 'ServiceCalled') this.views.get(e.kind)?.say(calledText(e.kind), true, nowMs);
+      else if (e.type === 'ServiceRefused') this.views.get(e.kind)?.say(refusalText(e.reason), false, nowMs);
     }
   }
 }

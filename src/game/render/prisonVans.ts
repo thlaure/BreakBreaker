@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { t } from '../../content/i18n';
 import type { Vec } from '../../sim/types';
 import { FEET_ORIGIN_Y, idleFrame, koFrame } from './actors';
 import { DEPTH } from './depth';
@@ -167,7 +168,7 @@ export class JailVans {
     }
     if (run.kind === 'drop' && !run.inside && pose.stage !== 'in' && (pose.stage === 'out' || pose.t >= HOP_END)) {
       run.inside = true;
-      this.pow(run.to.x, run.to.y - 6, nowMs, 'BOUCLÉ !');
+      this.pow(run.to.x, run.to.y - 6, nowMs, t('world.prison.lockedUp'));
     }
     return true;
   }

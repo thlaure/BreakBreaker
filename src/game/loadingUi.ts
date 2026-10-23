@@ -1,3 +1,5 @@
+import { t } from '../content/i18n';
+
 /** HTML loading overlay shown over the game container while BootScene loads (removed once the world starts). */
 let root: HTMLDivElement | null = null;
 let bar: HTMLDivElement | null = null;
@@ -26,13 +28,14 @@ function ensure(): HTMLDivElement {
 export function showProgress(p: number): void {
   const r = ensure();
   if (!bar) {
-    r.innerHTML = '<p>Chargement…</p><div class="track"><div class="fill"></div></div>';
+    r.innerHTML = '<p></p><div class="track"><div class="fill"></div></div>';
+    r.querySelector('p')!.textContent = t('world.boot.loading');
     bar = r.querySelector('.fill');
   }
   if (bar) bar.style.width = `${Math.round(Math.max(0, Math.min(1, p)) * 100)}%`;
 }
 
-/** Fatal message; with `retry` a `Réessayer` button reloads the page. */
+/** Fatal message; with `retry` a « Réessayer » / « Try again » button reloads the page. */
 export function showMessage(text: string, retry: boolean): void {
   const r = ensure();
   bar = null;
@@ -44,7 +47,7 @@ export function showMessage(text: string, retry: boolean): void {
   if (retry) {
     const b = document.createElement('button');
     b.type = 'button';
-    b.textContent = 'Réessayer';
+    b.textContent = t('world.boot.retry');
     b.addEventListener('click', () => location.reload());
     r.appendChild(b);
   }

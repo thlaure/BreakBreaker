@@ -133,7 +133,7 @@ export function buildChurchFront(kit: WorldView, s: Phaser.Scene, b: Rect, roofP
     w: 80,
     rim: CHURCH.stoneHi,
     plate: CHURCH.slateLo,
-    label: 'ÉGLISE',
+    label: 'world.sign.church',
     color: '#f4ecd8',
     textX: 8,
     icon: (p) => {

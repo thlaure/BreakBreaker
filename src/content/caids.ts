@@ -1,8 +1,12 @@
+import { getLocale, type Locale } from './i18n/locale';
+
 /**
  * The five Caïd looks (render only, no gameplay difference): INVENTED « leader / tribune » types of an agitation
  * movement, gently caricatured through their clothes, their prop and their pompous lines, never through their body.
  * None stands for a real person; no real name (person or party), no religious sign, no real flag. Each slogan ≤ 40
  * characters (tests/content/caids.test.ts). The look of a Caïd is caidSkinOf(lifeId) (src/game/render/caidSkin.ts).
+ * Names and slogans exist in each language (CAID_LINES, same slogan count per look); the English ones are adapted,
+ * mocking the same agitation rhetoric for an American ear.
  */
 export type CaidProp = 'megaphone' | 'banner' | 'briefcase' | 'whistle' | 'posters';
 
@@ -66,3 +70,62 @@ export const CAID_SKINS: readonly CaidLook[] = [
     ],
   },
 ];
+
+/** What a look says, in one language. */
+export type CaidLines = Pick<CaidLook, 'name' | 'slogans'>;
+
+const CAID_LINES_EN: readonly CaidLines[] = [
+  {
+    name: 'The Orator',
+    slogans: [
+      'The revolution starts tonight! Ish.',
+      'Comrades! I’m not done talking!',
+      'General strike… right after my nap!',
+      'LOUDER! Is this megaphone even on?',
+    ],
+  },
+  {
+    name: 'The March Captain',
+    slogans: [
+      'Everybody behind the banner!',
+      'Nobody passes the captain!',
+      'The march goes this way! Or that way.',
+      'Close ranks! Not so close, I’m choking!',
+    ],
+  },
+  {
+    name: 'The Comrade in a Suit',
+    slogans: [
+      'I shall refer this to the committee!',
+      'Motion passed, unanimously, by me!',
+      'Item 47 on the agenda: the riot',
+      'I move to form a subcommittee!',
+    ],
+  },
+  {
+    name: 'The Old-Timer',
+    slogans: [
+      'Back in ’68…',
+      'In my day, bricks were heavier!',
+      'I’ve been to every march. EVERY one!',
+      'Kids these days can’t even whistle!',
+    ],
+  },
+  {
+    name: 'The Young Firebrand',
+    slogans: [
+      'It all belongs to us!',
+      'I put up 300 posters. And my hand.',
+      'It’s not a riot, it’s a livestream!',
+      'Revolution at 6, I have class at 8!',
+    ],
+  },
+];
+
+/** Names and slogans of the five looks, by language (French = CAID_SKINS, unchanged). */
+export const CAID_LINES: Readonly<Record<Locale, readonly CaidLines[]>> = { fr: CAID_SKINS, en: CAID_LINES_EN };
+
+/** The five looks' lines in `l` (the current language by default). */
+export function caidLinesFor(l: Locale = getLocale()): readonly CaidLines[] {
+  return CAID_LINES[l];
+}

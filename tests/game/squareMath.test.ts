@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { BALCONY_HALF_W, SAUNA_SIGN, chateauBalcony, lanternGlow, silhouetteDrift, steamSpec } from '../../src/game/render/squareMath';
+import { BALCONY_HALF_W, chateauBalcony, lanternGlow, silhouetteDrift, steamSpec } from '../../src/game/render/squareMath';
 import { FACADE_H } from '../../src/game/render/geometry';
 import { DISTRICT } from '../../src/sim/map/district';
 
@@ -51,10 +51,5 @@ describe('main square fronts helpers', () => {
     let apart = 0;
     for (let t = 0; t < 20_000; t += 100) if (silhouetteDrift(t, 0, false) !== silhouetteDrift(t, 1, false)) apart++;
     expect(apart).toBeGreaterThan(0);
-  });
-
-  test('the sauna sign is in French and fits on the board', () => {
-    expect(SAUNA_SIGN).toBe('Sauna – Ne pas déranger');
-    expect(SAUNA_SIGN.length * 5).toBeLessThanOrEqual(124);
   });
 });

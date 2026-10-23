@@ -1,27 +1,32 @@
 import Phaser from 'phaser';
+import { t } from '../../content/i18n';
 import { CONFIG } from '../../sim/config';
 import { DISTRICT } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
 import { DEPTH } from './depth';
+import { localeBound } from './localeText';
 import { pickupBlinkOff } from './pickupBlink';
 
-/** Heal stations: green cross + "Soins"; greyed once used (walking onto a charged one heals). */
+/** Heal stations: green cross + « Soins » (in the current language); greyed once used (walking onto a charged one heals). */
 export class StationsView {
   private readonly items: { icon: Phaser.GameObjects.Image; label: Phaser.GameObjects.Text; glow: Phaser.GameObjects.Ellipse }[] = [];
 
   constructor(scene: Phaser.Scene) {
     for (const pos of DISTRICT.stations) {
       const icon = scene.add.image(pos.x, pos.y, 'station').setDepth(pos.y);
-      const label = scene.add
-        .text(pos.x, pos.y + 12, 'Soins', {
-          fontFamily: 'monospace',
-          fontSize: '9px',
-          color: '#e8ffe8',
-          stroke: '#14121c',
-          strokeThickness: 2,
-        })
-        .setOrigin(0.5, 0)
-        .setDepth(pos.y + 0.1);
+      const label = localeBound(
+        scene.add
+          .text(pos.x, pos.y + 12, '', {
+            fontFamily: 'monospace',
+            fontSize: '9px',
+            color: '#e8ffe8',
+            stroke: '#14121c',
+            strokeThickness: 2,
+          })
+          .setOrigin(0.5, 0)
+          .setDepth(pos.y + 0.1),
+        () => t('world.marker.station'),
+      );
       const glow = scene.add.ellipse(pos.x, pos.y + 8, 30, 12, 0x5ee07a, 0.3).setDepth(pos.y - 1);
       this.items.push({ icon, label, glow });
     }
@@ -140,16 +145,19 @@ export class ToolboxView {
         it = {
           glow: s.add.ellipse(g.pos.x, g.pos.y + 9, 30, 12, 0xff8a3a, 0.3).setDepth(g.pos.y - 1),
           icon: s.add.image(g.pos.x, g.pos.y, 'toolbox').setScale(2).setDepth(g.pos.y),
-          label: s.add
-            .text(g.pos.x, g.pos.y + 13, 'Outils', {
-              fontFamily: 'monospace',
-              fontSize: '9px',
-              color: '#ffe2c8',
-              stroke: '#14121c',
-              strokeThickness: 2,
-            })
-            .setOrigin(0.5, 0)
-            .setDepth(g.pos.y + 0.1),
+          label: localeBound(
+            s.add
+              .text(g.pos.x, g.pos.y + 13, '', {
+                fontFamily: 'monospace',
+                fontSize: '9px',
+                color: '#ffe2c8',
+                stroke: '#14121c',
+                strokeThickness: 2,
+              })
+              .setOrigin(0.5, 0)
+              .setDepth(g.pos.y + 0.1),
+            () => t('world.marker.toolbox'),
+          ),
         };
         this.items.set(g.id, it);
       }

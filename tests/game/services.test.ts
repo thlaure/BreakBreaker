@@ -4,7 +4,7 @@ import {
   ALLY_LOOKS,
   BOOTH_TEXT_FADE_MS,
   BOOTH_TEXT_MS,
-  REFUSAL_TEXT,
+  refusalText,
   blinkOn,
   boothTextAlpha,
   facingOf,
@@ -27,7 +27,8 @@ function snap(patch: (s: Snapshot) => void = () => {}): Snapshot {
 
 describe('booth texts', () => {
   test('every refusal has its line under the booth', () => {
-    expect(REFUSAL_TEXT).toEqual({
+    const reasons = ['noFire', 'fewRioters', 'noCalls', 'busy', 'ruined'] as const;
+    expect(Object.fromEntries(reasons.map((r) => [r, refusalText(r)]))).toEqual({
       noFire: 'Aucun feu à éteindre',
       fewRioters: 'Pas assez de casseurs',
       noCalls: 'Plus d’appels',

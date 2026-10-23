@@ -1,17 +1,17 @@
+import { catalog, getLocale, t, type Key } from '../../content/i18n';
 import type { Snapshot } from '../../sim/sim';
 
 type Rescue = NonNullable<Snapshot['rescue']>;
 type ItemState = Rescue['items'][number]['state'];
 
-/** What the victim shouts when one of its belongings was just taken (ids from RESCUE_ITEMS). */
-export const ITEM_SHOUTS: Readonly<Record<string, string>> = {
-  handbag: 'MON SAC !',
-  hat: 'MON CHAPEAU !',
-  cane: 'MA CANNE !',
-  backpack: 'MON SAC À DOS !',
-  scarf: 'MON ÉCHARPE !',
-  cap: 'MA CASQUETTE !',
-};
+/**
+ * What the victim shouts when one of its belongings was just taken (ids from RESCUE_ITEMS), in the current language:
+ * « MON SAC ! » / « MY PURSE! » (catalog keys `content.shout.<id>`); null for an unknown id.
+ */
+export function itemShout(id: string): string | null {
+  const key = `content.shout.${id}`;
+  return key in catalog(getLocale()) ? t(key as Key) : null;
+}
 
 /** How long the « MON SAC ! » shout and the « MERCI ! » for a belonging handed back stay up. */
 export const SHOUT_MS = 2000;

@@ -1,9 +1,10 @@
+import { t } from '../../content/i18n';
 import type { PrisonInmate } from '../../sim/prison';
 import { rioterSheet } from './roleLook';
 
-/** The counter on the prison's roof. */
+/** The counter on the prison's roof, in the current language. */
 export function jailedText(n: number): string {
-  return `Caïds enfermés : ${n}`;
+  return t('world.prison.jailed', { n });
 }
 
 /**
@@ -71,9 +72,9 @@ export function hopProgress(stage: VanPose['stage'], t: number): number {
   return Math.max(0, Math.min(1, (t - HOP_START) / (HOP_END - HOP_START)));
 }
 
-/** « 1 Caïd libéré » / « 3 Caïds libérés ». */
+/** « 1 Caïd libéré » / « 3 Caïds libérés », in the current language. */
 export function releasedText(n: number): string {
-  return n === 1 ? '1 Caïd libéré' : `${n} Caïds libérés`;
+  return t('world.prison.released', { n });
 }
 
 /** The searchlight's sweep angle (radians, 0 = east, π/2 = south) at `nowMs`: back and forth over the street below. */

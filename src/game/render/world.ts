@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { t, type Key } from '../../content/i18n';
 import { CONFIG } from '../../sim/config';
 import { DISTRICT, type Rect } from '../../sim/map/district';
 import type { Vec } from '../../sim/types';
@@ -9,6 +10,7 @@ import { buildChurchFront } from './churchFront';
 import { buildCafFront, buildPouletFront, type DecorAnim, type Paint } from './decor';
 import { DEPTH, inRect } from './depth';
 import { FACADE_H, ROOF_OVERHANG } from './geometry';
+import { localeBound } from './localeText';
 import { PresidentView } from './president';
 import { buildPrisonFront } from './prisonFront';
 import { buildSaunaFront } from './saunaFront';
@@ -135,16 +137,19 @@ export class WorldView {
       .setDepth(DEPTH.roof);
     const parts: Roof['parts'] = [roof, eave];
     if (school) {
-      const sign = s.add
-        .text(b.x + b.w / 2, front - FACADE_H / 2, 'ÉCOLE', {
-          fontFamily: 'monospace',
-          fontSize: '10px',
-          color: '#1d1a24',
-          backgroundColor: '#f4ecd8',
-          padding: { left: 3, right: 3, top: 3, bottom: 1 },
-        })
-        .setOrigin(0.5)
-        .setDepth(front + 0.02);
+      const sign = localeBound(
+        s.add
+          .text(b.x + b.w / 2, front - FACADE_H / 2, '', {
+            fontFamily: 'monospace',
+            fontSize: '10px',
+            color: '#1d1a24',
+            backgroundColor: '#f4ecd8',
+            padding: { left: 3, right: 3, top: 3, bottom: 1 },
+          })
+          .setOrigin(0.5)
+          .setDepth(front + 0.02),
+        () => t('world.sign.school'),
+      );
       this.buildingParts.set(i, [facade, roof, base, sign]);
     } else if (kind === 'shop') this.buildingParts.set(i, [facade, roof, base, ...buildShopFront(s, b, parts)]);
     else if (kind === 'nursery') this.buildingParts.set(i, [facade, roof, base, ...buildNurseryFront(this, b, parts)]);
@@ -177,12 +182,13 @@ export class WorldView {
 
   /**
    * A sign plate on the front edge of a building's roof (it fades with the roof): an outlined plate of `w` px, a
-   * pixel icon drawn by `icon` (plate-local coordinates, the plate centred on 0,0) and a label. Returns its parts.
+   * pixel icon drawn by `icon` (plate-local coordinates, the plate centred on 0,0) and a label (a catalog key, redrawn
+   * on a language switch). Returns its parts.
    */
   roofSign(
     b: Rect,
     roofParts: Roof['parts'],
-    o: { w: number; rim: number; plate: number; label: string; color: string; textX: number; icon: (p: Paint) => void },
+    o: { w: number; rim: number; plate: number; label: Key; color: string; textX: number; icon: (p: Paint) => void },
   ): BuildingPart[] {
     const s = this.scene;
     const plate = s.add.graphics();
@@ -193,7 +199,9 @@ export class WorldView {
     p(o.rim, -o.w / 2, -8, o.w, 16);
     p(o.plate, -o.w / 2 + 2, -6, o.w - 4, 12);
     o.icon(p);
-    const text = s.add.text(o.textX, 0, o.label, { fontFamily: 'monospace', fontSize: '10px', color: o.color }).setOrigin(0.5);
+    const text = localeBound(s.add.text(o.textX, 0, '', { fontFamily: 'monospace', fontSize: '10px', color: o.color }).setOrigin(0.5), () =>
+      t(o.label),
+    );
     const sign = s.add.container(b.x + b.w / 2, b.y + b.h - FACADE_H - 10, [plate, text]).setDepth(DEPTH.roof + 0.5);
     roofParts.push(sign);
     return [plate, text];

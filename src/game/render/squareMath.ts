@@ -3,9 +3,6 @@ import type { Rect } from '../../sim/map/district';
 import type { Vec } from '../../sim/types';
 import { FACADE_H } from './geometry';
 
-/** The sauna's hanging board (French, in-game text). */
-export const SAUNA_SIGN = 'Sauna – Ne pas déranger';
-
 /** Half the width (px) of the château balcony's floor slab. */
 export const BALCONY_HALF_W = 20;
 
