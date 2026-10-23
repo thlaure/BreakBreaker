@@ -18,6 +18,8 @@ Ce qui est déjà sorti est dans le [changelog](CHANGELOG.md).
 
 ## Fait
 
+Les cabines d'urgence passent sur la grande place, et une scène de rock avec un groupe de squelettes, un chanteur qui lance des répliques et une musique qui monte quand on s'approche sont arrivées en 1.4.0 : voir le [changelog](CHANGELOG.md).
+
 Le jeu est disponible en français et en anglais américain depuis la 1.3.0 (drapeaux en haut à gauche de la page d'accueil et dans le menu pause) : voir le [changelog](CHANGELOG.md).
 
 La place, l'église, le château du Président et le sauna sont sortis en 1.1.0 : voir le [changelog](CHANGELOG.md).

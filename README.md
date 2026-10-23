@@ -30,6 +30,7 @@ BreakBreaker is a free, top-down pixel-art arcade game that runs in your browser
 - **Smash, send rocks back, charge up.** Strike, return projectiles, fill the energy gauge, then unleash the energy wave or go full *furie*.
 - **A district to protect.** Rebuild ruins with a toolbox, extinguish fires, rescue victims, defend the nursery, the town hall, the library and the kiosk.
 - **Call for backup.** Phone booths summon the fire truck or the police, but they can be attacked too.
+- **A stage with a skeleton band.** A rock stage on the north-east of the map, an original riff that rises as you get close, and a singer fed up like everyone else.
 - **A prison with a grudge.** Knocked-out Caïds get locked up. If the prison falls, they all walk out.
 - **Slapstick KOs.** Every knock-out falls its own way, with the odd wildly over-the-top one.
 - **Fiction only.** Everything is satire, Paul and everyone else are made up, and no real person is depicted.

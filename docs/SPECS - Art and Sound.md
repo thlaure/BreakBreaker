@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Art Direction and Sound
 
 > **Purpose of this file:** art direction, pixel art assets, animations and sound.  
-> Part of the BreakBreaker specifications (version 1.3.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.4.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 15. Art direction and pixel art assets
 
@@ -38,6 +38,8 @@ Sources chosen for the first slice: Universal LPC characters, Kenney and LPC til
 
 **Main square fronts (v1.1.0).** Church (limestone, slate, stained glass, bell tower with spire), château (ashlar, blue slate, corner towers, balcony) and sauna (pine planks, shingles, lantern, steamed window), in the same pixel style and outline colour as the other fronts; the President is a generic figure (navy suit, white shirt, red tie, plain short hair) drawn in rectangles with two frames per pose, with a pixel speech bubble in the crowd's pixel font. No real person, logo, party or religious mockery (section 10.11). The balcony figure and the sauna steam respect the reduced-motion preference.
 
+**Stage and band (v1.4.0).** The rock stage (boards, backdrop, amplifiers, drum kit, coloured lights, sign) and the five skeleton musicians are original pixel art drawn in code in the same style and outline colour as the other fronts (`src/game/render/stageFront.ts`, `skeletonBand.ts`): generic rock outfits (black studded jacket, dark jeans, boots, bandanas, sunglasses), no real musician, no band name or logo, no text other than the sign; no new image file, so nothing to add to `public/CREDITS.md`. Details: section 10.12 of Places, Monument and Services.
+
 ### 15.4 Animations
 
 At minimum: idle, movement, circular strike, rotation of the held weapon on each hit, floating and halo of weapons on the ground, floating and pulsing of charged kits, reaction, KO, brief pickup or pickup indication, throw-back, healing, enemy throw, degradation, flag carrying, calm demonstration, call for help, victim recoil, help/reassurance, repair, students walking, fire, ruin, repair and flag change. No nudity or graphic burn animation is needed.
@@ -67,5 +69,7 @@ Phase B sound cues (v1.9.15, WebAudio, within the voice cap): a small cartoon «
 Emergency services sirens (v1.9.19, WebAudio, through the same voice helper and within the voice cap): on `ServiceCalled`, the fire truck siren (triangle wave, « pin-pon » at 580 / 435 Hz, 4 notes of 0.32 s) or the police siren (square wave low-pass filtered, 880 / 660 Hz, 6 notes of 0.18 s); on `ServiceRefused`, the existing « tock »; on `TruckDestroyed`, a heavy landing thud.
 
 Prison sounds (v1.9.20, WebAudio, within the voice cap): on `CaidJailed`, the existing police siren (the van); on `PrisonBreakout`, a heavy thud followed by the alarm.
+
+**Stage music (v1.4.0).** Near the rock stage (section 10.12) an **original heavy-metal riff** plays: a one-bar loop of 16 sixteenth notes in E minor at 150 bpm (open E accent, palm-muted E chugs answered by G and A stabs, a descending B-A-G-F# turnaround), composed for this game, with no commercial music and no existing lyrics. It is **synthesised at run time with WebAudio** (sawtooth power chords through a tanh waveshaper and a low-pass filter for the saturated guitar, a bass an octave lower, noise kick, snare and hi-hat), scheduled step by step on the audio clock a short window ahead; no audio file, no external data, no download. **Distance-driven volume** (`stageVolume`): full volume (1) when Paul is within 128 px (4 tiles) of the stage centre, silent (0) from 384 px (12 tiles), a smoothstep between (monotonic), smoothed over about 0.25 s. The loop has its own bus under the master gain with a **maximum gain of 0.16**, so alarms, sirens and impacts stay clear (combat readability comes first). It starts only after the first user gesture like all sound, and is silent (nothing scheduled, nodes released) when sound is off, while the game is paused, once the game is over, and at volume 0; context suspension and resumption follow the other sounds. Render only: `src/game/audioStage.ts`, pure data and curves in `src/game/stageMusicMath.ts`. *Optional later:* a free (CC0 / CC-BY) track credited in `public/CREDITS.md`.
 
 A cutscene must not trigger a second copy of the scene's sounds when it resumes. Tab return and audio context resumption are handled explicitly.

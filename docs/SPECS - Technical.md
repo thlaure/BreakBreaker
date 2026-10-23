@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Technical
 
 > **Purpose of this file:** technical choices, architecture and data, performance, storage, loading and distribution.  
-> Part of the BreakBreaker specifications (version 1.3.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.4.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 17. Technical choices
 
@@ -118,7 +118,7 @@ The rules system is the sole author of the score and of the « Casseurs neutrali
 ```json
 {
   "rulesVersion": "1.0.0",
-  "appVersion": "1.3.0",
+  "appVersion": "1.4.0",
   "sessionMode": "arcade",
   "view": "top-down-orthogonal",
   "artStyle": "pixel-art",
@@ -192,6 +192,8 @@ The rules system is the sole author of the score and of the « Casseurs neutrali
 **Changed (v1.9.11):** this block is a summary; the source of truth for the parameters is `CONFIG` in `src/sim/config.ts` (the former 30 s reserve replaced by place health, 8 s capture, 2 s repair; `repairBonus` is the school's value; `smallHealAmount` corresponds to the small heals delivered in v1.9.18, `CONFIG.fieldHeal`). The values are proposed. The simulation caps are shared by all graphics profiles; a separate difficulty setting can change the rosters, but not an automatic drop in quality.
 
 **Render and content modules of the main square (v1.1.0).** `src/content/quotes.ts` (the dictionary `QUOTES`); `src/game/render/squareMath.ts` (pure: `SAUNA_SIGN`, `BALCONY_HALF_W`, `chateauBalcony`, `steamSpec`, `lanternGlow`, `silhouetteDrift`); `src/game/render/presidentMath.ts` (pure: `MOODS`, `nextMood`, `moodHoldMs`, `quoteDelayMs`, `pickQuote`, `agitation`, `poseFrame`, `presidentBob`, `presidentRng`, `QUOTE_SHOW_MS`, `AGITATION_RADIUS`); `src/game/render/president.ts` (Phaser view of the figure and its bubble); fronts `churchFront.ts`, `chateauFront.ts` and `saunaFront.ts`. Simulation constants: `CONFIG.church` (`hp` 150, `fromRound` 3, `repairShare` 0.6), `CONFIG.casse.fromRound.church`, `CONFIG.casse.scores.church`, `DISTRICT.decor` (château and sauna added) and `DISTRICT.peacefulGroups`. Tests: `tests/sim/church.test.ts`, `tests/content/quotes.test.ts`.
+
+**Render, content and audio modules of the stage (v1.4.0).** `src/game/render/stageFront.ts` (the stage front, drum kit and lights), `src/game/render/skeletonBand.ts` (the five skeletons, the singer's bubble, reduced motion, culling), `src/game/render/stageMath.ts` (pure: `LYRIC_SHOW_MS`, `lyricDelayMs`, `pickLyric`, `initSinger`, `stepSinger`, `swayOffset`, `headBang`, `lightPulse`), `src/content/stage.ts` (`STAGE_LYRIC_COUNT`, `stageLyricKey`, `stageLyricsFor`; catalog keys `content.stage.lyric1` to `lyric6` and `sign.stage`), `src/game/stageMusicMath.ts` (pure: `stageVolume`, `STAGE_NEAR_PX` 128, `STAGE_FAR_PX` 384, `RIFF_STEPS`, `RIFF_TEMPO_BPM` 150, `midiHz`, `driveCurve`) and `src/game/audioStage.ts` (`StageRiff`, bus gain `STAGE_MAX_GAIN` 0.16, driven through `GameAudio.setStageProximity`). Simulation: `DISTRICT.decor` gains `stage` (R(36,3,8,5), door C(40,8)) and the booths move to R(21,30,1,1) and R(22,30,1,1); nothing else changes, `rulesVersion` stays `1.0.0`. Tests: `tests/game/stageMath.test.ts`, `tests/game/stageMusicMath.test.ts`, `tests/content/i18nContent.test.ts`, `tests/sim/places.test.ts`.
 
 ### 18.5 Collisions and time
 
