@@ -4,6 +4,7 @@ import { DISTRICT, type Rect } from '../../sim/map/district';
 import type { Vec } from '../../sim/types';
 import { TILE } from '../assets';
 import { SHOP, buildLibraryFront, buildNurseryFront, buildShopFront, buildTownHallFront } from './buildingFronts';
+import { buildChurchFront } from './churchFront';
 import { buildCafFront, buildPouletFront, type DecorAnim, type Paint } from './decor';
 import { DEPTH, inRect } from './depth';
 import { FACADE_H, ROOF_OVERHANG } from './geometry';
@@ -141,8 +142,7 @@ export class WorldView {
     else if (kind === 'nursery') this.buildingParts.set(i, [facade, roof, base, ...buildNurseryFront(this, b, parts)]);
     else if (kind === 'townHall') this.buildingParts.set(i, [facade, roof, base, ...buildTownHallFront(this, b, parts)]);
     else if (kind === 'library') this.buildingParts.set(i, [facade, roof, base, ...buildLibraryFront(this, b, parts)]);
-    // the church: a plain stone shell for now (its own front comes with the square's render), ruin look included
-    else if (kind === 'church') this.buildingParts.set(i, [facade, roof, base]);
+    else if (kind === 'church') this.buildingParts.set(i, [facade, roof, base, ...buildChurchFront(this, s, b, parts)]);
     else if (kind === 'prison') this.buildingParts.set(i, [facade, roof, base, ...buildPrisonFront(this, s, b, parts)]);
     else {
       // decor fronts: never targets, so not in buildingParts (no ruin look)
