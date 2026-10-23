@@ -297,6 +297,8 @@ The landing page (two static pages, `/` in French and `/en/` in English, section
 
 Engine, atlas of Paul and the enemies, weapons, map, collisions, stones, heals and essential alerts loaded before control. Other sounds and details can follow. Subsequent hordes do not re-download the same atlas every round.
 
+Load weight: PNG assets are lossless indexed PNGs (at most 256 colors; `scripts/optimize-png.mjs`), and the engine is a separate `phaser` chunk so a game update does not invalidate it in the browser cache.
+
 Sprites reuse shared textures but keep their animation state independent. No synchronous loading at the first strike or the first thrown-back stone.
 
 ### 20.3 Delivery

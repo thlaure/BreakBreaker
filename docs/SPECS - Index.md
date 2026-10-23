@@ -1,6 +1,6 @@
 # BreakBreaker — Specifications (index)
 
-**Version:** 1.4.2 — 24 October 2026  
+**Version:** 1.4.3 — 24 October 2026  
 **Scope:** 2D pixel-art web game, non-isometric top-down view, arcade mode in rounds with no time limit, Paris, Paul (a fictional shopkeeper) as the only hero, computer and phone  
 **Status:** reference specification; decisions confirmed by the project owner and design recommendations are identified. A first playable slice exists (section 24); this document is neither a production sign-off nor a statement that all requirements are already implemented.  
 **Languages:** French (default) and American English  
@@ -185,6 +185,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
 
 ### 25.4 History
 
+- **1.4.3 — 24 October 2026 (patch):** load weight: every game PNG is rewritten as a lossless indexed PNG (`scripts/optimize-png.mjs`, run by `npm run assets`; 1.8 MB to 0.3 MB, same pixels), and Phaser is built as its own cacheable chunk (RC-203).
 - **1.4.2 — 24 October 2026 (patch):** the old `/jouer/` redirect page is removed; the game route is `/play/` only (the 1.0.2 entry below describes the redirect that existed until then).
 - **1.4.1 — 24 October 2026 (patch):** bug fix: the landing changelog was not translated. New `CHANGELOG.en.md` (American English, same versions and points as `CHANGELOG.md`); `/en/` shows it, with English dates; the « (in French) » marks are gone. Build/landing only; `rulesVersion` stays `1.0.0`, `appVersion` becomes `1.4.1`. Tests: `tests/build.test.ts`, `tests/content/landing.test.ts`.
 - **1.4.0 — 24 October 2026 (medium):** the stage and the booths (sections 5.1, 5.5, 10.12, 12.16, 15.3, 16, 18.4; RC-196 to RC-202; RC-140 changed), project-owner request: the **two phone booths move to the edge of the main square** (red R(21,30,1,1), blue R(22,30,1,1), calls from C(21,31) and C(22,31)); a **rock stage** (decor front on building 3, R(36,3,8,5), door C(40,8)) with a band of **five invented skeletons** in generic rock outfits (no real musician, no text), coloured lights, and a singer who throws **six original bubble lines per language**; an **original riff** synthesised with WebAudio (E minor, 150 bpm) whose volume rises when Paul approaches (full within 128 px, silent beyond 384 px, bus gain at most 0.16), cut by mute, pause and game over; reduced motion respected. Render only apart from the booths' and the stage's footprints; `rulesVersion` stays `1.0.0`, `appVersion` becomes `1.4.0`. **Changed:** the booth positions differ, so seeds may replay differently from 1.3.x.

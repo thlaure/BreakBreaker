@@ -51,8 +51,17 @@ export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
   plugins: [landingContent()],
   build: {
+    // Phaser alone is about 1.4 MB: it is split out on purpose (see manualChunks).
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       input: { main: 'index.html', en: 'en/index.html', play: 'play/index.html' },
+      // Phaser (about 1.3 MB) changes only on a manual upgrade: its own file stays in the browser cache across game releases.
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules/phaser/')) return 'phaser';
+          return undefined;
+        },
+      },
     },
   },
 });

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, globSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, globSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
@@ -278,4 +278,10 @@ test('landing inlines the latest CHANGELOG.md notes and a changelog dialog, stil
   expect(html).toMatch(/popovertarget="changelog"[^>]*>Changelog</);
   expect(html.match(/class="release"/g)?.length).toBe(md.match(/^## \S+ - /gm)?.length);
   expect(html).not.toMatch(/<script/);
+});
+
+test('the engine is its own chunk, apart from the game code', () => {
+  const files = readdirSync(out('assets'));
+  expect(files.some((f) => /^phaser-.*\.js$/.test(f))).toBe(true);
+  expect(files.some((f) => /^play-.*\.js$/.test(f))).toBe(true);
 });

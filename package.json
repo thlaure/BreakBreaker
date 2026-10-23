@@ -1,6 +1,6 @@
 {
   "name": "breakbreaker",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "bench": "node scripts/bench-sim.mjs",
-    "assets": "node scripts/fetch-assets.mjs && node scripts/build-lpc.mjs",
+    "assets": "node scripts/fetch-assets.mjs && node scripts/build-lpc.mjs && node scripts/optimize-png.mjs",
     "hero": "node scripts/build-hero.mjs",
     "favicon": "node scripts/build-favicon.mjs",
     "lint": "eslint .",

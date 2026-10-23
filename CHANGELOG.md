@@ -6,6 +6,11 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.4.3 - 2026-10-24
+
+- Le jeu se charge plus vite : les images pèsent six fois moins (1,8 Mo → 0,3 Mo), sans aucune différence visible.
+- Le moteur du jeu est dans un fichier à part que le navigateur garde en cache : les prochaines mises à jour se téléchargent beaucoup plus vite.
+
 ## 1.4.2 - 2026-10-24
 
 - L'ancienne adresse /jouer/ n'existe plus : le jeu est uniquement sur /play/.
