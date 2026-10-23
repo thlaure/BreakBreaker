@@ -105,6 +105,22 @@ a:focus-visible, button:focus-visible, .table-wrap:focus-visible { outline: 3px 
   position: relative; z-index: 4; align-self: center; width: 100%; max-width: 64rem;
   padding: 4rem var(--pad) 3rem;
 }
+/* ---------- language selector: two pixel flags, top-left, aligned with the first B of the title ---------- */
+.langs { display: flex; gap: 0.25rem; margin: 0 0 1.25rem; }
+/* each link is a >= 44 px touch target; the flag sits at its left edge so the first one lines up with the title */
+.flag {
+  display: inline-flex; align-items: center; justify-content: flex-start;
+  min-width: 48px; min-height: 44px;
+}
+.flag svg {
+  display: block; width: 32px; height: 22px; image-rendering: pixelated;
+  filter: grayscale(1) brightness(0.8); opacity: 0.55;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.flag:hover svg, .flag:focus-visible svg { filter: none; opacity: 1; }
+.flag[aria-current='page'] svg { filter: none; opacity: 1; outline: 2px solid var(--accent); outline-offset: 2px; }
+.flag:focus-visible { outline-offset: 0; }
+
 .title {
   margin: 0;
   font: 400 clamp(1.3rem, 6.6vw, 3.5rem)/1.15 var(--pixel);

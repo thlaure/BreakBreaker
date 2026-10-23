@@ -2,6 +2,7 @@ import { CONTROLS, RULES, SATIRE_NOTICE } from '../../content/controls';
 import type { SummaryData } from './format';
 import { SITE_BASE } from '../assets';
 import { renderMarkdown } from './markdown';
+import { createLangSwitch } from './langSwitch';
 
 export interface MenuActions {
   start(): void;
@@ -104,6 +105,7 @@ export class Menus {
       this.btn('Crédits', () => this.showCredits()),
       this.btn('Retour au site', () => this.showConfirm()),
       this.btn('Arrêter la partie', () => this.act.stopGame()),
+      createLangSwitch(),
     );
     p.append(col);
     this.end(from === 'help' ? 'Aide' : from === 'credits' ? 'Crédits' : from === 'confirm' ? 'Retour au site' : 'Reprendre');
