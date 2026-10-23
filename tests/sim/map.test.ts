@@ -133,6 +133,45 @@ describe('map', () => {
     for (const i of [7, 12]) for (const t of DISTRICT.targets) expect(overlaps(t.footprint, b[i]!)).toBe(false);
     expect(DISTRICT.monument.plinth).toEqual(R(33, 21, 2, 2));
   });
+  test('the stage (decor) on slot 3, the plain north-east block, never a target', () => {
+    const b = DISTRICT.buildings;
+    expect(b[3]).toEqual(R(36, 3, 8, 5));
+    expect(DISTRICT.decor.find((d) => d.id === 'stage')).toEqual({ id: 'stage', footprint: b[3], door: C(40, 8) });
+    for (const t of DISTRICT.targets) {
+      expect(t.id).not.toBe('stage');
+      expect(overlaps(t.footprint, b[3]!)).toBe(false);
+    }
+  });
+  test('the booths stand on the edge of the main square, free, reachable and clear of spawns, heals, kits and doors', () => {
+    const booths = DISTRICT.targets.filter((t) => t.kind === 'booth');
+    expect(booths.map((t) => t.id)).toEqual(['boothRed', 'boothBlue']);
+    const otherDoors = [
+      ...DISTRICT.targets.filter((t) => t.kind !== 'booth').map((t) => t.door),
+      ...DISTRICT.decor.map((d) => d.door),
+      DISTRICT.school.door,
+    ];
+    const sites = [DISTRICT.playerSpawn, ...DISTRICT.hostileSpawns, ...DISTRICT.stations, ...DISTRICT.kitSites];
+    const solids = [...DISTRICT.buildings, DISTRICT.monument.plinth, ...DISTRICT.peacefulGroups.map((gr) => gr.area)];
+    for (const b of booths) {
+      // on the square: within 8 tiles of the church door
+      expect(dist(b.door, CHURCH_DOOR)).toBeLessThanOrEqual(8 * 32);
+      // its own tile only: no building, plinth, group or other prop under it
+      for (const r of solids) expect(overlaps(b.footprint, r)).toBe(false);
+      for (const t of DISTRICT.targets) if (t !== b) expect(overlaps(b.footprint, t.footprint)).toBe(false);
+      expect(grid.isSolidPx(b.door)).toBe(true);
+      for (const p of [...sites, ...otherDoors]) expect(dist(b.door, p)).toBeGreaterThanOrEqual(64);
+      // attack points walkable, outside every building and group, reachable from every hostile spawn
+      expect(b.attackPoints.length).toBeGreaterThanOrEqual(3);
+      for (const q of b.attackPoints) {
+        expect(grid.isSolidPx(q)).toBe(false);
+        expect(grid.circleBlocked(q, 7)).toBe(false);
+        expect(grid.isGroup(q)).toBe(false);
+        const ff = new FlowField(grid);
+        ff.rebuild(q);
+        for (const s of DISTRICT.hostileSpawns) expect(ff.stepsAt(s)).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
   test('three peaceful groups, 6 members each, none overlapping a building, the monument or each other', () => {
     const groups = DISTRICT.peacefulGroups;
     expect(groups).toHaveLength(3);

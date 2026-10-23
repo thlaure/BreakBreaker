@@ -37,4 +37,5 @@ export const frCore = {
   'sign.pouletCrousti': 'POULET CROUSTI',
   'sign.chateau': 'CHÂTEAU',
   'sign.sauna': 'SAUNA',
+  'sign.stage': 'SCÈNE',
 } as const;
