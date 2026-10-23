@@ -13,10 +13,13 @@ import type { Rules } from './rules';
 import type { Targets } from './targets';
 import type { Weapons } from './weapons';
 
+/** How a round objective ended (an id: src/content/i18n `objective.*` reads it). */
+export type ObjectiveResult = 'won' | 'lost';
+
 export interface RoundSummary {
   index: number;
   kos: number;
-  objectives: { kind: BeatKind; result: 'réussi' | 'perdu' }[];
+  objectives: { kind: BeatKind; result: ObjectiveResult }[];
   /** Score earned during the round, bonus included. */
   points: number;
   bonus: boolean;
@@ -79,7 +82,7 @@ export function settled(o: Objective): boolean {
   return st === 'completed' || st === 'failed';
 }
 
-/** A smouldering target still stands: réussi (until it burns down). */
+/** A smouldering target still stands: won (until it burns down). */
 export function succeeded(o: Objective): boolean {
   if (o.occupation) return o.occupation.stage === 'defended';
   return o.attack ? o.attack.stage === 'saved' || o.attack.stage === 'smoulder' : o.rescue!.stage === 'completed';

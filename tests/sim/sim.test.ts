@@ -280,7 +280,7 @@ describe('Sim facade', () => {
       sim.step(IDLE);
     }
     expect(sim.school.stage).toBe('cinematic');
-    expect(sim.snapshot().school.status).toBe('renforts');
+    expect(sim.snapshot().school.status).toBe('reinforcements');
     sim.skipCinematic();
     sim.skipCinematic();
     sim.step(IDLE);

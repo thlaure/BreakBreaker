@@ -177,7 +177,7 @@ test('all attackers KO, nothing burning: saved +8 at once, TargetSaved and Schoo
   expect(ev).toContainEqual({ type: 'TargetSaved', incidentId: 'school#1', target: 'school' });
   w.tick(2);
   expect(w.rules.score).toBe(8);
-  expect((w.attack as SchoolIncident).status()).toBe('sauvée');
+  expect((w.attack as SchoolIncident).status()).toBe('saved');
 });
 
 test('all attackers KO while burning: it smoulders (settled, not urgent, not resolved), losing 0.7 hp/s with no award, until put out', () => {
@@ -200,7 +200,7 @@ test('all attackers KO while burning: it smoulders (settled, not urgent, not res
   expect(w.targets.get('school').burning).toBe(true);
   expect(w.targets.get('school').hp).toBeCloseTo(hp - 10 * CONFIG.target.smoulderDps, 6);
   expect(w.rules.score).toBe(0);
-  expect((w.attack as SchoolIncident).status()).toBe('en feu');
+  expect((w.attack as SchoolIncident).status()).toBe('burning');
   // a toolbox puts it out: saved silently (no award here), TargetSaved / SchoolRestored for the stats
   expect(w.targets.extinguish('school')).toBe('school#1');
   const after = w.targets.get('school').hp;
@@ -210,7 +210,7 @@ test('all attackers KO while burning: it smoulders (settled, not urgent, not res
   expect(w.rules.score).toBe(0);
   w.tick(2);
   expect(w.targets.get('school').hp).toBe(after);
-  expect((w.attack as SchoolIncident).status()).toBe('sauvée');
+  expect((w.attack as SchoolIncident).status()).toBe('saved');
 });
 
 test('a smouldering target burnt down to 0: ruined once, −3 once, BuildingDestroyed, destroyed', () => {
@@ -243,7 +243,7 @@ test('hp 0: destroyed, target ruined, −3 once, BuildingDestroyed carries the t
   expect(ev.filter((e) => e.type === 'BuildingDestroyed')).toEqual([
     { type: 'BuildingDestroyed', incidentId: 'school#1', target: 'school' },
   ]);
-  expect((w.attack as SchoolIncident).status()).toBe('perdue');
+  expect((w.attack as SchoolIncident).status()).toBe('lost');
   w.koAll();
   w.tick(3);
   expect(w.attack.stage).toBe('destroyed');
@@ -274,7 +274,7 @@ test('round-1 school: 3 first-line (1 Molotov), cinematic, 8 reinforcements (the
   w.tick(DT);
   expect(school.stage).toBe('cinematic');
   expect(school.suspended()).toBe(true);
-  expect(school.status()).toBe('renforts');
+  expect(school.status()).toBe('reinforcements');
   w.tick(CONFIG.school.cinematicSec - 0.5);
   expect(school.stage).toBe('cinematic');
   school.skipCinematic();

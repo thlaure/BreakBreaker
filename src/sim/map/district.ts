@@ -29,9 +29,8 @@ export interface TargetDef {
 /** Decor fronts (render only): ordinary solid buildings, never targets, no interaction. */
 export type DecorId = 'caf' | 'pouletCrousti' | 'chateau' | 'sauna';
 export interface DecorDef {
+  /** Also keys its roof sign text (src/content/i18n `sign.<id>`). */
   id: DecorId;
-  /** The sign text painted on its roof edge. */
-  sign: string;
   /** One of DISTRICT.buildings. */
   footprint: Rect;
   /** Centre of the street tile in front of its door (on the row below the front). */
@@ -187,10 +186,10 @@ export const DISTRICT: District = {
   ],
   // decor only: solid buildings like the others, drawn with their own front (src/game/render/decor.ts)
   decor: [
-    { id: 'caf', sign: 'CAF', footprint: R(26, 4, 7, 5), door: C(29, 9) },
-    { id: 'pouletCrousti', sign: 'POULET CROUSTI', footprint: R(38, 16, 6, 6), door: C(41, 22) },
-    { id: 'chateau', sign: 'CHÂTEAU', footprint: R(27, 14, 6, 4), door: C(30, 18) },
-    { id: 'sauna', sign: 'SAUNA', footprint: R(31, 29, 4, 3), door: C(33, 32) },
+    { id: 'caf', footprint: R(26, 4, 7, 5), door: C(29, 9) },
+    { id: 'pouletCrousti', footprint: R(38, 16, 6, 6), door: C(41, 22) },
+    { id: 'chateau', footprint: R(27, 14, 6, 4), door: C(30, 18) },
+    { id: 'sauna', footprint: R(31, 29, 4, 3), door: C(33, 32) },
   ],
   kitSites: [C(18, 12), C(23, 28), C(8, 26), C(36, 44)],
   monument: {

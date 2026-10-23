@@ -442,9 +442,9 @@ export class Director {
   private finish(host: DirectorHost, ev: SimEvent[]): void {
     const objectives = this.objectives.map((o) => ({
       kind: o.kind,
-      result: succeeded(o) ? ('réussi' as const) : ('perdu' as const),
+      result: succeeded(o) ? ('won' as const) : ('lost' as const),
     }));
-    const bonus = objectives.every((o) => o.result === 'réussi');
+    const bonus = objectives.every((o) => o.result === 'won');
     if (bonus) host.rules.award(`round#${this.round}:bonus`, CONFIG.round.bonus, host.player.pos);
     ev.push({ type: 'RoundCompleted', index: this.round, bonus });
     host.stations.recharge();

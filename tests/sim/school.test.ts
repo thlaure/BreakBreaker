@@ -41,7 +41,7 @@ test('no hp lost while rioters walk and nothing burns (RC-52)', () => {
   expect(inc.stage).toBe('attack');
   const ev = run(5);
   expect(hp()).toBe(100);
-  expect(inc.status()).toBe('attaquée');
+  expect(inc.status()).toBe('attacked');
   expect(ev).toEqual([]);
 });
 
@@ -64,7 +64,7 @@ test('integrity is the school hp in percent; status follows the fire', () => {
   targets.get('school').hp = 50;
   expect(inc.integrity()).toBe(50);
   targets.ignite('school', inc.id);
-  expect(inc.status()).toBe('en feu');
+  expect(inc.status()).toBe('burning');
 });
 
 test('first line KO -> cinematic 3 s -> exactly the 8 reinforcements (second Molotov included), skipping does not double (RC-27)', () => {
@@ -118,7 +118,7 @@ test('saved: +8 once, stage saved at once when no fire burns (RC-28)', () => {
   koAll();
   const ev = run(2);
   expect(inc.stage).toBe('saved');
-  expect(inc.status()).toBe('sauvée');
+  expect(inc.status()).toBe('saved');
   expect(rules.score).toBe(CONFIG.casse.scores.school[0]);
   expect(ev.filter((e) => e.type === 'SchoolRestored')).toHaveLength(1);
   run(2);
@@ -131,7 +131,7 @@ test('destroyed: -3 once, stays destroyed; unsent reinforcements come once, at t
   degradeAll();
   const ev = run(1.5);
   expect(inc.stage).toBe('destroyed');
-  expect(inc.status()).toBe('perdue');
+  expect(inc.status()).toBe('lost');
   expect(rules.score).toBe(CONFIG.casse.scores.school[1]);
   expect(ev.filter((e) => e.type === 'BuildingDestroyed')).toHaveLength(1);
   koAll();
@@ -147,7 +147,7 @@ test('status reads "renforts" during the cinematic', () => {
   koAll();
   run(DT);
   expect(inc.stage).toBe('cinematic');
-  expect(inc.status()).toBe('renforts');
+  expect(inc.status()).toBe('reinforcements');
 });
 
 test('skipCinematic spawns the reinforcements exactly once on the next step', () => {

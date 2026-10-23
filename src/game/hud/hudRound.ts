@@ -50,12 +50,12 @@ export function renderRound(c: Cache, r: RoundEls, p: RoundPanel | null): boolea
   }
   c.text(r.title, p.title);
   c.text(r.kos, p.kos);
-  const key = p.objectives.map((o) => `${o.name}:${o.result}`).join('|');
+  const key = p.objectives.map((o) => `${o.name}:${o.ok}:${o.result}`).join('|');
   if (key !== r.objKey) {
     r.objKey = key;
     r.obj.replaceChildren(
       ...p.objectives.map((o) => {
-        const li = el('li', o.result === 'réussi' ? 'ok' : 'bad');
+        const li = el('li', o.ok ? 'ok' : 'bad');
         li.append(`${o.name} : `, el('b', '', o.result));
         return li;
       }),

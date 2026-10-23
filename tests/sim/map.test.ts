@@ -126,8 +126,8 @@ describe('map', () => {
     const th = DISTRICT.targets.find((t) => t.id === 'townHall')!;
     expect(th.footprint).toEqual(b[1]);
     expect(th.door).toEqual(C(17, 31));
-    expect(DISTRICT.decor.find((d) => d.id === 'chateau')).toMatchObject({ sign: 'CHÂTEAU', footprint: b[7], door: C(30, 18) });
-    expect(DISTRICT.decor.find((d) => d.id === 'sauna')).toMatchObject({ sign: 'SAUNA', footprint: b[12], door: C(33, 32) });
+    expect(DISTRICT.decor.find((d) => d.id === 'chateau')).toMatchObject({ footprint: b[7], door: C(30, 18) });
+    expect(DISTRICT.decor.find((d) => d.id === 'sauna')).toMatchObject({ footprint: b[12], door: C(33, 32) });
     // the church is the target on slot 6; château and sauna are no targets; the monument stays where it was
     expect(DISTRICT.targets.find((t) => t.id === 'church')!.footprint).toEqual(b[6]);
     for (const i of [7, 12]) for (const t of DISTRICT.targets) expect(overlaps(t.footprint, b[i]!)).toBe(false);

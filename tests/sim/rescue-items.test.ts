@@ -1,3 +1,4 @@
+import { t, type Key } from '../../src/content/i18n';
 import { describe, expect, test } from 'vitest';
 import { CONFIG } from '../../src/sim/config';
 import { Horde, type HordeCtx } from '../../src/sim/hostiles';
@@ -47,8 +48,8 @@ describe('rescue belongings (« objets volés à rendre »)', () => {
       expect(inc.items).toHaveLength(R.itemCount);
       for (const it of inc.items) expect(it.state).toBe('held');
     }
-    expect(RESCUE_ITEMS.elderlyRobbed.map((i) => i.name)).toEqual(['sac à main', 'chapeau', 'canne']);
-    expect(RESCUE_ITEMS.groupHarassed.map((i) => i.name)).toEqual(['sac à dos', 'écharpe', 'casquette']);
+    expect(RESCUE_ITEMS.elderlyRobbed.map((i) => t(`item.${i.id}` as Key))).toEqual(['sac à main', 'chapeau', 'canne']);
+    expect(RESCUE_ITEMS.groupHarassed.map((i) => t(`item.${i.id}` as Key))).toEqual(['sac à dos', 'écharpe', 'casquette']);
   });
 
   test('thefts at 75 / 50 / 25 % of the reserve, by the nearest active aggressor, which carries it', () => {
@@ -306,7 +307,7 @@ describe('belongings in the full sim', () => {
     sim.pause();
     const s = sim.snapshot();
     expect(s.rescue!.items).toHaveLength(3);
-    expect(Object.keys(s.rescue!.items[0]!).sort()).toEqual(['id', 'name', 'pos', 'state']);
+    expect(Object.keys(s.rescue!.items[0]!).sort()).toEqual(['id', 'pos', 'state']);
     expect(s.rescue!.items[0]!.state).toBe('carried-by-thief');
     expect(s.rescue!.returnLeft).toBeNull();
     expect(JSON.parse(JSON.stringify(s))).toEqual(s);

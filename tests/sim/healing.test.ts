@@ -23,10 +23,10 @@ describe('heal stations (walk-over)', () => {
     expect(stations.list[0]!.charged).toBe(false);
     expect(rules.stats.healsUsed).toBe(1);
     expect(rules.score).toBe(0);
-    // once only: staying on it does nothing more, and it reads Épuisé
+    // once only: staying on it does nothing more, and it reads 'spent'
     const r = step();
     expect(r.events).toEqual([]);
-    expect(r.message).toBe('Épuisé');
+    expect(r.message).toBe('spent');
     expect(rules.stats.healsUsed).toBe(1);
 
     const b = setup(40);
@@ -46,7 +46,7 @@ describe('heal stations (walk-over)', () => {
     for (let i = 0; i < 30; i++) {
       const r = step();
       expect(r.events).toEqual([]);
-      expect(r.message).toBe('Santé au maximum');
+      expect(r.message).toBe('fullHealth');
     }
     expect(stations.list[0]!.charged).toBe(true);
     expect(player.hp).toBe(100);

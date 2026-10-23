@@ -1,3 +1,4 @@
+import { t } from '../../src/content/i18n';
 import { describe, expect, test } from 'vitest';
 import { CONFIG } from '../../src/sim/config';
 import { DISTRICT } from '../../src/sim/map/district';
@@ -6,7 +7,7 @@ import { dist } from '../../src/sim/math';
 import { rng } from '../../src/sim/rng';
 import { Sim } from '../../src/sim/sim';
 import type { InputFrame, Role, SimEvent, Vec, WeaponKind } from '../../src/sim/types';
-import { HELD_LABELS, WEAPONS, Weapons, streetKinds } from '../../src/sim/weapons';
+import { WEAPONS, Weapons, streetKinds } from '../../src/sim/weapons';
 import { IDLE, autopilot } from './autopilot';
 
 type Ev<T extends SimEvent['type']> = Extract<SimEvent, { type: T }>;
@@ -48,8 +49,8 @@ describe('weapons table', () => {
   test('gant de boxe 6 uses, flashball 6 shots; HUD labels', () => {
     expect(WEAPONS.gant).toMatchObject({ uses: 6, strike: 'punch', range: 160 });
     expect(WEAPONS.flashball).toMatchObject({ uses: 6, strike: 'shot' });
-    expect(HELD_LABELS.gant).toBe('Gant de boxe');
-    expect(HELD_LABELS.flashball).toBe('Flashball');
+    expect(t('held.gant')).toBe('Gant de boxe');
+    expect(t('held.flashball')).toBe('Flashball');
   });
 
   test('street pool: the gant from round 3, the flashball from round 5', () => {

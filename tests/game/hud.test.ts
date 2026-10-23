@@ -185,7 +185,7 @@ describe('contextPrompt', () => {
 
   test('station message is shown as is', () => {
     const s = snap((x) => {
-      x.stationMessage = 'Santé au maximum';
+      x.stationMessage = 'fullHealth';
     });
     // informational: no touch Agir button for it
     expect(contextPrompt(s)).toEqual({ text: 'Santé au maximum', label: null });
@@ -253,7 +253,7 @@ describe('contextPrompt: toolboxes', () => {
 
   test('needToolbox: « Il faut une caisse à outils », informational, in the world', () => {
     const s = snap((x) => {
-      x.toolboxes.message = 'Caisse à outils requise';
+      x.toolboxes.message = 'toolboxRequired';
       x.actionHint = { kind: 'needToolbox', target: 'busStop', at, toolbox: null };
     });
     expect(contextPrompt(s)).toEqual({ text: 'Il faut une caisse à outils', label: null, inWorld: true });
@@ -263,14 +263,14 @@ describe('contextPrompt: toolboxes', () => {
     expect(
       contextPrompt(
         snap((x) => {
-          x.toolboxes.message = 'Caisse à outils requise';
+          x.toolboxes.message = 'toolboxRequired';
         }),
       ),
     ).toEqual({ text: 'Caisse à outils requise', label: null });
     expect(
       contextPrompt(
         snap((x) => {
-          x.toolboxes.message = 'Abords non sécurisés';
+          x.toolboxes.message = 'areaUnsafe';
         }),
         true,
       ),
@@ -280,7 +280,7 @@ describe('contextPrompt: toolboxes', () => {
       x.toolboxes.progress = 1.2;
       x.toolboxes.started = true;
       x.toolboxes.repairTarget = 'busStop';
-      x.stationMessage = 'Santé au maximum';
+      x.stationMessage = 'fullHealth';
     });
     expect(contextPrompt(repairing)).toEqual({ text: 'Réparation…', label: null, inWorld: true });
   });
@@ -295,8 +295,8 @@ describe('roundPanel', () => {
         index: 1,
         kos: 10,
         objectives: [
-          { kind: 'school', result: 'réussi' },
-          { kind: 'rescue', result: 'perdu' },
+          { kind: 'school', result: 'won' },
+          { kind: 'rescue', result: 'lost' },
         ],
         points: -1,
         bonus: false,
@@ -327,8 +327,8 @@ describe('roundPanel', () => {
       title: 'Manche 1 terminée',
       kos: 'Casseurs neutralisés : 10',
       objectives: [
-        { name: 'École', result: 'réussi' },
-        { name: 'Secours', result: 'perdu' },
+        { name: 'École', result: 'réussi', ok: true },
+        { name: 'Secours', result: 'perdu', ok: false },
       ],
       points: '−1 point',
       bonus: null,

@@ -267,8 +267,8 @@ describe('rounds in the sim', () => {
       index: 1,
       kos: s.roundTotal,
       objectives: [
-        { kind: 'school', result: 'réussi' },
-        { kind: 'rescue', result: 'réussi' },
+        { kind: 'school', result: 'won' },
+        { kind: 'rescue', result: 'won' },
       ],
       points: sim.rules.score - before,
       bonus: true,
@@ -339,7 +339,7 @@ describe('rounds in the sim', () => {
     expect(of(lost, 'BuildingDestroyed')[0]).toMatchObject({ target: 'school' });
     const ev = drive(sim, roundCompleted(1));
     expect(of(ev, 'RoundCompleted')).toEqual([{ type: 'RoundCompleted', index: 1, bonus: false }]);
-    expect(sim.director.lastSummary!.objectives[0]).toEqual({ kind: 'school', result: 'perdu' });
+    expect(sim.director.lastSummary!.objectives[0]).toEqual({ kind: 'school', result: 'lost' });
     expect(sim.rules.stats).toMatchObject({ targetsLost: 1, schoolsLost: 1, roundsCompleted: 1, roundsPerfect: 0 });
     // the reinforcements never sent before the ruin still play out: the breather starts at K = T (§9.1)
     expect(sim.director.lastSummary!.kos).toBe(sim.director.total);
@@ -381,7 +381,7 @@ describe('rounds in the sim', () => {
     expect(of(failed, 'RescueFailed')).toHaveLength(1);
     sim.horde.dismiss((h) => h.round === null);
     drive(sim, roundCompleted(1));
-    expect(sim.director.lastSummary!.objectives[1]).toEqual({ kind: 'rescue', result: 'perdu' });
+    expect(sim.director.lastSummary!.objectives[1]).toEqual({ kind: 'rescue', result: 'lost' });
     expect(sim.director.lastSummary!.kos).toBe(sim.director.total);
   });
 
@@ -447,7 +447,7 @@ describe('rounds in the sim', () => {
     const [rs] = of(ev, 'RoundStarted');
     expect(rs).toMatchObject({ index: 2, headline: 'rescue', total: tableTotal(2) });
     expect(of(ev, 'CasseStarted')).toEqual([]);
-    expect(sim.director.lastSummary).toMatchObject({ index: 2, kos: tableTotal(2), objectives: [{ kind: 'rescue', result: 'réussi' }] });
+    expect(sim.director.lastSummary).toMatchObject({ index: 2, kos: tableTotal(2), objectives: [{ kind: 'rescue', result: 'won' }] });
     // fill = total − rescue aggressors, every one of them knocked out
     const fill = sim.horde.list.filter((h) => h.round === 2 && h.role !== 'aggressor').length;
     expect(fill).toBeGreaterThan(0);
@@ -628,7 +628,7 @@ describe('a burning target stays so until put out (no fire going out by itself)'
     expect(of(ev, 'FireOut')).toEqual([]);
     expect(of(ev, 'SchoolRestored')).toEqual([]);
     expect(of(ev, 'RoundCompleted')).toEqual([{ type: 'RoundCompleted', index: 1, bonus: true }]);
-    expect(sim.director.lastSummary!.objectives[0]).toEqual({ kind: 'school', result: 'réussi' });
+    expect(sim.director.lastSummary!.objectives[0]).toEqual({ kind: 'school', result: 'won' });
     const school = sim.targets.get('school');
     expect(school.burning).toBe(true);
     expect(school.hp).toBeLessThan(school.maxHp); // not refilled at the round end

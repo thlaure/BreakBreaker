@@ -7,7 +7,8 @@ import type { Rules } from './rules';
 import type { Targets } from './targets';
 import type { SimEvent, TargetId, Vec } from './types';
 
-export type ToolboxMessage = 'Caisse à outils requise' | 'Abords non sécurisés' | null;
+/** What the HUD tells next to a ruin or a fire (ids: the HUD translates them, src/content/i18n `toolbox.*`). */
+export type ToolboxMessage = 'toolboxRequired' | 'areaUnsafe' | null;
 
 export interface ToolboxCtx {
   player: Player;
@@ -113,12 +114,12 @@ export class Toolboxes {
     }
     if (!this.carried) {
       this.reset();
-      return { events, message: 'Caisse à outils requise' };
+      return { events, message: 'toolboxRequired' };
     }
     const hostile = horde.active().some((h) => dist(h.pos, player.pos) <= CONFIG.kit.safetyRadius);
     if (hostile) {
       this.reset();
-      return { events, message: 'Abords non sécurisés' };
+      return { events, message: 'areaUnsafe' };
     }
 
     if (this.repairing !== target) this.reset();

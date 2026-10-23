@@ -18,7 +18,8 @@ export interface StationCtx {
   rules: Rules;
 }
 
-export type StationMessage = 'Santé au maximum' | 'Épuisé' | null;
+/** What the HUD tells on a heal station (ids: the HUD translates them, src/content/i18n `station.*`). */
+export type StationMessage = 'fullHealth' | 'spent' | null;
 
 /**
  * Heal stations: walking onto a charged station heals at once (no key, no hold).
@@ -44,8 +45,8 @@ export class Stations {
 
     const inRange = this.list.filter((s) => dist(player.pos, s.pos) <= STATION_RADIUS);
     const charged = inRange.filter((s) => s.charged).sort((a, b) => dist(player.pos, a.pos) - dist(player.pos, b.pos))[0];
-    if (!charged) return { events, message: inRange.length > 0 ? 'Épuisé' : null };
-    if (player.hp >= CONFIG.player.maxHp) return { events, message: 'Santé au maximum' };
+    if (!charged) return { events, message: inRange.length > 0 ? 'spent' : null };
+    if (player.hp >= CONFIG.player.maxHp) return { events, message: 'fullHealth' };
 
     player.hp = Math.min(CONFIG.player.maxHp, player.hp + CONFIG.heal.amount);
     charged.charged = false;

@@ -115,9 +115,9 @@ describe('monument alerts', () => {
     const s = snap((x) => {
       x.roundPhase = 'breather';
       x.breatherLeft = 3;
-      x.lastSummary = { index: 4, kos: 28, objectives: [{ kind: 'monument', result: 'perdu' }], points: 25, bonus: false };
+      x.lastSummary = { index: 4, kos: 28, objectives: [{ kind: 'monument', result: 'lost' }], points: 25, bonus: false };
     });
-    expect(roundPanel(s)!.objectives).toEqual([{ name: 'Monument', result: 'perdu' }]);
+    expect(roundPanel(s)!.objectives).toEqual([{ name: 'Monument', result: 'perdu', ok: false }]);
   });
 });
 

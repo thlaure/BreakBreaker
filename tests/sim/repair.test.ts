@@ -130,7 +130,7 @@ describe('toolboxes', () => {
     expect(kit.progress).toBeGreaterThan(0.9);
     horde.spawn({ variant: 'classic', role: 'contact', pos: { x: player.pos.x + 50, y: player.pos.y } });
     const r = step();
-    expect(r.message).toBe('Abords non sécurisés');
+    expect(r.message).toBe('areaUnsafe');
     expect(kit.progress).toBe(0);
     expect(kit.started).toBe(false);
     expect(kit.ready).toBe(false);
@@ -156,20 +156,20 @@ describe('toolboxes', () => {
   test('pressing Agir with a hostile close or without a toolbox starts nothing', () => {
     const { kit, player, horde, step, run } = setup('school');
     player.pos = { ...door('school') };
-    expect(step(true).message).toBe('Caisse à outils requise');
+    expect(step(true).message).toBe('toolboxRequired');
     kit.carried = true;
     const h = horde.spawn({ variant: 'classic', role: 'contact', pos: { x: player.pos.x + 30, y: player.pos.y } })!;
-    expect(step(true).message).toBe('Abords non sécurisés');
+    expect(step(true).message).toBe('areaUnsafe');
     horde.applyHit(h.lifeId, 99);
     run(1);
     expect(kit.started).toBe(false);
     expect(kit.progress).toBe(0);
   });
 
-  test('without a toolbox near a ruin: Caisse à outils requise, nothing repaired', () => {
+  test('without a toolbox near a ruin: toolboxRequired, nothing repaired', () => {
     const { targets, player, step, run } = setup('school');
     player.pos = { ...door('school') };
-    expect(step().message).toBe('Caisse à outils requise');
+    expect(step().message).toBe('toolboxRequired');
     run(3);
     expect(targets.get('school').state).toBe('ruined');
   });
@@ -193,7 +193,7 @@ describe('toolboxes', () => {
     targets.ignite('school', 'school#2');
     player.pos = { ...door('school') };
     expect(kit.repairTarget(player.pos, targets)).toBe('school');
-    expect(step(true).message).toBe('Caisse à outils requise');
+    expect(step(true).message).toBe('toolboxRequired');
     kit.carried = true;
     run(1);
     expect(kit.ready).toBe(true);
@@ -336,7 +336,7 @@ describe('Agir is a press, not a hold (rising edge tracked by the Sim)', () => {
     at(d);
     sim.step(IDLE);
     sim.step(HOLD);
-    expect(kit().message).toBe('Caisse à outils requise');
+    expect(kit().message).toBe('toolboxRequired');
     sim.toolboxes.carried = true;
     for (let i = 0; i < 30; i++) sim.step(HOLD);
     expect(kit()).toMatchObject({ canRepair: true, started: false });
