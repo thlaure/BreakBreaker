@@ -1,5 +1,13 @@
+import { enContent } from './en/content';
 import { enCore } from './en/core';
+import { enHud } from './en/hud';
+import { enLanding } from './en/landing';
+import { enWorld } from './en/world';
+import { frContent } from './fr/content';
 import { frCore } from './fr/core';
+import { frHud } from './fr/hud';
+import { frLanding } from './fr/landing';
+import { frWorld } from './fr/world';
 import { getLocale, type Locale } from './locale';
 
 export { getLocale, onLocaleChange, setLocale, type Locale } from './locale';
@@ -10,10 +18,14 @@ export { getLocale, onLocaleChange, setLocale, type Locale } from './locale';
  */
 export const DOMAINS = {
   core: { fr: frCore, en: enCore },
+  hud: { fr: frHud, en: enHud },
+  world: { fr: frWorld, en: enWorld },
+  content: { fr: frContent, en: enContent },
+  landing: { fr: frLanding, en: enLanding },
 } as const;
 
-const FR = { ...frCore };
-const EN: Record<keyof typeof FR, string> = { ...enCore };
+const FR = { ...frCore, ...frHud, ...frWorld, ...frContent, ...frLanding };
+const EN: Record<keyof typeof FR, string> = { ...enCore, ...enHud, ...enWorld, ...enContent, ...enLanding };
 
 type CatalogKey = keyof typeof FR;
 /** `x` when the catalog has `x.one` (and `x.other`): t('x', { n }) picks the form. */
