@@ -1,9 +1,9 @@
 # BreakBreaker — Specifications (index)
 
-**Version:** 1.2.1 — 23 October 2026  
+**Version:** 1.3.0 — 23 October 2026  
 **Scope:** 2D pixel-art web game, non-isometric top-down view, arcade mode in rounds with no time limit, Paris, Paul (a fictional shopkeeper) as the only hero, computer and phone  
 **Status:** reference specification; decisions confirmed by the project owner and design recommendations are identified. A first playable slice exists (section 24); this document is neither a production sign-off nor a statement that all requirements are already implemented.  
-**Launch language:** French  
+**Languages:** French (default) and American English  
 **Project:** BreakBreaker
 
 The BreakBreaker specifications are split into an index (this file) and nine themed files. The section numbering, the titles and the identifiers (EX, RC) are those of the former single requirements specification (`docs/CAHIER_DES_CHARGES.md`, up to version 1.9.25).
@@ -98,6 +98,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
   - [14.1 Interface](SPECS%20-%20Controls%20and%20Interface.md#141-interface)
   - [14.2 Accessibility](SPECS%20-%20Controls%20and%20Interface.md#142-accessibility)
   - [14.3 Modes](SPECS%20-%20Controls%20and%20Interface.md#143-modes)
+  - [14.4 Language (v1.3.0)](SPECS%20-%20Controls%20and%20Interface.md#144-language-v130)
 - [15. Art direction and pixel art assets](SPECS%20-%20Art%20and%20Sound.md#15-art-direction-and-pixel-art-assets) — *SPECS - Art and Sound.md*
   - [15.1 Style](SPECS%20-%20Art%20and%20Sound.md#151-style)
   - [15.2 Chosen templates](SPECS%20-%20Art%20and%20Sound.md#152-chosen-templates)
@@ -117,6 +118,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
   - [18.4 Target configuration](SPECS%20-%20Technical.md#184-target-configuration)
   - [18.5 Collisions and time](SPECS%20-%20Technical.md#185-collisions-and-time)
   - [18.6 Bounded resources](SPECS%20-%20Technical.md#186-bounded-resources)
+  - [18.7 Languages and catalogs (v1.3.0)](SPECS%20-%20Technical.md#187-languages-and-catalogs-v130)
 - [19. Performance and compatibility](SPECS%20-%20Technical.md#19-performance-and-compatibility) — *SPECS - Technical.md*
   - [19.1 Status](SPECS%20-%20Technical.md#191-status)
   - [19.2 Starting budgets](SPECS%20-%20Technical.md#192-starting-budgets)
@@ -174,7 +176,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
 - **Section numbers:** each section keeps the number it had in the single specification; the sections of a given file are therefore not always consecutive (for example 1, 2, 3, 22, 23 and 25 in the vision file). “Section 12.2” and “§12.2” refer to the same subsection; the file map above indicates where to find it.
 - **Statuses:** “Confirmé” (Confirmed), “Proposé” (Proposed), “Paramètre initial” (Initial parameter) and “Extension” are defined in [section 2.1](SPECS%20-%20Vision%20and%20Scope.md#21-status).
 - **EX-nn:** confirmed requirements ([section 2.2](SPECS%20-%20Vision%20and%20Scope.md#22-confirmed-requirements)).
-- **RC-nn:** acceptance cases ([section 21.2](SPECS%20-%20Acceptance.md#212-acceptance-cases)). Numbering is continuous and an identifier is never reused; a new case takes the number following the highest one (RC-181 in version 1.1.0). A changed case keeps its number and the history entry flags it (“RC-nn modifiée”, i.e. RC-nn changed).
+- **RC-nn:** acceptance cases ([section 21.2](SPECS%20-%20Acceptance.md#212-acceptance-cases)). Numbering is continuous and an identifier is never reused; a new case takes the number following the highest one (RC-195 in version 1.3.0). A changed case keeps its number and the history entry flags it (“RC-nn modifiée”, i.e. RC-nn changed).
 - **Versions:** 1.x for major revisions, 1.9.y for delivered slices; each revision adds a line to the history below and updates the version header of this index.
 - **Links:** links between files are relative, with spaces encoded (`SPECS%20-%20Index.md`).
 
@@ -182,6 +184,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
 
 ### 25.4 History
 
+- **1.3.0 — 23 October 2026 (medium):** the game is available in **American English** next to French (default): two pixel flags (French, American) top-left of the landing page, aligned with the first « B », and in the pause menu; the choice is saved, `?lang=` overrides it, and switching language in the pause menu re-reads every text without losing the game. Catalogs per domain in `src/content/i18n/{fr,en}/` with `t()` and plurals; the simulation emits ids, never phrases; two static landing pages, `/` and `/en/`; jokes (President, Caïds, crowd) adapted for English, not translated word for word (sections 14.4, 15.3, 18.1, 18.4, 18.7, 20.1, 20.2, 1.4, 23.5; RC-188 to RC-195). `rulesVersion` stays `1.0.0`, `appVersion` becomes `1.3.0`.
 - **1.2.1 — 23 October 2026 (patch):** a hit on Paul interrupts the repair in progress (toolbox kept; RC-187); `AGENTS.md` added with the project rules.
 - **1.2.0 — 23 October 2026 (medium):** each Caïd wears one of five invented leader looks (le tribun, la cheffe de cortège, le camarade en costume, le vieux briscard, le jeune agitateur), picked from his lifeId and kept from the street to the jail van and the prison yard, each with a prop and short pompous slogans in a speech bubble now and then; render only, no gameplay change (section 9.6, RC-183 to RC-186).
 - **1.1.4 — 23 October 2026 (patch):** the third sauna silhouette is drawn with a plain dark turban and a grey beard (no symbol, no exaggeration), treated like the other two.

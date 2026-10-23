@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Art Direction and Sound
 
 > **Purpose of this file:** art direction, pixel art assets, animations and sound.  
-> Part of the BreakBreaker specifications (version 1.2.1), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.3.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 15. Art direction and pixel art assets
 
@@ -33,6 +33,8 @@ One set of Paul sprites; weapons on the ground and outfits (stick, hammer, road 
 Peaceful groups must read as a calm whole. Avoid giving neutral sprites the same charge or throw animations as the hostile ones.
 
 Sources chosen for the first slice: Universal LPC characters, Kenney and LPC tiles under CC0, Kenney sounds under CC0. Each author and licence is listed in `public/CREDITS.md`, reachable from the landing page and the Pause menu.
+
+**Language flags (v1.3.0).** The two selector flags (section 14.4) are original pixel art as data in `src/site/flags.ts`: 16 × 11 grids of palette letters, a French tricolour (blue, white, red vertical bands of 5, 6 and 5 pixels) and a simplified American flag (red and white stripes, blue canton with white star pixels). They are drawn as inline SVG with crisp edges (no image file, so nothing to credit), decorative (`aria-hidden`) next to a text label. **Fonts:** the pixel font (Press Start 2P) and the page fonts must show the accents of French and all the English text; any new line is checked on screen in both languages.
 
 **Main square fronts (v1.1.0).** Church (limestone, slate, stained glass, bell tower with spire), château (ashlar, blue slate, corner towers, balcony) and sauna (pine planks, shingles, lantern, steamed window), in the same pixel style and outline colour as the other fronts; the President is a generic figure (navy suit, white shirt, red tie, plain short hair) drawn in rectangles with two frames per pose, with a pixel speech bubble in the crowd's pixel font. No real person, logo, party or religious mockery (section 10.11). The balcony figure and the sauna steam respect the reduced-motion preference.
 
