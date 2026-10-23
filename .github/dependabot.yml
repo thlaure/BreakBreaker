@@ -1,11 +1,14 @@
+# Version-update pull requests are turned off on purpose (limit 0): upgrades are done by hand.
+# Dependabot security alerts and security updates are repository settings and stay on.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
