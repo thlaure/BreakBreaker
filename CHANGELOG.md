@@ -6,6 +6,13 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.3.0 - 2026-10-23
+
+- Le jeu est disponible en anglais américain : deux petits drapeaux (français, américain) en haut à gauche de la page d'accueil, alignés sur le premier « B », et dans le menu pause.
+- Les répliques sont adaptées en anglais (le Président, les Caïds, la foule), pas traduites mot à mot.
+- La langue choisie est mémorisée, et on peut en changer en pleine partie, sans rien perdre.
+- Deux pages d'accueil : `/` en français et `/en/` en anglais.
+
 ## 1.2.1 - 2026-10-23
 
 - Quand Paul est touché pendant une réparation (coup, pierre, tir, feu), la réparation s'arrête, mais il garde sa caisse à outils.

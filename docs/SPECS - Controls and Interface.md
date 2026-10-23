@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Controls and Interface
 
 > **Purpose of this file:** controls, interface (HUD, alerts, menus) and accessibility.  
-> Part of the BreakBreaker specifications (version 1.2.1), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.3.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 7. Controls
 
@@ -86,3 +86,12 @@ The [Game Accessibility Guidelines](https://gameaccessibilityguidelines.com/basi
 Normal (the only delivered mode): health, healing, hordes and reference trajectories. Discovery (to do): reduced damage, longer throw preparation and stronger aim assist, with a separate record. No mode imposes a global time limit.
 
 Visual quality never changes the size of hitboxes, the speed of stones, the pressure, the stock or the score. A low quality keeps all useful alerts.
+
+### 14.4 Language (v1.3.0)
+
+The game exists in **French (default)** and **American English**. The selector is two small pixel-art flags (French tricolour, simplified American flag; 16 × 11 pixel grids drawn as inline SVG, original art): on the landing pages, **top-left, aligned with the first « B » of BreakBreaker**, as two real links (`/` for French, `/en/` for English, with `lang` and `hreflang`, labelled « Français » / « English ») and, in the game, in the **pause menu** as two buttons (at least 44 px touch targets). The active language is in colour with an outline and `aria-current`, the other one is greyed.
+
+- **Choice:** saved in the browser (`localStorage`, guarded: blocked storage still plays in French). `?lang=fr` or `?lang=en` overrides and is saved; an unknown value is ignored. The default is French and is never guessed from the browser. `<html lang>` follows the language.
+- **Live switch:** choosing a language in the pause menu re-reads every text on screen (HUD, alerts, menus, the open panel, speech bubbles, the page title) without losing the game: the simulation is untouched and the focus stays on the same control.
+- **Everything is translated** (menus, HUD, banners, bubbles, place names); proper names (BreakBreaker, Paul) stay. Jokes are **adapted, not translated word for word** (section 18.7). The changelog stays in French and is marked « (in French) » on the English landing page.
+- The pixel font must display the accents of French and every English character; new texts are checked in both languages.

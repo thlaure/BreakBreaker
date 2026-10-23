@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Rules for AI agents (and humans) working on BreakBreaker. Written in English; the in-game text is French. Keep this file current: when the owner sets a new rule, add it here in the same branch.
+Rules for AI agents (and humans) working on BreakBreaker. Written in English; the in-game text is French and American English. Keep this file current: when the owner sets a new rule, add it here in the same branch.
 
 ## The project
 
@@ -30,7 +30,10 @@ All of typecheck, lint, format:check, test and bench must pass before a branch i
 
 - Technical content is English: code, identifiers, comments, file names, routes, specs, README, docs, commit messages.
 - Game content is French: in-game text, the changelog, the roadmap (player-facing), design records under `docs/superpowers/specs/`.
-- A French/English translation system for the game text is planned (see ROADMAP).
+- The game is bilingual: French (default) and American English. All user-visible text goes through `t()` (`src/content/i18n/`), with the same keys in both the `fr/` and `en/` catalogs (tests enforce parity). Never hard-code a phrase in the code.
+- `src/sim` never contains phrases: it emits and stores identifiers, and the render and HUD layers translate them.
+- Jokes are adapted for each language, not translated word for word, and follow the content rules below in both languages.
+- New texts are added in both languages in the same change.
 
 ## Workflow
 

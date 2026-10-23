@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Vision and Scope
 
 > **Purpose of this file:** game vision, validated requirements, scope and priorities, production and deliverables, planned extensions, remaining decisions and sources.  
-> Part of the BreakBreaker specifications (version 1.2.1), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.3.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 1. Vision and positioning
 
@@ -29,7 +29,7 @@ The GTA / The Division reference is no longer a rendering target. Credibility no
 
 ### 1.4 Audience and access
 
-Browser on computer and phone, with no account and no mandatory installation. Automatic camera, simple controls and a touch version. Pixel art reduces some graphical needs, but does not remove the need to limit hordes, collisions and effects, nor to test on a real phone.
+Browser on computer and phone, with no account and no mandatory installation. **Languages (v1.3.0):** French (default) and American English; the choice is made with two flags and remembered (section 14.4). The jokes are adapted for each language, not translated word for word (section 18.7); other languages are out of scope. Automatic camera, simple controls and a touch version. Pixel art reduces some graphical needs, but does not remove the need to limit hordes, collisions and effects, nor to test on a real phone.
 
 ### 1.5 Paul, sole protagonist
 
@@ -171,7 +171,7 @@ The former « contact props » extension is replaced by the pickup weapons of se
 
 ### 23.5 Distribution and comfort
 
-Optional PWA installation, offline start after full caching, extended gamepad support, other languages, more settings and new neighbourhoods. A global leaderboard or a multiplayer mode would be a separate project with its own backend and rules.
+Optional PWA installation, offline start after full caching, extended gamepad support, languages beyond French and American English (delivered in 1.3.0), more settings and new neighbourhoods. A global leaderboard or a multiplayer mode would be a separate project with its own backend and rules.
 
 ## 25. Remaining decisions and sources
 

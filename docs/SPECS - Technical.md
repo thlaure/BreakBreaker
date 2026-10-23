@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Technical
 
 > **Purpose of this file:** technical choices, architecture and data, performance, storage, loading and distribution.  
-> Part of the BreakBreaker specifications (version 1.2.1), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.3.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 17. Technical choices
 
@@ -53,7 +53,8 @@ No backend, no generative AI at runtime, no network dependency in every round, n
 
 ```text
 src/
-  site/         landing HTML/CSS, content, preview and link to the game
+  site/         landing HTML/CSS, content, preview and link to the game; flags.ts (pixel flags), landingContent.ts (static pages per language)
+  content/i18n/ catalogs fr/ and en/ by domain (core, hud, world, content, landing), t(), locale
   app/          startup, menus, loading and errors
   scenes/       home, district, HUD, pause and summary
   sim/          pure, deterministic simulation, without Phaser: entities, rules, rounds, weapons
@@ -117,7 +118,7 @@ The rules system is the sole author of the score and of the « Casseurs neutrali
 ```json
 {
   "rulesVersion": "1.0.0",
-  "appVersion": "1.1.0",
+  "appVersion": "1.3.0",
   "sessionMode": "arcade",
   "view": "top-down-orthogonal",
   "artStyle": "pixel-art",
@@ -208,6 +209,20 @@ Projectiles waiting to be thrown do not create an infinite reserve: the director
 
 Keep historical totals, not all events, bodies or identifiers since launch. Replaying and chaining rounds must not make textures, listeners, timers or sounds grow indefinitely.
 
+### 18.7 Languages and catalogs (v1.3.0)
+
+**Catalogs.** `src/content/i18n/` holds one folder per language, `fr/` and `en/`, each with the same five domain files: `core` (short labels and states that simulation ids resolve to: toolbox, station, school, objective, held item, sign), `hud` (HUD, alerts, banners), `world` (place names, signs, world labels), `content` (the President's quotes, the Caïd looks and slogans, crowd grumbles, shouts, onomatopoeias) and `landing` (the two static pages). The French object of a domain defines the keys, the English one is typed against it; `DOMAINS` in `index.ts` registers a domain in one line. `locale.ts` keeps the current language (`getLocale`, `setLocale`, `onLocaleChange`, `initLocale`; see section 14.4).
+
+**`t(key, params?)`** is a pure lookup in the current language: `{name}` placeholders are filled from `params`; with a numeric `params.n` and both `key.one` and `key.other` in the catalog, the plural form of the language is chosen with `Intl.PluralRules` (French: 0 and 1 are singular; English: only 1), for example « 1 Caïd libéré » / « 2 Caïds libérés » and « 1 rioter » / « 15 rioters ». A missing key reads as the key itself and never throws. The keys are a typed union, so a typo fails the type check.
+
+**The simulation never contains phrases.** Everything the simulation emits or stores (events, snapshots, labels, names) is a stable identifier or code; the render and HUD layers translate it with `t()`. `src/sim` never reads the language, so determinism is unchanged (same seed, same events, whatever the language). All user-visible text goes through `t()` or the language-aware content lists.
+
+**Content by language.** Quotes, slogans and cries have one list per language of comparable length and tone (jokes adapted for an American audience, with no real person, party or religion); the content tests (length, forbidden names and words) apply to both lists and also check that the English lines are not copies of the French ones.
+
+**Static landing pages.** The shared template `index.html` is rendered at build time by `src/site/landingContent.ts` (through the Vite plugin in `vite.config.ts`) into two static pages, `/` (French) and `/en/` (English), each with exactly one `h1`, no client JavaScript, relative links, flags as links with `hreflang`, and a « Play » link to `play/?go&lang=<language>` so that the game starts in the language of the page. The build emits both; the dev server serves `/en/` from the same template.
+
+**Tests.** Catalog parity (same keys in both languages for each domain, no empty string, no English identical to French outside a short allow-list such as « Paul » and « BreakBreaker », plurals with both forms), locale storage and override, a sim test that scans events and snapshots for phrases, the content tests of the lists, the flag grids, the landing pages and the HUD and menu live switch.
+
 ## 19. Performance and compatibility
 
 ### 19.1 Status
@@ -266,13 +281,13 @@ Check heating, memory, multi-touch, interruptions, rotation, audio resumption an
 
 ### 20.1 Local
 
-Preferences for controls, audio, accessibility, quality, and records per rules version/difficulty. No hero appearance choice, no account. An old gender/skin tone preference from the prototype is ignored during migration.
+Preferences for controls, audio, accessibility, quality and **language** (`bb:locale`, section 14.4), and records per rules version/difficulty. No hero appearance choice, no account. An old gender/skin tone preference from the prototype is ignored during migration.
 
 Unavailable storage does not prevent play. The record of an interrupted session is distinguished according to the arcade rule. Loading old invalid data falls back to safe values.
 
 ### 20.2 Assets
 
-The landing page and the game have separate entry points. The landing page downloads neither the engine nor the atlases nor the sounds of the game; loading of these resources begins when the game page is opened. The detailed navigation and weight requirements are in section 26.
+The landing page (two static pages, `/` in French and `/en/` in English, section 18.7) and the game have separate entry points. The landing page downloads neither the engine nor the atlases nor the sounds of the game; loading of these resources begins when the game page is opened. The detailed navigation and weight requirements are in section 26.
 
 Engine, atlas of Paul and the enemies, weapons, map, collisions, stones, heals and essential alerts loaded before control. Other sounds and details can follow. Subsequent hordes do not re-download the same atlas every round.
 

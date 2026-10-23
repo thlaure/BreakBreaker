@@ -22,7 +22,7 @@
 
 ---
 
-BreakBreaker is a free, top-down pixel-art arcade game that runs in your browser (phone included, no install). You play **Paul**: rioters are smashing up the district, fires are spreading, and it is your job to hold the line for as many rounds as you can. In-game text is in French; the code and docs are in English.
+BreakBreaker is a free, top-down pixel-art arcade game that runs in your browser (phone included, no install). You play **Paul**: rioters are smashing up the district, fires are spreading, and it is your job to hold the line for as many rounds as you can. The game is available in **French** (default) and **American English**: two pixel flags at the top left of the landing page, and in the pause menu, switch the language, and the choice is remembered. The jokes are adapted for each language, not translated word for word. The code and docs are in English.
 
 ## Why it is fun
 
@@ -36,7 +36,7 @@ BreakBreaker is a free, top-down pixel-art arcade game that runs in your browser
 
 ## Play
 
-Open **https://thlaure.github.io/BreakBreaker/** and hit *Jouer*. Works with keyboard and mouse or touch.
+Open **https://thlaure.github.io/BreakBreaker/** (or the English page at `/en/`) and hit *Jouer* / *Play*. Works with keyboard and mouse or touch.
 
 ## Controls
 
