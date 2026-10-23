@@ -4,7 +4,7 @@ Rules for AI agents (and humans) working on BreakBreaker. Written in English; th
 
 ## The project
 
-A free 2D top-down pixel-art arcade web game (Phaser 4 + TypeScript + Vite). The hero is Paul (fictional). Live at https://thlaure.github.io/BreakBreaker/ (CI/CD on GitHub Pages). Landing page at `/`, game at `/play/` (`/play/?go` starts at once; the old `/jouer/` only redirects). Full specification: `docs/SPECS - Index.md`. Player-facing history: `CHANGELOG.md` (French) and `CHANGELOG.en.md` (American English, same versions and points; update both). Plans: `ROADMAP.md`.
+A free 2D top-down pixel-art arcade web game (Phaser 4 + TypeScript + Vite). The hero is Paul (fictional). Live at https://thlaure.github.io/BreakBreaker/ (CI/CD on GitHub Pages). Landing page at `/`, game at `/play/` (`/play/?go` starts at once). Full specification: `docs/SPECS - Index.md`. Player-facing history: `CHANGELOG.md` (French) and `CHANGELOG.en.md` (American English, same versions and points; update both). Plans: `ROADMAP.md`.
 
 ## Commands
 

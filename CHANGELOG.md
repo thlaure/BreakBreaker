@@ -6,6 +6,10 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.4.2 - 2026-10-24
+
+- L'ancienne adresse /jouer/ n'existe plus : le jeu est uniquement sur /play/.
+
 ## 1.4.1 - 2026-10-24
 
 - Le changelog de la page d'accueil suit la langue : la page /en/ affiche les notes en anglais.

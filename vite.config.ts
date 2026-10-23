@@ -52,7 +52,7 @@ export default defineConfig({
   plugins: [landingContent()],
   build: {
     rollupOptions: {
-      input: { main: 'index.html', en: 'en/index.html', play: 'play/index.html', jouer: 'jouer/index.html' },
+      input: { main: 'index.html', en: 'en/index.html', play: 'play/index.html' },
     },
   },
 });

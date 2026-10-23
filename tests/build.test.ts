@@ -279,10 +279,3 @@ test('landing inlines the latest CHANGELOG.md notes and a changelog dialog, stil
   expect(html.match(/class="release"/g)?.length).toBe(md.match(/^## \S+ - /gm)?.length);
   expect(html).not.toMatch(/<script/);
 });
-
-test('the old /jouer/ address forwards to /play/ and keeps the query string', () => {
-  const html = readFileSync(out('jouer/index.html'), 'utf8');
-  expect(html).toMatch(/http-equiv="refresh"[^>]*url=\.\.\/play\//);
-  expect(html).toMatch(/location\.replace\('\.\.\/play\/' \+ location\.search/);
-  expect(html).not.toMatch(/phaser/i);
-});

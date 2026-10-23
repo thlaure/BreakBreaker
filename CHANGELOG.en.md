@@ -6,6 +6,10 @@ It is read at build time and feeds the "What’s new" block and the "Changelog" 
 Format: one `## <version> - <date YYYY-MM-DD>` heading per version, then short `- ` bullets, most important first.
 The first three bullets of the latest version are shown on the landing page.
 
+## 1.4.2 - 2026-10-24
+
+- The old /jouer/ address is gone: the game lives only at /play/.
+
 ## 1.4.1 - 2026-10-24
 
 - The changelog on the landing page now follows the language: the /en/ page shows the English notes.
