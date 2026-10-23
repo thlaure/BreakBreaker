@@ -15,4 +15,10 @@ export const enContent: Record<keyof typeof frContent, string> = {
   'content.shout.backpack': 'MY BACKPACK!',
   'content.shout.scarf': 'MY SCARF!',
   'content.shout.cap': 'MY CAP!',
+  'content.stage.lyric1': 'Wipe the slate clean!',
+  'content.stage.lyric2': 'Fed up, fed up!',
+  'content.stage.lyric3': 'Not one brick left!',
+  'content.stage.lyric4': 'Turn it up, neighbors!',
+  'content.stage.lyric5': 'One last song!',
+  'content.stage.lyric6': 'Everybody out!',
 };
