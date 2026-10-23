@@ -3,3 +3,4 @@ dist
 assets-source
 .superpowers
 .vitest/
+.claude/worktrees

@@ -40,7 +40,7 @@ export function buildingDoorX(b: Rect, kind: string): number {
 
 /**
  * The retro video-game shop: lit shop windows with game boxes on shelves, a glazed door under a striped awning, and a
- * « JEUX RÉTRO » sign plate with a pixel joystick on the front edge of the roof (it fades with the roof, `roofParts`).
+ * « MICRO RÉTRO » sign plate with a pixel joystick on the front edge of the roof (it fades with the roof, `roofParts`).
  */
 export function buildShopFront(s: Phaser.Scene, b: Rect, roofParts: RoofPart[]): BuildingPart[] {
   const front = b.y + b.h;
@@ -85,7 +85,7 @@ export function buildShopFront(s: Phaser.Scene, b: Rect, roofParts: RoofPart[]):
     .setDepth(DEPTH.decal + 1)
     .setName('glow');
 
-  // sign plate on the front edge of the roof: pixel joystick + « JEUX RÉTRO »
+  // sign plate on the front edge of the roof: pixel joystick + « MICRO RÉTRO »
   const cx = b.x + b.w / 2;
   const cy = top - 10;
   const pw = 100;
@@ -103,7 +103,7 @@ export function buildShopFront(s: Phaser.Scene, b: Rect, roofParts: RoofPart[]):
   p(0xd8d4cc, jx + 5, -4, 2, 5);
   p(0xff4f6d, jx + 4, -6, 4, 3);
   p(0xffd23f, jx + 9, -1, 2, 1);
-  const text = s.add.text(8, 0, 'JEUX RÉTRO', { fontFamily: 'monospace', fontSize: '10px', color: SHOP.text }).setOrigin(0.5);
+  const text = s.add.text(8, 0, 'MICRO RÉTRO', { fontFamily: 'monospace', fontSize: '10px', color: SHOP.text }).setOrigin(0.5);
   const sign = s.add.container(cx, cy, [plate, text]).setDepth(DEPTH.roof + 0.5);
   roofParts.push(sign);
   return [g, glow, plate, text];
