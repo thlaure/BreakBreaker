@@ -1,8 +1,12 @@
-import type { Snapshot } from '../sim/sim';
 import type { SimEvent } from '../sim/types';
 import { SFX } from './assets';
+import { boingVoice, clankVoice, popVoice, thumpVoice, tockVoice, whooshVoice } from './audioImpacts';
+import { chimeVoice, energyReadyVoice, powerDownVoice, powerUpVoice, sirenVoice, zapVoice } from './audioCues';
+import { chargeHumNodes, furieHumNodes } from './audioHums';
+import { HEAVY_RATE, isImpactSfx, pitchJitter, type Sfx } from './audioMath';
 
-export type Sfx = (typeof SFX)[number];
+export { HEAVY_RATE, PITCH_JITTER, isImpactSfx, pitchJitter, threatLevel } from './audioMath';
+export type { Sfx } from './audioMath';
 
 /** Encoded sound files fetched once by BootScene (Phaser loader, binary); decoded by GameAudio at unlock. */
 const encoded = new Map<Sfx, ArrayBuffer>();
@@ -16,45 +20,11 @@ const MAX_VOICES = 8;
 const SFX_GAIN = 0.7;
 const AMBIENCE_GAIN = 0.5;
 const FIRE_MAX = 0.6;
-/** Level of the mode furie hum on the sfx bus. */
-const HUM_GAIN = 0.12;
-
-/**
- * Fire loop level for a frame: 0 when no target is attacked or burning, else 0.35..1 following the lowest health among
- * them (a fire still going out after its attack keeps the loop at its floor).
- */
-export function threatLevel(s: Snapshot): number {
-  if (s.ended) return 0;
-  let min = Number.POSITIVE_INFINITY;
-  for (const t of s.targets) if (t.state === 'attacked' || t.burning) min = Math.min(min, t.hp / t.maxHp);
-  return min === Number.POSITIVE_INFINITY ? 0 : 0.35 + 0.65 * (1 - Math.max(0, Math.min(1, min)));
-}
 
 /**
  * Raw WebAudio. The AudioContext is created only by `unlock()` (called from the Commencer click).
  * Any failure leaves the game silent but running. Groups: sfx and ambience gains feed a master gain (mute).
  */
-/** Playback rate of the heavier hits (brute, Caïd). */
-export const HEAVY_RATE = 0.7;
-
-/**
- * Impact one-shots (hits, hurt, thuds and the synthesised tock / pop / thump / boing / clank) play at a slightly random
- * pitch, ±PITCH_JITTER of their rate, so a run of hits does not sound mechanical. Render only (Math.random, never the
- * sim's stream); sirens, the alarm, chimes and the hums keep their exact pitch.
- */
-export const PITCH_JITTER = 0.06;
-const IMPACT_SFX: ReadonlySet<Sfx> = new Set<Sfx>(['hit1', 'hit2', 'hit3', 'hurt', 'land']);
-
-/** The sample is an impact one-shot whose pitch is jittered. */
-export function isImpactSfx(key: Sfx): boolean {
-  return IMPACT_SFX.has(key);
-}
-
-/** Rate factor for one draw `r` in [0, 1): 1 ± PITCH_JITTER. */
-export function pitchJitter(r: number): number {
-  return 1 + (r * 2 - 1) * PITCH_JITTER;
-}
-
 export class GameAudio {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -214,22 +184,7 @@ export class GameAudio {
 
   /** Bright two-note chime (sine 660 → 880 Hz, 120 ms each): a target saved or repaired, a round won. */
   chime(): void {
-    this.voice((ctx, out, t) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(660, t);
-      osc.frequency.setValueAtTime(880, t + 0.12);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.5, t + 0.01);
-      g.gain.setValueAtTime(0.5, t + 0.11);
-      g.gain.exponentialRampToValueAtTime(0.35, t + 0.13);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
-      osc.connect(g).connect(out);
-      osc.start(t);
-      osc.stop(t + 0.25);
-      return osc;
-    });
+    this.voice(chimeVoice);
   }
 
   /**
@@ -237,161 +192,37 @@ export class GameAudio {
    * triangle arpeggio (784 → 1175 → 1568 Hz) when it is full (furie available).
    */
   energyReady(level: 'onde' | 'furie'): void {
-    this.voice((ctx, out, t) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      if (level === 'onde') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(988, t);
-        g.gain.exponentialRampToValueAtTime(0.3, t + 0.01);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
-      } else {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(784, t);
-        osc.frequency.setValueAtTime(1175, t + 0.08);
-        osc.frequency.setValueAtTime(1568, t + 0.16);
-        g.gain.exponentialRampToValueAtTime(0.45, t + 0.01);
-        g.gain.setValueAtTime(0.45, t + 0.22);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
-      }
-      osc.connect(g).connect(out);
-      osc.start(t);
-      osc.stop(t + 0.42);
-      return osc;
-    });
+    this.voice((ctx, out, t) => energyReadyVoice(ctx, out, t, level));
   }
 
   /** Furie / Onde refused (too little energy): a dull 0.08 s low square « tock » (220 → 110 Hz, low-passed; jittered). */
   tock(): void {
-    this.voice((ctx, out, t) => {
-      const k = this.pitch();
-      const osc = ctx.createOscillator();
-      const lp = ctx.createBiquadFilter();
-      const g = ctx.createGain();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(220 * k, t);
-      osc.frequency.exponentialRampToValueAtTime(110 * k, t + 0.07);
-      lp.type = 'lowpass';
-      lp.frequency.value = 700;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.35, t + 0.005);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
-      osc.connect(lp).connect(g).connect(out);
-      osc.start(t);
-      osc.stop(t + 0.09);
-      return osc;
-    });
+    this.voice((ctx, out, t) => tockVoice(ctx, out, t, this.pitch()));
   }
 
   /** A shooter's bullet: a tiny cartoon « pop » (0.06 s noise click through a band-pass, quiet: bursts of 3; jittered). */
   pop(): void {
-    this.voice((ctx, out, t) => {
-      const k = this.pitch();
-      const len = Math.floor(ctx.sampleRate * 0.06);
-      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      const bp = ctx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.frequency.value = 1500 * k;
-      bp.Q.value = 1.4;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.28, t + 0.004);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
-      src.connect(bp).connect(g).connect(out);
-      src.start(t);
-      return src;
-    });
+    this.voice((ctx, out, t) => popVoice(ctx, out, t, this.pitch()));
   }
 
   /** Flashball shot: a low « thump » (sine 150 → 55 Hz, 0.16 s; jittered). */
   thump(): void {
-    this.voice((ctx, out, t) => {
-      const k = this.pitch();
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(150 * k, t);
-      osc.frequency.exponentialRampToValueAtTime(55 * k, t + 0.15);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.6, t + 0.006);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
-      osc.connect(g).connect(out);
-      osc.start(t);
-      osc.stop(t + 0.17);
-      return osc;
-    });
+    this.voice((ctx, out, t) => thumpVoice(ctx, out, t, this.pitch()));
   }
 
   /** The glove lands: a springy « boing » (triangle wobbling 220 ↔ 330 Hz at 18 Hz, falling, 0.3 s; jittered). */
   boing(): void {
-    this.voice((ctx, out, t) => {
-      const k = this.pitch();
-      const osc = ctx.createOscillator();
-      const lfo = ctx.createOscillator();
-      const depth = ctx.createGain();
-      const g = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(330 * k, t);
-      osc.frequency.exponentialRampToValueAtTime(180 * k, t + 0.28);
-      lfo.frequency.value = 18;
-      depth.gain.value = 60 * k;
-      lfo.connect(depth).connect(osc.frequency);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.45, t + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
-      osc.connect(g).connect(out);
-      osc.start(t);
-      lfo.start(t);
-      osc.stop(t + 0.31);
-      lfo.stop(t + 0.31);
-      return osc;
-    });
+    this.voice((ctx, out, t) => boingVoice(ctx, out, t, this.pitch()));
   }
 
   /** Mode furie on: a 0.5 s square sweep rising 196 → 1046 Hz with a bright tail (power-up). */
   powerUp(): void {
-    this.voice((ctx, out, t) => {
-      const osc = ctx.createOscillator();
-      const lp = ctx.createBiquadFilter();
-      const g = ctx.createGain();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(196, t);
-      osc.frequency.exponentialRampToValueAtTime(1046, t + 0.45);
-      lp.type = 'lowpass';
-      lp.frequency.setValueAtTime(1200, t);
-      lp.frequency.exponentialRampToValueAtTime(4000, t + 0.45);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.3, t + 0.04);
-      g.gain.setValueAtTime(0.3, t + 0.4);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
-      osc.connect(lp).connect(g).connect(out);
-      osc.start(t);
-      osc.stop(t + 0.56);
-      return osc;
-    });
+    this.voice(powerUpVoice);
   }
 
   /** Mode furie over: a 0.4 s triangle falling 660 → 140 Hz. */
   powerDown(): void {
-    this.voice((ctx, out, t) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(660, t);
-      osc.frequency.exponentialRampToValueAtTime(140, t + 0.38);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
-      osc.connect(g).connect(out);
-      osc.start(t);
-      osc.stop(t + 0.41);
-      return osc;
-    });
+    this.voice(powerDownVoice);
   }
 
   /**
@@ -403,21 +234,7 @@ export class GameAudio {
     if (!ctx || !this.sfxBus || this.hum || this.voices >= MAX_VOICES) return;
     try {
       const t = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      osc.type = 'sawtooth';
-      osc.frequency.value = 55;
-      const lp = ctx.createBiquadFilter();
-      lp.type = 'lowpass';
-      lp.frequency.value = 220;
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(HUM_GAIN, t + 0.3);
-      const lfo = ctx.createOscillator();
-      lfo.frequency.value = 5;
-      const depth = ctx.createGain();
-      depth.gain.value = HUM_GAIN * 0.4;
-      lfo.connect(depth).connect(gain.gain);
-      osc.connect(lp).connect(gain).connect(this.sfxBus);
+      const { osc, lfo, gain } = furieHumNodes(ctx, this.sfxBus, t);
       this.voices += 1;
       osc.onended = (): void => {
         this.voices -= 1;
@@ -458,14 +275,7 @@ export class GameAudio {
     if (!ctx || !this.sfxBus || this.chargeHum || this.voices >= MAX_VOICES) return;
     try {
       const t = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(110, t);
-      osc.frequency.exponentialRampToValueAtTime(440, t + 1);
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(0.25, t + 0.9);
-      osc.connect(gain).connect(this.sfxBus);
+      const { osc, gain } = chargeHumNodes(ctx, this.sfxBus, t);
       this.voices += 1;
       osc.onended = (): void => {
         this.voices -= 1;
@@ -497,78 +307,17 @@ export class GameAudio {
 
   /** Onde d’énergie fired: a 0.35 s bright sawtooth zap falling 1800 → 200 Hz with a noisy band-passed tail. */
   zap(): void {
-    this.voice((ctx, out, t) => {
-      const osc = ctx.createOscillator();
-      const bp = ctx.createBiquadFilter();
-      const g = ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(1800, t);
-      osc.frequency.exponentialRampToValueAtTime(200, t + 0.33);
-      bp.type = 'bandpass';
-      bp.Q.value = 0.8;
-      bp.frequency.setValueAtTime(2200, t);
-      bp.frequency.exponentialRampToValueAtTime(600, t + 0.33);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.45, t + 0.015);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
-      osc.connect(bp).connect(g).connect(out);
-      osc.start(t);
-      osc.stop(t + 0.36);
-      return osc;
-    });
+    this.voice(zapVoice);
   }
 
   /** Bouclier block: a short metallic clank (two detuned squares through a high band-pass, 0.18 s; jittered). */
   clank(): void {
-    this.voice((ctx, out, t) => {
-      const k = this.pitch();
-      const a = ctx.createOscillator();
-      const b = ctx.createOscillator();
-      const bp = ctx.createBiquadFilter();
-      const g = ctx.createGain();
-      a.type = 'square';
-      b.type = 'square';
-      a.frequency.value = 820 * k;
-      b.frequency.value = 1235 * k;
-      bp.type = 'bandpass';
-      bp.frequency.value = 2400 * k;
-      bp.Q.value = 2;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.4, t + 0.005);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
-      a.connect(bp);
-      b.connect(bp);
-      bp.connect(g).connect(out);
-      a.start(t);
-      b.start(t);
-      a.stop(t + 0.19);
-      b.stop(t + 0.19);
-      return a;
-    });
+    this.voice((ctx, out, t) => clankVoice(ctx, out, t, this.pitch()));
   }
 
   /** Thrown Molotov: a 0.35 s noise burst through a band-pass sweeping down (whoosh). */
   whoosh(): void {
-    this.voice((ctx, out, t) => {
-      const len = Math.floor(ctx.sampleRate * 0.35);
-      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      const bp = ctx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.Q.value = 1.2;
-      bp.frequency.setValueAtTime(2400, t);
-      bp.frequency.exponentialRampToValueAtTime(400, t + 0.33);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.6, t + 0.08);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
-      src.connect(bp).connect(g).connect(out);
-      src.start(t);
-      return src;
-    });
+    this.voice(whooshVoice);
   }
 
   /**
@@ -576,26 +325,7 @@ export class GameAudio {
    * 0.32 s per note, 4 notes); police: a quicker, higher pair (square 660 / 880 Hz through a low-pass, 0.18 s, 6 notes).
    */
   siren(kind: 'fire' | 'police'): void {
-    this.voice((ctx, out, t) => {
-      const [lo, hi, note, notes, type] =
-        kind === 'fire' ? [435, 580, 0.32, 4, 'triangle' as const] : [660, 880, 0.18, 6, 'square' as const];
-      const osc = ctx.createOscillator();
-      const lp = ctx.createBiquadFilter();
-      const g = ctx.createGain();
-      osc.type = type;
-      for (let i = 0; i < notes; i++) osc.frequency.setValueAtTime(i % 2 === 0 ? hi : lo, t + i * note);
-      lp.type = 'lowpass';
-      lp.frequency.value = 2200;
-      const end = t + notes * note;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.28, t + 0.03);
-      g.gain.setValueAtTime(0.28, end - 0.06);
-      g.gain.exponentialRampToValueAtTime(0.0001, end);
-      osc.connect(lp).connect(g).connect(out);
-      osc.start(t);
-      osc.stop(end + 0.01);
-      return osc;
-    });
+    this.voice((ctx, out, t) => sirenVoice(ctx, out, t, kind));
   }
 
   /** Maps sim events to sounds (a thrown enemy rock sounds when it actually spawns: EnemyRockThrown). */
