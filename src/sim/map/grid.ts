@@ -17,6 +17,8 @@ export class Grid {
   private readonly solid: Uint8Array;
   private readonly props: Rect[];
   private readonly groups: Rect[];
+  /** Per tile, for isSolidPx: EMPTY (no shape touches it), FULL (inside one rect) or PARTIAL (scan the shapes). */
+  private readonly cover: Uint8Array;
 
   constructor(
     private readonly d: District,
@@ -43,6 +45,7 @@ export class Grid {
         this.solid[ty * this.tiles + tx] = s ? 1 : 0;
       }
     }
+    this.cover = pixelCover(d, this.props, this.groups, this.tiles, tile);
   }
 
   /** Out-of-bounds counts as solid. */
@@ -54,6 +57,10 @@ export class Grid {
   /** Exact (pixel) solidity of a point: map edge, buildings, trunk circles, group areas. */
   isSolidPx(p: Vec): boolean {
     if (p.x < 0 || p.y < 0 || p.x >= this.size || p.y >= this.size) return true;
+    // hot path (lineClear samples every 4 px): most points fall in a tile that no shape touches
+    const c = this.cover[Math.floor(p.y / this.tile) * this.tiles + Math.floor(p.x / this.tile)];
+    if (c === EMPTY) return false;
+    if (c === FULL) return true;
     for (const b of this.d.buildings) if (inRect(p, b)) return true;
     for (const r of this.props) if (inRect(p, r)) return true;
     if (this.isGroup(p)) return true;
@@ -91,4 +98,35 @@ export class Grid {
 
 function overlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+const EMPTY = 0;
+const FULL = 1;
+const PARTIAL = 2;
+
+/**
+ * Tile cover for isSolidPx, exact for any geometry: a tile no solid shape overlaps (rect, or a trunk's bounding box) is
+ * EMPTY; a tile lying wholly inside a building, prop or group rect is FULL; any other touched tile is PARTIAL.
+ */
+function pixelCover(d: District, props: Rect[], groups: Rect[], n: number, tile: number): Uint8Array {
+  const rects = [...d.buildings, ...props, ...groups];
+  const boxes = d.trunks.map((c) => ({ x: c.x - c.r, y: c.y - c.r, w: 2 * c.r, h: 2 * c.r }));
+  const cover = new Uint8Array(n * n);
+  for (let ty = 0; ty < n; ty++) {
+    for (let tx = 0; tx < n; tx++) {
+      const t: Rect = { x: tx * tile, y: ty * tile, w: tile, h: tile };
+      let c = EMPTY;
+      for (const r of rects) {
+        if (!overlap(t, r)) continue;
+        if (t.x >= r.x && t.y >= r.y && t.x + t.w <= r.x + r.w && t.y + t.h <= r.y + r.h) {
+          c = FULL;
+          break;
+        }
+        c = PARTIAL;
+      }
+      if (c === EMPTY && boxes.some((b) => overlap(t, b))) c = PARTIAL;
+      cover[ty * n + tx] = c;
+    }
+  }
+  return cover;
 }
