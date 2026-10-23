@@ -1,3 +1,4 @@
+import { t } from '../../content/i18n';
 import type { RoundPanel } from './format';
 import { el, type Cache } from './hudDom';
 
@@ -56,7 +57,7 @@ export function renderRound(c: Cache, r: RoundEls, p: RoundPanel | null): boolea
     r.obj.replaceChildren(
       ...p.objectives.map((o) => {
         const li = el('li', o.ok ? 'ok' : 'bad');
-        li.append(`${o.name} : `, el('b', '', o.result));
+        li.append(t('hud.round.objective', { name: o.name }), el('b', '', o.result));
         return li;
       }),
     );

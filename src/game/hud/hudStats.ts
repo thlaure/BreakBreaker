@@ -1,7 +1,8 @@
+import { t, type Key } from '../../content/i18n';
 import { CONFIG } from '../../sim/config';
 import type { Snapshot } from '../../sim/sim';
-import { ENERGY_REFUSED_HINT, energyView, itemsLine, roundValue, waveLine, weaponValue } from './format';
-import { aria, el, statRow, type Cache } from './hudDom';
+import { energyRefusedHint, energyView, itemsLine, roundValue, waveLine, weaponValue } from './format';
+import { aria, el, statRow, type Cache, type StatRow } from './hudDom';
 
 const SLOTS = CONFIG.rock.maxCarried;
 
@@ -9,20 +10,21 @@ const SLOTS = CONFIG.rock.maxCarried;
 export class StatsPanel {
   /** Score list (top-left, pixel font): one row per stat, in order. */
   readonly list = el('ul', 'bb-stats');
+  // « SCORE » is the same word in both languages
   private readonly score = statRow('score', 'SCORE');
-  private readonly kos = statRow('kos', 'NEUTRALISÉS');
-  private readonly wave = statRow('wave', 'MANCHE');
-  private readonly rocks = statRow('rocks minor', 'PIERRES');
-  private readonly weapon = statRow('weapon minor', 'ARME');
+  private readonly kos = statRow('kos', t('hud.stat.kos'));
+  private readonly wave = statRow('wave', t('hud.stat.wave'));
+  private readonly rocks = statRow('rocks minor', t('hud.stat.rocks'));
+  private readonly weapon = statRow('weapon minor', t('hud.stat.weapon'));
   /** The energy gauge: a segmented pixel bar (a tick at 50 %; the bar's end is 100 %) and what it allows (« C · Onde », « R · Furie »). */
-  private readonly energy = statRow('energy minor', 'ÉNERGIE');
+  private readonly energy = statRow('energy minor', t('hud.stat.energy'));
   private readonly energyBar = el('span', 'ebar');
   private readonly energyFill = el('span', 'efill');
   private readonly energyTag = el('span', 'etag');
   /** Gauge value last shown (the bar pops when it goes up). */
   private lastEnergy = Number.NaN;
   /** Belongings Paul carries back to the rescue victim (hidden when none). */
-  private readonly items = statRow('items minor', 'OBJETS');
+  private readonly items = statRow('items minor', t('hud.stat.items'));
   private readonly slots: HTMLElement[] = [];
   /** Round number last shown (the row pulses once when it changes). */
   private lastWave = -1;
@@ -41,8 +43,22 @@ export class StatsPanel {
     this.energyBar.append(this.energyFill, el('i', 'tick t50'));
     this.energyBar.addEventListener('animationend', () => this.energyBar.classList.remove('pop'));
     this.energy.val.append(this.energyBar, this.energyTag);
-    this.list.setAttribute('aria-label', 'Score');
+    this.list.setAttribute('aria-label', t('hud.stats.aria'));
     this.list.append(...[this.score, this.kos, this.wave, this.rocks, this.weapon, this.energy, this.items].map((r) => r.li));
+  }
+
+  /** Rewrites the labels in the current locale (the values follow on the next update). */
+  relabel(): void {
+    const rows: [StatRow, Key][] = [
+      [this.kos, 'hud.stat.kos'],
+      [this.wave, 'hud.stat.wave'],
+      [this.rocks, 'hud.stat.rocks'],
+      [this.weapon, 'hud.stat.weapon'],
+      [this.energy, 'hud.stat.energy'],
+      [this.items, 'hud.stat.items'],
+    ];
+    for (const [row, key] of rows) row.lbl.textContent = t(key);
+    this.list.setAttribute('aria-label', t('hud.stats.aria'));
   }
 
   /** The score list: values, the score pop (only when it goes up) and the round pulse (when the round changes). */
@@ -60,7 +76,7 @@ export class StatsPanel {
       }
     }
     c.text(this.kos.val, String(s.kos));
-    aria(this.kos.li, `Casseurs neutralisés : ${s.kos}`);
+    aria(this.kos.li, t('hud.kos.aria', { n: s.kos }));
     c.text(this.wave.val, roundValue(s));
     aria(this.wave.li, waveLine(s));
     if (s.round !== this.lastWave) {
@@ -73,7 +89,7 @@ export class StatsPanel {
       this.lastWave = s.round;
     }
     this.slots.forEach((slot, i) => c.text(slot, i < s.carried ? '●' : '○'));
-    aria(this.rocks.li, `Pierres : ${s.carried} sur ${SLOTS}`);
+    aria(this.rocks.li, t('hud.rocks.aria', { n: s.carried, max: SLOTS }));
     c.text(this.weapon.val, weaponValue(s));
     this.weapon.li.classList.toggle('furie', s.furie !== null);
     const items = itemsLine(s);
@@ -87,7 +103,7 @@ export class StatsPanel {
     const v = energyView(s, touch);
     c.style(this.energyFill, `width:${v.pct.toFixed(1)}%`);
     c.cls(this.energy.li, `row energy minor st-${v.state}${refused ? ' refused' : ''}`);
-    c.text(this.energyTag, refused ? ENERGY_REFUSED_HINT : v.tag);
+    c.text(this.energyTag, refused ? energyRefusedHint() : v.tag);
     aria(this.energy.li, v.aria);
     if (s.energy.value !== this.lastEnergy) {
       const up = s.energy.value > this.lastEnergy; // false on the first frame (NaN)

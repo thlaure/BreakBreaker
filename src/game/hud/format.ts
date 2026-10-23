@@ -1,10 +1,11 @@
-import { t } from '../../content/i18n';
+import { t, type Key } from '../../content/i18n';
 import { CONFIG } from '../../sim/config';
 import { DISTRICT } from '../../sim/map/district';
 import { BOOTH_OF } from '../../sim/services';
 import type { Snapshot } from '../../sim/sim';
 import type { CasseKind, ServiceKind, TargetId, Vec } from '../../sim/types';
-import { casseurs, type IncidentKind, type RoundHeadline } from './alerts';
+import { CASSE_KINDS, casseurs, type IncidentKind, type RoundHeadline } from './alerts';
+import { liveRecord } from './liveText';
 import { jailedText } from '../render/prisonMath';
 import { ACTION_WORDS, REPAIRING_VERB } from '../render/actionHintMath';
 
@@ -14,6 +15,31 @@ import { ACTION_WORDS, REPAIRING_VERB } from '../render/actionHintMath';
  */
 export type IncidentStatus =
   'en cours' | 'interrompu' | 'renforts' | 'sécurisé' | 'en feu' | 'attaquée' | 'perdue' | 'sauvée' | 'zone contestée' | 'à reprendre';
+
+/**
+ * The status ids are stable (the card's CSS class `st-<id>` and the logic read them, whatever the language); the card
+ * shows `statusText(id)`.
+ */
+const STATUS_KEYS = {
+  'en cours': 'hud.status.active',
+  interrompu: 'hud.status.interrupted',
+  renforts: 'hud.status.backup',
+  sécurisé: 'hud.status.secured',
+  'en feu': 'hud.status.burning',
+  attaquée: 'hud.status.attacked',
+  perdue: 'hud.status.lost',
+  sauvée: 'hud.status.saved',
+  'zone contestée': 'hud.status.contested',
+  'à reprendre': 'hud.status.retake',
+} as const satisfies Record<IncidentStatus, Key>;
+
+/** The word shown for a card status, in the current locale. */
+export function statusText(status: IncidentStatus): string {
+  return t(STATUS_KEYS[status]);
+}
+
+/** « 23 s » / « 23s ». */
+const secondsText = (n: number): string => t('hud.seconds', { n });
 
 export function formatDuration(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
@@ -33,15 +59,12 @@ export interface SummaryData {
   rows: SummaryRow[];
 }
 
-/** « 1 sauvée », « 2 sauvées », « 0 sauvée » (French: 0 and 1 take the singular). */
-function count(n: number, one: string, many: string): string {
-  return `${n} ${n > 1 ? many : one}`;
-}
+type CountKey = 'hud.sum.saved' | 'hud.sum.lost' | 'hud.sum.ok' | 'hud.sum.failed';
 
-/** « 2 sauvées · 1 perdue »; « — » when nothing happened. */
-function tally(ok: number, ko: number, okWords: [string, string], koWords: [string, string]): string {
+/** « 2 sauvées · 1 perdue » (French: 0 and 1 take the singular); « — » when nothing happened. */
+function tally(ok: number, ko: number, okKey: CountKey, koKey: CountKey): string {
   if (ok === 0 && ko === 0) return '—';
-  return `${count(ok, ...okWords)} · ${count(ko, ...koWords)}`;
+  return `${t(okKey, { n: ok })} · ${t(koKey, { n: ko })}`;
 }
 
 /**
@@ -52,27 +75,28 @@ function tally(ok: number, ko: number, okWords: [string, string], koWords: [stri
 export function formatSummary(s: Snapshot, record: number | null): SummaryData {
   const st = s.stats;
   return {
-    title: s.endCause === 'quit' ? 'Session interrompue volontairement' : 'KO',
+    title: s.endCause === 'quit' ? t('hud.end.quit') : t('hud.end.ko'),
     newRecord: s.score > 0 && s.score > (record ?? 0),
     rows: [
+      // « Score » is the same word in both languages
       { label: 'Score', value: String(s.score) },
-      { label: 'Record', value: record === null ? '—' : String(record) },
-      { label: 'Manche atteinte', value: String(s.round) },
-      { label: 'Manches parfaites', value: String(st.roundsPerfect) },
-      { label: 'Casseurs neutralisés', value: String(s.kos) },
-      { label: 'Lieux sauvés / détruits', value: `${st.targetsSaved} / ${st.targetsLost}` },
-      { label: 'Lieux réparés', value: String(st.repairs) },
-      { label: 'École', value: tally(st.schoolsSaved, st.schoolsLost, ['sauvée', 'sauvées'], ['perdue', 'perdues']) },
-      { label: 'Secours', value: tally(st.rescuesOk, st.rescuesFailed, ['réussi', 'réussis'], ['raté', 'ratés']) },
-      { label: 'Objets rendus', value: String(st.itemsReturned) },
-      { label: 'Défenses du monument', value: String(st.monumentsDefended) },
-      { label: 'Drapeaux perdus', value: String(st.flagsLost) },
-      { label: 'Drapeaux repris', value: String(st.flagsCaptured) },
-      { label: 'Soins utilisés', value: String(st.healsUsed) },
-      { label: 'Pierres ramassées', value: String(st.rocksPicked) },
-      { label: 'Pierres renvoyées', value: String(st.rocksReturned) },
-      { label: 'Pierres touchées', value: String(st.rocksHit) },
-      { label: 'Durée active', value: formatDuration(st.activeSeconds) },
+      { label: t('hud.sum.record'), value: record === null ? '—' : String(record) },
+      { label: t('hud.sum.round'), value: String(s.round) },
+      { label: t('hud.sum.perfect'), value: String(st.roundsPerfect) },
+      { label: t('hud.sum.kos'), value: String(s.kos) },
+      { label: t('hud.sum.places'), value: `${st.targetsSaved} / ${st.targetsLost}` },
+      { label: t('hud.sum.repairs'), value: String(st.repairs) },
+      { label: t('hud.sum.school'), value: tally(st.schoolsSaved, st.schoolsLost, 'hud.sum.saved', 'hud.sum.lost') },
+      { label: t('hud.sum.rescue'), value: tally(st.rescuesOk, st.rescuesFailed, 'hud.sum.ok', 'hud.sum.failed') },
+      { label: t('hud.sum.items'), value: String(st.itemsReturned) },
+      { label: t('hud.sum.monument'), value: String(st.monumentsDefended) },
+      { label: t('hud.sum.flagsLost'), value: String(st.flagsLost) },
+      { label: t('hud.sum.flagsTaken'), value: String(st.flagsCaptured) },
+      { label: t('hud.sum.heals'), value: String(st.healsUsed) },
+      { label: t('hud.sum.rocksPicked'), value: String(st.rocksPicked) },
+      { label: t('hud.sum.rocksReturned'), value: String(st.rocksReturned) },
+      { label: t('hud.sum.rocksHit'), value: String(st.rocksHit) },
+      { label: t('hud.sum.time'), value: formatDuration(st.activeSeconds) },
     ],
   };
 }
@@ -88,7 +112,10 @@ export interface Prompt {
   inWorld?: boolean;
 }
 
-export const DEFAULT_ACT_LABEL = 'Agir';
+/** The touch Agir button's label when no action names it (it is hidden then). */
+export function defaultActLabel(): string {
+  return t('hud.touch.act');
+}
 
 /**
  * Contextual prompt. The actionable ones come from Snapshot.actionHint (the sim's own Agir rules, so it never lies):
@@ -107,7 +134,7 @@ export function contextPrompt(s: Snapshot, touch = false): Prompt | null {
     if (w.button === null) return { text: w.line, label: null, inWorld: true };
     return { text: touch ? w.line : `F — ${w.line}`, label: w.button, inWorld: true };
   }
-  if (nearestBooth(s)?.ruined) return { text: 'Cabine hors service', label: null };
+  if (nearestBooth(s)?.ruined) return { text: t('hud.prompt.boothOut'), label: null };
   if (kit.message) return { text: t(`toolbox.${kit.message}`), label: null };
   if (s.stationMessage) return { text: t(`station.${s.stationMessage}`), label: null };
   return null;
@@ -127,22 +154,16 @@ function nearestBooth(s: Snapshot): { kind: ServiceKind; d: number; ruined: bool
   return best;
 }
 
-export const TARGET_NAMES: Readonly<Record<CasseKind, string>> = {
-  school: 'École',
-  car: 'Voiture',
-  busStop: 'Abribus',
-  shop: 'Boutique',
-  nursery: 'Maternelle',
-  kiosk: 'Kiosque',
-  townHall: 'Mairie',
-  library: 'Bibliothèque',
-  booth: 'Cabine',
-  prison: 'Prison',
-  church: 'Église',
-};
+export const TARGET_NAMES: Readonly<Record<CasseKind, string>> = liveRecord(CASSE_KINDS, (k) => `hud.place.${k}`);
 /** Card names of the targets a kind's name does not tell apart: the two phone booths. */
-const TARGET_CARD_NAMES: Readonly<Partial<Record<TargetId, string>>> = { boothRed: 'Cabine rouge', boothBlue: 'Cabine bleue' };
-const OBJECTIVE_NAMES: Readonly<Record<RoundHeadline, string>> = { ...TARGET_NAMES, rescue: 'Secours', monument: 'Monument' };
+const TARGET_CARD_NAMES: Readonly<Partial<Record<TargetId, string>>> = liveRecord(
+  ['boothRed', 'boothBlue'] as const,
+  (id) => `hud.card.${id}`,
+);
+const OBJECTIVE_NAMES: Readonly<Record<RoundHeadline, string>> = liveRecord(
+  [...CASSE_KINDS, 'rescue', 'monument'],
+  (k) => `hud.place.${k}`,
+);
 
 export interface IncidentLine {
   /** Target id, or 'rescue'. */
@@ -166,21 +187,21 @@ export interface IncidentLine {
  */
 export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu'): IncidentLine[] {
   const out: IncidentLine[] = [];
-  const secs = (n: number): string => `${Math.ceil(n - 1e-9)} s`;
-  for (const t of s.targets) {
-    if (t.state !== 'attacked' && t.state !== 'burning') continue;
-    const hp = Math.max(0, Math.min(100, (100 * t.hp) / t.maxHp));
-    const status: IncidentStatus = t.id === 'school' && s.school.stage === 'cinematic' ? 'renforts' : t.burning ? 'en feu' : 'attaquée';
+  const secs = (n: number): string => secondsText(Math.ceil(n - 1e-9));
+  for (const tg of s.targets) {
+    if (tg.state !== 'attacked' && tg.state !== 'burning') continue;
+    const hp = Math.max(0, Math.min(100, (100 * tg.hp) / tg.maxHp));
+    const status: IncidentStatus = tg.id === 'school' && s.school.stage === 'cinematic' ? 'renforts' : tg.burning ? 'en feu' : 'attaquée';
     // the prison's card tells what is at stake: the Caïds who would walk out
-    const items = t.id === 'prison' && s.prison.jailed > 0 ? jailedText(s.prison.jailed) : null;
+    const items = tg.id === 'prison' && s.prison.jailed > 0 ? jailedText(s.prison.jailed) : null;
     out.push({
-      key: t.id,
-      kind: t.kind,
-      name: TARGET_CARD_NAMES[t.id] ?? TARGET_NAMES[t.kind],
-      time: `${Math.ceil(hp - 1e-9)} %`,
+      key: tg.id,
+      kind: tg.kind,
+      name: TARGET_CARD_NAMES[tg.id] ?? TARGET_NAMES[tg.kind],
+      time: t('hud.percent', { n: Math.ceil(hp - 1e-9) }),
       hp,
       status,
-      target: t.door,
+      target: tg.door,
       items,
     });
   }
@@ -188,8 +209,17 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
   if (r && (r.stage === 'threat' || r.stage === 'secured')) {
     const status: IncidentStatus = r.stage === 'secured' ? 'sécurisé' : rescueDrain;
     // secured, waiting for the belongings: the wait replaces the (frozen) reserve
-    const time = r.returnLeft !== null ? `Rends les objets · ${secs(r.returnLeft)}` : secs(r.remaining);
-    out.push({ key: 'rescue', kind: r.kind, name: 'Secours', time, hp: null, status, target: r.victimPos, items: rescueItemsLine(r) });
+    const time = r.returnLeft !== null ? t('hud.card.returnItems', { t: secs(r.returnLeft) }) : secs(r.remaining);
+    out.push({
+      key: 'rescue',
+      kind: r.kind,
+      name: t('hud.place.rescue'),
+      time,
+      hp: null,
+      status,
+      target: r.victimPos,
+      items: rescueItemsLine(r),
+    });
   }
   const m = s.monument;
   if (m.flag === 'palestinian') {
@@ -200,8 +230,8 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
     out.push({
       key: 'monument',
       kind: 'flag',
-      name: 'Drapeau',
-      time: `capture ${held}/${m.captureSec} s`,
+      name: t('hud.card.flag'),
+      time: t('hud.card.capture', { held, total: m.captureSec }),
       hp,
       status,
       target: m.mast,
@@ -218,12 +248,12 @@ export function incidentLines(s: Snapshot, rescueDrain: 'en cours' | 'interrompu
 export function rescueItemsLine(r: NonNullable<Snapshot['rescue']>): string | null {
   if (!r.items.some((it) => it.state !== 'held')) return null;
   const back = r.items.filter((it) => it.state === 'returned').length;
-  return `Objets ${back}/${r.items.length} rendus`;
+  return t('hud.card.itemsBack', { back, total: r.items.length });
 }
 
 /** HUD slot beside the toolbox while Paul carries belongings to hand back: « Objets 2 »; null when he carries none. */
 export function itemsLine(s: Snapshot): string | null {
-  return s.carriedItems > 0 ? `Objets ${s.carriedItems}` : null;
+  return s.carriedItems > 0 ? t('hud.items', { n: s.carriedItems }) : null;
 }
 
 /** Content of the non-modal round panel shown during the breather (null otherwise). */
@@ -243,27 +273,28 @@ export function roundPanel(s: Snapshot): RoundPanel | null {
   const sum = s.lastSummary;
   if (s.ended || s.roundPhase !== 'breather' || !sum) return null;
   const p = sum.points;
+  // « point(s) » is the same word in both languages (and « 0 points » in both)
   const pts = `${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(p)} ${Math.abs(p) === 1 ? 'point' : 'points'}`;
   return {
-    title: `Manche ${sum.index} terminée`,
-    kos: `Casseurs neutralisés : ${sum.kos}`,
+    title: t('hud.round.done', { n: sum.index }),
+    kos: t('hud.round.kos', { n: sum.kos }),
     objectives: sum.objectives.map((o) => ({ name: OBJECTIVE_NAMES[o.kind], result: t(`objective.${o.result}`), ok: o.result === 'won' })),
     points: pts,
-    bonus: sum.bonus ? `Bonus +${CONFIG.round.bonus}` : null,
-    heals: 'Soins rechargés',
-    countdown: `Manche ${sum.index + 1} dans ${Math.max(1, Math.ceil(s.breatherLeft - 1e-9))}…`,
+    bonus: sum.bonus ? t('hud.round.bonus', { n: CONFIG.round.bonus }) : null,
+    heals: t('hud.round.heals'),
+    countdown: t('hud.round.next', { n: sum.index + 1, s: Math.max(1, Math.ceil(s.breatherLeft - 1e-9)) }),
   };
 }
 
 /** Screen-reader text of Paul's health (the bar itself is drawn over his head): « Santé 85 sur 100 ». */
 export function hpLabel(hp: number, max: number): string {
-  return `Santé ${Math.max(0, Math.ceil(hp))} sur ${max}`;
+  return t('hud.hp', { hp: Math.max(0, Math.ceil(hp)), max });
 }
 
 /** HUD round line: « Manche 3 : 4/18 casseurs », or just « Manche 1 » while the round has no roster yet (intro). */
 export function waveLine(s: Snapshot): string {
-  if (s.roundTotal <= 0) return `Manche ${s.round}`;
-  return `Manche ${s.round} : ${Math.min(s.roundKos, s.roundTotal)}/${casseurs(s.roundTotal)}`;
+  if (s.roundTotal <= 0) return t('hud.round.n', { n: s.round });
+  return t('hud.round.line', { n: s.round, kos: Math.min(s.roundKos, s.roundTotal), rioters: casseurs(s.roundTotal) });
 }
 
 /** Value of the HUD « MANCHE » row: « 3 · 4/18 » (K/T casseurs), or just « 1 » while the round has no roster yet. */
@@ -277,7 +308,7 @@ export function roundValue(s: Snapshot): string {
  * (rounded up) follow, then the mode furie's: « Arme : Bâton (12) · Bouclier 14 s · Mode furie 9 s ».
  */
 export function weaponLine(s: Snapshot): string {
-  return `Arme : ${weaponText(s, 'mains nues')}`;
+  return t('hud.weapon.line', { w: weaponText(s, t('hud.weapon.bareLower')) });
 }
 
 /**
@@ -285,7 +316,7 @@ export function weaponLine(s: Snapshot): string {
  * « … · Mode furie 9 s ».
  */
 export function weaponValue(s: Snapshot): string {
-  return weaponText(s, 'Mains nues');
+  return weaponText(s, t('hud.weapon.bare'));
 }
 
 /** Whole seconds left, rounded up (at least 1 while on). */
@@ -293,8 +324,8 @@ const secs = (t: number): number => Math.max(1, Math.ceil(t - 1e-9));
 
 function weaponText(s: Snapshot, bare: string): string {
   let out = s.weapon ? `${t(`held.${s.weapon.kind}`)} (${s.weapon.uses})` : bare;
-  if (s.shield) out += ` · ${t('held.bouclier')} ${secs(s.shield.secondsLeft)} s`;
-  if (s.furie) out += ` · Mode furie ${secs(s.furie.secondsLeft)} s`;
+  if (s.shield) out += ` · ${t('held.bouclier')} ${secondsText(secs(s.shield.secondsLeft))}`;
+  if (s.furie) out += ` · ${t('hud.weapon.furie', { s: secondsText(secs(s.furie.secondsLeft)) })}`;
   return out;
 }
 
@@ -318,28 +349,30 @@ export interface EnergyView {
 export function energyView(s: Pick<Snapshot, 'energy' | 'furie'>, touch = false): EnergyView {
   const e = s.energy;
   const value = Math.max(0, Math.min(e.max, e.value));
-  const base = `Énergie ${Math.floor(value)} sur ${e.max}`;
+  const base = t('hud.energy.base', { v: Math.floor(value), max: e.max });
   if (s.furie) {
     const pct = Math.max(0, Math.min(100, (s.furie.secondsLeft / CONFIG.furie.durationSec) * 100));
-    return { pct, state: 'active', tag: 'EN FURIE', aria: `${base}, mode furie en cours` };
+    return { pct, state: 'active', tag: t('hud.energy.activeTag'), aria: t('hud.energy.active', { base }) };
   }
   const pct = e.max > 0 ? (value / e.max) * 100 : 0;
   if (e.ready.furie)
     return {
       pct,
       state: 'furie',
-      tag: touch ? 'FURIE !' : 'R · Furie',
-      aria: `${base}, mode furie disponible (${touch ? 'bouton Furie' : 'touche R'})`,
+      tag: t(touch ? 'hud.energy.furieTagTouch' : 'hud.energy.furieTag'),
+      aria: t('hud.energy.furieReady', { base, how: t(touch ? 'hud.energy.furieButton' : 'hud.energy.furieKey') }),
     };
   if (e.ready.onde)
     return {
       pct,
       state: 'onde',
-      tag: touch ? 'ONDE !' : 'C · Onde',
-      aria: `${base}, onde d’énergie disponible (${touch ? 'bouton Onde' : 'appuyer sur C'})`,
+      tag: t(touch ? 'hud.energy.ondeTagTouch' : 'hud.energy.ondeTag'),
+      aria: t('hud.energy.ondeReady', { base, how: t(touch ? 'hud.energy.ondeButton' : 'hud.energy.ondeKey') }),
     };
   return { pct, state: 'low', tag: '', aria: base };
 }
 
 /** The short hint shown after Furie or Onde was pressed with too little energy. */
-export const ENERGY_REFUSED_HINT = 'Énergie insuffisante';
+export function energyRefusedHint(): string {
+  return t('hud.energy.refused');
+}

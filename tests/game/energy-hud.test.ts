@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { CONTROLS } from '../../src/content/controls';
-import { ENERGY_REFUSED_HINT, energyView } from '../../src/game/hud/format';
+import { energyRefusedHint, energyView } from '../../src/game/hud/format';
 import { ENERGY_HINT_MS, Hud, type CameraView } from '../../src/game/hud/hud';
 import { ENERGY_CYAN, ENERGY_GOLD, HEALTH_BAR_W, energyBar } from '../../src/game/render/healthBar';
 import { CONFIG } from '../../src/sim/config';
@@ -98,7 +98,7 @@ describe('Hud ÉNERGIE row, refusal hint and touch buttons', () => {
     hud.update(withEnergy(30), view);
     hud.onEvents([{ type: 'EnergyRefused', need: 50 }]);
     hud.update(withEnergy(30), view);
-    expect(row(hud).querySelector('.etag')!.textContent).toBe(ENERGY_REFUSED_HINT);
+    expect(row(hud).querySelector('.etag')!.textContent).toBe(energyRefusedHint());
     expect(row(hud).classList.contains('refused')).toBe(true);
     vi.advanceTimersByTime(ENERGY_HINT_MS + 10);
     hud.update(withEnergy(30), view);

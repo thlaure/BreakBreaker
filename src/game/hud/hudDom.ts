@@ -7,6 +7,8 @@ export function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, t
 
 export interface StatRow {
   li: HTMLElement;
+  /** The small label (rewritten when the language changes). */
+  lbl: HTMLElement;
   val: HTMLElement;
 }
 
@@ -14,8 +16,9 @@ export interface StatRow {
 export function statRow(cls: string, label: string): StatRow {
   const li = el('li', `row ${cls}`);
   const val = el('span', 'val');
-  li.append(el('span', 'lbl', label), val);
-  return { li, val };
+  const lbl = el('span', 'lbl', label);
+  li.append(lbl, val);
+  return { li, lbl, val };
 }
 
 export function aria(node: HTMLElement, label: string): void {

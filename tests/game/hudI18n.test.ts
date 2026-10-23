@@ -102,7 +102,12 @@ describe('HUD in English', () => {
     for (const w of ['Game summary', 'Knocked out', 'Neutralized rioters', 'Round reached', 'New record!', '1 saved · 2 lost'])
       expect(text).toContain(w);
     expect(buttons(menus)).toEqual(['Play again', 'Back to the site']);
-    expect(formatSummary(snap((x) => (x.endCause = 'quit')), null).title).toBe('Game stopped by the player');
+    expect(
+      formatSummary(
+        snap((x) => (x.endCause = 'quit')),
+        null,
+      ).title,
+    ).toBe('Game stopped by the player');
     menus.destroy();
   });
 

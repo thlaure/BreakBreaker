@@ -1,4 +1,5 @@
-import { CONTROLS, RULES, SATIRE_NOTICE } from '../../content/controls';
+import { controlsFor, rulesFor, satireNoticeFor } from '../../content/controls';
+import { onLocaleChange, t } from '../../content/i18n';
 import type { SummaryData } from './format';
 import { SITE_BASE } from '../assets';
 import { renderMarkdown } from './markdown';
@@ -33,6 +34,10 @@ export class Menus {
   private panel: Panel | null = null;
   private soundBtn: HTMLButtonElement | null = null;
   private credits: string | null = null;
+  /** The summary on screen, rebuilt when the language changes. */
+  private summary: () => SummaryData = () => ({ title: '', newRecord: false, rows: [] });
+  /** Rebuilds the open panel in the new language, focus kept on the same control. */
+  private readonly offLocale = onLocaleChange(() => this.rerender());
 
   constructor(
     parent: HTMLElement,
@@ -52,7 +57,23 @@ export class Menus {
   }
 
   destroy(): void {
+    this.offLocale();
     this.root.remove();
+  }
+
+  private rerender(): void {
+    const panel = this.panel;
+    if (panel === null) return;
+    const items = [...this.root.querySelectorAll<HTMLElement>(FOCUSABLE)];
+    const at = items.indexOf(document.activeElement as HTMLElement);
+    if (panel === 'start') this.showStart();
+    else if (panel === 'controls') this.showControls();
+    else if (panel === 'pause') this.showPause();
+    else if (panel === 'help') this.showHelp();
+    else if (panel === 'credits') this.showCredits();
+    else if (panel === 'confirm') this.showConfirm();
+    else this.showSummary(this.summary);
+    if (at >= 0) this.root.querySelectorAll<HTMLElement>(FOCUSABLE)[at]?.focus();
   }
 
   close(): void {
@@ -69,114 +90,120 @@ export class Menus {
 
   showStart(): void {
     const p = this.begin('start', 'BreakBreaker');
-    p.append(h('p', 'notice', SATIRE_NOTICE));
+    p.append(h('p', 'notice', satireNoticeFor()));
     const row = h('div', 'row');
     row.append(
-      this.btn('Commencer', () => this.act.start(), 'primary'),
+      this.btn(t('hud.menu.start'), () => this.act.start(), 'primary'),
       this.sound(),
-      this.btn('Retour au site', () => this.act.leave()),
+      this.btn(t('hud.menu.backToSite'), () => this.act.leave()),
     );
-    p.append(row, h('h2', '', 'Règles'), this.rules(), h('h2', '', 'Commandes'), this.controls());
-    this.end('Commencer');
+    p.append(row, h('h2', '', t('hud.menu.rules')), this.rules(), h('h2', '', t('hud.menu.controls')), this.controls());
+    this.end(t('hud.menu.start'));
   }
 
   /** "Commandes" modal opened from the HUD button: keys and rules, closes straight back into the game. */
   showControls(): void {
-    const p = this.begin('controls', 'Commandes');
+    const p = this.begin('controls', t('hud.menu.controls'));
+    const close = t('hud.menu.close');
     // Fermer first: it takes the focus, so the modal opens at its top rather than scrolled to its end.
     p.append(
-      this.btn('Fermer', () => this.act.resume(), 'primary'),
+      this.btn(close, () => this.act.resume(), 'primary'),
       this.controls(),
-      h('h2', '', 'Règles'),
+      h('h2', '', t('hud.menu.rules')),
       this.rules(),
-      this.btn('Fermer', () => this.act.resume()),
+      this.btn(close, () => this.act.resume()),
     );
-    this.end('Fermer');
+    this.end(close);
   }
 
   showPause(from?: Panel): void {
-    const p = this.begin('pause', 'Pause');
+    const p = this.begin('pause', t('hud.menu.pause'));
     const col = h('div', 'col');
     col.append(
-      this.btn('Reprendre', () => this.act.resume(), 'primary'),
+      this.btn(t('hud.menu.resume'), () => this.act.resume(), 'primary'),
       this.sound(),
-      this.btn('Aide', () => this.showHelp()),
-      this.btn('Crédits', () => this.showCredits()),
-      this.btn('Retour au site', () => this.showConfirm()),
-      this.btn('Arrêter la partie', () => this.act.stopGame()),
+      this.btn(t('hud.menu.help'), () => this.showHelp()),
+      this.btn(t('hud.menu.credits'), () => this.showCredits()),
+      this.btn(t('hud.menu.backToSite'), () => this.showConfirm()),
+      this.btn(t('hud.menu.stop'), () => this.act.stopGame()),
     );
     p.append(col);
-    this.end(from === 'help' ? 'Aide' : from === 'credits' ? 'Crédits' : from === 'confirm' ? 'Retour au site' : 'Reprendre');
+    const back =
+      from === 'help' ? 'hud.menu.help' : from === 'credits' ? 'hud.menu.credits' : from === 'confirm' ? 'hud.menu.backToSite' : null;
+    this.end(t(back ?? 'hud.menu.resume'));
   }
 
   private showHelp(): void {
-    const p = this.begin('help', 'Aide');
+    const p = this.begin('help', t('hud.menu.help'));
     p.append(
-      h('h2', '', 'Règles'),
+      h('h2', '', t('hud.menu.rules')),
       this.rules(),
-      h('h2', '', 'Commandes'),
+      h('h2', '', t('hud.menu.controls')),
       this.controls(),
-      this.btn('Retour', () => this.showPause('help')),
+      this.btn(t('hud.menu.back'), () => this.showPause('help')),
     );
-    this.end('Retour');
+    this.end(t('hud.menu.back'));
   }
 
   private showCredits(): void {
-    const p = this.begin('credits', 'Crédits');
+    const p = this.begin('credits', t('hud.menu.credits'));
     const body = h('div', 'md');
     body.tabIndex = 0;
     body.setAttribute('role', 'region');
-    body.setAttribute('aria-label', 'Crédits');
+    body.setAttribute('aria-label', t('hud.menu.credits'));
     p.append(
       body,
-      this.btn('Retour', () => this.showPause('credits')),
+      this.btn(t('hud.menu.back'), () => this.showPause('credits')),
     );
-    this.end('Retour');
+    this.end(t('hud.menu.back'));
     const fill = (html: string): void => {
       if (this.panel === 'credits') body.innerHTML = html;
     };
     if (this.credits !== null) return fill(this.credits);
-    body.textContent = 'Chargement…';
+    body.textContent = t('hud.menu.loading');
     fetch(`${SITE_BASE}CREDITS.md`)
       .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
-      .then((t) => {
-        this.credits = renderMarkdown(t);
+      .then((md) => {
+        this.credits = renderMarkdown(md);
         fill(this.credits);
       })
       .catch(() => {
-        body.textContent = 'Crédits indisponibles pour le moment. Ils sont consultables dans le fichier CREDITS.md du site.';
+        body.textContent = t('hud.menu.creditsError');
       });
   }
 
   private showConfirm(): void {
-    const p = this.begin('confirm', 'Retour au site', 'alertdialog');
-    p.append(h('p', '', 'La partie en cours sera abandonnée.'));
+    const p = this.begin('confirm', t('hud.menu.backToSite'), 'alertdialog');
+    p.append(h('p', '', t('hud.menu.confirmText')));
     const row = h('div', 'row');
     row.append(
-      this.btn('Continuer la partie', () => this.showPause('confirm'), 'primary'),
-      this.btn('Quitter la partie', () => this.act.leave()),
+      this.btn(t('hud.menu.continue'), () => this.showPause('confirm'), 'primary'),
+      this.btn(t('hud.menu.quit'), () => this.act.leave()),
     );
     p.append(row);
-    this.end('Continuer la partie');
+    this.end(t('hud.menu.continue'));
   }
 
-  showSummary(data: SummaryData): void {
-    const p = this.begin('summary', 'Résumé de la partie');
+  /** The end screen; pass a function to have it rebuilt (texts recomputed) when the language changes. */
+  showSummary(source: SummaryData | (() => SummaryData)): void {
+    this.summary = typeof source === 'function' ? source : () => source;
+    const data = this.summary();
+    const p = this.begin('summary', t('hud.menu.summary'));
     const dl = h('dl', 'summary');
     const add = (k: string, v: string): void => {
       dl.append(h('dt', '', k), h('dd', '', v));
     };
-    add('Cause', data.title);
+    add(t('hud.menu.cause'), data.title);
     for (const r of data.rows) add(r.label, r.value);
     p.append(dl);
-    if (data.newRecord) p.append(h('p', 'record', 'Nouveau record !'));
+    if (data.newRecord) p.append(h('p', 'record', t('hud.menu.newRecord')));
     const row = h('div', 'row');
     row.append(
-      this.btn('Rejouer', () => this.act.replay(), 'primary'),
-      this.btn('Retour au site', () => this.act.leave()),
+      this.btn(t('hud.menu.replay'), () => this.act.replay(), 'primary'),
+      this.btn(t('hud.menu.backToSite'), () => this.act.leave()),
     );
     p.append(row);
-    this.end('Rejouer');
+    this.end(t('hud.menu.replay'));
   }
 
   private begin(panel: Panel, title: string, role: 'dialog' | 'alertdialog' = 'dialog'): HTMLElement {
@@ -188,10 +215,10 @@ export class Menus {
     const p = h('div', 'bb-panel');
     p.setAttribute('role', role);
     p.setAttribute('aria-modal', 'true');
-    const t = h('h1', '', title);
-    t.id = 'bb-title';
+    const head = h('h1', '', title);
+    head.id = 'bb-title';
     p.setAttribute('aria-labelledby', 'bb-title');
-    p.append(t);
+    p.append(head);
     this.root.append(p);
     return p;
   }
@@ -222,24 +249,24 @@ export class Menus {
 
   private paintSound(): void {
     if (!this.soundBtn) return;
-    this.soundBtn.textContent = this.muted ? 'Son : coupé' : 'Son : activé';
+    this.soundBtn.textContent = t(this.muted ? 'hud.menu.soundOff' : 'hud.menu.soundOn');
     this.soundBtn.setAttribute('aria-pressed', String(!this.muted));
   }
 
   private rules(): HTMLElement {
     const ul = h('ul', 'rules');
-    for (const r of RULES) ul.append(h('li', '', r));
+    for (const r of rulesFor()) ul.append(h('li', '', r));
     return ul;
   }
 
   private controls(): HTMLElement {
     const wrap = h('div', 'controls');
-    for (const c of CONTROLS) {
+    for (const c of controlsFor()) {
       const row = h('div', 'ctl');
       const kb = h('div', '');
-      kb.append(h('span', 'dev', 'Clavier / souris : '), document.createTextNode(c.keyboard));
+      kb.append(h('span', 'dev', t('hud.menu.keyboard')), document.createTextNode(c.keyboard));
       const touch = h('div', '');
-      touch.append(h('span', 'dev', 'Tactile : '), document.createTextNode(c.touch));
+      touch.append(h('span', 'dev', t('hud.menu.touch')), document.createTextNode(c.touch));
       row.append(h('b', '', c.action), kb, touch);
       wrap.append(row);
     }

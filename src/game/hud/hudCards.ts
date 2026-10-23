@@ -1,7 +1,7 @@
 import { CONFIG } from '../../sim/config';
 import type { Snapshot } from '../../sim/sim';
 import { incidentLook, pixelSvg, type AlertIcon } from './alerts';
-import type { IncidentLine } from './format';
+import { statusText, type IncidentLine } from './format';
 import { el, type Cache } from './hudDom';
 
 const TILE = CONFIG.tile;
@@ -59,7 +59,7 @@ export function renderCard(c: Cache, card: Card, line: IncidentLine, s: Snapshot
     // a target's health turns red when low; the flag's capture bar fills up (no alarm colour)
     c.cls(card.fill, line.kind === 'flag' ? 'fill capture' : line.hp <= 30 ? 'fill low' : 'fill');
   }
-  c.text(card.status, line.status);
+  c.text(card.status, statusText(line.status));
   card.items.hidden = line.items === null;
   c.text(card.items, line.items ?? '');
   const tiles = Math.round(Math.hypot(line.target.x - s.player.pos.x, line.target.y - s.player.pos.y) / TILE);
