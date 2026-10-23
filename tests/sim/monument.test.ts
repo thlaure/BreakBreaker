@@ -74,7 +74,7 @@ describe('monument map', () => {
       P.x < r.x + r.w && P.x + P.w > r.x && P.y < r.y + r.h && P.y + P.h > r.y;
     for (const b of DISTRICT.buildings) expect(hit(b)).toBe(false);
     for (const t of DISTRICT.targets) expect(hit(t.footprint)).toBe(false);
-    expect(hit(DISTRICT.peacefulGroup.area)).toBe(false);
+    for (const gr of DISTRICT.peacefulGroups) expect(hit(gr.area)).toBe(false);
     for (const s of [...DISTRICT.stations, ...DISTRICT.kitSites, ...DISTRICT.rescueSites, DISTRICT.playerSpawn])
       expect(Math.hypot(s.x - M.zone.x, s.y - M.zone.y)).toBeGreaterThan(M.zone.r);
     for (const c of DISTRICT.trunks) expect(hit({ x: c.x - c.r, y: c.y - c.r, w: 2 * c.r, h: 2 * c.r })).toBe(false);

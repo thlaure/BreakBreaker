@@ -60,6 +60,16 @@ export function segmentRectEntry(a: Vec, b: Vec, r: Rect): number | null {
   return hit ? t0 : null;
 }
 
+/** t in [0,1] at which segment a→b first enters any peaceful group's area, or null. */
+export function groupsEntry(a: Vec, b: Vec): number | null {
+  let first: number | null = null;
+  for (const g of DISTRICT.peacefulGroups) {
+    const t = segmentRectEntry(a, b, g.area);
+    if (t !== null && (first === null || t < first)) first = t;
+  }
+  return first;
+}
+
 /**
  * Deterministic session facade driven one fixed step at a time by the Phaser layer.
  * Step order: player move → sweep/punch/shot/return → hostiles → queue entries (the first shooter brings a flashball)
@@ -417,7 +427,6 @@ export class Sim {
   }
 
   private rockCtx(victimPos: Vec | null): RockCtx {
-    const area = DISTRICT.peacefulGroup.area;
     const p = this.player;
     return {
       player: {
@@ -427,14 +436,13 @@ export class Sim {
         shield: this.combat.shield(),
       },
       hostiles: this.horde.views(),
-      groupBlocks: (a, b) => segmentRectEntry(a, b, area),
+      groupBlocks: groupsEntry,
       victimPos,
     };
   }
 
   private bulletCtx(victimPos: Vec | null) {
     const p = this.player;
-    const area = DISTRICT.peacefulGroup.area;
     return {
       player: {
         pos: p.pos,
@@ -443,7 +451,7 @@ export class Sim {
         shield: this.combat.shield(),
       },
       hostiles: this.horde.views(),
-      groupBlocks: (a: Vec, b: Vec) => segmentRectEntry(a, b, area),
+      groupBlocks: groupsEntry,
       victimPos,
     };
   }

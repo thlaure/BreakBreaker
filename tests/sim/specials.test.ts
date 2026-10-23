@@ -345,7 +345,7 @@ describe('onde d’énergie: beam geometry', () => {
     expect(c.to.y).toBeGreaterThanOrEqual(car.y + car.h);
 
     // the peaceful group stops it and is never hit
-    const g = DISTRICT.peacefulGroup.area;
+    const g = DISTRICT.peacefulGroups[0]!.area;
     const left = { x: g.x - 60, y: g.y + g.h / 2 };
     expect(grid.isSolidPx(left)).toBe(false);
     const d = beam(left, { x: 1, y: 0 }, [view(4, { x: g.x + g.w + 30, y: left.y })], grid);
@@ -506,7 +506,7 @@ describe('onde d’énergie: charge and fire (Sim)', () => {
 
   test('the beam stops at a building and never reaches rioters behind the peaceful group', () => {
     const sim = armed();
-    const g = DISTRICT.peacefulGroup.area;
+    const g = DISTRICT.peacefulGroups[0]!.area;
     sim.player.pos = { x: g.x - 60, y: g.y + g.h / 2 };
     sim.step(PRESS);
     for (let i = 0; i < STEPS(CONFIG.kamehame.chargeSec) - 1; i++) sim.step(IDLE);

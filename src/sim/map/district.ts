@@ -27,7 +27,7 @@ export interface TargetDef {
 }
 
 /** Decor fronts (render only): ordinary solid buildings, never targets, no interaction. */
-export type DecorId = 'caf' | 'pouletCrousti';
+export type DecorId = 'caf' | 'pouletCrousti' | 'chateau' | 'sauna';
 export interface DecorDef {
   id: DecorId;
   /** The sign text painted on its roof edge. */
@@ -42,7 +42,8 @@ export interface District {
   tiles: 48;
   buildings: Rect[];
   trunks: Circle[];
-  peacefulGroup: { area: Rect; members: Vec[] };
+  /** Peaceful protesters on the main square: each `area` is solid, its `members` stand inside it. */
+  peacefulGroups: { area: Rect; members: Vec[] }[];
   school: { footprint: Rect; facadePoints: Vec[]; zone: Circle; door: Vec };
   stations: Vec[];
   playerSpawn: Vec;
@@ -82,6 +83,13 @@ function prop(id: TargetId, kind: CasseKind, footprint: Rect, attackPoints: Vec[
   };
 }
 
+/** A peaceful group on a 3×2-tile area: six members, one per tile centre. */
+function group(tx: number, ty: number): { area: Rect; members: Vec[] } {
+  const members: Vec[] = [];
+  for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 3; dx++) members.push(C(tx + dx, ty + dy));
+  return { area: R(tx, ty, 3, 2), members };
+}
+
 /** A 100 hp building target on one of DISTRICT.buildings (its footprint), attacked from the street in front of `door`. */
 function building(id: TargetId, kind: CasseKind, footprint: Rect, attackPoints: Vec[], door: Vec): TargetDef {
   return { id, kind, footprint, attackPoints, door, prop: false, maxHp: 100 };
@@ -91,17 +99,18 @@ export const DISTRICT: District = {
   tiles: 48,
   buildings: [
     R(4, 4, 8, 5), // 0: school (north-west)
-    R(15, 3, 6, 4), // 1: town hall (north)
+    R(14, 27, 6, 4), // 1: town hall (south-west of the main square)
     R(26, 4, 7, 5), // 2: « CAF » office (decor)
     R(36, 3, 8, 5),
     R(4, 14, 6, 5),
     R(12, 15, 4, 4), // 5: retro video-game shop
-    R(14, 26, 6, 5),
-    R(30, 28, 7, 5),
+    R(25, 25, 4, 5), // 6: church (south-east of the central plaza, the heart of the main square)
+    R(27, 14, 6, 4), // 7: château (decor, north-east of the square, its balcony facing it)
     R(38, 16, 6, 6), // 8: « POULET CROUSTI » fast food (decor)
     R(6, 30, 7, 6), // 9: nursery school (south-west)
     R(22, 38, 8, 5), // 10: library (south)
     R(38, 36, 6, 6), // 11: prison (south-east)
+    R(31, 29, 4, 3), // 12: sauna (decor, south-east of the square)
   ],
   trunks: [
     { ...C(10, 11), r: 6 },
@@ -113,17 +122,9 @@ export const DISTRICT: District = {
     { ...C(10, 44), r: 6 },
     { ...C(32, 44), r: 6 },
   ],
-  peacefulGroup: {
-    area: R(24, 18, 4, 3),
-    members: [
-      { x: 792, y: 600 },
-      { x: 832, y: 600 },
-      { x: 872, y: 600 },
-      { x: 792, y: 648 },
-      { x: 832, y: 648 },
-      { x: 872, y: 648 },
-    ],
-  },
+  // three peaceful groups on the main square: north-west, east and south-west of the church (the plaza between the
+  // town hall, the church and the château stays open)
+  peacefulGroups: [group(22, 16), group(30, 25), group(22, 32)],
   school: {
     footprint: R(4, 4, 8, 5),
     facadePoints: [C(5, 9), C(6, 9), C(8, 9), C(9, 9)],
@@ -146,7 +147,8 @@ export const DISTRICT: District = {
     },
     prop('car1', 'car', R(17, 10, 2, 1), [C(16, 10), C(19, 10), C(17, 11), C(18, 11)]),
     prop('car2', 'car', R(26, 34, 2, 1), [C(25, 34), C(28, 34), C(26, 35), C(27, 35)]),
-    prop('busStop', 'busStop', R(28, 13, 2, 1), [C(27, 13), C(30, 13), C(28, 14), C(29, 14)]),
+    // the bus stop on the north street, between the CAF and the town hall (the château took its old block)
+    prop('busStop', 'busStop', R(23, 11, 2, 1), [C(22, 11), C(25, 11), C(23, 12), C(24, 12)]),
     {
       // the retro video-game shop (« MICRO RÉTRO ») on building 5
       id: 'shop',
@@ -159,9 +161,9 @@ export const DISTRICT: District = {
     },
     // Phase C places (§12.2): open from round 5 (nursery, kiosk), 7 (town hall), 9 (library), CONFIG.casse.fromRound
     building('nursery', 'nursery', R(6, 30, 7, 6), [C(7, 36), C(8, 36), C(10, 36), C(11, 36)], C(9, 36)),
-    // the newspaper kiosk on the open ground south of building 7, a free tile all around it
+    // the newspaper kiosk on the open ground south-east, a free tile all around it
     prop('kiosk', 'kiosk', R(34, 40, 2, 1), [C(33, 40), C(36, 40), C(34, 41), C(35, 41)]),
-    building('townHall', 'townHall', R(15, 3, 6, 4), [C(16, 7), C(17, 7), C(19, 7), C(20, 7)], C(18, 7)),
+    building('townHall', 'townHall', R(14, 27, 6, 4), [C(15, 31), C(16, 31), C(18, 31), C(19, 31)], C(17, 31)),
     building('library', 'library', R(22, 38, 8, 5), [C(24, 43), C(25, 43), C(27, 43), C(28, 43)], C(26, 43)),
     // the two phone booths side by side on the centre-west plaza (red: fire truck, blue: police), a free tile all
     // around the island; open to attacks from round 3 (CONFIG.casse.fromRound.booth). Paul calls from the street row
@@ -180,8 +182,10 @@ export const DISTRICT: District = {
   decor: [
     { id: 'caf', sign: 'CAF', footprint: R(26, 4, 7, 5), door: C(29, 9) },
     { id: 'pouletCrousti', sign: 'POULET CROUSTI', footprint: R(38, 16, 6, 6), door: C(41, 22) },
+    { id: 'chateau', sign: 'CHÂTEAU', footprint: R(27, 14, 6, 4), door: C(30, 18) },
+    { id: 'sauna', sign: 'SAUNA', footprint: R(31, 29, 4, 3), door: C(33, 32) },
   ],
-  kitSites: [C(18, 12), C(28, 25), C(8, 26), C(36, 44)],
+  kitSites: [C(18, 12), C(23, 28), C(8, 26), C(36, 44)],
   monument: {
     plinth: R(33, 21, 2, 2),
     zone: { x: 1088, y: 704, r: 112 },

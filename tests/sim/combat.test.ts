@@ -66,10 +66,11 @@ test('sweep cannot reach through a building or the group (RC-24)', () => {
   const p = createPlayer({ x: 372, y: 510 });
   p.facing = { x: 1, y: -1 };
   expect(sweep(p, 0, [view(1, { x: 410, y: 472 })], grid).hits).toEqual([]);
-  // group area x 768..896, y 576..672
-  const q = createPlayer({ x: 760, y: 610 });
+  // the first peaceful group: Paul just west of it, hostile just north of it, line crosses the corner
+  const g = DISTRICT.peacefulGroups[0]!.area;
+  const q = createPlayer({ x: g.x - 8, y: g.y + 34 });
   q.facing = { x: 1, y: -1 };
-  expect(sweep(q, 0, [view(2, { x: 798, y: 568 })], grid).hits).toEqual([]);
+  expect(sweep(q, 0, [view(2, { x: g.x + 30, y: g.y - 8 })], grid).hits).toEqual([]);
   // control: same geometry in open ground hits
   const c = createPlayer({ x: 656, y: 760 });
   c.facing = { x: 1, y: -1 };

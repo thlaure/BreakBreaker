@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { DISTRICT } from '../../src/sim/map/district';
+import { DISTRICT, targetDoor, type Rect } from '../../src/sim/map/district';
 import { Grid } from '../../src/sim/map/grid';
 import { moveCircle } from '../../src/sim/map/collide';
 import { FlowField } from '../../src/sim/map/flowfield';
@@ -10,7 +10,17 @@ const grid = new Grid(DISTRICT);
 const open = { x: 700, y: 1100 };
 const b0 = DISTRICT.buildings[0]!;
 const leftOfBuilding = { x: b0.x - 40, y: b0.y + b0.h / 2 };
-const g = DISTRICT.peacefulGroup.area;
+const g = DISTRICT.peacefulGroups[0]!.area;
+const C = (tx: number, ty: number) => ({ x: tx * 32 + 16, y: ty * 32 + 16 });
+const R = (tx: number, ty: number, tw: number, th: number): Rect => ({ x: tx * 32, y: ty * 32, w: tw * 32, h: th * 32 });
+/** Gap between two rects (0 when they touch or overlap). */
+const rectGap = (a: Rect, b: Rect): number =>
+  Math.hypot(Math.max(b.x - (a.x + a.w), 0, a.x - (b.x + b.w)), Math.max(b.y - (a.y + a.h), 0, a.y - (b.y + b.h)));
+const overlaps = (a: Rect, b: Rect): boolean => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+/** The square's doors: town hall, church, château, sauna. */
+const CHURCH_DOOR = C(27, 30);
+const decorDoor = (id: string) => DISTRICT.decor.find((d) => d.id === id)!.door;
+const squareDoors = () => [targetDoor('townHall'), CHURCH_DOOR, decorDoor('chateau'), decorDoor('sauna')];
 const frontOfGroup = { x: g.x - 32, y: g.y + g.h / 2 };
 const behindGroup = { x: g.x + g.w + 32, y: g.y + g.h / 2 };
 
@@ -103,8 +113,55 @@ describe('map', () => {
       expect(grid.isSolidPx(p)).toBe(false);
       expect(grid.isGroup(p)).toBe(false);
     }
-    expect(d.peacefulGroup.members.every((m) => grid.isGroup(m))).toBe(true);
+    for (const gr of d.peacefulGroups) expect(gr.members.every((m) => grid.isGroup(m))).toBe(true);
     expect(d.school.facadePoints.length).toBeGreaterThanOrEqual(3);
+  });
+  test('the main square: town hall on slot 1, church on slot 6, château on slot 7, sauna appended on slot 12', () => {
+    const b = DISTRICT.buildings;
+    expect(b).toHaveLength(13);
+    expect(b[1]).toEqual(R(14, 27, 6, 4));
+    expect(b[6]).toEqual(R(25, 25, 4, 5));
+    expect(b[7]).toEqual(R(27, 14, 6, 4));
+    expect(b[12]).toEqual(R(31, 29, 4, 3));
+    const th = DISTRICT.targets.find((t) => t.id === 'townHall')!;
+    expect(th.footprint).toEqual(b[1]);
+    expect(th.door).toEqual(C(17, 31));
+    expect(DISTRICT.decor.find((d) => d.id === 'chateau')).toMatchObject({ sign: 'CHÂTEAU', footprint: b[7], door: C(30, 18) });
+    expect(DISTRICT.decor.find((d) => d.id === 'sauna')).toMatchObject({ sign: 'SAUNA', footprint: b[12], door: C(33, 32) });
+    // church, château and sauna are no targets yet; the monument stays where it was
+    for (const i of [6, 7, 12]) for (const t of DISTRICT.targets) expect(overlaps(t.footprint, b[i]!)).toBe(false);
+    expect(DISTRICT.monument.plinth).toEqual(R(33, 21, 2, 2));
+  });
+  test('three peaceful groups, 6 members each, none overlapping a building, the monument or each other', () => {
+    const groups = DISTRICT.peacefulGroups;
+    expect(groups).toHaveLength(3);
+    const props = DISTRICT.targets.filter((t) => t.prop).map((t) => t.footprint);
+    for (const gr of groups) {
+      expect(gr.members).toHaveLength(6);
+      for (const m of gr.members)
+        expect(m.x > gr.area.x && m.x < gr.area.x + gr.area.w && m.y > gr.area.y && m.y < gr.area.y + gr.area.h).toBe(true);
+      for (const b of [...DISTRICT.buildings, ...props, DISTRICT.monument.plinth]) expect(rectGap(gr.area, b)).toBeGreaterThan(0);
+      expect(rectGap(gr.area, DISTRICT.monument.plinth)).toBeGreaterThanOrEqual(64);
+      for (const t of DISTRICT.trunks) expect(grid.isGroup(t)).toBe(false);
+      for (const o of groups) if (o !== gr) expect(rectGap(gr.area, o.area)).toBeGreaterThanOrEqual(64);
+    }
+  });
+  test('every spawn, heal station, kit site and Paul’s start is free and >= 64 px from the square’s doors', () => {
+    const pts = [DISTRICT.playerSpawn, ...DISTRICT.hostileSpawns, ...DISTRICT.stations, ...DISTRICT.kitSites];
+    for (const p of pts) {
+      expect(grid.isSolidPx(p)).toBe(false);
+      expect(grid.circleBlocked(p, 7)).toBe(false);
+      expect(grid.isGroup(p)).toBe(false);
+      for (const door of squareDoors()) expect(dist(p, door)).toBeGreaterThanOrEqual(64);
+    }
+  });
+  test('a flow-field path exists from each hostile spawn to the church door and the town hall door', () => {
+    for (const door of [CHURCH_DOOR, targetDoor('townHall')]) {
+      expect(grid.circleBlocked(door, 7)).toBe(false);
+      const ff = new FlowField(grid);
+      ff.rebuild(door);
+      for (const s of DISTRICT.hostileSpawns) expect(ff.stepsAt(s)).toBeGreaterThanOrEqual(0);
+    }
   });
   test('spatial hash returns only nearby entities', () => {
     const h = new SpatialHash<{ id: number; pos: { x: number; y: number } }>(64);

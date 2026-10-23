@@ -15,39 +15,36 @@ const GRUMBLE_SHOW_MS = 2800;
 /** Tail tip of the group's bubble: above the blue marker. */
 const GROUP_BUBBLE_Y = -56;
 
-/** Peaceful protesters: calm idle, a light sign above each, one blue neutral icon above the group, and a cross bubble. */
+/** Peaceful protesters: calm idle, a light sign above each, one blue neutral icon above each group, and a cross bubble. */
 export class GroupView {
   private readonly members: { sprite: Phaser.GameObjects.Sprite; sign: Phaser.GameObjects.Container; baseY: number }[] = [];
-  private readonly bubble: Bubble;
-  private readonly bubbleX: number;
-  private readonly bubbleY: number;
+  private readonly bubbles: { bubble: Bubble; x: number; y: number }[] = [];
 
   constructor(scene: Phaser.Scene) {
-    const { area, members } = DISTRICT.peacefulGroup;
-    members.forEach((m, i) => {
-      const sheet = `protester_${(i % 4) + 1}`;
-      const sprite = scene.add.sprite(m.x, m.y, sheet, idleFrame(sheet, 's')).setOrigin(0.5, FEET_ORIGIN_Y).setDepth(m.y);
-      const stick = scene.add.rectangle(0, 0, 1, 14, 0x6b5440).setOrigin(0.5, 0);
-      const board = scene.add
-        .rectangle(0, 0, 16, 10, SIGN_COLORS[i % SIGN_COLORS.length]!)
-        .setStrokeStyle(1, 0x3a3546)
-        .setOrigin(0.5, 1);
-      const sign = scene.add.container(m.x + 7, m.y - 48, [stick, board]).setDepth(m.y + 0.1);
-      this.members.push({ sprite, sign, baseY: m.y });
-    });
-    // blue neutral marker (a calm "i"), never a threat colour
-    const icon = scene.add.graphics().setDepth(DEPTH.overlay);
-    const cx = area.x + area.w / 2;
-    const cy = area.y - 44;
-    icon.fillStyle(0x2f6fd6, 1).fillCircle(cx, cy, 7);
-    icon.lineStyle(1, 0xffffff, 1).strokeCircle(cx, cy, 7);
-    icon
-      .fillStyle(0xffffff, 1)
-      .fillRect(cx - 1, cy - 1, 2, 5)
-      .fillRect(cx - 1, cy - 4, 2, 2);
-    this.bubble = new Bubble(scene);
-    this.bubbleX = cx;
-    this.bubbleY = area.y + GROUP_BUBBLE_Y;
+    for (const { area, members } of DISTRICT.peacefulGroups) {
+      members.forEach((m, i) => {
+        const sheet = `protester_${(i % 4) + 1}`;
+        const sprite = scene.add.sprite(m.x, m.y, sheet, idleFrame(sheet, 's')).setOrigin(0.5, FEET_ORIGIN_Y).setDepth(m.y);
+        const stick = scene.add.rectangle(0, 0, 1, 14, 0x6b5440).setOrigin(0.5, 0);
+        const board = scene.add
+          .rectangle(0, 0, 16, 10, SIGN_COLORS[i % SIGN_COLORS.length]!)
+          .setStrokeStyle(1, 0x3a3546)
+          .setOrigin(0.5, 1);
+        const sign = scene.add.container(m.x + 7, m.y - 48, [stick, board]).setDepth(m.y + 0.1);
+        this.members.push({ sprite, sign, baseY: m.y });
+      });
+      // blue neutral marker (a calm "i"), never a threat colour
+      const icon = scene.add.graphics().setDepth(DEPTH.overlay);
+      const cx = area.x + area.w / 2;
+      const cy = area.y - 44;
+      icon.fillStyle(0x2f6fd6, 1).fillCircle(cx, cy, 7);
+      icon.lineStyle(1, 0xffffff, 1).strokeCircle(cx, cy, 7);
+      icon
+        .fillStyle(0xffffff, 1)
+        .fillRect(cx - 1, cy - 1, 2, 5)
+        .fillRect(cx - 1, cy - 4, 2, 2);
+      this.bubbles.push({ bubble: new Bubble(scene), x: cx, y: area.y + GROUP_BUBBLE_Y });
+    }
   }
 
   /** Gentle breathing bob, out of phase per member. */
@@ -57,15 +54,18 @@ export class GroupView {
       m.sprite.y = m.baseY + bob;
       m.sign.y = m.baseY - 48 + bob;
     });
-    // an unhappy bubble above the group, a new line every period, with a small angry shake
-    const phase = timeMs % GRUMBLE_PERIOD_MS;
-    if (phase >= GRUMBLE_SHOW_MS) {
-      this.bubble.set(null);
-      return;
-    }
-    this.bubble.set(`grumble${Math.floor(timeMs / GRUMBLE_PERIOD_MS) % GRUMBLES.length}` as BubbleKind);
+    // an unhappy bubble above each group, a new line every period, with a small angry shake; the groups take turns
+    // (a third of a period apart) and never say the same line at once
     const shake = Math.floor(timeMs / 110) % 2 === 0 ? 0 : -1;
-    this.bubble.place(this.bubbleX + (shake ? 1 : 0), this.bubbleY + shake);
+    this.bubbles.forEach((b, gi) => {
+      const t = timeMs + (gi * GRUMBLE_PERIOD_MS) / this.bubbles.length;
+      if (t % GRUMBLE_PERIOD_MS >= GRUMBLE_SHOW_MS) {
+        b.bubble.set(null);
+        return;
+      }
+      b.bubble.set(`grumble${(Math.floor(t / GRUMBLE_PERIOD_MS) + gi) % GRUMBLES.length}` as BubbleKind);
+      b.bubble.place(b.x + (shake ? 1 : 0), b.y + shake);
+    });
   }
 }
 

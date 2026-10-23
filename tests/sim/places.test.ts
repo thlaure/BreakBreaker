@@ -36,8 +36,10 @@ describe('the Phase C places (nursery, kiosk, town hall, library)', () => {
     }
     expect(def('nursery').attackPoints).toEqual([C(7, 36), C(8, 36), C(10, 36), C(11, 36)]);
     expect(def('nursery').door).toEqual(C(9, 36));
-    expect(def('townHall').attackPoints).toEqual([C(16, 7), C(17, 7), C(19, 7), C(20, 7)]);
-    expect(def('townHall').door).toEqual(C(18, 7));
+    // the town hall moved from the north street to the main square (south-west of the plaza)
+    expect(def('townHall').footprint).toEqual(R(14, 27, 6, 4));
+    expect(def('townHall').attackPoints).toEqual([C(15, 31), C(16, 31), C(18, 31), C(19, 31)]);
+    expect(def('townHall').door).toEqual(C(17, 31));
     expect(def('library').attackPoints).toEqual([C(24, 43), C(25, 43), C(27, 43), C(28, 43)]);
     expect(def('library').door).toEqual(C(26, 43));
     expect(def('kiosk').footprint).toEqual(R(34, 40, 2, 1));
@@ -80,8 +82,7 @@ describe('the Phase C places (nursery, kiosk, town hall, library)', () => {
     const centre = { x: f.x + f.w / 2, y: f.y + f.h / 2 };
     for (const q of [...DISTRICT.hostileSpawns, ...DISTRICT.stations])
       expect(Math.hypot(q.x - centre.x, q.y - centre.y)).toBeGreaterThan(160);
-    const g = DISTRICT.peacefulGroup.area;
-    expect(Math.hypot(g.x - centre.x, g.y - centre.y)).toBeGreaterThan(320);
+    for (const { area: g } of DISTRICT.peacefulGroups) expect(Math.hypot(g.x - centre.x, g.y - centre.y)).toBeGreaterThan(320);
   });
 
   test('scores [saved, lost, repaired] and opening rounds from the spec', () => {

@@ -6,7 +6,7 @@ import { Rocks, type RockCtx } from '../../src/sim/projectiles';
 import type { SimEvent, Vec } from '../../src/sim/types';
 
 const grid = new Grid(DISTRICT);
-const g = DISTRICT.peacefulGroup.area;
+const g = DISTRICT.peacefulGroups[0]!.area;
 const b0 = DISTRICT.buildings[0]!;
 const R = CONFIG.player.radius;
 const DT = 1 / 60;
