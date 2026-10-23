@@ -45,7 +45,6 @@ export const frHud = {
   'hud.menu.credits': 'Crédits',
   'hud.menu.stop': 'Arrêter la partie',
   'hud.menu.back': 'Retour',
-  'hud.menu.loading': 'Chargement…',
   'hud.menu.creditsError': 'Crédits indisponibles pour le moment. Ils sont consultables dans le fichier CREDITS.md du site.',
   'hud.menu.confirmText': 'La partie en cours sera abandonnée.',
   'hud.menu.continue': 'Continuer la partie',
@@ -127,7 +126,6 @@ export const frHud = {
   'hud.card.returnItems': 'Rends les objets · {t}',
   'hud.card.itemsBack': 'Objets {back}/{total} rendus',
   'hud.items': 'Objets {n}',
-  'hud.prompt.boothOut': 'Cabine hors service',
   // card status words (the ids stay the French words, used as CSS classes)
   'hud.status.active': 'en cours',
   'hud.status.interrupted': 'interrompu',
@@ -212,7 +210,6 @@ export const frHud = {
   'hud.alert.furie.label': 'FURIE',
   'hud.alert.flagCaptured.title': 'DRAPEAU RÉCUPÉRÉ !',
   'hud.alert.flagCaptured.sub': 'Le drapeau français flotte à nouveau',
-  'hud.alert.breakout.title': 'ÉVASION !',
   'hud.alert.breakout.label': 'ÉVASION',
   'hud.alert.flashball.title': 'FLASHBALL AU SOL',
   // round-start headlines (non-committal)

@@ -162,7 +162,7 @@ export class Menus {
       if (this.panel === 'credits') body.innerHTML = html;
     };
     if (this.credits !== null) return fill(this.credits);
-    body.textContent = t('hud.menu.loading');
+    body.textContent = t('world.boot.loading');
     fetch(`${SITE_BASE}CREDITS.md`)
       .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
       .then((md) => {

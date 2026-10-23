@@ -205,7 +205,7 @@ export function incidentAlert(kind: AlertKind, round = 0, total = 0, headline?: 
   // the prison fell: `total` = the Caïds released, the arrow points at its gate
   if (kind === 'breakout')
     return {
-      title: t('hud.alert.breakout.title'),
+      title: t('world.prison.breakout'),
       sub: releasedText(total),
       label: t('hud.alert.breakout.label'),
       tone: 'round',

@@ -7,7 +7,7 @@ import type { CasseKind, ServiceKind, TargetId, Vec } from '../../sim/types';
 import { CASSE_KINDS, casseurs, type IncidentKind, type RoundHeadline } from './alerts';
 import { liveRecord } from './liveText';
 import { jailedText } from '../render/prisonMath';
-import { ACTION_WORDS, REPAIRING_VERB } from '../render/actionHintMath';
+import { ACTION_WORDS, repairingVerb } from '../render/actionHintMath';
 
 /**
  * Rescue: 'en cours' | 'interrompu' | 'sécurisé'. Attacked target: 'en feu' | 'attaquée' |
@@ -127,14 +127,14 @@ export function defaultActLabel(): string {
  */
 export function contextPrompt(s: Snapshot, touch = false): Prompt | null {
   const kit = s.toolboxes;
-  if (kit.repairTarget && kit.started) return { text: REPAIRING_VERB, label: null, inWorld: true };
+  if (kit.repairTarget && kit.started) return { text: repairingVerb(), label: null, inWorld: true };
   const h = s.actionHint;
   if (h) {
     const w = ACTION_WORDS[h.kind];
     if (w.button === null) return { text: w.line, label: null, inWorld: true };
     return { text: touch ? w.line : `F — ${w.line}`, label: w.button, inWorld: true };
   }
-  if (nearestBooth(s)?.ruined) return { text: t('hud.prompt.boothOut'), label: null };
+  if (nearestBooth(s)?.ruined) return { text: t('world.booth.refused.ruined'), label: null };
   if (kit.message) return { text: t(`toolbox.${kit.message}`), label: null };
   if (s.stationMessage) return { text: t(`station.${s.stationMessage}`), label: null };
   return null;

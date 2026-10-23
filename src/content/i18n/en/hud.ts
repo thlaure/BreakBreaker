@@ -38,7 +38,6 @@ export const enHud: Record<keyof typeof frHud, string> = {
   'hud.menu.credits': 'Credits',
   'hud.menu.stop': 'End the game',
   'hud.menu.back': 'Back',
-  'hud.menu.loading': 'Loading…',
   'hud.menu.creditsError': 'Credits are unavailable right now. You can find them in the CREDITS.md file on the site.',
   'hud.menu.confirmText': 'Your current game will be lost.',
   'hud.menu.continue': 'Keep playing',
@@ -116,7 +115,6 @@ export const enHud: Record<keyof typeof frHud, string> = {
   'hud.card.returnItems': 'Return the items · {t}',
   'hud.card.itemsBack': 'Items {back}/{total} returned',
   'hud.items': 'Items {n}',
-  'hud.prompt.boothOut': 'Phone booth out of order',
   'hud.status.active': 'in progress',
   'hud.status.interrupted': 'interrupted',
   'hud.status.backup': 'backup coming',
@@ -185,9 +183,9 @@ export const enHud: Record<keyof typeof frHud, string> = {
   'hud.alert.flag.title': 'FLAG REPLACED!',
   'hud.alert.flag.sub': 'Take back the memorial',
   'hud.alert.flag.label': 'FLAG',
-  'hud.alert.caid.title': 'THE KINGPIN IS HERE!',
+  'hud.alert.caid.title': 'THE RINGLEADER IS HERE!',
   'hud.alert.caid.sub': 'Knock him out',
-  'hud.alert.caid.label': 'KINGPIN',
+  'hud.alert.caid.label': 'RINGLEADER',
   'hud.alert.bouclierDrop.title': 'SHIELD AVAILABLE!',
   'hud.alert.bouclierDrop.sub': 'Go grab it',
   'hud.alert.bouclierDrop.label': 'SHIELD',
@@ -198,7 +196,6 @@ export const enHud: Record<keyof typeof frHud, string> = {
   'hud.alert.furie.label': 'FURY',
   'hud.alert.flagCaptured.title': 'FLAG RECOVERED!',
   'hud.alert.flagCaptured.sub': 'The French flag flies again',
-  'hud.alert.breakout.title': 'JAILBREAK!',
   'hud.alert.breakout.label': 'JAILBREAK',
   'hud.alert.flashball.title': 'FLASHBALL ON THE GROUND',
   'hud.headline.school': 'School under threat',
@@ -247,7 +244,7 @@ export const enHud: Record<keyof typeof frHud, string> = {
   'hud.rule.4':
     'Weapons pop up at random in the streets (baton, hammer, street sign, then spring-loaded boxing glove and flashball): walk over them to pick them up. They knock out in one hit and wear out after a few hits. The glove punches straight ahead, far in front of Paul; the flashball fires toward the mouse (on touch, straight ahead with a little aim assist).',
   'hud.rule.5':
-    'Every rioter knocked out fills the energy gauge (more for a brute or the Kingpin, nothing during fury mode or with the wave). From half full, press C: the energy wave charges for 0.7 s on its own (Paul stands still, no need to hold the key), then knocks out every rioter in its line and costs half the gauge. When it is full, press R for fury mode (18 s): it empties completely.',
+    'Every rioter knocked out fills the energy gauge (more for a brute or the ringleader, nothing during fury mode or with the wave). From half full, press C: the energy wave charges for 0.7 s on its own (Paul stands still, no need to hold the key), then knocks out every rioter in its line and costs half the gauge. When it is full, press R for fury mode (18 s): it empties completely.',
   'hud.rule.6':
     'When things heat up, a shield may appear (20 s): it protects Paul on top of his weapon, stopping rocks, bottles and bullets from every side (it does not hit).',
   'hud.rule.7':
