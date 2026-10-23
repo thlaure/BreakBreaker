@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { CONTROLS, RULES, SATIRE_NOTICE } from '../src/content/controls';
+import { catalog, type Locale } from '../src/content/i18n';
+import { controlsFor } from '../src/site/landingContent';
 import { CONFIG } from '../src/sim/config';
 
 // Production build into a temp dir: vitest sets NODE_ENV=test, which would make Vite emit a dev bundle
@@ -27,14 +29,23 @@ afterAll(() => {
   rmSync(OUT, { recursive: true, force: true });
 });
 
-test('two entry points are emitted', () => {
+/** The two static landing pages: French at the root, English one level down. */
+const LANDINGS: readonly { locale: Locale; page: string; root: string }[] = [
+  { locale: 'fr', page: 'index.html', root: '' },
+  { locale: 'en', page: 'en/index.html', root: '../' },
+];
+
+test('the entry points are emitted: both landings and the game', () => {
   expect(existsSync(out('index.html'))).toBe(true);
+  expect(existsSync(out('en/index.html'))).toBe(true);
   expect(existsSync(out('play/index.html'))).toBe(true);
 });
 
-test('landing pulls no game code', () => {
-  const html = readFileSync(out('index.html'), 'utf8');
-  expect(html).not.toMatch(/phaser|<script/i);
+test('landings pull no game code and no script', () => {
+  for (const { page } of LANDINGS) {
+    const html = readFileSync(out(page), 'utf8');
+    expect(html, page).not.toMatch(/phaser|<script/i);
+  }
 });
 
 test('no three.js anywhere in build', () => {
@@ -58,12 +69,81 @@ const decode = (s: string) =>
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&');
 
-test('landing has one h1, a real relative play/ link and no script', () => {
-  const html = readFileSync(out('index.html'), 'utf8');
-  expect(html.match(/<h1/g)?.length).toBe(1);
-  expect(html).toMatch(/href="play\/\?go"/); // relative (works under a sub-path); starts the game at once
-  expect(html).not.toMatch(/<a [^>]*href="\/(?!\/)/); // no root-absolute <a> links: the site may be served under /<repo>/
-  expect(html).not.toMatch(/<script/);
+test('each landing: its lang, one h1, a relative play link carrying the language, no script', () => {
+  for (const { locale, page, root } of LANDINGS) {
+    const html = readFileSync(out(page), 'utf8');
+    expect(html, page).toMatch(new RegExp(`<html lang="${locale}"`));
+    expect(html.match(/<h1/g)?.length, page).toBe(1);
+    // relative (works under a sub-path); starts the game at once, in this page's language (the game saves it)
+    expect(html, page).toContain(`href="${root}play/?go&amp;lang=${locale}"`);
+    expect(html, page).not.toMatch(/<a [^>]*href="\/(?!\/)/); // no root-absolute <a> links: the site may be served under /<repo>/
+    expect(html, page).not.toMatch(/<script/);
+  }
+});
+
+test('each landing links both languages with hreflang (head alternates and the flag links)', () => {
+  for (const { locale, page, root } of LANDINGS) {
+    const html = readFileSync(out(page), 'utf8');
+    const href = { fr: root === '' ? './' : root, en: root === '' ? 'en/' : './' };
+    expect(html, page).toContain(`<link rel="alternate" hreflang="fr" href="${href.fr}"`);
+    expect(html, page).toContain(`<link rel="alternate" hreflang="en" href="${href.en}"`);
+    const flags = [...html.matchAll(/<a class="flag[^"]*"[^>]*>/g)].map((m) => m[0]);
+    expect(flags.length, page).toBe(2);
+    expect(flags[0], page).toContain(`href="${href.fr}"`);
+    expect(flags[0], page).toContain('hreflang="fr"');
+    expect(flags[1], page).toContain(`href="${href.en}"`);
+    expect(flags[1], page).toContain('hreflang="en"');
+    const current = flags.filter((f) => f.includes('aria-current="page"'));
+    expect(current.length, page).toBe(1);
+    expect(current[0], page).toContain(`hreflang="${locale}"`);
+    expect(html, page).toMatch(/<svg [^>]*shape-rendering="crispEdges"/);
+  }
+});
+
+/** Text of a landing (title and meta contents included), without the parts deliberately kept in French (lang="fr"). */
+const pageText = (html: string): string =>
+  decode(
+    html
+      .replace(/<(?!html\b)(\w+)\b[^>]*\slang="fr"[^>]*>[\s\S]*?<\/\1>/g, '')
+      .replace(/<meta [^>]*content="([^"]*)"[^>]*>/g, '\n$1\n')
+      .replace(/<[^>]+>/g, '\n'),
+  );
+
+test('no text of the other language leaks into a landing (scan against the catalogs and the controls)', () => {
+  const fr = catalog('fr');
+  const en = catalog('en');
+  const landingKeys = Object.keys(fr).filter((k) => k.startsWith('landing.') && fr[k] !== en[k]);
+  const strings = (c: ReturnType<typeof controlsFor>): string[] => [c.notice, ...c.rows.flatMap((r) => [r.action, r.keyboard, r.touch])];
+  const own = { fr: strings(controlsFor('fr')), en: strings(controlsFor('en')) };
+  const other = {
+    fr: [...landingKeys.map((k) => en[k] ?? ''), ...own.en],
+    en: [...landingKeys.map((k) => fr[k] ?? ''), ...own.fr],
+  };
+  for (const { locale, page } of LANDINGS) {
+    const text = pageText(readFileSync(out(page), 'utf8'));
+    // the scan sees the page's own texts (else it would prove nothing)
+    expect(text, page).toContain(catalog(locale)['landing.tagline']);
+    expect(text, page).toContain(controlsFor(locale).notice);
+    for (const s of other[locale]) {
+      if (s.length < 4 || own[locale].includes(s)) continue; // short keys (F, C, Maj) and shared words are not evidence
+      expect(text, `${page}: "${s}"`).not.toContain(s);
+    }
+  }
+  // outside its lang="fr" parts (changelog notes, the French flag's name), the English page has no French letter
+  expect(pageText(readFileSync(out('en/index.html'), 'utf8'))).not.toMatch(/[àâçéèêëîïôûùœ]/i);
+});
+
+test('the English landing shares the built stylesheet of the French one', () => {
+  const sheets = (page: string) => [...readFileSync(out(page), 'utf8').matchAll(/<link[^>]+rel="stylesheet"[^>]*href="([^"]+)"/g)].map((m) => m[1]);
+  expect(sheets('en/index.html')).toEqual(sheets('index.html'));
+  for (const h of sheets('en/index.html')) expect(existsSync(out(h ?? ''))).toBe(true);
+});
+
+test('the English page says the changelog is in French and marks it lang="fr"', () => {
+  const html = readFileSync(out('en/index.html'), 'utf8');
+  expect(html).toMatch(/popovertarget="changelog"[^>]*>Changelog \(in French\)</);
+  expect(html).toContain('<div class="release-list" lang="fr">');
+  expect(html).toMatch(/<aside class="news"[^>]*>[\s\S]*?<ul lang="fr">/);
 });
 
 test('landing own HTML + CSS <= 300 KB gzipped', () => {
@@ -77,7 +157,7 @@ test('landing own HTML + CSS <= 300 KB gzipped', () => {
 test('landing is slim: one h1, one Jouer button, a Commandes button with its modal', () => {
   const html = readFileSync(out('index.html'), 'utf8');
   expect(html).not.toMatch(/<img/); // the hero is a CSS background (pixel art from the game's assets), not an <img>
-  expect(html.match(/class="[^"]*btn-primary[^"]*"[^>]*href="play\/\?go"/g)?.length).toBe(1);
+  expect(html.match(/class="[^"]*btn-primary[^"]*"[^>]*href="play\/\?go&amp;lang=fr"/g)?.length).toBe(1);
   expect(html).toMatch(/<button[^>]*popovertarget="commandes"[^>]*>Commandes</);
   expect(html).toMatch(/<div id="commandes" popover/);
   expect(html).toMatch(/popovertargetaction="hide"/);
@@ -95,9 +175,23 @@ test('landing shows the controls (modal) from the shared module but not the game
   expect(text).toContain(CONFIG.appVersion);
 });
 
+test('the English landing shows the English controls, notice and version', () => {
+  const text = decode(readFileSync(out('en/index.html'), 'utf8'));
+  const { rows, notice } = controlsFor('en');
+  expect(text).toContain(notice);
+  for (const c of rows) {
+    expect(text).toContain(c.action);
+    expect(text).toContain(c.keyboard);
+    expect(text).toContain(c.touch);
+  }
+  expect(text).toContain(CONFIG.appVersion);
+});
+
 test('landing never says OQTF or gratuit', () => {
-  const html = readFileSync(out('index.html'), 'utf8');
-  expect(html).not.toMatch(/OQTF|gratuit/i);
+  for (const { page } of LANDINGS) {
+    const html = readFileSync(out(page), 'utf8');
+    expect(html, page).not.toMatch(/OQTF|gratuit|free to play/i);
+  }
 });
 
 /** The landing's built CSS (all stylesheets linked from index.html). */
@@ -149,7 +243,7 @@ const pngSize = (file: string): [number, number] => {
 };
 
 test('both pages declare the site icon (Paul pixel head) and the icon files ship in the build', () => {
-  for (const page of ['index.html', 'play/index.html']) {
+  for (const page of ['index.html', 'en/index.html', 'play/index.html']) {
     const html = readFileSync(out(page), 'utf8');
     expect(html).toMatch(/<link rel="icon"[^>]*href="[^"]*favicon\.png"/);
     expect(html).toMatch(/<link rel="apple-touch-icon"[^>]*href="[^"]*apple-touch-icon\.png"/);
