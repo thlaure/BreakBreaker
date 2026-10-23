@@ -1,4 +1,4 @@
-import { onLocaleChange, t } from '../../content/i18n';
+import { t } from '../../content/i18n';
 import { DISTRICT } from '../../sim/map/district';
 import type { ActionHintKind } from '../../sim/sim';
 import type { TargetId, Vec } from '../../sim/types';
@@ -46,15 +46,6 @@ export const ACTION_WORDS: Readonly<Record<ActionHintKind, ActionWords>> = {
 export function repairingVerb(): string {
   return t('world.action.repairing');
 }
-
-/**
- * Same as repairingVerb(), kept as a live binding for older importers (src/game/hud/format.ts): reassigned on every
- * language switch. Prefer repairingVerb().
- */
-export let REPAIRING_VERB = repairingVerb();
-onLocaleChange(() => {
-  REPAIRING_VERB = repairingVerb();
-});
 
 /** One-line help shown once per game, the first time a ruin stands on the map. */
 export function firstRuinHelp(touch: boolean): string {

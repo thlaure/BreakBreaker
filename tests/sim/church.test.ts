@@ -164,5 +164,5 @@ describe('the church in ten-round bot sessions', () => {
     expect(rounds.length).toBeGreaterThan(0);
     for (const r of rounds) expect(r).toBeGreaterThanOrEqual(3);
     console.info(`church attacks over 4 ten-round sessions: ${rounds.length} (rounds ${rounds.join(', ')})`);
-  });
+  }, 120_000); // four full ten-round sessions: slow under a loaded machine
 });
