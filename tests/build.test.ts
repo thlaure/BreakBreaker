@@ -154,3 +154,15 @@ test('both pages declare the site icon (Paul pixel head) and the icon files ship
   expect(pngSize('favicon.png')).toEqual([32, 32]);
   expect(pngSize('apple-touch-icon.png')).toEqual([180, 180]);
 });
+
+test('landing inlines the latest CHANGELOG.md notes and a changelog dialog, still without script', () => {
+  const html = readFileSync(out('index.html'), 'utf8');
+  const md = readFileSync('CHANGELOG.md', 'utf8');
+  const latest = /^## (\S+) - /m.exec(md)?.[1];
+  expect(latest).toBeTruthy();
+  expect(html).toContain(`Nouveautés <span>${latest}</span>`);
+  expect(html).toMatch(/id="changelog"[^>]*popover/);
+  expect(html).toMatch(/popovertarget="changelog"[^>]*>Changelog</);
+  expect(html.match(/class="release"/g)?.length).toBe(md.match(/^## \S+ - /gm)?.length);
+  expect(html).not.toMatch(/<script/);
+});

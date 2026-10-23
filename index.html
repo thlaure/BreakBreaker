@@ -33,6 +33,7 @@
         <a class="btn btn-primary" href="jouer/?go">Jouer</a>
         <button class="btn btn-secondary btn-commandes" type="button" popovertarget="commandes">Commandes</button>
       </p>
+      <aside class="news" aria-label="Nouveautés"><!--teaser--></aside>
     </main>
 
     <div id="commandes" popover role="dialog" aria-labelledby="commandes-titre">
@@ -51,9 +52,18 @@
       <button class="btn btn-primary" type="button" popovertarget="commandes" popovertargetaction="hide">Fermer</button>
     </div>
 
+    <div id="changelog" popover role="dialog" aria-labelledby="changelog-titre">
+      <h2 id="changelog-titre">Changelog</h2>
+      <div class="release-list">
+        <!--changelog-->
+      </div>
+      <button class="btn btn-primary" type="button" popovertarget="changelog" popovertargetaction="hide">Fermer</button>
+    </div>
+
     <footer class="site-footer">
       <p>
         <span>Version <!--version--></span>
+        <button class="link-btn" type="button" popovertarget="changelog">Changelog</button>
         <a href="CREDITS.md">Crédits</a>
         <a href="https://github.com/thlaure/BreakBreaker">Code source</a>
       </p>
