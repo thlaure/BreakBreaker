@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import Phaser from 'phaser';
 import { t } from '../content/i18n';
+import { initLocale } from '../content/i18n/locale';
 import { hasWebGL, showMessage, showProgress } from './loadingUi';
 import { BootScene } from './scenes/BootScene';
 import { WorldScene } from './scenes/WorldScene';
@@ -36,4 +37,6 @@ function start(): void {
   }
 }
 
+// Language before the first render: ?lang=fr|en (the landing's Play link) wins and is saved, else the saved one, else fr.
+initLocale(window.location.search);
 start();
