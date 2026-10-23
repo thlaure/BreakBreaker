@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
+import { t } from '../../content/i18n';
 import { CONFIG } from '../../sim/config';
 import { DISTRICT, type Rect } from '../../sim/map/district';
 import type { RoofPart } from './decor';
 import { DEPTH } from './depth';
 import { FACADE_H } from './geometry';
+import { localeBound } from './localeText';
 import type { BuildingPart, WorldView } from './world';
 
 const T = CONFIG.tile;
@@ -103,7 +105,9 @@ export function buildShopFront(s: Phaser.Scene, b: Rect, roofParts: RoofPart[]):
   p(0xd8d4cc, jx + 5, -4, 2, 5);
   p(0xff4f6d, jx + 4, -6, 4, 3);
   p(0xffd23f, jx + 9, -1, 2, 1);
-  const text = s.add.text(8, 0, 'MICRO RÉTRO', { fontFamily: 'monospace', fontSize: '10px', color: SHOP.text }).setOrigin(0.5);
+  const text = localeBound(s.add.text(8, 0, '', { fontFamily: 'monospace', fontSize: '10px', color: SHOP.text }).setOrigin(0.5), () =>
+    t('world.sign.shop'),
+  );
   const sign = s.add.container(cx, cy, [plate, text]).setDepth(DEPTH.roof + 0.5);
   roofParts.push(sign);
   return [g, glow, plate, text];
@@ -161,7 +165,7 @@ export function buildNurseryFront(kit: WorldView, b: Rect, roofParts: RoofPart[]
     w: 120,
     rim: 0xff4f6d,
     plate: 0xfff3d6,
-    label: 'MATERNELLE',
+    label: 'world.sign.nursery',
     color: '#2a5aa8',
     textX: 4,
     icon: (p) => {
@@ -242,7 +246,7 @@ export function buildTownHallFront(kit: WorldView, b: Rect, roofParts: RoofPart[
     w: 84,
     rim: TOWN.stone,
     plate: 0x2a3a6a,
-    label: 'MAIRIE',
+    label: 'world.sign.townHall',
     color: '#f4ecd8',
     textX: 0,
     icon: (p) => {
@@ -306,7 +310,7 @@ export function buildLibraryFront(kit: WorldView, b: Rect, roofParts: RoofPart[]
     w: 116,
     rim: 0x8a5a3a,
     plate: 0x3a2418,
-    label: 'BIBLIOTHÈQUE',
+    label: 'world.sign.library',
     color: '#f4ecd8',
     textX: 8,
     icon: (p) => {

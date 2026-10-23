@@ -1,20 +1,16 @@
+import { t } from '../../content/i18n';
 import type { FighterRole } from '../../sim/allies';
 import type { ServiceKind, ServiceRefusal, Vec } from '../../sim/types';
 
-/** The short line shown under a booth when a call is refused (nothing spent). */
-export const REFUSAL_TEXT: Readonly<Record<ServiceRefusal, string>> = {
-  noFire: 'Aucun feu à éteindre',
-  fewRioters: 'Pas assez de casseurs',
-  noCalls: 'Plus d’appels',
-  busy: 'Déjà en route',
-  ruined: 'Cabine hors service',
-};
+/** The short line shown under a booth when a call is refused (nothing spent), in the current language. */
+export function refusalText(reason: ServiceRefusal): string {
+  return t(`world.booth.refused.${reason}`);
+}
 
-/** The line shown under a booth when a call goes through. */
-export const CALLED_TEXT: Readonly<Record<ServiceKind, string>> = {
-  fire: 'Pompiers en route !',
-  police: 'Police en route !',
-};
+/** The line shown under a booth when a call goes through, in the current language. */
+export function calledText(kind: ServiceKind): string {
+  return t(`world.booth.called.${kind}`);
+}
 
 /** How long a booth's line stays, and its fade at the end (ms). */
 export const BOOTH_TEXT_MS = 1800;

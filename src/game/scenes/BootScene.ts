@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { t } from '../../content/i18n';
 import { BASE, CHAR_SHEETS, SFX, type CharLayout } from '../assets';
 import { provideSfx, type Sfx } from '../audio';
 import { hideLoading, showMessage, showProgress } from '../loadingUi';
@@ -60,7 +61,7 @@ export class BootScene extends Phaser.Scene {
     provideSfx(sounds);
     if (fatal.length > 0 || !layout) {
       console.error('Assets failed to load:', fatal);
-      showMessage('Le chargement a échoué. Vérifie ta connexion.', true);
+      showMessage(t('world.boot.loadFailed'), true);
       return;
     }
     // the five Caïd looks are painted over loaded sheets, then animated like every character sheet

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { t as tr } from '../../content/i18n';
 import { FixedClock } from '../../sim/clock';
 import { CONFIG } from '../../sim/config';
 import { DISTRICT } from '../../sim/map/district';
@@ -231,7 +232,7 @@ export class WorldScene extends Phaser.Scene {
     this.glove = new GloveFx(this);
     this.toolboxes = new ToolboxView(this);
     this.actionHint = new ActionHintLayer(this, this.reducedMotion);
-    this.services = new ServicesLayer(this, (x, y, t) => this.pows.spawn(x, y, t, 'PAF !'));
+    this.services = new ServicesLayer(this, (x, y, t) => this.pows.spawn(x, y, t, tr('world.pow.serviceHit')));
     this.prison = new PrisonLayer(this, (x, y, t, word, big) => this.pows.spawn(x, y, t, word, big), this.reducedMotion, this.hostiles);
 
     const cam = this.cameras.main;

@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
+import { t } from '../../content/i18n';
 import { DEPTH } from './depth';
+import { localeBound } from './localeText';
 
 /** At most this many bodies « satellisés » fly at once; beyond, a body vanishes at once with its twinkle. */
 export const MAX_SATELLITES = 16;
@@ -43,7 +45,7 @@ export class Twinkles {
         .setDepth(DEPTH.overlay + 2)
         .setVisible(false);
       const ping = scene.add
-        .text(0, 0, 'PING !', {
+        .text(0, 0, '', {
           fontFamily: '"Press Start 2P", ui-monospace, monospace',
           fontSize: '6px',
           color: '#fff7e0',
@@ -53,6 +55,7 @@ export class Twinkles {
         .setOrigin(0.5, 1)
         .setDepth(DEPTH.overlay + 2)
         .setVisible(false);
+      localeBound(ping, () => t('world.pow.ping'));
       ping.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
       this.pool.push({ star, ping, born: -Infinity, k: 1 });
     }

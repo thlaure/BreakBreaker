@@ -1,15 +1,14 @@
 /// <reference types="vite/client" />
 import Phaser from 'phaser';
+import { t } from '../content/i18n';
 import { initLocale } from '../content/i18n/locale';
 import { hasWebGL, showMessage, showProgress } from './loadingUi';
 import { BootScene } from './scenes/BootScene';
 import { WorldScene } from './scenes/WorldScene';
 
-const NO_WEBGL = 'Ce jeu nécessite WebGL.';
-
 function start(): void {
   if (!hasWebGL()) {
-    showMessage(NO_WEBGL, false);
+    showMessage(t('world.boot.noWebgl'), false);
     return;
   }
   showProgress(0);
@@ -34,7 +33,7 @@ function start(): void {
     if (import.meta.env.DEV) (window as unknown as { __game: Phaser.Game }).__game = game;
   } catch (err) {
     console.error(err);
-    showMessage(NO_WEBGL, false);
+    showMessage(t('world.boot.noWebgl'), false);
   }
 }
 

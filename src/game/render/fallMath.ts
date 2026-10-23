@@ -1,3 +1,5 @@
+import { t } from '../../content/i18n';
+import { getLocale, type Locale } from '../../content/i18n/locale';
 import type { Fall, FallKind, HeldKind } from '../../sim/types';
 
 /**
@@ -236,6 +238,7 @@ export function fallTravel(kind: FallKind): number {
 /** Onomatopoeia of a KO or a hit: what source made it. */
 export type WordKind = 'hands' | 'stick' | 'pancake' | 'glove' | 'flashball' | 'rock' | 'wtf';
 
+/** The French words (unchanged); WORDS_BY_LOCALE.en holds the American comic-book ones, same count per kind. */
 export const WORDS: Readonly<Record<WordKind, readonly string[]>> = {
   hands: ['POW !', 'PAF !'],
   stick: ['BONK !', 'TCHAC !'],
@@ -246,9 +249,22 @@ export const WORDS: Readonly<Record<WordKind, readonly string[]>> = {
   wtf: ['WTF !?', 'OUPS !', 'WOUAAH !', 'NOOON !'],
 };
 
-/** Picks one word of `kind` with `r` in [0, 1). */
-export function pickWord(kind: WordKind, r: number): string {
-  const list = WORDS[kind];
+export const WORDS_BY_LOCALE: Readonly<Record<Locale, Readonly<Record<WordKind, readonly string[]>>>> = {
+  fr: WORDS,
+  en: {
+    hands: ['POW!', 'WHAM!'],
+    stick: ['BONK!', 'THWACK!'],
+    pancake: ['SPLAT!', 'SPLOOSH!'],
+    glove: ['BOING!', 'BOIIING!'],
+    flashball: ['PEW!', 'PEW PEW!'],
+    rock: ['TOCK!', 'CLONK!'],
+    wtf: ['WTF!?', 'OOPS!', 'WHOAAA!', 'NOOO!'],
+  },
+};
+
+/** Picks one word of `kind` with `r` in [0, 1), in `l` (the current language by default). */
+export function pickWord(kind: WordKind, r: number, l: Locale = getLocale()): string {
+  const list = WORDS_BY_LOCALE[l][kind];
   return list[Math.min(list.length - 1, Math.floor(Math.max(0, r) * list.length))]!;
 }
 
@@ -292,7 +308,7 @@ export function hitWordKind(source: 'melee' | 'rock' | 'beam' | 'gant' | 'flashb
 
 /** « DOMINO ×N ! », N = the bodies that fell (the domino body and its victims). */
 export function dominoWord(victims: number): string {
-  return `DOMINO ×${victims + 1} !`;
+  return t('world.pow.domino', { n: victims + 1 });
 }
 
 export interface Shake {

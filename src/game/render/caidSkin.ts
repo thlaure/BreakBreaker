@@ -1,4 +1,5 @@
-import { CAID_SKINS } from '../../content/caids';
+import { caidLinesFor } from '../../content/caids';
+import type { Locale } from '../../content/i18n/locale';
 
 /** One of the five Caïd looks (index in CAID_SKINS). */
 export type CaidSkin = 0 | 1 | 2 | 3 | 4;
@@ -32,9 +33,9 @@ export function caidBubbleGap(r: number): number {
   return Math.round(CAID_BUBBLE_MIN_MS + k * (CAID_BUBBLE_MAX_MS - CAID_BUBBLE_MIN_MS));
 }
 
-/** A slogan of the look `skin` picked by `r` in [0, 1). */
-export function caidSlogan(skin: CaidSkin, r: number): string {
-  const lines = CAID_SKINS[skin]!.slogans;
+/** A slogan of the look `skin` picked by `r` in [0, 1), in `l` (the current language by default). */
+export function caidSlogan(skin: CaidSkin, r: number, l?: Locale): string {
+  const lines = caidLinesFor(l)[skin]!.slogans;
   const i = Math.max(0, Math.min(lines.length - 1, Math.floor(r * lines.length)));
   return lines[i]!;
 }
