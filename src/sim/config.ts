@@ -195,7 +195,7 @@ export const CONFIG = {
     knockback: 28,
     counts: [
       [4, 1],
-      [6, 2],
+      [7, 2],
       [8, 3],
     ] as const,
   },
@@ -239,7 +239,7 @@ export const CONFIG = {
     reloadSec: 3,
     counts: [
       [6, 1],
-      [8, 2],
+      [9, 2],
       [10, 3],
     ] as const,
     maxPerRound: 3,
@@ -296,7 +296,7 @@ export const CONFIG = {
   kit: { maxGround: 2, pickupRadius: 20, repairSec: 2, applyRange: 48, safetyRadius: 64, minPlaceFromPlayer: 64 },
   round: {
     totals: [10, 14, 18, 22],
-    growth: 4,
+    growth: 3,
     maxTotal: 40,
     breatherSec: 6,
     introSec: 4,
@@ -373,8 +373,10 @@ export const CONFIG = {
   church: CHURCH,
   prison: { hp: 400, guards: 5, postRadius: 160, fromRound: 4, repairShare: 0.6, pickupSec: 1.6 },
   pressureMax: 12,
+  /** Session KOs per extra pressure step (directorPlan.pressure): 45 (30 before 1.1.1, which maxed it out by round 8). */
+  pressureKoStep: 45,
   /** Keys the browser records: bump only when the rules change enough to reset them. Not the displayed game version. */
   rulesVersion: '1.0.0',
   /** Displayed game version (landing footer); matches package.json and CHANGELOG.md. */
-  appVersion: '1.1.0',
+  appVersion: '1.1.1',
 } as const;

@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest';
 import { CONFIG } from '../../src/sim/config';
-import { RESCUE_COUNT, THROWER_SHARE, pressure, tableTotal } from '../../src/sim/director';
+import { RESCUE_COUNT, THROWER_SHARE, bruteCount, pressure, shooterCount, tableTotal } from '../../src/sim/director';
 import { occupierCount } from '../../src/sim/monument';
 import { Sim } from '../../src/sim/sim';
-import type { Role } from '../../src/sim/types';
+import type { Role, SimEvent } from '../../src/sim/types';
 import { IDLE, autopilot } from './autopilot';
 
 /** Plays rounds with instant KOs until round `n` has just started. */
@@ -18,20 +18,24 @@ const isFill = (id: string | null, round: number, group?: number): boolean =>
   id !== null && id.startsWith(`round#${round}:fill#`) && (group === undefined || id.endsWith(`#${group}`));
 
 describe('round balancing', () => {
-  test('round rosters grow slowly: 10, 14, 18, 22, then +4, capped at 40', () => {
+  test('round rosters grow slowly: 10, 14, 18, 22, then +3, capped at 40', () => {
     expect(tableTotal(1)).toBe(10);
     expect(tableTotal(2)).toBe(14);
     expect(tableTotal(4)).toBe(22);
-    expect(tableTotal(5)).toBe(26);
-    expect(tableTotal(8)).toBe(38);
+    // 1.1.1: +3 per round after round 4 (was +4: 26, 38)
+    expect(tableTotal(5)).toBe(25);
+    expect(tableTotal(8)).toBe(34);
+    expect(tableTotal(9)).toBe(37);
     expect(tableTotal(30)).toBe(CONFIG.round.maxTotal);
   });
 
   test('pressure rises slowly with rounds and KOs', () => {
     expect(pressure(1, 0)).toBe(1);
-    expect(pressure(1, 29)).toBe(1);
+    expect(pressure(1, 44)).toBe(1);
     expect(pressure(2, 0)).toBe(2);
-    expect(pressure(3, 30)).toBe(3);
+    // 1.1.1: one step per CONFIG.pressureKoStep = 45 session KOs (was 30)
+    expect(CONFIG.pressureKoStep).toBe(45);
+    expect(pressure(3, 45)).toBe(3);
     expect(pressure(50, 500)).toBe(CONFIG.pressureMax);
   });
 
@@ -107,6 +111,35 @@ describe('round balancing', () => {
       const fill = all.filter((r) => r.round === round && r.fill && r.role !== 'runner');
       expect(fill.length).toBeGreaterThan(0);
       expect(fill.filter((r) => r.role === 'thrower')).toHaveLength(Math.floor(fill.length * THROWER_SHARE));
+    }
+  });
+
+  test('1.1.1 balance: from round 4 to 10 a round adds at most one brute or shooter (one new threat at a time)', () => {
+    const threats = (r: number): number => bruteCount(r) + shooterCount(r);
+    expect([4, 5, 6, 7, 8, 9, 10].map(threats)).toEqual([1, 1, 2, 3, 4, 5, 6]);
+    for (let r = 2; r <= 12; r++) expect(threats(r) - threats(r - 1), `round ${r}`).toBeLessThanOrEqual(1);
+  });
+
+  test('1.1.1 balance: rounds 5–9 open on two places with no third casse, rosters ≤ 44 (mean ≤ 36, ≈ 41 in 1.1.0), pressure below its cap', () => {
+    for (const seed of [1, 2, 3]) {
+      const sim = new Sim(seed, { invulnerable: true });
+      const totals = new Map<number, number>();
+      const pressureAt = new Map<number, number>();
+      let thirdCasse = 0;
+      for (let i = 0; i < 60 * 3000 && sim.director.round <= 9; i++) {
+        const ev: SimEvent[] = sim.step(autopilot(sim, { koAfterSec: 1 }));
+        for (const e of ev) {
+          if (e.type === 'RoundStarted') pressureAt.set(e.index, sim.director.pressure(sim.rules.kos));
+          if (e.type === 'RoundStarted' || e.type === 'RoundTotalChanged') totals.set(e.index, e.total);
+          if (e.type === 'TwistStarted' && e.kind === 'secondUrgency' && sim.director.round >= 5) thirdCasse++;
+        }
+      }
+      expect(sim.director.round).toBeGreaterThan(9);
+      expect(thirdCasse).toBe(0);
+      const mid = [5, 6, 7, 8, 9].map((r) => totals.get(r)!);
+      for (const [k, t] of mid.entries()) expect(t, `seed ${seed} round ${k + 5}`).toBeLessThanOrEqual(44);
+      expect(mid.reduce((a, b) => a + b, 0) / mid.length, `seed ${seed}`).toBeLessThanOrEqual(36);
+      for (let r = 5; r <= 9; r++) expect(pressureAt.get(r)!, `seed ${seed} round ${r}`).toBeLessThan(CONFIG.pressureMax);
     }
   });
 });

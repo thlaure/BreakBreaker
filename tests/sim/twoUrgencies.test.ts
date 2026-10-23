@@ -92,10 +92,10 @@ describe('two urgencies at once from round 5 (plan)', () => {
     expect(roundPlan(9, rng(1), t).beats).toEqual([['rescue']]);
   });
 
-  test('twists unchanged: weapon drop every round, second urgency on odd rounds', () => {
+  test('twists from round 5: the weapon drop alone, no second-urgency twist (1.1.1: the round already opens on two places)', () => {
     const t = new Targets();
-    for (let r = 5; r <= 11; r++)
-      expect(roundPlan(r, rng(r), t).twists).toEqual(r % 2 === 1 ? ['weaponDrop', 'secondUrgency'] : ['weaponDrop']);
+    expect(roundPlan(3, rng(3), t).twists).toEqual(['weaponDrop', 'secondUrgency']);
+    for (let r = TWO_URGENCIES_FROM; r <= 11; r++) expect(roundPlan(r, rng(r), t).twists).toEqual(['weaponDrop']);
   });
 
   test('same seed, same plan', () => {
@@ -163,7 +163,7 @@ describe('two urgencies at once from round 5 (sim)', () => {
     }
   });
 
-  test('the twist second urgency is skipped while two urgencies run (no third urgency)', () => {
+  test('no third urgency: with both opening attacks still urgent, the round-5 twist is the weapon drop alone', () => {
     for (const seed of [2, 3]) {
       const sim = new Sim(seed, { invulnerable: true });
       for (let i = 0; i < 60 * 3000 && sim.director.round < 5; i++) sim.step(autopilot(sim, { koAfterSec: 1 }));

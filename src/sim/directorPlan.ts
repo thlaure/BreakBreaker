@@ -12,8 +12,8 @@ export type Twist = 'weaponDrop' | 'secondUrgency';
 
 /**
  * What a round brings: its headline, its beats (each beat = incidents started together) and its twists, fired together
- * at half the roster in this order (none in round 1; a weapon drop from round 2; plus a second urgency on odd rounds
- * from round 3).
+ * at half the roster in this order (none in round 1; a weapon drop from round 2; plus a second urgency on the odd rounds
+ * from 3 that open on a single casse, i.e. round 3 only: from TWO_URGENCIES_FROM the round already opens on two).
  */
 export interface RoundPlan {
   headline: BeatKind;
@@ -62,26 +62,26 @@ export function casseOpen(kind: CasseKind, round: number): boolean {
   return round >= CONFIG.casse.fromRound[kind];
 }
 
-/** Brutes in a round's fill (CONFIG.brute.counts): none before round 4, 1, 2 from round 6, 3 from round 8. */
+/** Brutes in a round's fill (CONFIG.brute.counts): none before round 4, 1, 2 from round 7, 3 from round 8. */
 export function bruteCount(round: number): number {
   let n = 0;
   for (const [from, count] of CONFIG.brute.counts) if (round >= from) n = count;
   return n;
 }
 
-/** Shooters in a round's fill (CONFIG.shooter.counts): none before round 6, 1 in rounds 6–7, 2 in rounds 8–9, 3 from round 10, ≤ maxPerRound. */
+/** Shooters in a round's fill (CONFIG.shooter.counts): none before round 6, 1 in rounds 6–8, 2 in round 9, 3 from round 10, ≤ maxPerRound. */
 export function shooterCount(round: number): number {
   let n = 0;
   for (const [from, count] of CONFIG.shooter.counts) if (round >= from) n = count;
   return Math.min(CONFIG.shooter.maxPerRound, n);
 }
 
-/** Rises one step every 2 rounds and every 30 session KOs, capped. */
+/** Rises one step every 2 rounds and every CONFIG.pressureKoStep (45) session KOs, capped at CONFIG.pressureMax. */
 export function pressure(round: number, kos: number): number {
-  return Math.min(CONFIG.pressureMax, 1 + Math.floor(round / 2) + Math.floor(kos / 30));
+  return Math.min(CONFIG.pressureMax, 1 + Math.floor(round / 2) + Math.floor(kos / CONFIG.pressureKoStep));
 }
 
-/** Round roster before objectives: 10, 14, 18, 22, then +4 per round, capped at 40. */
+/** Round roster before objectives: 10, 14, 18, 22, then +3 per round, capped at 40. */
 export function tableTotal(round: number): number {
   const t: readonly number[] = CONFIG.round.totals;
   return t[round - 1] ?? Math.min(CONFIG.round.maxTotal, t[t.length - 1]! + CONFIG.round.growth * (round - t.length));
@@ -129,8 +129,9 @@ export const TWO_URGENCIES_FROM = 5;
  * → a single casse. Second beat: the rescue; from round CONFIG.monument.fromRound the monument occupation instead when
  * the flag is French and last round's second beat was not the monument (they alternate; never while the flag is
  * Palestinian). Twists: from round 2 always a weapon drop (from round 3 a bouclier half the time; otherwise a regular
- * weapon one time in two, else nothing; never a bouclier in round 2), and on odd rounds from r3 a second urgency as
- * well (when the urgency cap allows: never a third while two run). No free target → the second beat alone (its kind is
+ * weapon one time in two, else nothing; never a bouclier in round 2), and in round 3 (the odd rounds from 3 before
+ * TWO_URGENCIES_FROM) a second urgency as well (when the urgency cap allows: never a third while two run); from
+ * TWO_URGENCIES_FROM no second-urgency twist, the round already opens on two places (1.1.1 balance pass). No free target → the second beat alone (its kind is
  * the headline).
  */
 export function roundPlan(
@@ -171,7 +172,8 @@ export function roundPlan(
       }
     }
   }
-  const twists: Twist[] = round === 1 ? [] : round >= 3 && round % 2 === 1 ? ['weaponDrop', 'secondUrgency'] : ['weaponDrop'];
+  const secondUrgency = round >= 3 && round < TWO_URGENCIES_FROM && round % 2 === 1;
+  const twists: Twist[] = round === 1 ? [] : secondUrgency ? ['weaponDrop', 'secondUrgency'] : ['weaponDrop'];
   const second: BeatKind =
     monument && round >= CONFIG.monument.fromRound && monument.french && !monument.lastWasMonument ? 'monument' : 'rescue';
   return { headline: picks[0] ?? second, beats: picks.length > 0 ? [picks, [second]] : [[second]], twists };

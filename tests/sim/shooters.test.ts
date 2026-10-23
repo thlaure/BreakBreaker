@@ -36,10 +36,10 @@ function until(sim: Sim, pred: (ev: SimEvent[]) => boolean, max = 600, frame: ()
 }
 
 describe('shooters in the round composition', () => {
-  test('none before round 6, 1 in rounds 6–7, 2 in rounds 8–9, 3 from round 10, never more than 3', () => {
+  test('none before round 6, 1 in rounds 6–8, 2 in round 9, 3 from round 10, never more than 3', () => {
     expect([1, 2, 3, 4, 5].map(shooterCount)).toEqual([0, 0, 0, 0, 0]);
-    expect([6, 7].map(shooterCount)).toEqual([1, 1]);
-    expect([8, 9].map(shooterCount)).toEqual([2, 2]);
+    expect([6, 7, 8].map(shooterCount)).toEqual([1, 1, 1]);
+    expect([9].map(shooterCount)).toEqual([2]);
     expect(CONFIG.shooter.maxPerRound).toBe(3);
     for (let r = 10; r <= 40; r++) {
       expect(shooterCount(r)).toBe(3);

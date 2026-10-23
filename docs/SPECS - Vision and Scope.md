@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Vision and Scope
 
 > **Purpose of this file:** game vision, validated requirements, scope and priorities, production and deliverables, planned extensions, remaining decisions and sources.  
-> Part of the BreakBreaker specifications (version 1.1.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.1.1), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 1. Vision and positioning
 
@@ -185,7 +185,7 @@ Optional PWA installation, offline start after full caching, extended gamepad su
 | Movement | Eight directions, normalised diagonals |
 | Contact | 56 px circular strike bare-handed, three targets maximum (confirmed) |
 | Weapons | Ranges, hits and spawn rhythm of section 8.7 |
-| Rounds | Rosters 10, 14, 18, 22 then +4; at most 12 rioters on the map |
+| Rounds | Rosters 10, 14, 18, 22 then +3 (v1.1.1); at most 12 rioters on the map |
 | Recovery | Fallen enemy stones, automatic pickup |
 | Stock | Three stones; thrown-back stones not recoverable |
 | Peaceful groups | Not targetable by Paul; enemy distress only in an announced event |

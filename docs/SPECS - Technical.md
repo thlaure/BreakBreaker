@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Technical
 
 > **Purpose of this file:** technical choices, architecture and data, performance, storage, loading and distribution.  
-> Part of the BreakBreaker specifications (version 1.1.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.1.1), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 17. Technical choices
 
@@ -93,7 +93,7 @@ Only `LandedRecoverable` can enter the stock. `PlayerFlying` does not become rec
 
 **Changed (v1.9.11):** delivered catalogue (`src/sim/types.ts`, type `SimEvent`):
 
-- Rounds: `RoundStarted` (with `rescueKind` when the headline incident is the rescue, v1.9.12), `RoundTotalChanged`, `TwistStarted` (on odd rounds from round 3, two in a row: `weaponDrop` then `secondUrgency`, v1.9.12), `RoundCompleted`, `StationsRecharged`.
+- Rounds: `RoundStarted` (with `rescueKind` when the headline incident is the rescue, v1.9.12), `RoundTotalChanged`, `TwistStarted` (in round 3, two in a row: `weaponDrop` then `secondUrgency`, v1.9.12; every odd round from 3 before v1.1.1), `RoundCompleted`, `StationsRecharged`.
 - Combat and projectiles: `HitConfirmed`, `ActorKnockedOut` (carries `fall` since v1.9.17), `DominoTriggered` (`from`, `lifeIds`, v1.9.17), `PlayerDamaged`, `PlayerKnockedOut`, `EnemyThrowStarted`, `EnemyRockThrown`, `ProjectileLanded`, `ProjectilePickedUp`, `ProjectileReturned`, `ProtectedGroupBlockedImpact`, `ShieldBlocked`.
 - Places: `SchoolStarted` and `CasseStarted` (position), `MolotovThrown`, `TargetIgnited`, `BuildingThreatStarted`, `BuildingThreatPaused`, `TargetSaved`, `SchoolRestored`, `BuildingDestroyed`, `FirebombThrown`, `FirePatchStarted`.
 - Field small heals (v1.9.18): `SmallHealDropped` (`id`, `pos`), `SmallHealPicked` (`id`, `amount` = HP actually gained). The snapshot adds `fieldHeals` (`id`, `pos`, `expiresAt`).
@@ -222,7 +222,7 @@ Proposed budgets to be measured on a real 2D prototype. Pixel art is not an auto
 | Full district | At most 20 MB of resources, audio included |
 | Reference modest mobile | Nominal target 30 frames/s, 95% of active frames ≤ 40 ms |
 | Reference computer | Nominal target 60 frames/s, 95% of active frames ≤ 20 ms |
-| Active hostiles | 40 at most; queue entry suspended at 12 active hostiles (a round's roster can exceed 40 from round 9, v1.9.18, without changing this cap) |
+| Active hostiles | 40 at most; queue entry suspended at 12 active hostiles (a round's roster can exceed 40, v1.9.18, about 42 at most up to round 9 since v1.1.1, without changing this cap) |
 | Peaceful groups | 3 groups of 6 to 8 sprites in the reference map (1 group of 6 delivered) |
 | Active students | 5 at most (to do) |
 | Flying projectiles | 24 stones at most, plus 30 shooter bullets (v1.9.15) and Paul's flashball shots |

@@ -397,7 +397,7 @@ export class Director {
   }
 
   /**
-   * The second urgency (odd rounds from 3, with the weapon drop): another free target of a kind open this round attacked at once, when the urgency
+   * The second urgency (round 3: odd rounds from 3 before TWO_URGENCIES_FROM, with the weapon drop): another free target of a kind open this round attacked at once, when the urgency
    * cap allows and one is free (preferably one not attacked yet this round); otherwise nothing more happens.
    */
   private secondUrgency(host: DirectorHost, ev: SimEvent[]): void {

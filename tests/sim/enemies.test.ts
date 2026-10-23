@@ -228,8 +228,8 @@ describe('round composition', () => {
     }
   });
 
-  test('brutes: none before round 4, then 1, 2 from round 6, 3 from round 8 (capped), from the fill', () => {
-    expect([1, 3, 4, 5, 6, 7, 8, 12].map(bruteCount)).toEqual([0, 0, 1, 1, 2, 2, 3, 3]);
+  test('brutes: none before round 4, then 1, 2 from round 7, 3 from round 8 (capped), from the fill', () => {
+    expect([1, 3, 4, 5, 6, 7, 8, 12].map(bruteCount)).toEqual([0, 0, 1, 1, 1, 2, 3, 3]);
     for (let r = 1; r <= 12; r++) {
       const brutes = ofRound(r).filter((s) => s.role === 'brute');
       expect(brutes.length, `round ${r}`).toBe(bruteCount(r));
