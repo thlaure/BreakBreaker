@@ -38,6 +38,7 @@ All of typecheck, lint, format:check, test and bench must pass before a branch i
 - **Never merge or push without the owner's explicit « push ».** After a push, watch CI until the deploy succeeds.
 - Bigger work: brainstorm with the owner, write a design record and a plan (`docs/superpowers/specs/`, `docs/superpowers/plans/`), then build task by task with isolated subagents and review the diff before merging.
 - Do not run Workflow-style multi-agent orchestration unless the owner asked for it.
+- **Browser checks: once, at the end.** Per task, run only unit tests, typecheck, lint and format. Do not launch the game in a browser for each feature; do one global browser check (all languages, mobile, the new features together) after everything is implemented. Subagent briefs must say so.
 - Dependencies are upgraded by hand, never unprompted. Dependabot version-update PRs are off; check for new versions only when asked.
 
 ## Docs go with every change
