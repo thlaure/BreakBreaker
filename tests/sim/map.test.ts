@@ -203,6 +203,43 @@ describe('map', () => {
       for (const s of DISTRICT.hostileSpawns) expect(ff.stepsAt(s)).toBeGreaterThanOrEqual(0);
     }
   });
+  test('isSolidPx (tile cache) agrees with the exact shape scan everywhere, tile edges and off-grid shapes included', () => {
+    const exact = (d: typeof DISTRICT, p: { x: number; y: number }): boolean => {
+      const size = d.tiles * 32;
+      if (p.x < 0 || p.y < 0 || p.x >= size || p.y >= size) return true;
+      const inR = (r: Rect) => p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h;
+      const props = [...d.targets.filter((t) => t.prop).map((t) => t.footprint), d.monument.plinth];
+      return (
+        d.buildings.some(inR) ||
+        props.some(inR) ||
+        d.peacefulGroups.some((gr) => inR(gr.area)) ||
+        d.trunks.some((c) => (p.x - c.x) ** 2 + (p.y - c.y) ** 2 < c.r * c.r)
+      );
+    };
+    // an off-grid building and a trunk straddling a tile corner exercise the partial tiles
+    const odd = {
+      ...DISTRICT,
+      buildings: [...DISTRICT.buildings, { x: 1000.5, y: 70.25, w: 45, h: 13 }],
+      trunks: [...DISTRICT.trunks, { x: 32 * 40, y: 32 * 26, r: 9 }],
+    };
+    for (const d of [DISTRICT, odd]) {
+      const gr = new Grid(d);
+      const bad: { x: number; y: number }[] = [];
+      const check = (x: number, y: number) => {
+        if (gr.isSolidPx({ x, y }) !== exact(d, { x, y })) bad.push({ x, y });
+      };
+      for (let y = -4; y < 48 * 32 + 4; y += 1.75) for (let x = -4; x < 48 * 32 + 4; x += 1.75) check(x, y);
+      for (let t = 0; t <= 48; t++) {
+        for (const v of [t * 32 - 1e-9, t * 32, t * 32 + 16]) {
+          for (let u = 0; u < 48 * 32; u += 5) {
+            check(v, u);
+            check(u, v);
+          }
+        }
+      }
+      expect(bad.slice(0, 5)).toEqual([]);
+    }
+  });
   test('spatial hash returns only nearby entities', () => {
     const h = new SpatialHash<{ id: number; pos: { x: number; y: number } }>(64);
     h.insert({ id: 1, pos: { x: 10, y: 10 } });
