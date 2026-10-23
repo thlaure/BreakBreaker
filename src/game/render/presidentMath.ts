@@ -2,7 +2,7 @@
  * Pure helpers of the President on the château balcony (render only, never the simulation's rng): moods, timings,
  * quote draws, agitation near Paul and the small pose animation. No Phaser import here.
  */
-import { QUOTES } from '../../content/quotes';
+import { quotesFor } from '../../content/quotes';
 
 /** The four moods he loops through: arms up and waving, crying, angry with a fist, calm. */
 export type Mood = 'arms' | 'cry' | 'angry' | 'calm';
@@ -48,9 +48,12 @@ export function quoteDelayMs(rand: () => number): number {
   return 8000 + Math.floor(rand() * 6001);
 }
 
-/** A quote from the dictionary, never `last` again (any line when `last` is not in the list). */
-export function pickQuote(rand: () => number, last: string | null): string {
-  const pool = last === null ? QUOTES : QUOTES.filter((q) => q !== last);
+/**
+ * A quote from `quotes` (the current language's dictionary by default), never `last` again (any line when `last` is
+ * not in the list).
+ */
+export function pickQuote(rand: () => number, last: string | null, quotes: readonly string[] = quotesFor()): string {
+  const pool = last === null ? quotes : quotes.filter((q) => q !== last);
   return pool[index(rand, pool.length)]!;
 }
 
@@ -98,14 +101,16 @@ export function initPresident(rand: () => number, nowMs: number): PresidentState
 /**
  * Advance to `nowMs`: a new mood once the hold runs out (never under reduced motion: the pose stays frozen), the bubble
  * hidden after QUOTE_SHOW_MS and a new quote every quoteDelayMs. After a long pause (off-screen) the next change is
- * scheduled from now, never replayed.
+ * scheduled from now, never replayed. A quote not in the current language's dictionary (the player switched language)
+ * is hidden at once.
  */
 export function stepPresident(s: PresidentState, rand: () => number, nowMs: number, reducedMotion: boolean): void {
   if (!reducedMotion && nowMs >= s.moodUntil) {
     s.mood = nextMood(rand, s.mood);
     s.moodUntil = nowMs + moodHoldMs(rand);
   }
-  if (s.quote !== null && nowMs >= s.quoteUntil) s.quote = null;
+  // after a language switch, the bubble of the other language goes at once (the next quote comes in the new one)
+  if (s.quote !== null && (nowMs >= s.quoteUntil || !quotesFor().includes(s.quote))) s.quote = null;
   if (s.quote === null && nowMs >= s.nextQuoteAt) {
     s.quote = pickQuote(rand, s.last);
     s.last = s.quote;

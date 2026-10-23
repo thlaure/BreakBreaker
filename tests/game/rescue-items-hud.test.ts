@@ -2,7 +2,7 @@
 import { describe, expect, test } from 'vitest';
 import { AlertBanner, activeIncidents, alertFromEvent } from '../../src/game/hud/alerts';
 import { incidentLines, itemsLine, rescueItemsLine } from '../../src/game/hud/format';
-import { ITEM_SHOUTS, SHOUT_MS, THANKS_MS, VictimMood } from '../../src/game/render/belongings';
+import { SHOUT_MS, THANKS_MS, VictimMood, itemShout } from '../../src/game/render/belongings';
 import { RESCUE_ITEMS } from '../../src/sim/incidents/rescue';
 import { Sim, type Snapshot } from '../../src/sim/sim';
 import type { SimEvent } from '../../src/sim/types';
@@ -89,9 +89,9 @@ describe('rescue belongings in the HUD', () => {
 
 describe('victim bubble', () => {
   test('every belonging has an ordinary shout', () => {
-    for (const list of Object.values(RESCUE_ITEMS)) for (const it of list) expect(ITEM_SHOUTS[it.id]).toMatch(/^(MON|MA) .+ !$/);
-    expect(ITEM_SHOUTS.handbag).toBe('MON SAC !');
-    expect(ITEM_SHOUTS.cap).toBe('MA CASQUETTE !');
+    for (const list of Object.values(RESCUE_ITEMS)) for (const it of list) expect(itemShout(it.id)).toMatch(/^(MON|MA) .+ !$/);
+    expect(itemShout('handbag')).toBe('MON SAC !');
+    expect(itemShout('cap')).toBe('MA CASQUETTE !');
   });
 
   test('help → « MON CHAPEAU ! » for 2 s after a theft → help; « MERCI ! » when handed back', () => {

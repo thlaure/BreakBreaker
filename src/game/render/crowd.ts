@@ -1,15 +1,19 @@
 import Phaser from 'phaser';
+import { t } from '../../content/i18n';
 import { DISTRICT } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
 import { CharView, FEET_ORIGIN_Y, idleFrame } from './actors';
-import { ITEM_SHOUTS, VictimMood } from './belongings';
+import { VictimMood, itemShout } from './belongings';
 import { DEPTH } from './depth';
 import { SpeechBubble as Bubble, type BubbleSpec } from './speechBubble';
 
 const SIGN_COLORS = [0xf4ecd8, 0xe8f1f8, 0xf8efc8];
 
-/** What the peaceful group grumbles about (never aimed at anyone in particular): one line at a time, in turn. */
-const GRUMBLES = ['ÇA SUFFIT !', 'ON EN A MARRE !', 'ARRÊTEZ ÇA !', 'STOP À LA CASSE !', 'C’EST HONTEUX !'] as const;
+/**
+ * What the peaceful group grumbles about (never aimed at anyone in particular): one line at a time, in turn (catalog
+ * keys `content.grumble.0..4`, read in the current language at each frame).
+ */
+const GRUMBLE_COUNT = 5;
 /** A line is shown for GRUMBLE_SHOW_MS out of every GRUMBLE_PERIOD_MS. */
 const GRUMBLE_PERIOD_MS = 4200;
 const GRUMBLE_SHOW_MS = 2800;
@@ -64,7 +68,7 @@ export class GroupView {
         b.bubble.say(null);
         return;
       }
-      b.bubble.say(bubbleSpec(`grumble${(Math.floor(t / GRUMBLE_PERIOD_MS) + gi) % GRUMBLES.length}` as BubbleKind));
+      b.bubble.say(bubbleSpec(`grumble${(Math.floor(t / GRUMBLE_PERIOD_MS) + gi) % GRUMBLE_COUNT}` as BubbleKind));
       b.bubble.place(b.x + (shake ? 1 : 0), b.y + shake);
     });
   }
@@ -76,21 +80,16 @@ const BOB_MS = 250;
 
 /** `shout:<item id>`: the victim cries for a stolen belonging (« MON SAC ! »), red like the call for help. */
 type BubbleKind = 'help' | 'thanks' | `grumble${0 | 1 | 2 | 3 | 4}` | `shout:${string}`;
-type FixedBubble = Exclude<BubbleKind, `shout:${string}`>;
-const BUBBLES: Record<FixedBubble, BubbleSpec> = {
-  help: { text: 'À L’AIDE !', color: '#c4372b' },
-  thanks: { text: 'MERCI !', color: '#1b7a35' }, // >= 5:1 on the white bubble
-  // the group is unhappy: dark red text and a red border (>= 5:1 on the white bubble)
-  grumble0: { text: GRUMBLES[0], color: '#a3231a', border: 0xc4372b },
-  grumble1: { text: GRUMBLES[1], color: '#a3231a', border: 0xc4372b },
-  grumble2: { text: GRUMBLES[2], color: '#a3231a', border: 0xc4372b },
-  grumble3: { text: GRUMBLES[3], color: '#a3231a', border: 0xc4372b },
-  grumble4: { text: GRUMBLES[4], color: '#a3231a', border: 0xc4372b },
-};
+const HELP_COLOR = '#c4372b';
+/** The group is unhappy: dark red text and a red border (>= 5:1 on the white bubble). */
+const GRUMBLE_STYLE = { color: '#a3231a', border: 0xc4372b } as const;
 
+/** The bubble of `kind`, its text in the current language (a locale switch shows at the next frame). */
 function bubbleSpec(kind: BubbleKind): BubbleSpec {
-  if (kind.startsWith('shout:')) return { text: ITEM_SHOUTS[kind.slice(6)] ?? BUBBLES.help.text, color: BUBBLES.help.color };
-  return BUBBLES[kind as FixedBubble];
+  if (kind === 'help') return { text: t('content.bubble.help'), color: HELP_COLOR };
+  if (kind === 'thanks') return { text: t('content.bubble.thanks'), color: '#1b7a35' }; // >= 5:1 on the white bubble
+  if (kind.startsWith('shout:')) return { text: itemShout(kind.slice(6)) ?? t('content.bubble.help'), color: HELP_COLOR };
+  return { text: t(`content.grumble.${kind.slice(7) as `${0 | 1 | 2 | 3 | 4}`}`), ...GRUMBLE_STYLE };
 }
 
 /**
