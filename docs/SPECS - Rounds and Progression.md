@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Rounds and Progression
 
 > **Purpose of this file:** arcade mode, rounds, events, healing, emergency services, prison, score and summary.  
-> Part of the BreakBreaker specifications (version 1.2.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.2.1), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 12. Arcade mode, rounds, events, progression and healing
 

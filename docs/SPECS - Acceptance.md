@@ -1,7 +1,7 @@
 # BreakBreaker — Specifications: Acceptance
 
 > **Purpose of this file:** validation and acceptance cases (RC), gap with the current prototype.  
-> Part of the BreakBreaker specifications (version 1.2.0), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
+> Part of the BreakBreaker specifications (version 1.2.1), split into several files. Back to the [specifications index](SPECS%20-%20Index.md) (overall table of contents, version history, conventions, file map).
 
 ## 21. Validation and acceptance criteria
 
@@ -199,6 +199,7 @@ Rule tests; integration with a controlled clock; browser with rendering; real ph
 | RC-184 | Caïd look: same on the street, in the van and in the yard (v1.2.0) | A jailed Caïd's `PrisonInmate.lifeId` is his map `lifeId`; `inmateTextureKey(inmate)` equals his street sheet; the jail van carries the same key (`tests/game/caidSkin.test.ts`, `tests/game/prisonInmates.test.ts`). |
 | RC-185 | Caïd slogans: content (v1.2.0) | `CAID_SKINS` has 5 looks with 5 distinct props and 3–4 distinct slogans each, every slogan ≤ 40 characters; no name or slogan contains a forbidden real name or party (macron, sarkozy, hollande, chirac, royal, trump, poutine, putin, khamenei, lepen, le pen, mélenchon, melenchon, zemmour, hassan, bagayoko, boyard; lfi and rn as words) nor a religious word (`tests/content/caids.test.ts`). |
 | RC-186 | Caïd looks on screen (v1.2.0) | In a browser: the five looks are told apart at a glance (clothes and prop), each keeps the crown and the segmented HP bar, never a flag; a slogan bubble shows over a standing Caïd every 10–18 s, never off screen, never on a KO body, still with reduced motion, inside the screen at 375×812; the yard shows the same look as on the street. |
+| RC-187 | A hit interrupts the repair (v1.2.1) | While a repair is in progress, damage that is actually applied to Paul (contact blow, rock, bullet, ground fire; not during invulnerability frames) resets the progress to 0 and the start; the toolbox stays carried; no `TargetRepaired` event; nothing resumes without a new press; a fresh press restarts from zero with the same toolbox. Tests: `tests/sim/repair.test.ts`. |
 
 ### 21.3 Visual acceptance
 

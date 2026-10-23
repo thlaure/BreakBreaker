@@ -6,6 +6,10 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.2.1 - 2026-10-23
+
+- Quand Paul est touché pendant une réparation (coup, pierre, tir, feu), la réparation s'arrête, mais il garde sa caisse à outils.
+
 ## 1.2.0 - 2026-10-23
 
 - Les Caïds ont du style : cinq looks de meneurs (le tribun, la cheffe de cortège, le camarade en costume, le vieux briscard, le jeune agitateur).
