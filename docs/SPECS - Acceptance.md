@@ -82,8 +82,8 @@ Rule tests; integration with a controlled clock; browser with rendering; real ph
 | RC-67 | Pause during an attack, a distress or a repair | Place health, fire, deadlines and repair suspended without resource consumption. |
 | RC-68 | Round transition with an incident or ruin | No disappearance, healing or free repair; state carried over or explicitly resolved. |
 | RC-69 | Open the site root | Visual, title, Jouer (Play) and Commandes (Controls) buttons visible; neither rules nor key table displayed up front; no session started. |
-| RC-70 | Activate Jouer | Navigation in the same tab to `/jouer/?go`, readable loading then **blocking** « Comment jouer » (How to play) card: the game waits, nothing moves, until a key, a click or a touch; audio unlocked by this gesture. |
-| RC-71 | Open `/jouer/` directly | Game accessible without a prior pass through the landing page, including after a reload; rules screen with Commencer (Start). |
+| RC-70 | Activate Jouer | Navigation in the same tab to `/play/?go`, readable loading then **blocking** « Comment jouer » (How to play) card: the game waits, nothing moves, until a key, a click or a touch; audio unlocked by this gesture. |
+| RC-71 | Open `/play/` directly | Game accessible without a prior pass through the landing page, including after a reload; rules screen with Commencer (Start). |
 | RC-72 | Inspect the network before Jouer | No engine, atlas or sound of the game downloaded by the landing page. |
 | RC-73 | Navigate by keyboard and on phone | Links usable, focus visible, text readable, no horizontal overflow. |
 | RC-74 | Review the visual and the texts | Original visual without a real photograph; no promise of 3D, of an overall duration or of an absent feature. |
@@ -208,7 +208,7 @@ The first minute must teach movement and a recoverable throw. A first rescue the
 | Heals | Contact stations (+25, recharged between rounds) | Small field heals: +10 every 8 KOs, two on the ground at most (section 12.5) |
 | Structure | Fixed-roster rounds (10, 14, 18, 22, then +4), 6 s breather with panel « Manche N terminée » (Round N complete), announcement, twist and climax (slice 2, phase A) | New features per round from section 12.2 (enemies, weapons, incident) |
 | Score and summary | Score, « Casseurs neutralisés » counter, floating points (v1.9.9), pixel score list (v1.9.6), round panel, local record, summary | Weapon and monument statistics in the summary (section 13.3) |
-| Access and interface | Landing page at `/`, game at `/jouer/`, `/jouer/?go` with blocking « Comment jouer » card, centred menus (v1.9.7) | Remapping, aiming options, discovery mode, graphics qualities (sections 7, 14, 19.4) |
+| Access and interface | Landing page at `/`, game at `/play/`, `/play/?go` with blocking « Comment jouer » card, centred menus (v1.9.7) | Remapping, aiming options, discovery mode, graphics qualities (sections 7, 14, 19.4) |
 | Validation | Vitest simulation tests and verification build | Acceptance on real devices and endurance |
 
 The items in the « To do » column remain requirements of the distribution target.

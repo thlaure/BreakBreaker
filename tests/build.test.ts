@@ -29,7 +29,7 @@ afterAll(() => {
 
 test('two entry points are emitted', () => {
   expect(existsSync(out('index.html'))).toBe(true);
-  expect(existsSync(out('jouer/index.html'))).toBe(true);
+  expect(existsSync(out('play/index.html'))).toBe(true);
 });
 
 test('landing pulls no game code', () => {
@@ -58,10 +58,10 @@ const decode = (s: string) =>
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&');
 
-test('landing has one h1, a real relative jouer/ link and no script', () => {
+test('landing has one h1, a real relative play/ link and no script', () => {
   const html = readFileSync(out('index.html'), 'utf8');
   expect(html.match(/<h1/g)?.length).toBe(1);
-  expect(html).toMatch(/href="jouer\/\?go"/); // relative (works under a sub-path); starts the game at once
+  expect(html).toMatch(/href="play\/\?go"/); // relative (works under a sub-path); starts the game at once
   expect(html).not.toMatch(/<a [^>]*href="\/(?!\/)/); // no root-absolute <a> links: the site may be served under /<repo>/
   expect(html).not.toMatch(/<script/);
 });
@@ -77,7 +77,7 @@ test('landing own HTML + CSS <= 300 KB gzipped', () => {
 test('landing is slim: one h1, one Jouer button, a Commandes button with its modal', () => {
   const html = readFileSync(out('index.html'), 'utf8');
   expect(html).not.toMatch(/<img/); // the hero is a CSS background (pixel art from the game's assets), not an <img>
-  expect(html.match(/class="[^"]*btn-primary[^"]*"[^>]*href="jouer\/\?go"/g)?.length).toBe(1);
+  expect(html.match(/class="[^"]*btn-primary[^"]*"[^>]*href="play\/\?go"/g)?.length).toBe(1);
   expect(html).toMatch(/<button[^>]*popovertarget="commandes"[^>]*>Commandes</);
   expect(html).toMatch(/<div id="commandes" popover/);
   expect(html).toMatch(/popovertargetaction="hide"/);
@@ -149,7 +149,7 @@ const pngSize = (file: string): [number, number] => {
 };
 
 test('both pages declare the site icon (Paul pixel head) and the icon files ship in the build', () => {
-  for (const page of ['index.html', 'jouer/index.html']) {
+  for (const page of ['index.html', 'play/index.html']) {
     const html = readFileSync(out(page), 'utf8');
     expect(html).toMatch(/<link rel="icon"[^>]*href="[^"]*favicon\.png"/);
     expect(html).toMatch(/<link rel="apple-touch-icon"[^>]*href="[^"]*apple-touch-icon\.png"/);
@@ -169,4 +169,11 @@ test('landing inlines the latest CHANGELOG.md notes and a changelog dialog, stil
   expect(html).toMatch(/popovertarget="changelog"[^>]*>Changelog</);
   expect(html.match(/class="release"/g)?.length).toBe(md.match(/^## \S+ - /gm)?.length);
   expect(html).not.toMatch(/<script/);
+});
+
+test('the old /jouer/ address forwards to /play/ and keeps the query string', () => {
+  const html = readFileSync(out('jouer/index.html'), 'utf8');
+  expect(html).toMatch(/http-equiv="refresh"[^>]*url=\.\.\/play\//);
+  expect(html).toMatch(/location\.replace\('\.\.\/play\/' \+ location\.search/);
+  expect(html).not.toMatch(/phaser/i);
 });

@@ -277,7 +277,7 @@ export class WorldScene extends Phaser.Scene {
     cam.setDeadzone(24, 16);
     this.applyZoom();
     this.setupInput();
-    // Coming from the landing's "Jouer" (/jouer/?go): start at once, no start screen.
+    // Coming from the landing's "Jouer" (/play/?go): start at once, no start screen.
     const fromLanding = new URLSearchParams(location.search).has('go');
     this.ui = new GameUi(this, data?.autostart ?? fromLanding);
     this.scale.on(Phaser.Scale.Events.RESIZE, this.applyZoom, this);

@@ -11,7 +11,7 @@ The site opens on a light landing page, separate from the game and deliberately 
 
 ### 4.2 Entry
 
-**Confirmed:** « Jouer » opens `/jouer/?go`. The game page displays its loading progress (engine, sprites, tiles, collisions, useful sounds and first opponents), then, as soon as the essential resources are ready, the « Comment jouer » (How to play) card is displayed: **changed (v1.9.4)** it is blocking, the game waits for a key, a click or a tap (RC-70, RC-87), then starts (4 s intro, round 1). Sound unlocks on this first gesture. A direct visit to `/jouer/` (without `?go`) displays the rules screen with the « Commencer » (Start) action. Top-down camera as soon as control is taken, no over-the-shoulder cutscene and no 3D model.
+**Confirmed:** « Jouer » opens `/play/?go`. The game page displays its loading progress (engine, sprites, tiles, collisions, useful sounds and first opponents), then, as soon as the essential resources are ready, the « Comment jouer » (How to play) card is displayed: **changed (v1.9.4)** it is blocking, the game waits for a key, a click or a tap (RC-70, RC-87), then starts (4 s intro, round 1). Sound unlocks on this first gesture. A direct visit to `/play/` (without `?go`) displays the rules screen with the « Commencer » (Start) action. Top-down camera as soon as control is taken, no over-the-shoulder cutscene and no 3D model.
 
 The first school is indicated, along with a peaceful group and a nearby healing point. The first seconds allow moving around before being pressed by a horde. The first attack is announced and leaves time for the trip from the starting point (health only drops through fire or blows); it does not necessarily wait for Paul to enter the circle. The first thrower is introduced alone or in small numbers to teach recovery.
 
@@ -99,7 +99,7 @@ Landing and navigation are P0. The final dressing and a representative preview a
 | Presentation | Game name and a one-sentence promise (the genre is in the site description, not as a kicker) | Main button « Jouer »; secondary button « Commandes » |
 | Controls | Modal (without JavaScript) with the table of computer and phone controls, drawn from the same source as the game | Opened by the « Commandes » button, closed by « Fermer » (Close), Esc or outside click |
 | Footer | Version and prototype/playable version status, credits, link to the source code, satirical fiction notice | Credits, source code |
-| Site icon | Pixel art favicon taken from Paul's head (`npm run favicon`: `favicon.png` 32 × 32 and `apple-touch-icon.png` 180 × 180), theme colour `#14121c`, linked from `/` and `/jouer/`, credited as an LPC derivative | None |
+| Site icon | Pixel art favicon taken from Paul's head (`npm run favicon`: `favicon.png` 32 × 32 and `apple-touch-icon.png` 180 × 180), theme colour `#14121c`, linked from `/` and `/play/`, credited as an LPC derivative | None |
 
 Chosen presentation text: **« Défends le quartier aussi longtemps que possible. »** (Defend the neighbourhood for as long as you can.)
 
@@ -121,11 +121,11 @@ The game's satirical status is stated in one readable sentence. The site does no
 
 ### 26.4 Navigation and launch
 
-Proposed routes: **`/` for the landing page**, **`/jouer/` for the game**. They may be served as two static entries in the same repository, without any additional site framework. Both routes and their resources must work after direct navigation and reload on the chosen hosting.
+Proposed routes: **`/` for the landing page**, **`/play/` for the game**. They may be served as two static entries in the same repository, without any additional site framework. Both routes and their resources must work after direct navigation and reload on the chosen hosting.
 
-**Confirmed:** « Jouer » is a real link to `/jouer/?go`, in the same tab. The game does not start loading on hover, scroll or when the landing page is opened. No automatic preloading of the engine or atlases. The game page displays progress, errors and a Retry action on failure. With `?go`, as soon as the essential resources are ready, **the « Comment jouer » card** (objective, main keys, « Appuie sur une touche pour commencer » (Press a key to start) / « Touche l’écran pour commencer » (Touch the screen to start)) is displayed over the game; **changed (v1.9.4):** it is blocking, the game waits for a key, a click or a tap to start, with no timer (RC-70, RC-87); a **« Commandes »** button remains in the interface and opens a modal (keys and rules) that pauses the game until it is closed. Audio unlocks on the first key press, first click or first tap.
+**Confirmed:** « Jouer » is a real link to `/play/?go`, in the same tab. The game does not start loading on hover, scroll or when the landing page is opened. No automatic preloading of the engine or atlases. The game page displays progress, errors and a Retry action on failure. With `?go`, as soon as the essential resources are ready, **the « Comment jouer » card** (objective, main keys, « Appuie sur une touche pour commencer » (Press a key to start) / « Touche l’écran pour commencer » (Touch the screen to start)) is displayed over the game; **changed (v1.9.4):** it is blocking, the game waits for a key, a click or a tap to start, with no timer (RC-70, RC-87); a **« Commandes »** button remains in the interface and opens a modal (keys and rules) that pauses the game until it is closed. Audio unlocks on the first key press, first click or first tap.
 
-Direct access to the game is allowed: the landing page is not a mandatory step. A direct visit to `/jouer/` displays the screen of essential rules and controls with the « Commencer » action. Audio activation happens on a gesture within the game page; a click made on another page must not be assumed sufficient.
+Direct access to the game is allowed: the landing page is not a mandatory step. A direct visit to `/play/` displays the screen of essential rules and controls with the « Commencer » action. Audio activation happens on a gesture within the game page; a click made on another page must not be assumed sufficient.
 
 Pause and summary offer « Retour au site » (Back to the site). From a session in progress, an integrated confirmation states that it will be abandoned, with « Continuer la partie » (Continue the game) and « Quitter la partie » (Leave the game). From the summary, a direct return. Reloading or closing does not guarantee resumption: no session save is planned in V1. The record and the preferences already stored remain local to the browser and the same origin.
 

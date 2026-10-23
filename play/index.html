@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BreakBreaker - Jouer</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#14121c" />
+    <style>
+      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+      #game, #touch-ui { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+      #game { width: 100%; height: 100%; }
+      #touch-ui { display: none; position: fixed; inset: 0; pointer-events: none; font-family: sans-serif; }
+      #touch-ui.visible { display: block; }
+      #touch-ui [data-zone="stick"] { position: absolute; left: 0; top: 0; width: 50%; height: 100%; pointer-events: none; }
+      #touch-ui.touched [data-zone="stick"] { pointer-events: auto; }
+      #touch-ui [data-knob] { display: none; position: absolute; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: rgba(255,255,255,.3); border: 2px solid rgba(255,255,255,.6); pointer-events: none; }
+      #touch-ui button { position: absolute; pointer-events: auto; min-width: 56px; min-height: 56px; border-radius: 50%; border: 2px solid rgba(255,255,255,.7); background: rgba(20,18,28,.55); color: #fff; font-size: 13px; font-weight: bold; padding: 0; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+      #touch-ui button:active { background: rgba(255,255,255,.35); }
+      #touch-ui [data-action="strike"] { width: 84px; height: 84px; right: calc(16px + env(safe-area-inset-right)); bottom: calc(20px + env(safe-area-inset-bottom)); }
+      #touch-ui [data-action="throw"] { width: 64px; height: 64px; font-size: 11px; right: calc(112px + env(safe-area-inset-right)); bottom: calc(20px + env(safe-area-inset-bottom)); }
+      #touch-ui [data-action="act"] { width: 64px; height: 64px; right: calc(32px + env(safe-area-inset-right)); bottom: calc(116px + env(safe-area-inset-bottom)); }
+      #touch-ui [data-action="onde"] { width: 60px; height: 60px; right: calc(116px + env(safe-area-inset-right)); bottom: calc(100px + env(safe-area-inset-bottom)); }
+      #touch-ui [data-action="furie"] { width: 60px; height: 60px; right: calc(116px + env(safe-area-inset-right)); bottom: calc(172px + env(safe-area-inset-bottom)); }
+      #touch-ui [data-action="pause"] { width: 56px; height: 56px; right: calc(12px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top)); border-radius: 12px; }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="touch-ui">
+      <div data-zone="stick"><div data-knob></div></div>
+      <button type="button" data-action="strike">Frapper</button>
+      <button type="button" data-action="throw">Renvoyer</button>
+      <button type="button" data-action="act">Agir</button>
+      <button type="button" data-action="onde">Onde</button>
+      <button type="button" data-action="furie">Furie</button>
+      <button type="button" data-action="pause">Pause</button>
+    </div>
+    <script type="module" src="/src/game/main.ts"></script>
+  </body>
+</html>

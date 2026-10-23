@@ -57,7 +57,7 @@ export const HELP_MS = 7000;
 /** How long the red screen-edge glow of a new attack lasts (matches bb-glow in hud.css). */
 const GLOW_MS = 700;
 const EDGE_PAD = 8;
-/** Touch buttons in the bottom-right corner (see jouer/index.html), kept clear of the edge indicators. */
+/** Touch buttons in the bottom-right corner (see play/index.html), kept clear of the edge indicators. */
 const TOUCH_PAD_W = 200;
 const TOUCH_PAD_H = 250;
 /** How long « Énergie insuffisante » stays after a refused Furie / Onde. */

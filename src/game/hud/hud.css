@@ -54,7 +54,7 @@
 .bb-stats .energy.st-active .etag { color: #ffe066; }
 .bb-stats .energy.refused .etag { color: var(--bb-bad); animation: none; }
 @keyframes bb-energy-blink { 50% { opacity: 0.45; } }
-/* touch Furie / Onde buttons (see jouer/index.html): dim until the gauge allows them, glowing once ready */
+/* touch Furie / Onde buttons (see play/index.html): dim until the gauge allows them, glowing once ready */
 #touch-ui [data-action="furie"].dim, #touch-ui [data-action="onde"].dim { opacity: 0.45; border-style: dashed; }
 #touch-ui [data-action="onde"].ready { border-color: #8fd3ff; color: #e6f6ff; box-shadow: 0 0 0 3px rgba(143, 211, 255, 0.45), 0 0 14px 2px rgba(143, 211, 255, 0.6); animation: bb-touch-ready 1.6s steps(1, end) infinite; }
 #touch-ui [data-action="furie"].ready { border-color: #ffd23a; color: #fff6d0; box-shadow: 0 0 0 3px rgba(255, 210, 58, 0.5), 0 0 16px 3px rgba(255, 210, 58, 0.7); animation: bb-touch-ready 0.8s steps(1, end) infinite; }
