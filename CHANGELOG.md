@@ -6,6 +6,11 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.5.7 - 2026-10-24
+
+- Le compteur `?perf` mesure maintenant aussi le temps de la carte graphique (avec les navigateurs qui le permettent) et accepte `&off=hud,graphics,shapes,particles,texts,images,tiles` pour couper une couche à la fois et trouver ce qui coûte du temps sur une machine donnée.
+- Le texte « Caïds enfermés » de la prison n'est plus redessiné à chaque image (une petite image était renvoyée à la carte graphique 60 fois par seconde pour rien).
+
 ## 1.5.6 - 2026-10-24
 
 - Les têtes de citrouille d'Halloween sont de vraies têtes : la tête du casseur ou du Caïd est remplacée par une citrouille qui bouge avec son corps (de dos, elle n'a pas de visage), au lieu d'un masque posé dessus.

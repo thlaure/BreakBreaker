@@ -78,6 +78,8 @@ export class PrisonLayer {
   private readonly slots: Slot[] = [];
   private escape: Escape | null = null;
   private shown = -1;
+  /** The counter's current text colour (it is only changed when it differs). */
+  private counterColour = '';
   private popAt = -Infinity;
 
   constructor(
@@ -160,7 +162,12 @@ export class PrisonLayer {
     }
     const pop = this.reducedMotion ? 0 : Math.max(0, 1 - (nowMs - this.popAt) / POP_MS);
     this.counter.setVisible(p.standing).setScale(1 + 0.3 * pop);
-    this.counter.setColor(pop > 0 ? '#ffffff' : '#ffd23f');
+    // setColor re-renders the text and re-uploads its texture every call: only when the colour really changes
+    const colour = pop > 0 ? '#ffffff' : '#ffd23f';
+    if (colour !== this.counterColour) {
+      this.counterColour = colour;
+      this.counter.setColor(colour);
+    }
     this.drawBeam(p.standing && !s.ended, nowMs);
     const alpha = inRect(s.player.pos, this.roofRect) ? ROOF_FADED : 1;
     this.yard.setAlpha(alpha * (p.standing ? 1 : 0.6));

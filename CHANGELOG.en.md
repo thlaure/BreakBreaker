@@ -6,6 +6,11 @@ It is read at build time and feeds the "What’s new" block and the "Changelog" 
 Format: one `## <version> - <date YYYY-MM-DD>` heading per version, then short `- ` bullets, most important first.
 The first three bullets of the latest version are shown on the landing page.
 
+## 1.5.7 - 2026-10-24
+
+- The `?perf` meter now also measures the graphics card's time (in browsers that allow it) and accepts `&off=hud,graphics,shapes,particles,texts,images,tiles` to switch one layer off at a time and find what costs time on a given machine.
+- The prison's « ringleaders locked up » text is no longer redrawn every frame (a small image was being sent to the graphics card 60 times a second for nothing).
+
 ## 1.5.6 - 2026-10-24
 
 - The Halloween pumpkin heads are real heads: the rioter's or ringleader's head is replaced by a pumpkin that moves with his body (from behind it has no face), instead of a mask on top.
