@@ -55,7 +55,7 @@ export class WorldView {
   private readonly roofs: Roof[] = [];
   /** Parts of each target building (school, shop, nursery, town hall, library) by building index, for its ruin look. */
   readonly buildingParts = new Map<number, BuildingPart[]>();
-  /** Animated bits of the decor fronts (CAF queue, POULET CROUSTI sign, sauna lantern and silhouettes, the skeleton band). */
+  /** Animated bits of the decor fronts (CAF queue, POULET CROUSTI sign, sauna lantern and guests, the skeleton band). */
   private readonly decor: DecorAnim[] = [];
   /** Centre of the château balcony floor (world px), where the President stands; null until the château is built. */
   chateauBalcony: Vec | null = null;

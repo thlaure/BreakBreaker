@@ -6,10 +6,16 @@ import type { DecorAnim, FrontKit, Paint, RoofPart } from './decor';
 import { DEPTH } from './depth';
 import { FACADE_H, ROOF_OVERHANG } from './geometry';
 import { localeBound } from './localeText';
+import { idleFrame } from './charView';
+import { SAUNA_GUESTS, type GuestProp } from './saunaGuests';
 import { lanternGlow, silhouetteDrift, steamSpec } from './squareMath';
 
 const T = CONFIG.tile;
 const OUTLINE = 0x14121c;
+/** The part of a 64-px character frame shown behind the glass (head to waist), px from the frame's top-left. */
+const GUEST_CROP = { x: 14, y: 10, w: 36 };
+/** Guests are drawn small (not at the scale of the people outside) so head and chest fit behind the glass. */
+const GUEST_SCALE = 0.75 as const;
 
 /** Sauna colours: warm pine planks, dark knots, steam, lantern light. */
 const SAUNA = {
@@ -21,7 +27,6 @@ const SAUNA = {
   shingleHi: 0x96602e,
   steam: 0xeef4f6,
   inside: 0xb06a3a,
-  figure: 0x4a2618,
   light: 0xffd27a,
   iron: 0x2a2630,
 } as const;
@@ -38,40 +43,30 @@ function layer(s: Phaser.Scene, depth: number): { gr: Phaser.GameObjects.Graphic
 }
 
 /**
- * One blurry silhouette behind the steamed glass (local px, feet of the bust at 0,0): a soft head and shoulders, no
- * face, a towel over the shoulders, and props and plain outfit only (no exaggerated features): 0 a red cap and a long red tie, 1 a judo belt and a hockey stick, 2 a plain dark turban and a grey beard.
+ * The prop of one guest over his sprite (local px: x 0 is the middle of the body, y 0 the top of the head, the bench top at
+ * y 23): a red cap and a long red tie, a black judo belt and a hockey stick leaning on the bench, a felt sauna hat. Outfit
+ * and objects only: no exaggerated feature, no religious item.
  */
-function silhouette(p: Paint, k: number): void {
-  const f = SAUNA.figure;
-  // soft edges: a faint wider halo under the solid shape
-  p(f, -4, -14, 8, 6, 0.3);
-  p(f, -6, -9, 12, 9, 0.3);
-  p(f, -3, -13, 6, 5, 0.85); // head
-  p(f, -5, -7, 10, 7, 0.85); // shoulders
-  p(0xf4f4f0, -5, -7, 10, 2, 0.7); // towel
-  if (k === 0) {
-    // a red baseball cap and a very long red tie over the towel
-    p(0xc0392b, -5, -17, 10, 4, 0.9);
-    p(0xc0392b, -9, -14, 5, 1, 0.9); // the peak
-    p(0xc0392b, -1, -7, 2, 9, 0.9);
-    p(0x8e1f16, -1, 1, 2, 1, 0.9);
-  } else if (k === 1) {
-    // a black judo belt around the towel and an ice-hockey stick leaning on the bench
-    p(0x1a1a1a, -5, -3, 10, 2, 0.95);
-    p(0x1a1a1a, -1, -1, 2, 4, 0.95);
-    p(0x8a6a3a, 7, -12, 1, 12, 0.9);
-    p(0x8a6a3a, 7, 0, 4, 1, 0.9);
+function guestProp(p: Paint, prop: GuestProp): void {
+  if (prop === 'capTie') {
+    p(0xc0392b, -6, 1, 12, 4);
+    p(0xc0392b, -10, 5, 5, 1); // the peak
+    p(0xc0392b, -1, 14, 2, 8); // a very long tie
+    p(0x8e1f16, -1, 22, 2, 1);
+  } else if (prop === 'judoBelt') {
+    p(0x1a1a1a, -6, 20, 12, 2);
+    p(0x1a1a1a, -1, 21, 2, 2);
+    p(0x8a6a3a, 11, 2, 1, 26);
+    p(0x8a6a3a, 11, 27, 5, 1);
   } else {
-    // a plain dark turban and a grey beard, drawn without exaggeration (no symbol, no extra gag)
-    p(0x2b2b33, -5, -18, 10, 5, 0.95);
-    p(0x3b3b46, -4, -17, 8, 1, 0.8);
-    p(0xb8b8b8, -3, -9, 6, 3, 0.9);
+    p(0xa89a7a, -6, 3, 12, 2); // the brim
+    p(0xc8b890, -4, 0, 8, 3);
   }
 }
 
 /**
- * The sauna (decor): a warm pine-plank front with a steamed window showing three blurry silhouettes (told apart
- * by props only), a plank door with a fogged porthole and a towel on its hook, a lantern with a flickering
+ * The sauna (decor): a warm pine-plank front with a glazed 3-seat cabin: three guests, drawn with the same character
+ * sheets as the people on the map (told apart by props only), sit behind the steamed glass, a plank door with a fogged porthole and a towel on its hook, a lantern with a flickering
  * glow, a stack of firewood, a shingle roof with a stove pipe puffing steam (none under reduced motion), and the board
  * « Sauna – Ne pas déranger » on the roof edge.
  */
@@ -93,30 +88,48 @@ export function buildSaunaFront(kit: FrontKit, s: Phaser.Scene, d: DecorDef, roo
   r(SAUNA.dark, b.x, top, 3, FACADE_H - 3);
   r(SAUNA.dark, b.x + b.w - 3, top, 3, FACADE_H - 3);
   r(SAUNA.dark, b.x, top, b.w, 2);
-  // the steamed window: a warm inside, a bench, the silhouettes, then the fog over them
-  const wx = b.x + 8;
-  const ww = Math.min(48, door - 6 - wx);
-  r(OUTLINE, wx - 2, top + 4, ww + 4, 23);
-  r(SAUNA.dark, wx - 1, top + 5, ww + 2, 21);
-  r(SAUNA.inside, wx + 1, top + 7, ww - 2, 17);
-  r(SAUNA.pineLo, wx + 1, top + 19, ww - 2, 2); // bench
-  const people = [0, 1, 2].map((k) => {
-    const { gr, p } = layer(s, front + 0.025);
-    silhouette(p, k);
-    gr.setPosition(wx + 9 + k * 14, top + 24);
-    return gr;
+  // the glazed cabin: a pine frame, a warm inside, the three guests sitting on a bench behind the steamed glass
+  const wx = b.x + 4;
+  const ww = Math.min(60, door - 4 - wx);
+  const gy = top + 2;
+  const gh = FACADE_H - 4;
+  r(OUTLINE, wx - 2, gy - 2, ww + 4, gh + 4);
+  r(SAUNA.dark, wx - 1, gy - 1, ww + 2, gh + 2);
+  r(SAUNA.inside, wx, gy, ww, gh);
+  const people = SAUNA_GUESTS.map(({ sheet, prop }, k) => {
+    const cx = wx + 11 + k * 19;
+    const sprite = s.add
+      .sprite(0, 0, sheet, idleFrame(sheet, 's'))
+      .setOrigin(0, 0)
+      .setScale(GUEST_SCALE)
+      .setCrop(GUEST_CROP.x, GUEST_CROP.y, GUEST_CROP.w, Math.ceil(gh / GUEST_SCALE))
+      .setDepth(front + 0.025);
+    const { gr, p } = layer(s, front + 0.027);
+    guestProp(p, prop);
+    return {
+      sprite,
+      gr,
+      at: (dx: number) => {
+        sprite.setPosition(cx + dx - 32 * GUEST_SCALE, gy - GUEST_CROP.y * GUEST_SCALE);
+        gr.setPosition(cx + dx, gy);
+      },
+    };
   });
-  const { p: fog } = layer(s, front + 0.03);
-  fog(SAUNA.steam, wx + 1, top + 7, ww - 2, 17, 0.32);
-  fog(SAUNA.steam, wx + 1, top + 7, ww - 2, 4, 0.25);
+  people.forEach((g) => g.at(0));
+  const { p: glass } = layer(s, front + 0.03);
+  glass(SAUNA.pineLo, wx, gy + gh - 5, ww, 5); // the bench front hides the legs: they are sitting
+  glass(SAUNA.pineHi, wx, gy + gh - 5, ww, 1);
+  glass(SAUNA.steam, wx, gy, ww, gh, 0.22);
+  glass(SAUNA.steam, wx, gy, ww, 3, 0.25);
   for (const [x, h] of [
     [6, 10],
-    [17, 7],
-    [31, 12],
-    [41, 6],
+    [24, 7],
+    [41, 12],
+    [53, 6],
   ] as const)
-    if (x < ww - 2) fog(SAUNA.inside, wx + x, top + 12, 1, h, 0.35); // drops running down
-  fog(0xffffff, wx + 3, top + 8, 6, 2, 0.5);
+    if (x < ww - 2) glass(SAUNA.inside, wx + x, gy + 5, 1, h, 0.35); // drops running down
+  glass(0xffffff, wx + 3, gy + 1, 8, 2, 0.5);
+  glass(SAUNA.dark, wx + Math.floor(ww / 2), gy, 1, gh - 5, 0.5); // a glass pane joint
   // plank door, a fogged porthole, a towel on its hook
   r(OUTLINE, door + 6, top + 4, 20, 28);
   r(SAUNA.pineLo, door + 7, top + 5, 18, 27);
@@ -193,7 +206,7 @@ export function buildSaunaFront(kit: FrontKit, s: Phaser.Scene, d: DecorDef, roo
   return {
     update(timeMs) {
       glow.setFillStyle(SAUNA.light, lanternGlow(timeMs, reduced));
-      people.forEach((g, k) => g.setX(wx + 9 + k * 14 + silhouetteDrift(timeMs, k, reduced)));
+      people.forEach((g, k) => g.at(silhouetteDrift(timeMs, k, reduced)));
     },
   };
 }

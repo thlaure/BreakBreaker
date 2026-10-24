@@ -43,7 +43,7 @@ export function lanternGlow(timeMs: number, reducedMotion: boolean): number {
   return 0.16 + 0.06 * Math.abs(Math.sin(timeMs / 190) * Math.sin(timeMs / 317));
 }
 
-/** Slow drift (px, -1..1) of the k-th blurry silhouette behind the steamed glass; none under reduced motion. */
+/** Slow drift (px, -1..1) of the k-th guest behind the steamed glass; none under reduced motion. */
 export function silhouetteDrift(timeMs: number, k: number, reducedMotion: boolean): number {
   if (reducedMotion) return 0;
   return Math.round(Math.sin(timeMs / 1400 + k * 2.1));

@@ -6,6 +6,10 @@ It is read at build time and feeds the "What’s new" block and the "Changelog" 
 Format: one `## <version> - <date YYYY-MM-DD>` heading per version, then short `- ` bullets, most important first.
 The first three bullets of the latest version are shown on the landing page.
 
+## 1.4.5 - 2026-10-24
+
+- The sauna is now a glazed three-seat cabin: its three guests are real characters, drawn with the same parts as the people walking around the map, told apart by accessories only (cap and long tie, judo belt, felt hat).
+
 ## 1.4.4 - 2026-10-24
 
 - The game uses far less power while paused (pause menu, controls, instructions card, end screen): the frozen scene is only redrawn at a low rate, saving CPU, GPU and battery.
