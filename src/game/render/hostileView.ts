@@ -25,6 +25,7 @@ import { CaidLookView } from './caidProps';
 import { caidSkinOf } from './caidSkin';
 import { BottleProp, RoleBadge } from './rioterProps';
 import { flagFor, themedSheet } from '../../events';
+import { rectImage } from './flatImages';
 import { SKULL_FLAG_TEXTURE } from '../../events/halloween/textures';
 import { DUST_MS, badgeOf, rioterSheet, roleScale } from './roleLook';
 import { MAX_SATELLITES } from './satellite';
@@ -49,7 +50,7 @@ function sheetOf(scene: Phaser.Scene, h: HostileSnap): string {
 export class HostileView {
   readonly view: CharView;
   private readonly flag: Phaser.GameObjects.Image | null;
-  private readonly pole: Phaser.GameObjects.Rectangle | null;
+  private readonly pole: Phaser.GameObjects.Image | null;
   private readonly bottle: BottleProp | null;
   /** A shooter's cartoon rifle (and its « ! » while aiming). */
   private readonly rifle: RifleProp | null;
@@ -86,7 +87,7 @@ export class HostileView {
         : flagFrame >= 0
           ? scene.add.image(0, 0, 'flags', flagFrame).setOrigin(0, 1)
           : null;
-    this.pole = this.flag ? scene.add.rectangle(0, 0, 1, 22, 0x5a4632).setOrigin(0.5, 1) : null;
+    this.pole = this.flag ? rectImage(scene, 0, 0, 1, 22, 0x5a4632).setOrigin(0.5, 1) : null;
     this.bottle = h.role === 'molotov' || h.role === 'firebomber' ? new BottleProp(scene) : null;
     this.rifle = h.role === 'shooter' ? new RifleProp(scene) : null;
     this.caid = h.role === 'boss' ? new CaidLookView(scene, caidSkinOf(h.lifeId), this.size) : null;

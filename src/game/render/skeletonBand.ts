@@ -204,7 +204,10 @@ export class SkeletonBand implements DecorAnim {
       skull(hp, m);
       const x = origin.x + m.x;
       const depth = m.role === 'drums' ? STAGE_DEPTH.back : STAGE_DEPTH.band + m.y / 10000;
-      const root = scene.add.container(x, origin.y + m.y, [bodyG, head]).setDepth(depth);
+      const root = scene.add
+        .container(x, origin.y + m.y, [bodyG, head])
+        .setDepth(depth)
+        .setName('dynamic');
       roofParts.push(root);
       this.shown.push({ root, head, x });
     }

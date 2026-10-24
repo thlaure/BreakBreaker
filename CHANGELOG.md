@@ -6,6 +6,10 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.5.8 - 2026-10-24
+
+- Le jeu est beaucoup plus fluide : tes mesures montraient qu'il suffisait de couper l'une des couches « dessins », « formes » ou « tuiles » pour retrouver presque 60 images par seconde. Ces trois types d'objets cassaient le regroupement des dessins du navigateur. Les murs, toits, rectangles et ombres sont maintenant des images, et les décors fixes sont figés une fois pour toutes : de 173 à 60 appels de dessin par image dans mon test.
+
 ## 1.5.7 - 2026-10-24
 
 - Le compteur `?perf` mesure maintenant aussi le temps de la carte graphique (avec les navigateurs qui le permettent) et accepte `&off=hud,graphics,shapes,particles,texts,images,tiles` pour couper une couche à la fois et trouver ce qui coûte du temps sur une machine donnée.

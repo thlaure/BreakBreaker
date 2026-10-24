@@ -9,6 +9,7 @@ import { buildChateauFront } from './chateauFront';
 import { buildChurchFront } from './churchFront';
 import { buildEventDecor } from '../../events';
 import { bakeGraphics } from './bake';
+import { rectImage, tiledImage } from './flatImages';
 import { buildCafFront, buildPouletFront, type DecorAnim, type Paint } from './decor';
 import { DEPTH, inRect } from './depth';
 import { FACADE_H, ROOF_OVERHANG } from './geometry';
@@ -40,6 +41,7 @@ interface Roof {
  * art (graphics) fade, a `glow` (a lit window) goes dark; other rectangles stay.
  */
 export type BuildingPart =
+  | Phaser.GameObjects.Image
   | Phaser.GameObjects.TileSprite
   | Phaser.GameObjects.Rectangle
   | Phaser.GameObjects.Text
@@ -76,8 +78,13 @@ export class WorldView {
     this.buildTrees();
     this.decor.push(...buildEventDecor(scene, reducedMotion));
     // the front walls never change once drawn: one image each instead of thousands of rectangles replayed every frame
-    for (const g of this.frontGraphics) bakeGraphics(scene, g);
+    for (const g of this.frontGraphics) {
+      const image = bakeGraphics(scene, g);
+      // a building's ruin look dims its pixel art: the parts that held the Graphics now hold its image
+      if (image) for (const parts of this.buildingParts.values()) parts.forEach((p, k) => (p === g ? (parts[k] = image) : undefined));
+    }
     this.frontGraphics.length = 0;
+    this.bakeRoofGraphics();
   }
 
   /** Fades the roof / tree canopy whose rect contains Paul's feet; steps the decor fronts' idle animation and the President. */
@@ -125,25 +132,15 @@ export class WorldView {
             ? TILE.city.wallGrey
             : TILE.city.wallRed;
     const front = b.y + b.h;
-    const facade = s.add
-      .tileSprite(b.x, front - FACADE_H, b.w / 2, FACADE_H / 2, 'city', wall)
-      .setOrigin(0)
-      .setScale(2)
-      .setDepth(front);
-    const base = s.add
-      .rectangle(b.x, front - 3, b.w, 3, 0x1d1a24, 0.9)
+    const facade = tiledImage(s, 'city', wall, b.x, front - FACADE_H, b.w, FACADE_H, 2).setDepth(front);
+    const base = rectImage(s, b.x, front - 3, b.w, 3, 0x1d1a24, 0.9)
       .setOrigin(0)
       .setDepth(front + 0.01);
 
     const rect: Rect = { x: b.x, y: b.y - ROOF_OVERHANG, w: b.w, h: b.h - FACADE_H + ROOF_OVERHANG };
     const roofFrame = school ? TILE.city.roofs[0] : TILE.city.roofs[1 + (i % 3)]!;
-    const roof = s.add
-      .tileSprite(rect.x, rect.y, rect.w / 2, rect.h / 2, 'city', roofFrame)
-      .setOrigin(0)
-      .setScale(2)
-      .setDepth(DEPTH.roof);
-    const eave = s.add
-      .rectangle(rect.x, rect.y + rect.h - 4, rect.w, 4, 0x000000, 0.35)
+    const roof = tiledImage(s, 'city', roofFrame, rect.x, rect.y, rect.w, rect.h, 2).setDepth(DEPTH.roof);
+    const eave = rectImage(s, rect.x, rect.y + rect.h - 4, rect.w, 4, 0x000000, 0.35)
       .setOrigin(0)
       .setDepth(DEPTH.roof);
     const parts: Roof['parts'] = [roof, eave];
@@ -183,6 +180,18 @@ export class WorldView {
       }
     }
     this.roofs.push({ rect, parts });
+  }
+
+  /**
+   * The static roof pieces (church tower, prison slab, stage floor, signs...) are containers of Graphics that never change:
+   * bake each into an image. A container named `dynamic` (the President's poses, the skeletons) keeps its Graphics, which
+   * code hides, shows and moves later.
+   */
+  private bakeRoofGraphics(): void {
+    for (const roof of this.roofs)
+      for (const p of roof.parts)
+        if (p instanceof Phaser.GameObjects.Container && p.name !== 'dynamic')
+          for (const child of [...p.list]) if (child instanceof Phaser.GameObjects.Graphics) bakeGraphics(this.scene, child);
   }
 
   /** Pixel-art graphics on a building's front wall (depth just above the wall) and its `r(colour, x, y, w, h)` painter. */

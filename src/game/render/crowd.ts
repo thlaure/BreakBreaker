@@ -6,6 +6,7 @@ import { CharView, FEET_ORIGIN_Y, idleFrame } from './actors';
 import { VictimMood, itemShout } from './belongings';
 import { DEPTH } from './depth';
 import { SpeechBubble as Bubble, type BubbleSpec } from './speechBubble';
+import { rectImage } from './flatImages';
 
 const SIGN_COLORS = [0xf4ecd8, 0xe8f1f8, 0xf8efc8];
 
@@ -30,12 +31,11 @@ export class GroupView {
       members.forEach((m, i) => {
         const sheet = `protester_${(i % 4) + 1}`;
         const sprite = scene.add.sprite(m.x, m.y, sheet, idleFrame(sheet, 's')).setOrigin(0.5, FEET_ORIGIN_Y).setDepth(m.y);
-        const stick = scene.add.rectangle(0, 0, 1, 14, 0x6b5440).setOrigin(0.5, 0);
-        const board = scene.add
-          .rectangle(0, 0, 16, 10, SIGN_COLORS[i % SIGN_COLORS.length]!)
-          .setStrokeStyle(1, 0x3a3546)
-          .setOrigin(0.5, 1);
-        const sign = scene.add.container(m.x + 7, m.y - 48, [stick, board]).setDepth(m.y + 0.1);
+        const stick = rectImage(scene, 0, 0, 1, 14, 0x6b5440).setOrigin(0.5, 0);
+        // the board's 1-px outline is a slightly larger dark rectangle under it
+        const edge = rectImage(scene, 0, 0, 18, 12, 0x3a3546).setOrigin(0.5, 1);
+        const board = rectImage(scene, 0, -1, 16, 10, SIGN_COLORS[i % SIGN_COLORS.length]!).setOrigin(0.5, 1);
+        const sign = scene.add.container(m.x + 7, m.y - 48, [stick, edge, board]).setDepth(m.y + 0.1);
         this.members.push({ sprite, sign, baseY: m.y });
       });
       // blue neutral marker (a calm "i"), never a threat colour

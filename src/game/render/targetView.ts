@@ -9,6 +9,7 @@ import { PROP_RISE, type PropKind } from './geometry';
 import { HpBar } from './targetHpBar';
 import { FACADE_H, type BuildingPart } from './world';
 import { ellipseImage } from './ellipseImage';
+import { rectImage } from './flatImages';
 
 type TargetSnap = Snapshot['targets'][number];
 
@@ -134,7 +135,7 @@ export class TargetView {
       // mast on the front edge of the roof, so it reads from the street in front of the school
       const mx = cx + 48;
       const my = bottom - FACADE_H - 2;
-      const pole = scene.add.rectangle(0, 0, 2, 34, 0xd8d4cc).setOrigin(0.5, 1);
+      const pole = rectImage(scene, 0, 0, 2, 34, 0xd8d4cc).setOrigin(0.5, 1);
       const flag = scene.add.image(1, -34, 'flags', FLAG.fr).setOrigin(0, 0).setScale(1.5);
       this.mast = scene.add
         .container(mx, my, [pole, flag])
@@ -203,11 +204,12 @@ export class TargetView {
       // a building's own ruin art (the prison's fallen watchtower, its gate burst open) swaps with its standing art
       if (p.name === 'intact') p.setVisible(!ruined);
       else if (p.name === 'ruin') p.setVisible(ruined);
-      else if (p instanceof Phaser.GameObjects.TileSprite) {
+      else if (p instanceof Phaser.GameObjects.TileSprite || (p instanceof Phaser.GameObjects.Image && p.name === 'tiles')) {
         if (ruined) p.setTint(0x3a3438);
         else p.clearTint();
       } else if (p.name === 'glow') p.setVisible(!ruined);
-      else if (p instanceof Phaser.GameObjects.Text || p instanceof Phaser.GameObjects.Graphics) p.setAlpha(ruined ? 0.45 : 1);
+      else if (p.name === 'pixelart' || p instanceof Phaser.GameObjects.Text || p instanceof Phaser.GameObjects.Graphics)
+        p.setAlpha(ruined ? 0.45 : 1);
     }
   }
 

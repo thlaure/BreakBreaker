@@ -37,7 +37,8 @@ export function bakeGraphics(scene: Phaser.Scene, g: Phaser.GameObjects.Graphics
     .setDepth(g.depth)
     .setAlpha(g.alpha)
     .setBlendMode(g.blendMode)
-    .setVisible(g.visible);
+    .setVisible(g.visible)
+    .setName(g.name || 'pixelart');
   const parent = g.parentContainer;
   if (parent) {
     parent.addAt(image, parent.getIndex(g));

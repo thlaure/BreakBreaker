@@ -229,7 +229,7 @@ export class PresidentView {
         this.frames.set(`${mood}${frame}`, g);
         gs.push(g);
       }
-    this.root = scene.add.container(balcony.x, balcony.y, gs).setDepth(BALCONY_DEPTH.figure).setVisible(false);
+    this.root = scene.add.container(balcony.x, balcony.y, gs).setDepth(BALCONY_DEPTH.figure).setVisible(false).setName('dynamic');
     roofParts.push(this.root); // fades with the château roof, like the balcony
     this.bubble = new QuoteBubble(scene);
     this.cull = new Phaser.Geom.Rectangle(balcony.x + CULL.x, balcony.y + CULL.y, CULL.w, CULL.h);

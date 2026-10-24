@@ -297,6 +297,8 @@ Unavailable storage does not prevent play. The record of an interrupted session 
 
 **Perf meter (v1.5.5).** `?perf` adds `PerfMeter` (`src/game/perfMeter.ts`): a capture-phase `keydown`/`pointerdown` listener stamps presses with `event.timeStamp`, and `WorldScene.update` reports each frame (`performance.now()`, sim steps run); a press is answered by the first frame that steps the sim after it. The pure part is `perfMath.ts`.
 
+**Batching (v1.5.8).** Each Phaser object type (Graphics, shapes, TileSprite) has its own render pipeline, and every switch between pipelines flushes the draw batch, so a scene that interleaves them by depth costs far more than its object count suggests. Prefer images: `flatImages.ts` (`rectImage`, `tiledImage`), `ellipseImage.ts`, and `bake.ts` for static Graphics. Name a container `dynamic` if code redraws, hides or moves the Graphics inside it.
+
 ### 20.2 Assets
 
 The landing page (two static pages, `/` in French and `/en/` in English, section 18.7) and the game have separate entry points. The landing page downloads neither the engine nor the atlases nor the sounds of the game; loading of these resources begins when the game page is opened. The detailed navigation and weight requirements are in section 26.

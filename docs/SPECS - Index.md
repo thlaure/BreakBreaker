@@ -1,6 +1,6 @@
 # BreakBreaker — Specifications (index)
 
-**Version:** 1.5.7 — 24 October 2026  
+**Version:** 1.5.8 — 24 October 2026  
 **Scope:** 2D pixel-art web game, non-isometric top-down view, arcade mode in rounds with no time limit, Paris, Paul (a fictional shopkeeper) as the only hero, computer and phone  
 **Status:** reference specification; decisions confirmed by the project owner and design recommendations are identified. A first playable slice exists (section 24); this document is neither a production sign-off nor a statement that all requirements are already implemented.  
 **Languages:** French (default) and American English  
@@ -185,6 +185,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
 
 ### 25.4 History
 
+- **1.5.8 — 24 October 2026 (patch):** batching (the owner's `?off=` tests: switching off graphics, shapes or tiles alone brought 40 fps back to almost 60, since each type has its own render pipeline and every switch between them flushes the batch): TileSprites become baked `tiles` images and rectangles tinted `px` images (`flatImages.ts`), building fronts and static roof containers' Graphics are baked (`pixelart` images that keep the ruin look; containers named `dynamic`, the President and the skeletons, are left alone). Draw calls per frame measured 173 to 60, program switches 153 to 41, Graphics commands 19,796 to 6,386 (RC-212, RC-215).
 - **1.5.7 — 24 October 2026 (patch):** after the owner's `?perf` readout (40 fps, game work 1.6 ms, so not the code): the meter adds the GPU time per frame (`EXT_disjoint_timer_query_webgl2`, when available) and `?off=<layers>` (hud, graphics, shapes, particles, texts, images, tiles; `perfSwitches.ts`) to switch a layer off for diagnosis; the prison counter text no longer calls `setColor` every frame (it re-rendered and re-uploaded its texture each time) (RC-213, RC-214).
 - **1.5.6 — 24 October 2026 (patch):** (1) real pumpkin heads (owner: « une vraie citrouille à la place de la tête, pas un masque »): `pumpkinPaint.ts` erases the head of every walk and slash frame and draws a pumpkin in its place (three faces, none from behind), baked at boot into 13 `pumpkin_<sheet>` twins (eight rioter sheets, five Caïd looks, `pumpkinSheets.ts`) chosen by `pumpkinSheetFor`; the old overlay sprite is gone; (2) flat ellipses (shadows) are images, not shapes (`ellipseImage.ts`): 91 Ellipse shapes cut to 30; (3) the `?perf` meter also shows the game's own frame work time, the object count and the canvas size (RC-210, RC-213).
 - **1.5.5 — 24 October 2026 (patch):** the `?perf` meter (owner still felt a delay between a key press and the action): `src/game/perfMeter.ts` (DOM readout, only when the URL has `?perf`) and pure `perfMath.ts`: fps, frame time average / 95th percentile / worst over about two seconds, the share of frames with no sim step and with two or more, and the delay from a key press or click to the start of the frame that applies it (RC-213). Render only; nothing is created without `?perf`.
