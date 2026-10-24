@@ -6,6 +6,10 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.5.10 - 2026-10-24
+
+- Les bulles de dialogue sont deux fois plus petites sur téléphone et ne sont plus recadrées dans l'écran : elles suivent leur personnage et peuvent être coupées au bord, au lieu de masquer la vue.
+
 ## 1.5.9 - 2026-10-24
 
 - Petit nettoyage après la série de correctifs de fluidité : les images figées des décors sont libérées à chaque nouvelle partie au lieu de s'accumuler en mémoire.

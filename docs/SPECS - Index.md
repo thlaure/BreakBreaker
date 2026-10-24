@@ -1,6 +1,6 @@
 # BreakBreaker — Specifications (index)
 
-**Version:** 1.5.9 — 24 October 2026  
+**Version:** 1.5.10 — 24 October 2026  
 **Scope:** 2D pixel-art web game, non-isometric top-down view, arcade mode in rounds with no time limit, Paris, Paul (a fictional shopkeeper) as the only hero, computer and phone  
 **Status:** reference specification; decisions confirmed by the project owner and design recommendations are identified. A first playable slice exists (section 24); this document is neither a production sign-off nor a statement that all requirements are already implemented.  
 **Languages:** French (default) and American English  
@@ -185,6 +185,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
 
 ### 25.4 History
 
+- **1.5.10 — 24 October 2026 (patch):** speech bubbles (peaceful groups, rescue victims, the President, the satellite ping) use scale ×1 instead of ×2 on a compact window (under 560 px wide or 520 px tall; `bubbleScale`), and are no longer kept inside the screen: they follow their speaker and may be cut at the edge (`clampBubbleX` removed; supersedes 1.1.3).
 - **1.5.9 — 24 October 2026 (patch):** end-of-development review of the 1.5.x series: the baked textures (`baked_N`) are released when a new game builds its district (`releaseBaked`; 39 textures before and after three restarts), the `?perf` press list is capped, and two helpers that were exported but only used in their own file are no longer exported. 0 unused exports, no unused file, `npm audit` clean.
 - **1.5.8 — 24 October 2026 (patch):** batching (the owner's `?off=` tests: switching off graphics, shapes or tiles alone brought 40 fps back to almost 60, since each type has its own render pipeline and every switch between them flushes the batch): TileSprites become baked `tiles` images and rectangles tinted `px` images (`flatImages.ts`), building fronts and static roof containers' Graphics are baked (`pixelart` images that keep the ruin look; containers named `dynamic`, the President and the skeletons, are left alone). Draw calls per frame measured 173 to 60, program switches 153 to 41, Graphics commands 19,796 to 6,386 (RC-212, RC-215).
 - **1.5.7 — 24 October 2026 (patch):** after the owner's `?perf` readout (40 fps, game work 1.6 ms, so not the code): the meter adds the GPU time per frame (`EXT_disjoint_timer_query_webgl2`, when available) and `?off=<layers>` (hud, graphics, shapes, particles, texts, images, tiles; `perfSwitches.ts`) to switch a layer off for diagnosis; the prison counter text no longer calls `setColor` every frame (it re-rendered and re-uploaded its texture each time) (RC-213, RC-214).

@@ -6,6 +6,10 @@ It is read at build time and feeds the "What’s new" block and the "Changelog" 
 Format: one `## <version> - <date YYYY-MM-DD>` heading per version, then short `- ` bullets, most important first.
 The first three bullets of the latest version are shown on the landing page.
 
+## 1.5.10 - 2026-10-24
+
+- Speech bubbles are half the size on phones and are no longer forced inside the screen: they follow their speaker and may be cut at the edge instead of covering the view.
+
 ## 1.5.9 - 2026-10-24
 
 - A small cleanup after the smoothness fixes: the frozen decor images are released at each new game instead of piling up in memory.

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { t } from '../../content/i18n';
+import { bubbleScale } from './bubbleScale';
 import { DEPTH } from './depth';
 import { localeBound } from './localeText';
 
@@ -66,8 +67,8 @@ export class Twinkles {
     for (const q of this.pool) if (q.born < tw.born) tw = q;
     tw.born = nowMs;
     // scaled for the camera zoom like the other bubbles (×2 at zoom 1)
-    const zoom = tw.star.scene.cameras.main.zoom || 1;
-    tw.k = Math.max(1, Math.round(2 / zoom));
+    const cam = tw.star.scene.cameras.main;
+    tw.k = bubbleScale(cam.zoom, cam.width, cam.height);
     tw.star.setPosition(Math.round(x), Math.round(y)).setVisible(true);
     tw.ping
       .setPosition(Math.round(x), Math.round(y) - 6 * tw.k)

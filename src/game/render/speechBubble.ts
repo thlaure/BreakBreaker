@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { clampBubbleX } from './bubbleClamp';
+import { bubbleScale } from './bubbleScale';
 import { DEPTH } from './depth';
 
 /** Pixel font of the bubbles (loaded by BootScene before the world starts), with a monospace fallback. */
@@ -17,16 +17,14 @@ export interface BubbleSpec {
 
 /**
  * Pixel speech bubble (white, 1 px dark border, stepped tail pointing down) whose origin is the tail tip.
- * Every coordinate is a whole pixel so it stays crisp under the integer camera zoom; kept inside the screen
- * horizontally (clampBubbleX).
+ * Every coordinate is a whole pixel so it stays crisp under the integer camera zoom. It follows its speaker and may be
+ * cut by the screen edge.
  */
 export class SpeechBubble {
   readonly root: Phaser.GameObjects.Container;
   private readonly g: Phaser.GameObjects.Graphics;
   private readonly text: Phaser.GameObjects.Text;
   private said = '';
-  /** Half width of the drawn bubble (px, before scaling), for keeping it inside the screen. */
-  private halfW = 0;
 
   constructor(scene: Phaser.Scene) {
     this.g = scene.add.graphics();
@@ -54,7 +52,6 @@ export class SpeechBubble {
     const bh = th + 2 * BUBBLE_PAD;
     const left = -Math.floor(bw / 2);
     const top = -(bh + 4);
-    this.halfW = Math.ceil(bw / 2) + 1;
     const g = this.g.clear();
     const ink = b.border ?? BUBBLE_INK;
     g.fillStyle(ink, 1).fillRect(left - 1, top - 1, bw + 2, bh + 2);
@@ -72,9 +69,8 @@ export class SpeechBubble {
   /** Whole-number scale keeps the bubble about 16 screen px tall at camera zoom 1 and 2 (crisp, readable). */
   place(x: number, y: number, alpha = 1): void {
     const cam = this.root.scene.cameras.main;
-    const scale = Math.max(1, Math.round(2 / (cam.zoom || 1)));
-    const cx = clampBubbleX(x, this.halfW * scale, cam.worldView.x, cam.worldView.right);
-    this.root.setPosition(Math.round(cx), Math.round(y)).setAlpha(alpha).setScale(scale);
+    const scale = bubbleScale(cam.zoom, cam.width, cam.height);
+    this.root.setPosition(Math.round(x), Math.round(y)).setAlpha(alpha).setScale(scale);
   }
 
   destroy(): void {
