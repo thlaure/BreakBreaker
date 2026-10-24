@@ -24,7 +24,8 @@ import { RifleProp } from './guns';
 import { CaidLookView } from './caidProps';
 import { caidSkinOf } from './caidSkin';
 import { BottleProp, RoleBadge } from './rioterProps';
-import { themedSheet } from '../../events';
+import { flagFor, hostileExtra, themedSheet, type HostileExtra } from '../../events';
+import { SKULL_FLAG_TEXTURE } from '../../events/halloween/textures';
 import { DUST_MS, badgeOf, rioterSheet, roleScale } from './roleLook';
 import { MAX_SATELLITES } from './satellite';
 
@@ -67,6 +68,8 @@ export class HostileView {
   /** Sprite scale of the role (brute ×1.25, Caïd ×1.5). */
   private readonly size: number;
   private readonly role: RoleBadge | null;
+  /** What a seasonal event adds to this rioter (a pumpkin head), if anything. */
+  private readonly extra: HostileExtra | null;
   /** The Caïd's look: his prop and his slogans (null for every other role). */
   private readonly caid: CaidLookView | null;
   private lastDust = 0;
@@ -77,9 +80,16 @@ export class HostileView {
     this.view.sprite.setScale(this.size);
     this.role = badgeOf(h.role) ? new RoleBadge(scene, h.role, this.size) : null;
     // the Caïd carries his look's prop, never a flag
-    const flagFrame = h.role === 'boss' ? -1 : h.variant === 'palestinian' ? 1 : h.variant === 'antifa' ? 2 : -1;
-    this.flag = flagFrame >= 0 ? scene.add.image(0, 0, 'flags', flagFrame).setOrigin(0, 1) : null;
-    this.pole = flagFrame >= 0 ? scene.add.rectangle(0, 0, 1, 22, 0x5a4632).setOrigin(0.5, 1) : null;
+    const kind = flagFor(h.role, h.lifeId);
+    const flagFrame = kind !== 'variant' ? -1 : h.variant === 'palestinian' ? 1 : h.variant === 'antifa' ? 2 : -1;
+    this.flag =
+      kind === 'skull'
+        ? scene.add.image(0, 0, SKULL_FLAG_TEXTURE).setOrigin(0, 1)
+        : flagFrame >= 0
+          ? scene.add.image(0, 0, 'flags', flagFrame).setOrigin(0, 1)
+          : null;
+    this.pole = this.flag ? scene.add.rectangle(0, 0, 1, 22, 0x5a4632).setOrigin(0.5, 1) : null;
+    this.extra = hostileExtra(scene, h.role, h.lifeId, this.size);
     this.bottle = h.role === 'molotov' || h.role === 'firebomber' ? new BottleProp(scene) : null;
     this.rifle = h.role === 'shooter' ? new RifleProp(scene) : null;
     this.caid = h.role === 'boss' ? new CaidLookView(scene, caidSkinOf(h.lifeId), this.size) : null;
@@ -145,6 +155,7 @@ export class HostileView {
       this.bottle?.update(h, this.view.sprite.depth, nowMs);
       this.rifle?.update(h, this.view.sprite.depth, nowMs);
       this.role?.update(h, this.view.sprite);
+      this.extra?.update(h, this.view.sprite);
       this.caid?.update(h, this.view.sprite, nowMs);
       this.satellite(this.flight, nowMs, ctx);
       return;
@@ -197,6 +208,7 @@ export class HostileView {
     this.bottle?.update(h, s.depth, nowMs);
     this.rifle?.update(h, s.depth, nowMs);
     this.role?.update(h, s);
+    this.extra?.update(h, s);
     this.caid?.update(h, s, nowMs);
   }
 
@@ -337,6 +349,7 @@ export class HostileView {
     this.bottle?.destroy();
     this.rifle?.destroy();
     this.role?.destroy();
+    this.extra?.destroy();
     this.caid?.destroy();
   }
 }

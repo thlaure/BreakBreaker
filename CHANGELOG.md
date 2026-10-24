@@ -6,6 +6,11 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.5.3 - 2026-10-24
+
+- Pendant Halloween, certains casseurs et certains Caïds (environ un sur quatre, un sur trois pour les Caïds) ont une tête de citrouille souriante, grimaçante ou surprise, qui les rend facilement reconnaissables.
+- Les zombies ne portent plus de drapeau de leur camp : certains brandissent à la place un drapeau noir à tête de mort, comme un drapeau de pirates.
+
 ## 1.5.2 - 2026-10-24
 
 - Les zombies d'Halloween sont de vrais personnages, plus de simples skins : peau verte, yeux jaunes brillants, vêtements déchirés, cheveux flashy ou capuche.

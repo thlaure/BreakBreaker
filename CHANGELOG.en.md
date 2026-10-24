@@ -6,6 +6,11 @@ It is read at build time and feeds the "What’s new" block and the "Changelog" 
 Format: one `## <version> - <date YYYY-MM-DD>` heading per version, then short `- ` bullets, most important first.
 The first three bullets of the latest version are shown on the landing page.
 
+## 1.5.3 - 2026-10-24
+
+- During Halloween, some rioters and some ringleaders (about one in four, one in three for the ringleaders) have a jack-o'-lantern head, smiling, grimacing or surprised, which makes them easy to spot.
+- Zombies no longer carry their camp's flag: some wave a black skull flag instead, like a pirate flag.
+
 ## 1.5.2 - 2026-10-24
 
 - The Halloween zombies are characters in their own right, no longer simple skins: green skin, glowing yellow eyes, torn clothes, flashy hair or a hood.

@@ -30,3 +30,8 @@ Simulation intacte et déterministe, TDD pour la logique pure (dates, choix zomb
 ## 5. Laissé au constructeur
 
 Positions exactes des décors, dessin des citrouilles, fantômes et chauves-souris, teintes exactes.
+
+## 6. Ajouts (1.5.3)
+
+- **Têtes de citrouille :** environ un casseur sur quatre (hors zombies) et un Caïd sur trois ont une tête de citrouille (trois expressions), posée en sprite sur la tête ; le Caïd garde son corps, ses accessoires, sa couronne et sa barre de vie. Rendu seulement.
+- **Drapeaux des zombies :** jamais le drapeau palestinien ni antifa ; un tiers portent un drapeau noir à tête de mort (drapeau de pirates, aucun autre symbole), les autres aucun.

@@ -1,8 +1,11 @@
 import type Phaser from 'phaser';
 import type { Role } from '../sim/types';
+import type { Snapshot } from '../sim/sim';
 import type { DecorAnim } from '../game/render/decor';
 import { buildHalloweenDecor } from './halloween/decor';
-import { bakeOrb, ORB_TEXTURE } from './halloween/orb';
+import { PumpkinHead } from './halloween/pumpkinHead';
+import { flagKind, hasPumpkinHead, type FlagKind } from './halloween/rioterLook';
+import { bakeEventTextures, ORB_TEXTURE } from './halloween/textures';
 import { zombieSheetFor, zombieSheetKeys } from './halloween/zombieMath';
 import { activeEventId, type EventId } from './schedule';
 
@@ -25,7 +28,7 @@ export function eventSheets(): [string, string][] {
 
 /** Boot: bakes the event's extra textures (before the world starts). */
 export function prepareEvent(scene: Phaser.Scene): void {
-  if (activeEvent() === 'halloween') bakeOrb(scene);
+  if (activeEvent() === 'halloween') bakeEventTextures(scene);
 }
 
 /** The sheet a rioter wears under the event (his own sheet when no event changes it). */
@@ -41,4 +44,19 @@ export function flyingRockTexture(kind: string, owner: 'enemy' | 'player'): stri
 /** The event's decorations over the map: animated bits to step each frame (empty with no event). */
 export function buildEventDecor(scene: Phaser.Scene, reducedMotion: boolean): DecorAnim[] {
   return activeEvent() === 'halloween' ? buildHalloweenDecor(scene, reducedMotion) : [];
+}
+
+/** The flag a rioter carries: his variant's, unless the event changes it (zombies carry a black skull flag or none). */
+export function flagFor(role: Role, lifeId: number): FlagKind {
+  return activeEvent() === 'halloween' ? flagKind(role, lifeId) : role === 'boss' ? 'none' : 'variant';
+}
+
+/** What the event adds to a rioter (a pumpkin head on some), or null: updated with his sprite, destroyed with him. */
+export interface HostileExtra {
+  update(h: Snapshot['hostiles'][number], sprite: Phaser.GameObjects.Sprite): void;
+  destroy(): void;
+}
+
+export function hostileExtra(scene: Phaser.Scene, role: Role, lifeId: number, size: number): HostileExtra | null {
+  return activeEvent() === 'halloween' && hasPumpkinHead(role, lifeId) ? new PumpkinHead(scene, lifeId, size) : null;
 }
