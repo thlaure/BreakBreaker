@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { CONFIG } from '../../sim/config';
 import { MOLOTOV_FLIGHT_SEC, type Snapshot, type Telegraph } from '../../sim/sim';
 import type { Vec } from '../../sim/types';
+import { flyingRockTexture } from '../../events';
 import { DEPTH } from './depth';
 
 type RockSnap = Snapshot['rocks'][number];
@@ -22,7 +23,7 @@ export class RockLayer {
       if (!v) {
         v = {
           shadow: this.scene.add.ellipse(0, 0, 10, 4, 0x000000, 0.35).setDepth(DEPTH.decal + 3),
-          body: this.scene.add.image(0, 0, `rock_${r.kind}`),
+          body: this.scene.add.image(0, 0, flyingRockTexture(r.kind, r.owner)),
         };
         this.views.set(r.id, v);
       }
@@ -53,7 +54,7 @@ export class RockLayer {
     }
     const h = Math.sin(Math.PI * Math.min(1, Math.max(0, progress(r.id)))) * ARC_PX;
     v.body
-      .setTexture(`rock_${r.kind}`)
+      .setTexture(flyingRockTexture(r.kind, r.owner))
       .setPosition(r.pos.x, r.pos.y - h)
       .setDepth(r.pos.y)
       .setAngle(timeMs / 3);

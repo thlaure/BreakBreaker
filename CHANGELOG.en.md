@@ -6,6 +6,12 @@ It is read at build time and feeds the "What’s new" block and the "Changelog" 
 Format: one `## <version> - <date YYYY-MM-DD>` heading per version, then short `- ` bullets, most important first.
 The first three bullets of the latest version are shown on the landing page.
 
+## 1.5.2 - 2026-10-24
+
+- The Halloween zombies are characters in their own right, no longer simple skins: green skin, glowing yellow eyes, torn clothes, flashy hair or a hood.
+- New spellcaster zombies: hooded, robed zombies who throw green magic orbs instead of rocks. It is purely visual, nothing changes in the rules.
+- These images are only downloaded during the event; the rest of the year the game loads nothing extra.
+
 ## 1.5.1 - 2026-10-24
 
 - The landing page also dresses up for Halloween: a new night illustration (zombies, pumpkins, ghosts, bats, pennants) replaces the background during the event, with orange and violet colors.

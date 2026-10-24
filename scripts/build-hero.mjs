@@ -3,14 +3,12 @@
 // sign, fire, smoke) are reproduced with plain pixel drawing, matching src/game/render/*.ts.
 // Deterministic: fixed-seed RNG, no browser, no network. No flags, no photograph. Usage: npm run hero
 // With --halloween (npm run hero:halloween) the same scene becomes the Halloween event's hero (src/events/halloween/hero.png):
-// zombie rioters painted like the game's, a night grade, pennants, pumpkins, ghosts and bats.
+// the game's zombie rioters, a night grade, pennants, pumpkins, ghosts and bats.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
-import { paintZombie } from '../src/events/halloween/zombiePaint.ts';
 import { applyHalloween } from './hero-halloween.mjs';
-import { ZOMBIE_LOOKS } from '../src/events/halloween/zombieMath.ts';
 
 const HALLOWEEN = process.argv.includes('--halloween');
 
@@ -63,13 +61,9 @@ function ellipse(cx, cy, w, h, color, a = 1) {
 // ---------- sprite sheets ----------
 const load = (rel) => PNG.sync.read(fs.readFileSync(path.join(root, rel)));
 const sheets = {};
-const sheet = (name, rel) => (sheets[name] ??= paintedForEvent(name, load(rel)));
-/** Under --halloween every rioter sheet is painted as its zombie look (the same paint as the game's). */
-function paintedForEvent(name, img) {
-  const look = HALLOWEEN ? ZOMBIE_LOOKS.find((l) => l.base === name) : undefined;
-  if (look) paintZombie(img.data, img.width, img.height, look);
-  return img;
-}
+/** Under --halloween every rioter sheet is its zombie twin (the game's own event sheets, built by npm run assets). */
+const sheet = (name, rel) =>
+  (sheets[name] ??= load(HALLOWEEN && name.startsWith('rioter_') ? `public/assets/events/halloween/zombie_${name}.png` : rel));
 
 /** Copies a (sx,sy,w,h) region of a sheet to (dx,dy), scaled by an integer factor, alpha-blended. */
 function blit(img, sx, sy, w, h, dx, dy, scale = 1, alpha = 1) {

@@ -30,6 +30,13 @@ import { MAX_SATELLITES } from './satellite';
 
 type HostileSnap = Snapshot['hostiles'][number];
 
+/** The rioter's sheet: his variant's, or under an event its themed twin when that one was loaded. */
+function sheetOf(scene: Phaser.Scene, h: HostileSnap): string {
+  const plain = rioterSheet(h.variant, h.role, h.lifeId);
+  const themed = themedSheet(plain, h.role, h.lifeId);
+  return scene.textures.exists(themed) ? themed : plain;
+}
+
 /**
  * Rioter: sheet by variant (_a/_b by lifeId parity), optional flag prop above the shoulder, Molotov bottle; a Caïd wears
  * one of the five leader looks (caidSkin.ts) with its prop and slogans (CaidLookView), never a flag. A body
@@ -65,7 +72,7 @@ export class HostileView {
   private lastDust = 0;
 
   constructor(scene: Phaser.Scene, h: HostileSnap) {
-    this.view = new CharView(scene, themedSheet(rioterSheet(h.variant, h.role, h.lifeId), h.role, h.lifeId), h.pos);
+    this.view = new CharView(scene, sheetOf(scene, h), h.pos);
     this.size = roleScale(h.role);
     this.view.sprite.setScale(this.size);
     this.role = badgeOf(h.role) ? new RoleBadge(scene, h.role, this.size) : null;

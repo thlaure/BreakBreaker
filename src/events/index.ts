@@ -2,8 +2,8 @@ import type Phaser from 'phaser';
 import type { Role } from '../sim/types';
 import type { DecorAnim } from '../game/render/decor';
 import { buildHalloweenDecor } from './halloween/decor';
-import { zombieSheetFor } from './halloween/zombieMath';
-import { makeZombieSheets } from './halloween/zombieSheets';
+import { bakeOrb, ORB_TEXTURE } from './halloween/orb';
+import { zombieSheetFor, zombieSheetKeys } from './halloween/zombieMath';
 import { activeEventId, type EventId } from './schedule';
 
 /**
@@ -18,14 +18,24 @@ export function activeEvent(): EventId | null {
   return current;
 }
 
-/** Boot: paints the event's extra character sheets (before createCharAnims). */
+/** Extra character sheets the event needs: [texture key, url relative to the assets folder]; empty with no event. */
+export function eventSheets(): [string, string][] {
+  return activeEvent() === 'halloween' ? zombieSheetKeys().map((k) => [k, `events/halloween/${k}.png`]) : [];
+}
+
+/** Boot: bakes the event's extra textures (before the world starts). */
 export function prepareEvent(scene: Phaser.Scene): void {
-  if (activeEvent() === 'halloween') makeZombieSheets(scene);
+  if (activeEvent() === 'halloween') bakeOrb(scene);
 }
 
 /** The sheet a rioter wears under the event (his own sheet when no event changes it). */
 export function themedSheet(sheet: string, role: Role, lifeId: number): string {
   return activeEvent() === 'halloween' ? zombieSheetFor(sheet, role, lifeId) : sheet;
+}
+
+/** The texture of a flying rock: under Halloween the rocks the zombies throw are spell orbs. */
+export function flyingRockTexture(kind: string, owner: 'enemy' | 'player'): string {
+  return activeEvent() === 'halloween' && owner === 'enemy' ? ORB_TEXTURE : `rock_${kind}`;
 }
 
 /** The event's decorations over the map: animated bits to step each frame (empty with no event). */

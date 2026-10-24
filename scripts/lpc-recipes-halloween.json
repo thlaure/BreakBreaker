@@ -1,0 +1,746 @@
+{
+  "zombie_rioter_classic_a": {
+    "layers": [
+      {
+        "path": "body/bodies/zombie",
+        "z": 10,
+        "material": "skin",
+        "palette": "light",
+        "color": "zombie",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "head/heads/zombie/adult",
+        "z": 100,
+        "material": "skin",
+        "palette": "light",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "feet/shoes/basic/male",
+        "z": 15,
+        "material": "cloth",
+        "palette": "black"
+      },
+      {
+        "path": "legs/pants/male",
+        "z": 20,
+        "material": "cloth",
+        "palette": "charcoal"
+      },
+      {
+        "path": "torso/clothes/longsleeve/longsleeve2/male",
+        "z": 35,
+        "material": "cloth",
+        "palette": "black"
+      },
+      {
+        "path": "hair/messy1/adult",
+        "z": 120,
+        "material": "hair",
+        "palette": "blue"
+      }
+    ]
+  },
+  "zombie_rioter_classic_b": {
+    "layers": [
+      {
+        "path": "body/bodies/zombie",
+        "z": 10,
+        "material": "skin",
+        "palette": "light",
+        "color": "zombie",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "head/heads/zombie/adult",
+        "z": 100,
+        "material": "skin",
+        "palette": "light",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "feet/shoes/basic/male",
+        "z": 15,
+        "material": "cloth",
+        "palette": "white"
+      },
+      {
+        "path": "legs/pants/male",
+        "z": 20,
+        "material": "cloth",
+        "palette": "gray"
+      },
+      {
+        "path": "torso/clothes/shortsleeve/tshirt/male",
+        "z": 35,
+        "material": "cloth",
+        "palette": "gray"
+      },
+      {
+        "path": "hair/spiked/adult",
+        "z": 120,
+        "material": "hair",
+        "palette": "pink"
+      }
+    ]
+  },
+  "zombie_rioter_palestinian_a": {
+    "layers": [
+      {
+        "path": "body/bodies/zombie",
+        "z": 10,
+        "material": "skin",
+        "palette": "light",
+        "color": "zombie",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "head/heads/zombie/adult",
+        "z": 100,
+        "material": "skin",
+        "palette": "light",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "feet/shoes/basic/male",
+        "z": 15,
+        "material": "cloth",
+        "palette": "black"
+      },
+      {
+        "path": "legs/pants/male",
+        "z": 20,
+        "material": "cloth",
+        "palette": "charcoal"
+      },
+      {
+        "path": "torso/clothes/shortsleeve/tshirt/male",
+        "z": 35,
+        "material": "cloth",
+        "palette": "purple"
+      },
+      {
+        "path": "hair/long/adult",
+        "z": 120,
+        "material": "hair",
+        "palette": "violet"
+      }
+    ]
+  },
+  "zombie_rioter_palestinian_b": {
+    "layers": [
+      {
+        "path": "body/bodies/zombie",
+        "z": 10,
+        "material": "skin",
+        "palette": "light",
+        "color": "zombie",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "head/heads/zombie/adult",
+        "z": 100,
+        "material": "skin",
+        "palette": "light",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "feet/shoes/basic/male",
+        "z": 15,
+        "material": "cloth",
+        "palette": "black"
+      },
+      {
+        "path": "legs/pants/male",
+        "z": 20,
+        "material": "cloth",
+        "palette": "navy"
+      },
+      {
+        "path": "torso/clothes/longsleeve/longsleeve2/male",
+        "z": 35,
+        "material": "cloth",
+        "palette": "forest"
+      },
+      {
+        "path": "hair/bangs/adult",
+        "z": 120,
+        "material": "hair",
+        "palette": "green"
+      }
+    ]
+  },
+  "zombie_rioter_antifa_a": {
+    "layers": [
+      {
+        "path": "body/bodies/zombie",
+        "z": 10,
+        "material": "skin",
+        "palette": "light",
+        "color": "zombie",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "head/heads/zombie/adult",
+        "z": 100,
+        "material": "skin",
+        "palette": "light",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "feet/shoes/basic/male",
+        "z": 15,
+        "material": "cloth",
+        "palette": "black"
+      },
+      {
+        "path": "legs/pants/male",
+        "z": 20,
+        "material": "cloth",
+        "palette": "black"
+      },
+      {
+        "path": "torso/clothes/longsleeve/longsleeve2/male",
+        "z": 35,
+        "material": "cloth",
+        "palette": "black"
+      },
+      {
+        "path": "hat/cloth/hood/adult",
+        "z": 125,
+        "material": "cloth",
+        "palette": "black"
+      }
+    ]
+  },
+  "zombie_rioter_antifa_b": {
+    "layers": [
+      {
+        "path": "body/bodies/zombie",
+        "z": 10,
+        "material": "skin",
+        "palette": "light",
+        "color": "zombie",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "head/heads/zombie/adult",
+        "z": 100,
+        "material": "skin",
+        "palette": "light",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "feet/shoes/basic/male",
+        "z": 15,
+        "material": "cloth",
+        "palette": "black"
+      },
+      {
+        "path": "legs/pants/male",
+        "z": 20,
+        "material": "cloth",
+        "palette": "black"
+      },
+      {
+        "path": "torso/clothes/longsleeve/longsleeve2/male",
+        "z": 35,
+        "material": "cloth",
+        "palette": "gray"
+      },
+      {
+        "path": "hat/cloth/hood/adult",
+        "z": 125,
+        "material": "cloth",
+        "palette": "purple"
+      }
+    ]
+  },
+  "zombie_rioter_runner_a": {
+    "layers": [
+      {
+        "path": "body/bodies/zombie",
+        "z": 10,
+        "material": "skin",
+        "palette": "light",
+        "color": "zombie",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "head/heads/zombie/adult",
+        "z": 100,
+        "material": "skin",
+        "palette": "light",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "feet/shoes/basic/male",
+        "z": 15,
+        "material": "cloth",
+        "palette": "white"
+      },
+      {
+        "path": "legs/pants/male",
+        "z": 20,
+        "material": "cloth",
+        "palette": "charcoal"
+      },
+      {
+        "path": "torso/clothes/shortsleeve/tshirt/male",
+        "z": 35,
+        "material": "cloth",
+        "palette": "gray"
+      },
+      {
+        "path": "hair/shorthawk/adult",
+        "z": 120,
+        "material": "hair",
+        "palette": "pink"
+      }
+    ]
+  },
+  "zombie_rioter_runner_b": {
+    "layers": [
+      {
+        "path": "body/bodies/zombie",
+        "z": 10,
+        "material": "skin",
+        "palette": "light",
+        "color": "zombie",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "head/heads/zombie/adult",
+        "z": 100,
+        "material": "skin",
+        "palette": "light",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "feet/shoes/basic/male",
+        "z": 15,
+        "material": "cloth",
+        "palette": "white"
+      },
+      {
+        "path": "legs/pants/male",
+        "z": 20,
+        "material": "cloth",
+        "palette": "charcoal"
+      },
+      {
+        "path": "torso/clothes/shortsleeve/tshirt/male",
+        "z": 35,
+        "material": "cloth",
+        "palette": "orange"
+      },
+      {
+        "path": "hat/cloth/hood/adult",
+        "z": 125,
+        "material": "cloth",
+        "palette": "gray"
+      }
+    ]
+  },
+  "zombie_caster_a": {
+    "layers": [
+      {
+        "path": "body/bodies/zombie",
+        "z": 10,
+        "material": "skin",
+        "palette": "light",
+        "color": "zombie",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "head/heads/zombie/adult",
+        "z": 100,
+        "material": "skin",
+        "palette": "light",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "feet/shoes/basic/male",
+        "z": 15,
+        "material": "cloth",
+        "palette": "black"
+      },
+      {
+        "path": "torso/clothes/robe/female",
+        "z": 35,
+        "material": "cloth",
+        "palette": "black",
+        "color": "purple",
+        "map": {}
+      },
+      {
+        "path": "hat/cloth/hood/adult",
+        "z": 125,
+        "material": "cloth",
+        "palette": "black"
+      }
+    ],
+    "slashFrom": "spellcast"
+  },
+  "zombie_caster_b": {
+    "layers": [
+      {
+        "path": "body/bodies/zombie",
+        "z": 10,
+        "material": "skin",
+        "palette": "light",
+        "color": "zombie",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "head/heads/zombie/adult",
+        "z": 100,
+        "material": "skin",
+        "palette": "light",
+        "map": {
+          "#dbcbab": "#b8e08a",
+          "#ead7ca": "#d4f0a4",
+          "#c5b38f": "#9ccc72",
+          "#c5b595": "#9ccc72",
+          "#a79778": "#86b862",
+          "#928364": "#6f9e52",
+          "#6b5c40": "#4a7040",
+          "#ac7676": "#b57ba0",
+          "#805f58": "#6a4a70",
+          "#d0755d": "#d77a8a",
+          "#7c4d3c": "#5e3a55",
+          "#5e3e33": "#47304a",
+          "#f78e73": "#ff9eb0",
+          "#9f2828": "#c8641c",
+          "#9d3f3f": "#ffe14a"
+        }
+      },
+      {
+        "path": "feet/shoes/basic/male",
+        "z": 15,
+        "material": "cloth",
+        "palette": "black"
+      },
+      {
+        "path": "torso/clothes/robe/female",
+        "z": 35,
+        "material": "cloth",
+        "palette": "black",
+        "color": "forest_green",
+        "map": {}
+      },
+      {
+        "path": "hat/cloth/hood/adult",
+        "z": 125,
+        "material": "cloth",
+        "palette": "forest"
+      }
+    ],
+    "slashFrom": "spellcast"
+  }
+}

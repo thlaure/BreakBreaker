@@ -6,6 +6,12 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.5.2 - 2026-10-24
+
+- Les zombies d'Halloween sont de vrais personnages, plus de simples skins : peau verte, yeux jaunes brillants, vêtements déchirés, cheveux flashy ou capuche.
+- Nouveaux zombies lanceurs de sort : des zombies en robe à capuche qui lancent des boules magiques vertes à la place des pierres. C'est seulement visuel, rien ne change dans les règles.
+- Ces images ne se téléchargent que pendant l'événement ; le reste de l'année, le jeu ne charge rien de plus.
+
 ## 1.5.1 - 2026-10-24
 
 - La page d'accueil se met aussi aux couleurs d'Halloween : une nouvelle illustration de nuit (zombies, citrouilles, fantômes, chauves-souris, guirlandes) remplace le fond pendant l'événement, avec des couleurs orange et violettes.

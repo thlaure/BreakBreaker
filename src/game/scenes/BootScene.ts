@@ -3,11 +3,13 @@ import { t } from '../../content/i18n';
 import { BASE, CHAR_SHEETS, SFX, type CharLayout } from '../assets';
 import { provideSfx, type Sfx } from '../audio';
 import { hideLoading, showMessage, showProgress } from '../loadingUi';
-import { prepareEvent } from '../../events';
+import { eventSheets, prepareEvent } from '../../events';
 import { createCharAnims } from '../render/actors';
 import { makeCaidSheets } from '../render/caidSheets';
 
 const SFX_PREFIX = 'sfx:';
+/** Event character sheets are keyed `zombie_*` (events/halloween): optional, never a reason to stop the game. */
+const EVENT_PREFIX = 'zombie_';
 /** Never wait longer than this for the pixel font (the game starts anyway with the monospace fallback). */
 const FONT_WAIT_MS = 2000;
 
@@ -40,6 +42,8 @@ export class BootScene extends Phaser.Scene {
 
     this.load.json('layout', `${BASE}chars/layout.json`);
     for (const key of CHAR_SHEETS) this.load.spritesheet(key, `${BASE}chars/${key}.png`, { frameWidth: 64, frameHeight: 64 });
+    // seasonal event sheets (none outside an event); a failed one is not fatal: those rioters keep their plain sheet
+    for (const [key, file] of eventSheets()) this.load.spritesheet(key, `${BASE}${file}`, { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet('streets', `${BASE}tiles/streets.png`, { frameWidth: 32, frameHeight: 32 });
     this.load.spritesheet('urban', `${BASE}tiles/urban.png`, { frameWidth: 16, frameHeight: 16 });
     this.load.spritesheet('city', `${BASE}tiles/city.png`, { frameWidth: 16, frameHeight: 16 });
@@ -51,7 +55,7 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     const layout = this.cache.json.get('layout') as CharLayout | undefined;
-    const fatal = this.failed.filter((k) => !k.startsWith(SFX_PREFIX));
+    const fatal = this.failed.filter((k) => !k.startsWith(SFX_PREFIX) && !k.startsWith(EVENT_PREFIX));
     if (this.failed.length > fatal.length) console.warn('Sounds failed to load (game continues):', this.failed);
     const sounds: [Sfx, ArrayBuffer][] = [];
     for (const key of SFX) {

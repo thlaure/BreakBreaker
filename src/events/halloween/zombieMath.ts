@@ -1,29 +1,23 @@
 import type { Role } from '../../sim/types';
 
-/** A hat a zombie wears over his hair (cartoon style: a road cone or a bucket), or none. */
-export type ZombieHat = 'none' | 'cone' | 'bucket';
-
-/** One zombie look: the rioter sheet it is painted from, its flashy hair colour (0xrrggbb) and its hat. */
-export interface ZombieLook {
-  base: string;
-  hair: number;
-  hat: ZombieHat;
-}
-
 /**
- * The eight zombie looks, one per rioter sheet (a / b by lifeId parity already varies them): grey-green skin and hair in
- * blue, pink, violet, turquoise or yellow, some with a road cone or a bucket on the head.
+ * The rioter sheets that have a zombie twin (same layout, built by `npm run assets` from the LPC zombie body and head,
+ * public/assets/events/halloween/): each zombie is a character of its own (green skin, glowing yellow eyes, torn hoodies,
+ * flashy hair or a hood), not a repaint.
  */
-export const ZOMBIE_LOOKS: readonly ZombieLook[] = [
-  { base: 'rioter_classic_a', hair: 0x3fa7ff, hat: 'none' },
-  { base: 'rioter_classic_b', hair: 0xff5fc8, hat: 'cone' },
-  { base: 'rioter_palestinian_a', hair: 0xa65cff, hat: 'none' },
-  { base: 'rioter_palestinian_b', hair: 0x3fe0c8, hat: 'bucket' },
-  { base: 'rioter_antifa_a', hair: 0xffd23f, hat: 'none' },
-  { base: 'rioter_antifa_b', hair: 0xff5fc8, hat: 'bucket' },
-  { base: 'rioter_runner_a', hair: 0x3fa7ff, hat: 'cone' },
-  { base: 'rioter_runner_b', hair: 0xa65cff, hat: 'none' },
+export const ZOMBIE_BASES: readonly string[] = [
+  'rioter_classic_a',
+  'rioter_classic_b',
+  'rioter_palestinian_a',
+  'rioter_palestinian_b',
+  'rioter_antifa_a',
+  'rioter_antifa_b',
+  'rioter_runner_a',
+  'rioter_runner_b',
 ];
+
+/** The two hooded spellcaster zombies (robes, spellcast animation on the attack rows): the rock throwers' zombie form. */
+export const CASTER_SHEETS: readonly string[] = ['zombie_caster_a', 'zombie_caster_b'];
 
 /** Share of rioters (percent) who are zombies. */
 const ZOMBIE_PERCENT = 50;
@@ -38,13 +32,22 @@ export function isZombie(role: Role, lifeId: number): boolean {
   return (h >>> 0) % 100 < ZOMBIE_PERCENT;
 }
 
-/** The texture key of the zombie painted from `base`. */
+/** The texture key of the zombie twin of `base`. */
 export function zombieSheetKey(base: string): string {
   return `zombie_${base}`;
 }
 
-/** The sheet a rioter wears under the Halloween event: the zombie one when he is a zombie, else `sheet` unchanged. */
+/** Every extra sheet the event needs, to load at boot (only while the event is on). */
+export function zombieSheetKeys(): string[] {
+  return [...ZOMBIE_BASES.map(zombieSheetKey), ...CASTER_SHEETS];
+}
+
+/**
+ * The sheet a rioter wears under the Halloween event: a zombie twin when he is a zombie (a hooded spellcaster when he
+ * throws rocks), else `sheet` unchanged.
+ */
 export function zombieSheetFor(sheet: string, role: Role, lifeId: number): string {
-  if (!isZombie(role, lifeId) || !ZOMBIE_LOOKS.some((l) => l.base === sheet)) return sheet;
+  if (!isZombie(role, lifeId) || !ZOMBIE_BASES.includes(sheet)) return sheet;
+  if (role === 'thrower') return CASTER_SHEETS[Math.abs(lifeId) % CASTER_SHEETS.length]!;
   return zombieSheetKey(sheet);
 }

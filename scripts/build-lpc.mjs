@@ -10,7 +10,14 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const lpc = path.join(root, 'assets-source/lpc');
 const sheets = path.join(lpc, 'spritesheets');
 const outDir = path.join(root, 'public/assets/chars');
-const recipes = JSON.parse(fs.readFileSync(path.join(root, 'scripts/lpc-recipes.json'), 'utf8'));
+// Two recipe sets: the base characters, and the seasonal Halloween ones (fetched by the game only during the event).
+const RECIPE_SETS = [
+  { file: 'scripts/lpc-recipes.json', dir: outDir },
+  { file: 'scripts/lpc-recipes-halloween.json', dir: path.join(root, 'public/assets/events/halloween') },
+];
+const jobs = RECIPE_SETS.flatMap((set) =>
+  Object.entries(JSON.parse(fs.readFileSync(path.join(root, set.file), 'utf8'))).map(([name, recipe]) => ({ name, recipe, dir: set.dir })),
+);
 
 const FRAME = 64;
 const COLS = 9;
@@ -142,18 +149,20 @@ function blit(dst, dstW, src, sx, sy, w, h, dx, dy) {
   }
 }
 
-fs.mkdirSync(outDir, { recursive: true });
+for (const dir of new Set(jobs.map((j) => j.dir))) fs.mkdirSync(dir, { recursive: true });
 const totalRows = ANIMS.reduce((n, a) => n + a.rows, 0);
 
-for (const [name, recipe] of Object.entries(recipes)) {
+for (const { name, recipe, dir } of jobs) {
   const out = new PNG({ width: COLS * FRAME, height: totalRows * FRAME });
   const layers = [...recipe.layers].sort((a, b) => a.z - b.z);
   for (const layer of layers) {
     const map = recolorMap(layer.material, layer.palette, layer.map);
     for (const anim of ANIMS) {
-      const file = `${anim.name}.png`;
+      // a recipe may play another source animation on the slash rows (the casters use spellcast)
+      const source = anim.name === 'slash' && recipe.slashFrom ? recipe.slashFrom : anim.name;
+      const file = `${source}.png`;
       // most layers are one sheet per animation; glasses & co. ship one sheet per colour: <path>/<anim>/<color>.png
-      const abs = layer.color ? path.join(sheets, layer.path, anim.name, `${layer.color}.png`) : path.join(sheets, layer.path, file);
+      const abs = layer.color ? path.join(sheets, layer.path, source, `${layer.color}.png`) : path.join(sheets, layer.path, file);
       if (!fs.existsSync(abs)) throw new Error(`${name}: missing layer file ${layer.path}/${file}`);
       useCredit(layer.path, file);
       const src = readPng(abs);
@@ -179,7 +188,7 @@ for (const [name, recipe] of Object.entries(recipes)) {
       blit(out.data, out.width, rc, 0, 0, anim.frames * FRAME, anim.rows * FRAME, 0, anim.outRow * FRAME);
     }
   }
-  fs.writeFileSync(path.join(outDir, `${name}.png`), PNG.sync.write(out));
+  fs.writeFileSync(path.join(dir, `${name}.png`), PNG.sync.write(out));
   console.log('wrote', name);
 }
 
