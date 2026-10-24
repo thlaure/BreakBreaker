@@ -6,6 +6,10 @@ It is read at build time and feeds the "What’s new" block and the "Changelog" 
 Format: one `## <version> - <date YYYY-MM-DD>` heading per version, then short `- ` bullets, most important first.
 The first three bullets of the latest version are shown on the landing page.
 
+## 1.5.5 - 2026-10-24
+
+- New measuring tool: adding `?perf` to the game address shows a small meter at the bottom left (frames per second, frame times, hitching frames, and the delay between a key press and the frame that applies it). It helps find where a feeling of lag comes from. Without `?perf`, nothing changes.
+
 ## 1.5.4 - 2026-10-24
 
 - The game runs smoother: the building fronts, which never change, were redrawn rectangle by rectangle on every frame (close to 20,000 drawing commands per frame). They are now frozen into images once, which takes a lot of work off the browser and shortens the delay between a key press and the action.

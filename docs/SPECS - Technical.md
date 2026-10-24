@@ -295,6 +295,8 @@ Unavailable storage does not prevent play. The record of an interrupted session 
 
 **Static drawings (v1.5.4).** Phaser replays a Graphics' whole command list every frame, so a drawing that never changes is baked: `src/game/render/bake.ts` turns a finished Graphics made of fill styles and rectangles (`bakeMath.ts`, pure) into one canvas texture and image, called by `WorldView` for the building fronts once the district is built. Do not bake a Graphics that is redrawn later (health bars, rings, the President).
 
+**Perf meter (v1.5.5).** `?perf` adds `PerfMeter` (`src/game/perfMeter.ts`): a capture-phase `keydown`/`pointerdown` listener stamps presses with `event.timeStamp`, and `WorldScene.update` reports each frame (`performance.now()`, sim steps run); a press is answered by the first frame that steps the sim after it. The pure part is `perfMath.ts`.
+
 ### 20.2 Assets
 
 The landing page (two static pages, `/` in French and `/en/` in English, section 18.7) and the game have separate entry points. The landing page downloads neither the engine nor the atlases nor the sounds of the game; loading of these resources begins when the game page is opened. The detailed navigation and weight requirements are in section 26.

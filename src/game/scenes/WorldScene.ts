@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { t as tr } from '../../content/i18n';
 import { FixedClock } from '../../sim/clock';
+import { PerfMeter, perfRequested } from '../perfMeter';
 import { CONFIG } from '../../sim/config';
 import { DISTRICT } from '../../sim/map/district';
 import { Sim, type Snapshot } from '../../sim/sim';
@@ -115,6 +116,8 @@ export class WorldScene extends Phaser.Scene {
   private reducedMotion = false;
 
   private hitStopUntil = 0;
+  /** The `?perf` readout, only when the URL asks for it. */
+  private perf: PerfMeter | null = null;
   /** The camera shake running: until when, how strong (a weaker one never cuts a stronger one). */
   private shakeUntil = 0;
   private shakePx = 0;
@@ -177,7 +180,10 @@ export class WorldScene extends Phaser.Scene {
     this.cinematicCam = false;
     this.prevAct = false;
 
+    this.perf = perfRequested(location.search) ? new PerfMeter() : null;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.perf?.destroy();
+      this.perf = null;
       this.ui?.destroy();
       this.ui = null;
       this.disposeInput?.();
@@ -265,6 +271,7 @@ export class WorldScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     const steps = this.clock.advance(delta / 1000);
+    this.perf?.frame(performance.now(), steps);
     const events: SimEvent[] = [];
     for (let i = 0; i < steps; i++) {
       if (import.meta.env.DEV && this.stress > 0) stressTick(this.sim, this.stress, this.stressState);
