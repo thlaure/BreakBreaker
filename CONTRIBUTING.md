@@ -10,7 +10,7 @@ Thanks for wanting to help Paul defend the district!
 
 ## Ground rules
 
-- The game is satirical fiction: no real person, no real-life likeness, no real logo. In-game text stays in French; code and docs are in English.
+- The game is satirical fiction: no real person or likeness unless the project owner asked for that cameo (see AGENTS.md), and no real logo. In-game text stays in French; code and docs are in English.
 - Assets must be free to use, with their author and license added to [`public/CREDITS.md`](public/CREDITS.md) (via `npm run assets`).
 
 ## Development

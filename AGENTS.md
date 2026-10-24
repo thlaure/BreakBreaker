@@ -59,7 +59,7 @@ MAJOR.MEDIUM.MINOR: major = a big update that changes the game a lot (records re
 
 The game is satirical fiction. Binding decisions:
 
-- Everything is invented: Paul, every character, every faction; no real person or real party is named or depicted.
+- Everything is invented: Paul, every character, every faction. Owner's exception (24 Oct 2026): a real public figure may be named and drawn as a light, clearly comic cameo, but only a figure the owner asked for (today: Elon Musk, in the planned rocket-base scene) and only in a harmless, non-degrading scene (what he is known for, such as rockets or flying cars). Still never: a real party, a real private person, a real logo (art stays original), physique, skin colour, ethnicity or religion as the joke, a real person beaten, jailed or sexualised.
 - Satire of the powerful is fine, on every side, but recognisable only through props, attitudes and public quotes: never through physique, skin colour, weight, ethnicity or religion; no religious symbols or clothing on boss or enemy characters; no hate symbols; no harem or sexualised or degrading depiction of real people.
 - The President (castle balcony) is a generic fictional figure with a dictionary of short public phrases and no attribution.
 - No stand-in for a specific real person is made to be beaten or jailed (no Caïd or prisoner modelled on a real individual), even if the description avoids the name.
