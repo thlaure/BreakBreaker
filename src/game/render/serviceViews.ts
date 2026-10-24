@@ -7,6 +7,7 @@ import { DEPTH } from './depth';
 import { facingOf, jetPoint, officerFrame, officerTexture, sirenFrame, type Facing, type OfficerFrame } from './serviceMath';
 import { HpBar } from './targetHpBar';
 import { hpSegmentFills, hpSegments } from './roleLook';
+import { ellipseImage } from './ellipseImage';
 
 const OUTLINE = 0x14121c;
 /** Logical pixels drawn ×2, like the props. */
@@ -23,7 +24,7 @@ export type OfficerSnap = Snapshot['allies']['police'][number];
 /** The fire truck: sprite by facing with flashing lights, hp bar, water jets to every burning door in reach while parked. */
 export class TruckView {
   private readonly sprite: Phaser.GameObjects.Image;
-  private readonly shadow: Phaser.GameObjects.Ellipse;
+  private readonly shadow: Phaser.GameObjects.Image;
   private readonly bar: HpBar;
   private readonly jets: Phaser.GameObjects.Graphics;
   private facing: Facing = 'east';
@@ -32,7 +33,7 @@ export class TruckView {
   private fadeFrom = 0;
 
   constructor(scene: Phaser.Scene) {
-    this.shadow = scene.add.ellipse(0, 0, 60, 14, 0x000000, 0.25).setDepth(DEPTH.decal).setVisible(false);
+    this.shadow = ellipseImage(scene, 0, 0, 60, 14, 0x000000, 0.25).setDepth(DEPTH.decal).setVisible(false);
     this.sprite = scene.add.image(0, 0, 'truck_east_0').setOrigin(0.5, 1).setScale(PX).setVisible(false);
     this.bar = new HpBar(scene, 0, 0, 36, 8);
     this.jets = scene.add.graphics().setDepth(DEPTH.roof + 3);
@@ -77,7 +78,7 @@ export class TruckView {
       .setVisible(true);
     this.shadow
       .setPosition(t.pos.x, y - 2)
-      .setSize(dir === 'east' ? 72 : 44, 14)
+      .setDisplaySize(dir === 'east' ? 72 : 44, 14)
       .setVisible(true);
     const h = this.sprite.displayHeight;
     this.bar.moveTo(t.pos.x, y - h - 12);

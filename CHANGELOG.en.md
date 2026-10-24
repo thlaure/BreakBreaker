@@ -6,6 +6,12 @@ It is read at build time and feeds the "What’s new" block and the "Changelog" 
 Format: one `## <version> - <date YYYY-MM-DD>` heading per version, then short `- ` bullets, most important first.
 The first three bullets of the latest version are shown on the landing page.
 
+## 1.5.6 - 2026-10-24
+
+- The Halloween pumpkin heads are real heads: the rioter's or ringleader's head is replaced by a pumpkin that moves with his body (from behind it has no face), instead of a mask on top.
+- The game is a little lighter: the shadows of objects, rocks and decor use images instead of shapes redrawn every frame.
+- The `?perf` meter also shows the game's own work time, the number of objects and the screen size, to better pin down where a lack of smoothness comes from.
+
 ## 1.5.5 - 2026-10-24
 
 - New measuring tool: adding `?perf` to the game address shows a small meter at the bottom left (frames per second, frame times, hitching frames, and the delay between a key press and the frame that applies it). It helps find where a feeling of lag comes from. Without `?perf`, nothing changes.

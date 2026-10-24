@@ -2,8 +2,6 @@ import type Phaser from 'phaser';
 
 export const ORB_TEXTURE = 'hw_orb';
 export const SKULL_FLAG_TEXTURE = 'hw_skull_flag';
-/** `hw_head_0..2` (smile, grimace, surprised) and `hw_head_back` (seen from behind). */
-export const pumpkinHeadTexture = (face: 0 | 1 | 2 | 'back'): string => `hw_head_${face}`;
 
 const INK = 0x14121c;
 type R = (c: number, x: number, y: number, w: number, h: number, a?: number) => void;
@@ -45,50 +43,8 @@ function skullFlag(r: R): void {
   r(INK, 8, 9, 1, 1);
 }
 
-const GLOW = 0xffe066;
-
-/** A jack-o'-lantern head (14 × 13): orange lobes with ridges, a green stem and a lit face (none from behind). */
-function pumpkinHead(face: 0 | 1 | 2 | 'back'): (r: R) => void {
-  return (r) => {
-    r(INK, 2, 2, 10, 11);
-    r(INK, 0, 4, 14, 7);
-    r(0xc2570f, 1, 3, 12, 9);
-    r(0xf28a1e, 2, 3, 10, 9);
-    r(0xffb347, 3, 4, 3, 2);
-    r(0xc2570f, 4, 3, 1, 9);
-    r(0xc2570f, 9, 3, 1, 9);
-    r(INK, 5, 0, 4, 3);
-    r(0x4a8f2a, 6, 1, 2, 2);
-    if (face === 'back') return;
-    if (face === 0) {
-      r(GLOW, 3, 5, 2, 2);
-      r(GLOW, 9, 5, 2, 2);
-      r(GLOW, 3, 9, 8, 1);
-      r(GLOW, 4, 8, 1, 1);
-      r(GLOW, 6, 8, 1, 1);
-      r(GLOW, 8, 8, 1, 1);
-    } else if (face === 1) {
-      r(GLOW, 3, 6, 3, 1);
-      r(GLOW, 4, 5, 2, 1);
-      r(GLOW, 8, 6, 3, 1);
-      r(GLOW, 8, 5, 2, 1);
-      r(GLOW, 3, 9, 8, 1);
-      r(GLOW, 4, 10, 1, 1);
-      r(GLOW, 6, 10, 1, 1);
-      r(GLOW, 8, 10, 1, 1);
-    } else {
-      r(GLOW, 3, 5, 3, 3);
-      r(GLOW, 8, 5, 3, 3);
-      r(INK, 4, 6, 1, 1);
-      r(INK, 9, 6, 1, 1);
-      r(GLOW, 5, 9, 4, 3);
-    }
-  };
-}
-
 /** Bakes every texture of the Halloween event once (before the world starts). */
 export function bakeEventTextures(scene: Phaser.Scene): void {
   bake(scene, ORB_TEXTURE, 12, 12, orb);
   bake(scene, SKULL_FLAG_TEXTURE, 16, 12, skullFlag);
-  for (const face of [0, 1, 2, 'back'] as const) bake(scene, pumpkinHeadTexture(face), 14, 13, pumpkinHead(face));
 }

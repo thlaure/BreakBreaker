@@ -6,6 +6,12 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.5.6 - 2026-10-24
+
+- Les têtes de citrouille d'Halloween sont de vraies têtes : la tête du casseur ou du Caïd est remplacée par une citrouille qui bouge avec son corps (de dos, elle n'a pas de visage), au lieu d'un masque posé dessus.
+- Le jeu est un peu plus léger : les ombres des objets, les pierres et les décors utilisent des images au lieu de formes redessinées à chaque image.
+- Le compteur `?perf` indique aussi le temps de travail du jeu, le nombre d'objets et la taille de l'écran, pour mieux cerner d'où vient un manque de fluidité.
+
 ## 1.5.5 - 2026-10-24
 
 - Nouvel outil de mesure : en ajoutant `?perf` à l'adresse du jeu, un petit compteur s'affiche en bas à gauche (images par seconde, durée des images, images ratées, et délai entre une touche et l'image qui la prend en compte). Il sert à trouver d'où vient une sensation de retard. Sans `?perf`, rien ne change.

@@ -1,5 +1,6 @@
 import type { Role } from '../../sim/types';
-import { isZombie } from './zombieMath';
+import { CAID_SKIN_COUNT, caidSheetKey, type CaidSkin } from '../../game/render/caidSkin';
+import { ZOMBIE_BASES, isZombie } from './zombieMath';
 
 /** A pure integer hash of a lifeId with a salt (no Math.random, no sim rng): each rule has its own, so they do not correlate. */
 function hash(id: number, salt: number): number {
@@ -14,15 +15,31 @@ function hash(id: number, salt: number): number {
 const PUMPKIN_PERCENT = 25;
 const CAID_PUMPKIN_PERCENT = 33;
 
-/** Whether this rioter has a jack-o'-lantern for a head (the Caïd keeps his body, scarf and crown). */
+/** Whether this rioter has a jack-o'-lantern for a head instead of his own (the Caïd keeps his body, scarf and crown). */
 export function hasPumpkinHead(role: Role, lifeId: number): boolean {
   if (isZombie(role, lifeId)) return false;
   return hash(lifeId, 0x5bd1e995) % 100 < (role === 'boss' ? CAID_PUMPKIN_PERCENT : PUMPKIN_PERCENT);
 }
 
-/** The pumpkin's face: 0 smile, 1 grimace, 2 surprised. */
-export function pumpkinFace(lifeId: number): 0 | 1 | 2 {
-  return (hash(lifeId, 0x27d4eb2f) % 3) as 0 | 1 | 2;
+/** The sheets that have a pumpkin-headed twin: the eight rioter sheets and the five Caïd looks. */
+export const PUMPKIN_SOURCES: readonly string[] = [
+  ...ZOMBIE_BASES,
+  ...Array.from({ length: CAID_SKIN_COUNT }, (_, i) => caidSheetKey(i as CaidSkin)),
+];
+
+/** The texture key of the pumpkin-headed twin of `source`. */
+export function pumpkinSheetKey(source: string): string {
+  return `pumpkin_${source}`;
+}
+
+/** The face (0 smile, 1 grimace, 2 surprised) painted on the twin of `source`: it varies from sheet to sheet. */
+export function pumpkinFaceOf(source: string): number {
+  return Math.max(0, PUMPKIN_SOURCES.indexOf(source)) % 3;
+}
+
+/** The sheet of a rioter who has a pumpkin for a head (the twin of `sheet`), else `sheet` unchanged. */
+export function pumpkinSheetFor(sheet: string, role: Role, lifeId: number): string {
+  return hasPumpkinHead(role, lifeId) && PUMPKIN_SOURCES.includes(sheet) ? pumpkinSheetKey(sheet) : sheet;
 }
 
 /** The flag a rioter carries under the event. */

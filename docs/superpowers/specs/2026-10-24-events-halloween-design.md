@@ -35,3 +35,4 @@ Positions exactes des décors, dessin des citrouilles, fantômes et chauves-sour
 
 - **Têtes de citrouille :** environ un casseur sur quatre (hors zombies) et un Caïd sur trois ont une tête de citrouille (trois expressions), posée en sprite sur la tête ; le Caïd garde son corps, ses accessoires, sa couronne et sa barre de vie. Rendu seulement.
 - **Drapeaux des zombies :** jamais le drapeau palestinien ni antifa ; un tiers portent un drapeau noir à tête de mort (drapeau de pirates, aucun autre symbole), les autres aucun.
+- **Vraies têtes (1.5.6) :** la tête du casseur ou du Caïd est remplacée par une citrouille dessinée dans la feuille de sprites (pas un masque posé dessus) ; trois expressions selon la feuille, aucune visage de dos.

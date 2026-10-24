@@ -1,6 +1,6 @@
 # BreakBreaker — Specifications (index)
 
-**Version:** 1.5.5 — 24 October 2026  
+**Version:** 1.5.6 — 24 October 2026  
 **Scope:** 2D pixel-art web game, non-isometric top-down view, arcade mode in rounds with no time limit, Paris, Paul (a fictional shopkeeper) as the only hero, computer and phone  
 **Status:** reference specification; decisions confirmed by the project owner and design recommendations are identified. A first playable slice exists (section 24); this document is neither a production sign-off nor a statement that all requirements are already implemented.  
 **Languages:** French (default) and American English  
@@ -185,6 +185,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
 
 ### 25.4 History
 
+- **1.5.6 — 24 October 2026 (patch):** (1) real pumpkin heads (owner: « une vraie citrouille à la place de la tête, pas un masque »): `pumpkinPaint.ts` erases the head of every walk and slash frame and draws a pumpkin in its place (three faces, none from behind), baked at boot into 13 `pumpkin_<sheet>` twins (eight rioter sheets, five Caïd looks, `pumpkinSheets.ts`) chosen by `pumpkinSheetFor`; the old overlay sprite is gone; (2) flat ellipses (shadows) are images, not shapes (`ellipseImage.ts`): 91 Ellipse shapes cut to 30; (3) the `?perf` meter also shows the game's own frame work time, the object count and the canvas size (RC-210, RC-213).
 - **1.5.5 — 24 October 2026 (patch):** the `?perf` meter (owner still felt a delay between a key press and the action): `src/game/perfMeter.ts` (DOM readout, only when the URL has `?perf`) and pure `perfMath.ts`: fps, frame time average / 95th percentile / worst over about two seconds, the share of frames with no sim step and with two or more, and the delay from a key press or click to the start of the frame that applies it (RC-213). Render only; nothing is created without `?perf`.
 - **1.5.4 — 24 October 2026 (patch):** fluidity (owner report: the game felt less smooth, with a delay between a key press and the action): the building fronts' Graphics (static once drawn, 10 of them holding more than 10,000 rectangle commands that Phaser replayed every frame) are baked into images at the end of the district build (`bake.ts`, pure `bakeMath.ts`; only fill-style and rectangle drawings are baked, the rest is left alone). Graphics command buffer per frame measured at 18,437 before and 7,931 after (render only, RC-212).
 - **1.5.3 — 24 October 2026 (patch):** pumpkin heads and zombie flags (owner request): while the event is on about one in four non-zombie rioters and one in three Caïds wear a jack-o'lantern head (a sprite on the head, three faces, seen from behind when walking away, hidden once KO; `rioterLook.ts`, `pumpkinHead.ts`), and zombies never carry their variant's flag: a third of them carry a plain black flag with a white skull (a pirate flag), the others none. Render only (RC-210, RC-211).

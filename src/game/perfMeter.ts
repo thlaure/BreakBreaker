@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { cadence, summarize, trimWindow } from './perfMath';
 
 /** Frames kept for the readout (about two seconds at 60 Hz) and key presses kept for the latency line. */
@@ -21,6 +22,9 @@ export class PerfMeter {
   private readonly frames: number[] = [];
   private readonly steps: number[] = [];
   private readonly latencies: number[] = [];
+  /** Time spent in the game's own frame (update and render calls), apart from the browser's compositing. */
+  private readonly work: number[] = [];
+  private frameStart = 0;
   private pending: number[] = [];
   private last = 0;
   private shownAt = 0;
@@ -28,7 +32,7 @@ export class PerfMeter {
     if (!(e instanceof KeyboardEvent) || !e.repeat) this.pending.push(e.timeStamp);
   };
 
-  constructor() {
+  constructor(private readonly info: () => string = () => '') {
     this.el = document.createElement('div');
     this.el.style.cssText =
       'position:fixed;left:4px;bottom:4px;z-index:99999;padding:3px 6px;font:11px/1.35 ui-monospace,Menlo,monospace;color:#7dff7d;background:rgba(0,0,0,0.7);pointer-events:none;white-space:pre';
@@ -47,6 +51,7 @@ export class PerfMeter {
       trimWindow(this.steps, FRAME_WINDOW);
     }
     this.last = now;
+    this.frameStart = now;
     // a press is applied by the first frame that steps the sim after it
     if (steps > 0 && this.pending.length > 0) {
       const rest: number[] = [];
@@ -63,15 +68,25 @@ export class PerfMeter {
     }
   }
 
+  /** Call after the frame is drawn (Phaser's `postrender`): closes the frame's own work time. */
+  frameEnd(now: number): void {
+    if (this.frameStart > 0) {
+      this.work.push(now - this.frameStart);
+      trimWindow(this.work, FRAME_WINDOW);
+    }
+  }
+
   private show(): void {
     const f = summarize(this.frames);
     const l = summarize(this.latencies);
     const c = cadence(this.steps);
+    const w = summarize(this.work);
     const fps = f.avg > 0 ? Math.round(1000 / f.avg) : 0;
     this.el.textContent =
       `${fps} fps  frame ${f.avg.toFixed(1)} / p95 ${f.p95.toFixed(1)} / max ${f.max.toFixed(0)} ms\n` +
       `0 pas ${c.none} %  2+ pas ${c.multi} %\n` +
-      `touche → image  moy ${l.avg.toFixed(0)} / max ${l.max.toFixed(0)} ms  (n=${this.latencies.length})`;
+      `touche → image  moy ${l.avg.toFixed(0)} / max ${l.max.toFixed(0)} ms  (n=${this.latencies.length})\n` +
+      `travail du jeu  moy ${w.avg.toFixed(1)} / p95 ${w.p95.toFixed(1)} ms  ${this.info()}`;
   }
 
   destroy(): void {
@@ -79,4 +94,20 @@ export class PerfMeter {
     window.removeEventListener('pointerdown', this.press, true);
     this.el.remove();
   }
+}
+
+/** The meter for `scene`'s game when the URL has `?perf` (null otherwise): it closes each frame on Phaser's `postrender`. */
+export function createPerfMeter(scene: Phaser.Scene): PerfMeter | null {
+  if (!perfRequested(globalThis.location?.search ?? '')) return null;
+  const game = scene.game;
+  const info = (): string => `${scene.children.length} objets  ${game.canvas.width}×${game.canvas.height} @${window.devicePixelRatio}x`;
+  const meter = new PerfMeter(info);
+  const end = (): void => meter.frameEnd(performance.now());
+  game.events.on(Phaser.Core.Events.POST_RENDER, end);
+  const destroy = meter.destroy.bind(meter);
+  meter.destroy = (): void => {
+    game.events.off(Phaser.Core.Events.POST_RENDER, end);
+    destroy();
+  };
+  return meter;
 }

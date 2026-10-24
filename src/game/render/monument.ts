@@ -3,6 +3,7 @@ import { DISTRICT } from '../../sim/map/district';
 import type { Snapshot } from '../../sim/sim';
 import type { MonumentFlag, SimEvent } from '../../sim/types';
 import { DEPTH } from './depth';
+import { ellipseImage } from './ellipseImage';
 
 const OUTLINE = 0x14121c;
 /** Drawn from 1-px logical textures scaled ×2, like the props. */
@@ -148,7 +149,7 @@ export class MonumentView {
     const left = P.x + P.w / 2 - (W * PX) / 2;
     const top = bottom - H * PX;
     this.ring = scene.add.graphics().setDepth(DEPTH.decal + 2);
-    scene.add.ellipse(P.x + P.w / 2, bottom - 2, P.w + 10, 14, 0x000000, 0.28).setDepth(DEPTH.decal);
+    ellipseImage(scene, P.x + P.w / 2, bottom - 2, P.w + 10, 14, 0x000000, 0.28).setDepth(DEPTH.decal);
     scene.add.image(left, top, 'statue').setOrigin(0, 0).setScale(PX).setDepth(bottom);
     this.hoist = { x: left + HOIST.x * PX, y: top + HOIST.y * PX };
     this.flagImg = scene.add

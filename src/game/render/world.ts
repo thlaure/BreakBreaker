@@ -18,6 +18,7 @@ import { buildPrisonFront } from './prisonFront';
 import { buildSaunaFront } from './saunaFront';
 import { SkeletonBand } from './skeletonBand';
 import { buildStageFront } from './stageFront';
+import { ellipseImage } from './ellipseImage';
 
 // Moved out of this file; re-exported so importers keep working.
 export { FACADE_H, ROOF_OVERHANG };
@@ -238,7 +239,7 @@ export class WorldView {
   private buildTrees(): void {
     for (const t of DISTRICT.trunks) {
       const footY = t.y + 6;
-      this.scene.add.ellipse(t.x, footY, 18, 6, 0x000000, 0.25).setDepth(DEPTH.decal);
+      ellipseImage(this.scene, t.x, footY, 18, 6, 0x000000, 0.25).setDepth(DEPTH.decal);
       const trunk = this.scene.add.image(t.x, footY, 'city', TILE.city.treeTrunk).setOrigin(0.5, 1).setScale(2).setDepth(footY);
       const foliage = this.scene.add
         .image(t.x, footY - 32, 'city', TILE.city.treeTop)

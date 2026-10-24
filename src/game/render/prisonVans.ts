@@ -5,6 +5,7 @@ import { FEET_ORIGIN_Y, idleFrame, koFrame } from './actors';
 import { DEPTH } from './depth';
 import { HOP_END, HOP_START, VAN_PICKUP_DELAY_MS, VAN_RUN_MS, VAN_TRANSFER_MS, hopProgress, ridingCount, vanPose } from './prisonMath';
 import { jetPoint, sirenFrame } from './serviceMath';
+import { ellipseImage } from './ellipseImage';
 
 /** Logical pixels drawn ×2, like the props. */
 const PX = 2;
@@ -29,7 +30,7 @@ interface Run {
   from: Vec;
   to: Vec;
   van: Phaser.GameObjects.Image;
-  shadow: Phaser.GameObjects.Ellipse;
+  shadow: Phaser.GameObjects.Image;
   crown: Phaser.GameObjects.Image;
   /** The Caïd himself hopping with his crown (lying for the pickup, standing for the drop-off). */
   body: Phaser.GameObjects.Sprite;
@@ -104,7 +105,7 @@ export class JailVans {
 
   private run(kind: Run['kind'], start: number, at: Vec, dir: 1 | -1, from: Vec, to: Vec, sheet: string): Run {
     const s = this.scene;
-    const shadow = s.add.ellipse(0, 0, 68, 12, 0x000000, 0.25).setDepth(DEPTH.decal).setVisible(false);
+    const shadow = ellipseImage(s, 0, 0, 68, 12, 0x000000, 0.25).setDepth(DEPTH.decal).setVisible(false);
     const van = s.add
       .image(0, 0, 'jail_van_0')
       .setOrigin(0.5, 1)

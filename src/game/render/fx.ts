@@ -4,13 +4,14 @@ import { MOLOTOV_FLIGHT_SEC, type Snapshot, type Telegraph } from '../../sim/sim
 import type { Vec } from '../../sim/types';
 import { flyingRockTexture } from '../../events';
 import { DEPTH } from './depth';
+import { ellipseImage } from './ellipseImage';
 
 type RockSnap = Snapshot['rocks'][number];
 const ARC_PX = 12;
 
 /** Rocks: ground shadow + shape lifted by sin(πt)·12 while flying; white outline + slow bob once recoverable. */
 export class RockLayer {
-  private readonly views = new Map<number, { shadow: Phaser.GameObjects.Ellipse; body: Phaser.GameObjects.Image }>();
+  private readonly views = new Map<number, { shadow: Phaser.GameObjects.Image; body: Phaser.GameObjects.Image }>();
 
   constructor(private readonly scene: Phaser.Scene) {}
 
@@ -22,7 +23,7 @@ export class RockLayer {
       let v = this.views.get(r.id);
       if (!v) {
         v = {
-          shadow: this.scene.add.ellipse(0, 0, 10, 4, 0x000000, 0.35).setDepth(DEPTH.decal + 3),
+          shadow: ellipseImage(this.scene, 0, 0, 10, 4, 0x000000, 0.35).setDepth(DEPTH.decal + 3),
           body: this.scene.add.image(0, 0, flyingRockTexture(r.kind, r.owner)),
         };
         this.views.set(r.id, v);
@@ -38,7 +39,7 @@ export class RockLayer {
   }
 
   private place(
-    v: { shadow: Phaser.GameObjects.Ellipse; body: Phaser.GameObjects.Image },
+    v: { shadow: Phaser.GameObjects.Image; body: Phaser.GameObjects.Image },
     r: RockSnap,
     progress: (id: number) => number,
     timeMs: number,
@@ -156,7 +157,7 @@ interface Flight {
   seen: number;
   bottle: Phaser.GameObjects.Image;
   flame: Phaser.GameObjects.Image;
-  shadow: Phaser.GameObjects.Ellipse;
+  shadow: Phaser.GameObjects.Image;
 }
 
 /**
@@ -251,7 +252,7 @@ export class MolotovFx {
         .setScale(2)
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(DEPTH.foliage + 1.1),
-      shadow: this.scene.add.ellipse(0, 0, 12, 5, 0x000000, 0.35).setDepth(DEPTH.decal + 3),
+      shadow: ellipseImage(this.scene, 0, 0, 12, 5, 0x000000, 0.35).setDepth(DEPTH.decal + 3),
     };
   }
 

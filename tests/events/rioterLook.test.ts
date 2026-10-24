@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'vitest';
-import { flagKind, hasPumpkinHead, pumpkinFace } from '../../src/events/halloween/rioterLook';
+import {
+  PUMPKIN_SOURCES,
+  flagKind,
+  hasPumpkinHead,
+  pumpkinFaceOf,
+  pumpkinSheetFor,
+  pumpkinSheetKey,
+} from '../../src/events/halloween/rioterLook';
 import { isZombie } from '../../src/events/halloween/zombieMath';
 import type { Role } from '../../src/sim/types';
 
@@ -22,10 +29,26 @@ describe('pumpkin heads', () => {
       for (const i of ids) if (isZombie(role, i)) expect(hasPumpkinHead(role, i)).toBe(false);
   });
 
-  test('the face is one of three, stable for a life, and all three show up', () => {
-    const seen = new Set(ids.map((i) => pumpkinFace(i)));
-    expect([...seen].sort()).toEqual([0, 1, 2]);
-    for (const i of ids.slice(0, 50)) expect(pumpkinFace(i)).toBe(pumpkinFace(i));
+  test('a pumpkin-headed rioter wears the twin of his sheet, the others keep theirs, and no zombie ever does', () => {
+    for (const source of PUMPKIN_SOURCES) {
+      const has = ids.find((i) => hasPumpkinHead('contact', i))!;
+      expect(pumpkinSheetFor(source, 'contact', has)).toBe(pumpkinSheetKey(source));
+      const none = ids.find((i) => !hasPumpkinHead('contact', i))!;
+      expect(pumpkinSheetFor(source, 'contact', none)).toBe(source);
+    }
+    expect(
+      pumpkinSheetFor(
+        'paul',
+        'contact',
+        ids.find((i) => hasPumpkinHead('contact', i))!,
+      ),
+    ).toBe('paul');
+  });
+
+  test('thirteen sources (eight rioter sheets, five Caïd looks), each with one of the three faces, all three used', () => {
+    expect(PUMPKIN_SOURCES).toHaveLength(13);
+    expect(new Set(PUMPKIN_SOURCES).size).toBe(13);
+    expect(new Set(PUMPKIN_SOURCES.map(pumpkinFaceOf))).toEqual(new Set([0, 1, 2]));
   });
 });
 

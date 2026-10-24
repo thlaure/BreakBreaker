@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { t as tr } from '../../content/i18n';
 import { FixedClock } from '../../sim/clock';
-import { PerfMeter, perfRequested } from '../perfMeter';
+import { createPerfMeter, type PerfMeter } from '../perfMeter';
 import { CONFIG } from '../../sim/config';
 import { DISTRICT } from '../../sim/map/district';
 import { Sim, type Snapshot } from '../../sim/sim';
@@ -180,7 +180,7 @@ export class WorldScene extends Phaser.Scene {
     this.cinematicCam = false;
     this.prevAct = false;
 
-    this.perf = perfRequested(location.search) ? new PerfMeter() : null;
+    this.perf = createPerfMeter(this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.perf?.destroy();
       this.perf = null;

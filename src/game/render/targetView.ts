@@ -8,6 +8,7 @@ import { DEPTH } from './depth';
 import { PROP_RISE, type PropKind } from './geometry';
 import { HpBar } from './targetHpBar';
 import { FACADE_H, type BuildingPart } from './world';
+import { ellipseImage } from './ellipseImage';
 
 type TargetSnap = Snapshot['targets'][number];
 
@@ -75,7 +76,7 @@ export class TargetView {
             : kind === 'kiosk'
               ? { intact: 'kiosk', ruined: 'kiosk_broken' }
               : { intact: def.id === 'car2' ? 'car_b' : 'car_a', ruined: 'car_burnt' };
-      scene.add.ellipse(cx, bottom - 2, f.w + 6, 12, 0x000000, 0.25).setDepth(DEPTH.decal);
+      ellipseImage(scene, cx, bottom - 2, f.w + 6, 12, 0x000000, 0.25).setDepth(DEPTH.decal);
       this.sprite = scene.add
         .image(cx, bottom + (kind === 'car' ? 2 : 0), this.textures.intact)
         .setOrigin(0.5, 1)

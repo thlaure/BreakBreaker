@@ -45,7 +45,7 @@ export function createCharAnims(scene: Phaser.Scene, l: CharLayout): void {
   const sheets: CharSheet[] = [];
   for (const key of scene.textures.getTextureKeys()) {
     const src = scene.textures.get(key).getSourceImage() as { width: number; height: number };
-    if (!/^(paul|rioter_|protester_|elder_|caid_|zombie_)/.test(key)) continue;
+    if (!/^(paul|rioter_|protester_|elder_|caid_|zombie_|pumpkin_)/.test(key)) continue;
     COLS.set(key, Math.floor(src.width / l.frame));
     sheets.push(key as CharSheet);
   }
