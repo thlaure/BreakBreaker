@@ -8,7 +8,7 @@ const PRESS_WINDOW = 20;
 const REFRESH_MS = 500;
 
 /** Whether the page asked for the meter (`?perf`). */
-export function perfRequested(search: string): boolean {
+function perfRequested(search: string): boolean {
   return new URLSearchParams(search).has('perf');
 }
 
@@ -28,11 +28,15 @@ export class PerfMeter {
   /** Graphics-card time per frame (WebGL timer query, when the browser offers it). */
   private readonly gpu: number[] = [];
   private frameStart = 0;
+  /** Presses not yet answered (capped: the sim does not step while paused, so none is answered then). */
   private pending: number[] = [];
   private last = 0;
   private shownAt = 0;
   private readonly press = (e: Event): void => {
-    if (!(e instanceof KeyboardEvent) || !e.repeat) this.pending.push(e.timeStamp);
+    if (!(e instanceof KeyboardEvent) || !e.repeat) {
+      this.pending.push(e.timeStamp);
+      trimWindow(this.pending, PRESS_WINDOW);
+    }
   };
 
   constructor(private readonly info: () => string = () => '') {

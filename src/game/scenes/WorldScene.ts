@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { t as tr } from '../../content/i18n';
 import { FixedClock } from '../../sim/clock';
 import { createPerfMeter, type PerfMeter } from '../perfMeter';
+import { releaseBaked } from '../render/bake';
 import { CONFIG } from '../../sim/config';
 import { DISTRICT } from '../../sim/map/district';
 import { Sim, type Snapshot } from '../../sim/sim';
@@ -191,6 +192,7 @@ export class WorldScene extends Phaser.Scene {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.applyZoom, this);
     });
 
+    releaseBaked(this);
     makeTextures(this);
     makeRockTextures(this);
     makeWeaponTextures(this);

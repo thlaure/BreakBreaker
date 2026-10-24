@@ -15,7 +15,7 @@ import { activeEventId, type EventId } from './schedule';
 let current: EventId | null | undefined;
 
 /** The event on for this page load (computed once). */
-export function activeEvent(): EventId | null {
+function activeEvent(): EventId | null {
   current ??= activeEventId(new Date(), globalThis.location?.search ?? '');
   return current;
 }

@@ -4,6 +4,14 @@ import { fillRects } from './bakeMath';
 /** A drawing larger than this (px²) is not baked: it would cost more texture memory than it saves. */
 const MAX_AREA = 768 * 1024;
 let counter = 0;
+/** The keys of the baked textures, so a new game can release the previous game's. */
+const bakedKeys = new Set<string>();
+
+/** Removes the baked textures of the previous game (call before building a new district: the old images are gone by then). */
+export function releaseBaked(scene: Phaser.Scene): void {
+  for (const key of bakedKeys) if (scene.textures.exists(key)) scene.textures.remove(key);
+  bakedKeys.clear();
+}
 
 /**
  * Freezes a static Graphics into one image: Phaser replays a Graphics' whole command list every frame (thousands of
@@ -30,6 +38,7 @@ export function bakeGraphics(scene: Phaser.Scene, g: Phaser.GameObjects.Graphics
     ctx.fillRect(r.x - x0, r.y - y0, r.w, r.h);
   }
   const key = `baked_${counter++}`;
+  bakedKeys.add(key);
   scene.textures.addCanvas(key, canvas)?.setFilter(Phaser.Textures.FilterMode.NEAREST);
   const image = scene.add
     .image(g.x + x0, g.y + y0, key)

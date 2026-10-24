@@ -297,7 +297,7 @@ Unavailable storage does not prevent play. The record of an interrupted session 
 
 **Perf meter (v1.5.5).** `?perf` adds `PerfMeter` (`src/game/perfMeter.ts`): a capture-phase `keydown`/`pointerdown` listener stamps presses with `event.timeStamp`, and `WorldScene.update` reports each frame (`performance.now()`, sim steps run); a press is answered by the first frame that steps the sim after it. The pure part is `perfMath.ts`.
 
-**Batching (v1.5.8).** Each Phaser object type (Graphics, shapes, TileSprite) has its own render pipeline, and every switch between pipelines flushes the draw batch, so a scene that interleaves them by depth costs far more than its object count suggests. Prefer images: `flatImages.ts` (`rectImage`, `tiledImage`), `ellipseImage.ts`, and `bake.ts` for static Graphics. Name a container `dynamic` if code redraws, hides or moves the Graphics inside it.
+**Batching (v1.5.8).** Each Phaser object type (Graphics, shapes, TileSprite) has its own render pipeline, and every switch between pipelines flushes the draw batch, so a scene that interleaves them by depth costs far more than its object count suggests. Prefer images: `flatImages.ts` (`rectImage`, `tiledImage`), `ellipseImage.ts`, and `bake.ts` for static Graphics (`releaseBaked` frees the previous game's baked textures). Name a container `dynamic` if code redraws, hides or moves the Graphics inside it.
 
 ### 20.2 Assets
 

@@ -6,6 +6,10 @@ It is read at build time and feeds the "What’s new" block and the "Changelog" 
 Format: one `## <version> - <date YYYY-MM-DD>` heading per version, then short `- ` bullets, most important first.
 The first three bullets of the latest version are shown on the landing page.
 
+## 1.5.9 - 2026-10-24
+
+- A small cleanup after the smoothness fixes: the frozen decor images are released at each new game instead of piling up in memory.
+
 ## 1.5.8 - 2026-10-24
 
 - The game is much smoother: your measurements showed that switching off any one of the "graphics", "shapes" or "tiles" layers brought it back to almost 60 frames per second. Those three object types were breaking the browser's draw batching. Walls, roofs, rectangles and shadows are now images, and fixed decor is frozen once: from 173 down to 60 draw calls per frame in my test.
