@@ -24,6 +24,7 @@ import { RifleProp } from './guns';
 import { CaidLookView } from './caidProps';
 import { caidSkinOf } from './caidSkin';
 import { BottleProp, RoleBadge } from './rioterProps';
+import { themedSheet } from '../../events';
 import { DUST_MS, badgeOf, rioterSheet, roleScale } from './roleLook';
 import { MAX_SATELLITES } from './satellite';
 
@@ -64,7 +65,7 @@ export class HostileView {
   private lastDust = 0;
 
   constructor(scene: Phaser.Scene, h: HostileSnap) {
-    this.view = new CharView(scene, rioterSheet(h.variant, h.role, h.lifeId), h.pos);
+    this.view = new CharView(scene, themedSheet(rioterSheet(h.variant, h.role, h.lifeId), h.role, h.lifeId), h.pos);
     this.size = roleScale(h.role);
     this.view.sprite.setScale(this.size);
     this.role = badgeOf(h.role) ? new RoleBadge(scene, h.role, this.size) : null;

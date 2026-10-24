@@ -3,6 +3,7 @@ import { t } from '../../content/i18n';
 import { BASE, CHAR_SHEETS, SFX, type CharLayout } from '../assets';
 import { provideSfx, type Sfx } from '../audio';
 import { hideLoading, showMessage, showProgress } from '../loadingUi';
+import { prepareEvent } from '../../events';
 import { createCharAnims } from '../render/actors';
 import { makeCaidSheets } from '../render/caidSheets';
 
@@ -66,6 +67,7 @@ export class BootScene extends Phaser.Scene {
     }
     // the five Caïd looks are painted over loaded sheets, then animated like every character sheet
     makeCaidSheets(this);
+    prepareEvent(this);
     createCharAnims(this, layout);
     // Phaser text (victim bubbles) is drawn with the pixel font: wait for it (bounded) before starting the world.
     void waitForPixelFont().then(() => {

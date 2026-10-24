@@ -1,6 +1,6 @@
 # BreakBreaker — Specifications (index)
 
-**Version:** 1.4.5 — 24 October 2026  
+**Version:** 1.5.0 — 24 October 2026  
 **Scope:** 2D pixel-art web game, non-isometric top-down view, arcade mode in rounds with no time limit, Paris, Paul (a fictional shopkeeper) as the only hero, computer and phone  
 **Status:** reference specification; decisions confirmed by the project owner and design recommendations are identified. A first playable slice exists (section 24); this document is neither a production sign-off nor a statement that all requirements are already implemented.  
 **Languages:** French (default) and American English  
@@ -185,6 +185,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
 
 ### 25.4 History
 
+- **1.5.0 — 24 October 2026 (medium):** seasonal events and the Halloween theme (design `docs/superpowers/specs/2026-10-24-events-halloween-design.md`): a permanent `src/events/` registry (`schedule.ts`: Halloween from 24 October to 2 November every year, `?event=halloween` forces it, `?event=none` cuts it) and `src/events/halloween/`: about half of the rioters (never the Caïd, by an integer hash of the lifeId) wear one of eight zombie sheets painted at boot over the rioter sheets (grey-green skin, flashy hair, some with a road cone or a bucket), and pennant garlands, pumpkins, ghosts and bats decorate the map. Render only: the simulation, the map and the records are untouched; with no event active nothing is built (RC-205 to RC-207).
 - **1.4.5 — 24 October 2026 (patch):** the sauna is a glazed three-seat cabin (render only, footprint unchanged): its three guests are drawn with the map characters' sheets (`protester_1`, `protester_3`, `elder_2`, `saunaGuests.ts`) and told apart by props only (cap and long tie, judo belt and hockey stick, felt hat); the old dark turban and grey beard are dropped (no religious clothing, no physical trait).
 - **1.4.4 — 24 October 2026 (patch):** idle render rate: while an overlay pauses the sim (pause, controls, intro card, end summary) the render loop is limited to 15 fps (`renderRateMath.ts`) and returns to the display rate the moment the sim resumes (RC-204).
 - **1.4.3 — 24 October 2026 (patch):** load weight: every game PNG is rewritten as a lossless indexed PNG (`scripts/optimize-png.mjs`, run by `npm run assets`; 1.8 MB to 0.3 MB, same pixels), and Phaser is built as its own cacheable chunk (RC-203).

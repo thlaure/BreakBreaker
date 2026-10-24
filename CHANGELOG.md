@@ -6,6 +6,12 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.5.0 - 2026-10-24
+
+- Halloween arrive, du 24 octobre au 2 novembre : environ un casseur sur deux devient un zombie rigolo (peau vert-gris, cheveux bleus, roses, violets, turquoise ou jaunes, certains avec un cône de chantier ou un seau sur la tête). Rien ne change dans le jeu : mêmes règles, mêmes scores.
+- La carte se pare pour l'occasion : guirlandes de fanions sur les façades, citrouilles souriantes devant les bâtiments, petits fantômes qui flottent et chauves-souris qui tournent (immobiles avec mouvement réduit).
+- Le thème s'allume et s'éteint tout seul selon la date, chaque année. Pour le forcer ou le couper : `?event=halloween` ou `?event=none` dans l'adresse du jeu.
+
 ## 1.4.5 - 2026-10-24
 
 - Le sauna devient une cabine vitrée à trois places : les trois invités sont de vrais personnages, dessinés avec les mêmes éléments que ceux qui se promènent sur la carte, distingués seulement par leurs accessoires (casquette et longue cravate, ceinture de judo, chapeau de feutre).

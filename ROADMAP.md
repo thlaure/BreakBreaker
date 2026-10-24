@@ -18,6 +18,8 @@ Ce qui est déjà sorti est dans le [changelog](CHANGELOG.md).
 
 ## Fait
 
+Halloween (zombies rigolos et décors sur la carte, du 24 octobre au 2 novembre, activé tout seul chaque année) est arrivé en 1.5.0 : voir le [changelog](CHANGELOG.md).
+
 Les cabines d'urgence passent sur la grande place, et une scène de rock avec un groupe de squelettes, un chanteur qui lance des répliques et une musique qui monte quand on s'approche sont arrivées en 1.4.0 : voir le [changelog](CHANGELOG.md).
 
 Le jeu est disponible en français et en anglais américain depuis la 1.3.0 (drapeaux en haut à gauche de la page d'accueil et dans le menu pause) : voir le [changelog](CHANGELOG.md).

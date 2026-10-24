@@ -6,6 +6,12 @@ It is read at build time and feeds the "What’s new" block and the "Changelog" 
 Format: one `## <version> - <date YYYY-MM-DD>` heading per version, then short `- ` bullets, most important first.
 The first three bullets of the latest version are shown on the landing page.
 
+## 1.5.0 - 2026-10-24
+
+- Halloween is here, from 24 October to 2 November: about one rioter in two turns into a goofy zombie (grey-green skin, blue, pink, violet, turquoise or yellow hair, some with a road cone or a bucket on the head). Nothing changes in the game: same rules, same scores.
+- The map dresses up for the occasion: pennant garlands on the front walls, grinning pumpkins in front of the buildings, little floating ghosts and circling bats (still with reduced motion).
+- The theme switches itself on and off by date, every year. To force or cut it, add `?event=halloween` or `?event=none` to the game address.
+
 ## 1.4.5 - 2026-10-24
 
 - The sauna is now a glazed three-seat cabin: its three guests are real characters, drawn with the same parts as the people walking around the map, told apart by accessories only (cap and long tie, judo belt, felt hat).

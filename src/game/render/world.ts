@@ -7,6 +7,7 @@ import { TILE } from '../assets';
 import { SHOP, buildLibraryFront, buildNurseryFront, buildShopFront, buildTownHallFront } from './buildingFronts';
 import { buildChateauFront } from './chateauFront';
 import { buildChurchFront } from './churchFront';
+import { buildEventDecor } from '../../events';
 import { buildCafFront, buildPouletFront, type DecorAnim, type Paint } from './decor';
 import { DEPTH, inRect } from './depth';
 import { FACADE_H, ROOF_OVERHANG } from './geometry';
@@ -69,6 +70,7 @@ export class WorldView {
     this.buildGround();
     DISTRICT.buildings.forEach((b, i) => this.buildBuilding(b, i));
     this.buildTrees();
+    this.decor.push(...buildEventDecor(scene, reducedMotion));
   }
 
   /** Fades the roof / tree canopy whose rect contains Paul's feet; steps the decor fronts' idle animation and the President. */

@@ -291,6 +291,8 @@ Preferences for controls, audio, accessibility, quality and **language** (`bb:lo
 
 Unavailable storage does not prevent play. The record of an interrupted session is distinguished according to the arcade rule. Loading old invalid data falls back to safe values.
 
+**Seasonal events (v1.5.0).** `src/events/` is render only and permanent: `schedule.ts` (pure `activeEventId(date, search)`), `index.ts` (the event decided once per page load; `prepareEvent` at boot, `themedSheet` for a rioter's sheet, `buildEventDecor` for the map) and `halloween/` (pure `zombieMath.ts`, `zombiePaint.ts`, `decorMath.ts`; Phaser `zombieSheets.ts`, `decor.ts`). With no event active nothing is created (no extra texture, no object); with Halloween on, eight zombie canvases are painted once at boot (about 10 MB of textures) and the decor is a few dozen static images and graphics plus ten animated sprites. Tests: `tests/events/`.
+
 ### 20.2 Assets
 
 The landing page (two static pages, `/` in French and `/en/` in English, section 18.7) and the game have separate entry points. The landing page downloads neither the engine nor the atlases nor the sounds of the game; loading of these resources begins when the game page is opened. The detailed navigation and weight requirements are in section 26.
