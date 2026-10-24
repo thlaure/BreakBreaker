@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.buymeacoffee.com/thomaslaure"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=thomaslaure&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" height="48"></a>
+  <a href="https://www.buymeacoffee.com/thomaslaure"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy me a coffee" height="48"></a>
 </p>
 
 <p align="center">
