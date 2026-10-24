@@ -6,6 +6,10 @@ It is read at build time and feeds the "What’s new" block and the "Changelog" 
 Format: one `## <version> - <date YYYY-MM-DD>` heading per version, then short `- ` bullets, most important first.
 The first three bullets of the latest version are shown on the landing page.
 
+## 1.5.4 - 2026-10-24
+
+- The game runs smoother: the building fronts, which never change, were redrawn rectangle by rectangle on every frame (close to 20,000 drawing commands per frame). They are now frozen into images once, which takes a lot of work off the browser and shortens the delay between a key press and the action.
+
 ## 1.5.3 - 2026-10-24
 
 - During Halloween, some rioters and some ringleaders (about one in four, one in three for the ringleaders) have a jack-o'-lantern head, smiling, grimacing or surprised, which makes them easy to spot.

@@ -6,6 +6,10 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.5.4 - 2026-10-24
+
+- Le jeu est plus fluide : les façades des bâtiments, qui ne changent jamais, étaient redessinées rectangle par rectangle à chaque image (près de 20 000 commandes de dessin par image). Elles sont maintenant figées en images une fois pour toutes, ce qui allège beaucoup le travail du navigateur et réduit le retard entre une touche et l'action.
+
 ## 1.5.3 - 2026-10-24
 
 - Pendant Halloween, certains casseurs et certains Caïds (environ un sur quatre, un sur trois pour les Caïds) ont une tête de citrouille souriante, grimaçante ou surprise, qui les rend facilement reconnaissables.

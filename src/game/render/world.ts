@@ -8,6 +8,7 @@ import { SHOP, buildLibraryFront, buildNurseryFront, buildShopFront, buildTownHa
 import { buildChateauFront } from './chateauFront';
 import { buildChurchFront } from './churchFront';
 import { buildEventDecor } from '../../events';
+import { bakeGraphics } from './bake';
 import { buildCafFront, buildPouletFront, type DecorAnim, type Paint } from './decor';
 import { DEPTH, inRect } from './depth';
 import { FACADE_H, ROOF_OVERHANG } from './geometry';
@@ -58,6 +59,8 @@ export class WorldView {
   readonly buildingParts = new Map<number, BuildingPart[]>();
   /** Animated bits of the decor fronts (CAF queue, POULET CROUSTI sign, sauna lantern and guests, the skeleton band). */
   private readonly decor: DecorAnim[] = [];
+  /** The front walls' Graphics, baked into images once the whole district is built. */
+  private readonly frontGraphics: Phaser.GameObjects.Graphics[] = [];
   /** Centre of the château balcony floor (world px), where the President stands; null until the château is built. */
   chateauBalcony: Vec | null = null;
   /** The President on that balcony (render only, its own seeded rng). */
@@ -71,6 +74,9 @@ export class WorldView {
     DISTRICT.buildings.forEach((b, i) => this.buildBuilding(b, i));
     this.buildTrees();
     this.decor.push(...buildEventDecor(scene, reducedMotion));
+    // the front walls never change once drawn: one image each instead of thousands of rectangles replayed every frame
+    for (const g of this.frontGraphics) bakeGraphics(scene, g);
+    this.frontGraphics.length = 0;
   }
 
   /** Fades the roof / tree canopy whose rect contains Paul's feet; steps the decor fronts' idle animation and the President. */
@@ -182,6 +188,7 @@ export class WorldView {
   frontPainter(b: Rect): { g: Phaser.GameObjects.Graphics; r: Paint; top: number; front: number } {
     const front = b.y + b.h;
     const g = this.scene.add.graphics().setDepth(front + 0.02);
+    this.frontGraphics.push(g);
     const r: Paint = (c, x, y, w, h, a = 1) => {
       g.fillStyle(c, a).fillRect(x, y, w, h);
     };

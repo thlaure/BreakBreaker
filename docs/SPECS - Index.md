@@ -1,6 +1,6 @@
 # BreakBreaker — Specifications (index)
 
-**Version:** 1.5.3 — 24 October 2026  
+**Version:** 1.5.4 — 24 October 2026  
 **Scope:** 2D pixel-art web game, non-isometric top-down view, arcade mode in rounds with no time limit, Paris, Paul (a fictional shopkeeper) as the only hero, computer and phone  
 **Status:** reference specification; decisions confirmed by the project owner and design recommendations are identified. A first playable slice exists (section 24); this document is neither a production sign-off nor a statement that all requirements are already implemented.  
 **Languages:** French (default) and American English  
@@ -185,6 +185,7 @@ The BreakBreaker specifications are split into an index (this file) and nine the
 
 ### 25.4 History
 
+- **1.5.4 — 24 October 2026 (patch):** fluidity (owner report: the game felt less smooth, with a delay between a key press and the action): the building fronts' Graphics (static once drawn, 10 of them holding more than 10,000 rectangle commands that Phaser replayed every frame) are baked into images at the end of the district build (`bake.ts`, pure `bakeMath.ts`; only fill-style and rectangle drawings are baked, the rest is left alone). Graphics command buffer per frame measured at 18,437 before and 7,931 after (render only, RC-212).
 - **1.5.3 — 24 October 2026 (patch):** pumpkin heads and zombie flags (owner request): while the event is on about one in four non-zombie rioters and one in three Caïds wear a jack-o'lantern head (a sprite on the head, three faces, seen from behind when walking away, hidden once KO; `rioterLook.ts`, `pumpkinHead.ts`), and zombies never carry their variant's flag: a third of them carry a plain black flag with a white skull (a pirate flag), the others none. Render only (RC-210, RC-211).
 - **1.5.2 — 24 October 2026 (patch):** the Halloween zombies become characters of their own (owner request, after a reference video): ten sheets built by `npm run assets` from the LPC zombie body and head (`scripts/lpc-recipes-halloween.json`, `public/assets/events/halloween/`, green skin, glowing yellow eyes, torn hoodies, flashy hair or hoods) replace the repainted skins, and the rock throwers' zombie form is a hooded spellcaster (robe, spellcast animation on the attack rows) whose flying rocks are drawn as green spell orbs (`hw_orb`). Render only; the sheets are fetched only while the event is on; a sheet that fails to load is not fatal (RC-206, RC-209).
 - **1.5.1 — 24 October 2026 (patch):** the landing pages take the event theme too: `src/events/halloween/landing.css` (dormant) swaps the hero for `src/events/halloween/hero.png` (built by `npm run hero:halloween`, the base hero scene at night with zombie rioters, pennants, pumpkins, ghosts and bats) and recolours the glow and embers when `<html data-event="halloween">`; a 500-byte inline script generated from the schedule (`eventActivationScript`) sets it from the date or `?event=` (RC-208). The landing pages therefore carry one tiny inline script (still no external script and no game code).
