@@ -17,7 +17,7 @@ Licences : [CC-BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/), [CC-
 - **Roguelike Modern City Pack** par Kenney — CC0 1.0 — <https://kenney.nl/assets/roguelike-modern-city> (`assets/tiles/city.png`).
 - Licence : <https://creativecommons.org/publicdomain/zero/1.0/>
 - Les drapeaux (`assets/props/flags.png`) sont dessinés par le code du projet.
-- L'illustration de la page d'accueil (`src/site/hero.png`) est composée par `npm run hero` (`scripts/build-hero.mjs`) à partir de ces tuiles et des sprites LPC ci-dessus : œuvre dérivée, mêmes auteurs et mêmes licences (CC-BY-SA 3.0 pour les couches LPC qui l'exigent).
+- L'illustration de la page d'accueil (`src/site/hero.png`) est composée par `npm run hero` (`scripts/build-hero.mjs`) à partir de ces tuiles et des sprites LPC ci-dessus : œuvre dérivée, mêmes auteurs et mêmes licences (CC-BY-SA 3.0 pour les couches LPC qui l'exigent). Celle du thème Halloween (`src/events/halloween/hero.png`) vient du même script (`npm run hero:halloween`) : même œuvre dérivée, mêmes auteurs et mêmes licences, avec les zombies peints comme dans le jeu.
 - L'icône du site (`public/favicon.png`, `public/apple-touch-icon.png`) est composée par `npm run favicon` (`scripts/build-favicon.mjs`) à partir de la tête du sprite de Paul (LPC) : œuvre dérivée, mêmes auteurs et mêmes licences (CC-BY-SA 3.0 pour les couches LPC qui l'exigent).
 
 ## Polices

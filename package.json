@@ -1,6 +1,6 @@
 {
   "name": "breakbreaker",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,6 +12,7 @@
     "bench": "node scripts/bench-sim.mjs",
     "assets": "node scripts/fetch-assets.mjs && node scripts/build-lpc.mjs && node scripts/optimize-png.mjs",
     "hero": "node scripts/build-hero.mjs",
+    "hero:halloween": "node scripts/build-hero.mjs --halloween",
     "favicon": "node scripts/build-favicon.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",

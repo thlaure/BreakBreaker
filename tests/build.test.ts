@@ -41,10 +41,15 @@ test('the entry points are emitted: both landings and the game', () => {
   expect(existsSync(out('play/index.html'))).toBe(true);
 });
 
-test('landings pull no game code and no script', () => {
+test('landings pull no game code; their only script is the tiny inline event switch', () => {
   for (const { page } of LANDINGS) {
     const html = readFileSync(out(page), 'utf8');
-    expect(html, page).not.toMatch(/phaser|<script/i);
+    expect(html, page).not.toMatch(/phaser/i);
+    expect(html, page).not.toMatch(/<script[^>]*\ssrc=/i);
+    const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+    expect(scripts, page).toHaveLength(1);
+    expect(scripts[0]![1]!.length, page).toBeLessThan(600);
+    expect(scripts[0]![1], page).toContain('data-event');
   }
 });
 
@@ -77,7 +82,7 @@ test('each landing: its lang, one h1, a relative play link carrying the language
     // relative (works under a sub-path); starts the game at once, in this page's language (the game saves it)
     expect(html, page).toContain(`href="${root}play/?go&amp;lang=${locale}"`);
     expect(html, page).not.toMatch(/<a [^>]*href="\/(?!\/)/); // no root-absolute <a> links: the site may be served under /<repo>/
-    expect(html, page).not.toMatch(/<script/);
+    expect(html, page).not.toMatch(/<script[^>]*\ssrc=/);
   }
 });
 
@@ -221,11 +226,19 @@ const cssUrls = (re: RegExp): string[] =>
     .filter((u) => re.test(u))
     .map((u) => out(u.replace(/^\//, '')));
 
-test('landing hero: pixel-art PNG referenced from the CSS, <= 250 KB', () => {
+test('landing heroes (base and Halloween): pixel-art PNGs referenced from the CSS, <= 250 KB each', () => {
   const files = cssUrls(/hero[^/]*\.png$/);
-  expect(files.length).toBe(1);
-  expect(statSync(files[0]!).size).toBeLessThanOrEqual(250 * 1024);
+  expect(files.length).toBe(2);
+  for (const f of files) expect(statSync(f).size).toBeLessThanOrEqual(250 * 1024);
   expect(landingCss()).toMatch(/image-rendering:\s*pixelated/);
+});
+
+test('the Halloween hero is only used under data-event, so no other day downloads it', () => {
+  const css = landingCss();
+  const rule = /([^{}]*)\{[^{}]*url\(\s*["']?[^"')]*hero[^"')]*\.png/g;
+  const selectors = [...css.matchAll(rule)].map((m) => m[1]!.trim());
+  expect(selectors).toHaveLength(2);
+  expect(selectors.filter((sel) => sel.includes('data-event')).length).toBe(1);
 });
 
 test('landing pixel font (woff2/ttf) <= 100 KB', () => {
@@ -277,7 +290,7 @@ test('landing inlines the latest CHANGELOG.md notes and a changelog dialog, stil
   expect(html).toMatch(/id="changelog"[^>]*popover/);
   expect(html).toMatch(/popovertarget="changelog"[^>]*>Changelog</);
   expect(html.match(/class="release"/g)?.length).toBe(md.match(/^## \S+ - /gm)?.length);
-  expect(html).not.toMatch(/<script/);
+  expect(html).not.toMatch(/<script[^>]*\ssrc=/);
 });
 
 test('the engine is its own chunk, apart from the game code', () => {

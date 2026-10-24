@@ -4,10 +4,11 @@
  *
  * Template slots: `<!--t:landing.key-->` (catalog text, escaped), `<!--lang-->`, `<!--root-->` (relative path to the
  * site root: '' or '../'), `<!--alternates-->` (hreflang links), `<!--flags-->` (language selector), `<!--controls-->`,
- * `<!--notice-->`, `<!--version-->`, `<!--teaser-->`, `<!--changelog-->`.
+ * `<!--notice-->`, `<!--event-->` (the inline script that turns the event theme on), `<!--version-->`, `<!--teaser-->`, `<!--changelog-->`.
  */
 import { controlsFor as controlRowsFor, satireNoticeFor, type ControlRow } from '../content/controls';
 import { catalog, translate, type Locale } from '../content/i18n';
+import { eventActivationScript } from '../events/schedule';
 import { flagSvg, type FlagId } from './flags';
 
 export const esc = (s: string): string =>
@@ -102,6 +103,7 @@ export function renderLanding(template: string, l: Locale, ctx: LandingContext):
   const { rows, notice } = controlsFor(l);
   const fills: Record<string, string> = {
     '<!--lang-->': l,
+    '<!--event-->': `<script>${eventActivationScript()}</script>`,
     '<!--root-->': root,
     '<!--alternates-->': alternates(l, root),
     '<!--flags-->': flags(l, root, tr),

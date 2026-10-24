@@ -1,0 +1,28 @@
+/*
+ * Halloween theme of the landing pages: dormant until the page script sets data-event="halloween" on <html> (src/events/
+ * schedule.ts: 24 October to 2 November, or ?event=halloween). It only swaps the hero picture (hero.png, built by
+ * `npm run hero:halloween`) and a few colours: the page structure is the base one.
+ */
+html[data-event='halloween'] {
+  --accent: #ff9a3c;
+  --accent-edge: #b8590f;
+  --fire: #ff7a2e;
+}
+html[data-event='halloween'] .hero-art {
+  background-image: url('./hero.png');
+}
+/* ghostly purple and orange glow instead of the school's red-orange one, embers turn pink and green */
+html[data-event='halloween'] .fire-glow {
+  background: radial-gradient(38% 34% at 46% 16%, rgba(255, 140, 40, 0.3), rgba(160, 90, 255, 0.1) 55%, rgba(160, 90, 255, 0) 75%);
+}
+html[data-event='halloween'] .e2,
+html[data-event='halloween'] .e4,
+html[data-event='halloween'] .e6 {
+  background: #ff5fc8;
+  box-shadow: 0 0 0 2px rgba(160, 90, 255, 0.55);
+}
+html[data-event='halloween'] .e3,
+html[data-event='halloween'] .e5 {
+  background: #7dff5a;
+  box-shadow: 0 0 0 2px rgba(60, 160, 40, 0.55);
+}

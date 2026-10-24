@@ -29,3 +29,18 @@ export function activeEventId(now: Date, search: string): EventId | null {
   if (forced) return forced.id;
   return EVENT_WINDOWS.find((w) => inWindow(w, now))?.id ?? null;
 }
+
+/**
+ * The few lines of inline JavaScript the static landing pages carry to switch the event theme on (`<html data-event>`),
+ * generated from EVENT_WINDOWS so it can never drift from activeEventId: the same dates, the same `?event=` rules.
+ */
+export function eventActivationScript(): string {
+  const windows = JSON.stringify(
+    EVENT_WINDOWS.map((w) => ({ id: w.id, from: key(w.from.month, w.from.day), to: key(w.to.month, w.to.day) })),
+  );
+  return (
+    `(function(){var w=${windows},q=new URLSearchParams(location.search).get("event"),d=new Date(),k=(d.getMonth()+1)*100+d.getDate();` +
+    'if(q==="none")return;for(var i=0;i<w.length;i++){var e=w[i];' +
+    'if(q===e.id||(e.from<=e.to?k>=e.from&&k<=e.to:k>=e.from||k<=e.to)){document.documentElement.setAttribute("data-event",e.id);return}}})()'
+  );
+}

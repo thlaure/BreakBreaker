@@ -25,6 +25,7 @@ All of typecheck, lint, format:check, test and bench must pass before a branch i
 - `src/game/` renders only from `Snapshot` and events; render-only features (decor, the President, bubbles) never touch the sim or its rng.
 - Keep files under 400 code lines; split by responsibility, keep public exports importable from the original path.
 - Pure logic lives in `*Math.ts` helpers with unit tests; Phaser views are verified in a real browser.
+- Seasonal themes live in `src/events/<event>/` (permanent, render only, dated windows in `src/events/schedule.ts`, `?event=<id>` / `?event=none` to force): never touch `src/sim` or the base map for a theme, and build nothing when no event is active.
 - Design for performance: the simulation stays under 0.3 ms per step, the render path allocates little per frame (no per-frame object churn, cull what is off screen, cache what does not change), idle states cost nothing, and download weight stays low (compressed assets, cacheable chunks). Measure before and after (`npm run bench`, `npm run build` sizes), never guess.
 
 ## Language rules

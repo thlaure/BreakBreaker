@@ -6,6 +6,10 @@ Ce fichier est lu à la compilation : il alimente le bloc « Nouveautés » et l
 Format : un titre `## <version> - <date AAAA-MM-JJ>` par version, puis une liste de points `- ` courts, du plus important au moins important.
 Les trois premiers points de la version la plus récente sont affichés sur la page d'accueil.
 
+## 1.5.1 - 2026-10-24
+
+- La page d'accueil se met aussi aux couleurs d'Halloween : une nouvelle illustration de nuit (zombies, citrouilles, fantômes, chauves-souris, guirlandes) remplace le fond pendant l'événement, avec des couleurs orange et violettes.
+
 ## 1.5.0 - 2026-10-24
 
 - Halloween arrive, du 24 octobre au 2 novembre : environ un casseur sur deux devient un zombie rigolo (peau vert-gris, cheveux bleus, roses, violets, turquoise ou jaunes, certains avec un cône de chantier ou un seau sur la tête). Rien ne change dans le jeu : mêmes règles, mêmes scores.
