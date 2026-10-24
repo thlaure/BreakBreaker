@@ -14,6 +14,10 @@
 </p>
 
 <p align="center">
+  <a href="https://www.buymeacoffee.com/thomaslaure"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=thomaslaure&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" height="48"></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/thlaure/BreakBreaker/actions/workflows/ci.yml"><img src="https://github.com/thlaure/BreakBreaker/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/Phaser-4-8a2be2.svg" alt="Phaser 4">
