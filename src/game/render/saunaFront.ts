@@ -44,7 +44,7 @@ function layer(s: Phaser.Scene, depth: number): { gr: Phaser.GameObjects.Graphic
 
 /**
  * The prop of one guest over his sprite (local px: x 0 is the middle of the body, y 0 the top of the head, the bench top at
- * y 23): a red cap and a long red tie, a black judo belt and a hockey stick leaning on the bench, a felt sauna hat. Outfit
+ * y 23): a red cap and a long red tie, a black judo belt and a hockey stick leaning on the bench, a plain dark closed-collar jacket and round glasses. Outfit
  * and objects only: no exaggerated feature, no religious item.
  */
 function guestProp(p: Paint, prop: GuestProp): void {
@@ -59,8 +59,13 @@ function guestProp(p: Paint, prop: GuestProp): void {
     p(0x8a6a3a, 11, 2, 1, 26);
     p(0x8a6a3a, 11, 27, 5, 1);
   } else {
-    p(0xa89a7a, -6, 3, 12, 2); // the brim
-    p(0xc8b890, -4, 0, 8, 3);
+    p(0x2a2630, -6, 14, 12, 9); // a plain dark buttoned jacket, closed collar, no tie
+    p(0x14121c, -1, 14, 2, 9);
+    p(0x14121c, -5, 6, 4, 3); // round glasses
+    p(0x14121c, 1, 6, 4, 3);
+    p(0x14121c, -1, 7, 2, 1);
+    p(0xcfe8f0, -4, 7, 2, 1);
+    p(0xcfe8f0, 2, 7, 2, 1);
   }
 }
 

@@ -13,6 +13,6 @@ describe('sauna guests', () => {
   });
 
   test('guests are told apart by props only, none of them religious or physical', () => {
-    expect(SAUNA_GUESTS.map((g) => g.prop)).toEqual(['capTie', 'judoBelt', 'feltHat']);
+    expect(SAUNA_GUESTS.map((g) => g.prop)).toEqual(['capTie', 'judoBelt', 'collarGlasses']);
   });
 });

@@ -6,6 +6,10 @@ It is read at build time and feeds the "What’s new" block and the "Changelog" 
 Format: one `## <version> - <date YYYY-MM-DD>` heading per version, then short `- ` bullets, most important first.
 The first three bullets of the latest version are shown on the landing page.
 
+## 1.5.12 - 2026-10-29
+
+- Sauna: the third guest now wears a plain dark closed-collar jacket and round glasses (no more felt hat), so the three bathers are told apart by their accessories: red cap and long tie, judo belt and hockey stick, jacket and glasses. Still no name, no face or physique gag, no religious item.
+
 ## 1.5.11 - 2026-10-24
 
 - On phones, alerts (assault, fire, new round) fit on one slim line: the title and the arrow, with no icon or explanatory text, to clear the view.
